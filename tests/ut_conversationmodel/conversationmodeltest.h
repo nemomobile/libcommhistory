@@ -42,6 +42,7 @@ private slots:
     void deleteEvent();
     void treeMode();
     void asyncMode();
+    void sorting();
     void cleanupTestCase();
 };
 

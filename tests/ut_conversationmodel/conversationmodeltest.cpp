@@ -463,6 +463,51 @@ void ConversationModelTest::asyncMode()
     QVERIFY(watcher.waitForModelReady(5000));
 }
 
+void ConversationModelTest::sorting()
+{
+    EventModel model;
+    model.setQueryMode(EventModel::StreamedAsyncQuery);
+    model.setFirstChunkSize(5);
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    //add events with the same timestamp
+    QDateTime now = QDateTime::currentDateTime();
+    QDateTime future = now.addSecs(10);
+
+    addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
+                 group1.id(), "I", false, false, now);
+    addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
+                 group1.id(), "II", false, false, now);
+    addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
+                 group1.id(), "III", false, false, future);
+    addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
+                 group1.id(), "IV", false, false, future);
+    addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
+                 group1.id(), "V", false, false, future);
+
+    watcher.waitForSignals(5, 5);
+
+    ConversationModel conv;
+    conv.setQueryMode(EventModel::StreamedAsyncQuery);
+    conv.setFirstChunkSize(5);
+    conv.enableContactChanges(false);
+    QSignalSpy rowsInserted(&conv, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
+
+    QVERIFY(conv.getEvents(group1.id()));
+
+    QVERIFY(waitSignal(rowsInserted, 5000));
+
+    QVERIFY(conv.rowCount() >= 5 );
+
+    QCOMPARE(conv.event(conv.index(0, 0)).freeText(), QLatin1String("V"));
+    QCOMPARE(conv.event(conv.index(1, 0)).freeText(), QLatin1String("IV"));
+    QCOMPARE(conv.event(conv.index(2, 0)).freeText(), QLatin1String("III"));
+    QCOMPARE(conv.event(conv.index(3, 0)).freeText(), QLatin1String("II"));
+    QCOMPARE(conv.event(conv.index(4, 0)).freeText(), QLatin1String("I"));
+}
+
+
 void ConversationModelTest::cleanupTestCase()
 {
 //    deleteAll();
