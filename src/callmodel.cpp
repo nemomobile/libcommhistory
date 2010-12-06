@@ -305,20 +305,18 @@ void CallModelPrivate::addToModel( Event &event )
     }
 
     if (event.contactId() > 0) {
-        contactCache.insert(event.remoteUid(),
+        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
                             qMakePair(event.contactId(), event.contactName()));
     } else {
-        if (contactCache.contains(event.remoteUid())) {
-            event.setContactId(contactCache.value(event.remoteUid()).first);
-            event.setContactName(contactCache.value(event.remoteUid()).second);
-        } else {
+        if (!setContactFromCache(event)) {
             // calls don't have the luxury of only one contact per
             // conversation -> resolve unknowns and add to cache
             int contactId = 0;
             QString contactName;
             if (resolveContact(event.remoteUid(),
                                contactId, contactName)) {
-                contactCache.insert(event.remoteUid(), qMakePair(contactId, contactName));
+                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
+                                    qMakePair(contactId, contactName));
                 event.setContactId(contactId);
                 event.setContactName(contactName);
             }

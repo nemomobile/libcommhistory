@@ -229,13 +229,10 @@ void EventModelPrivate::addToModel(Event &event)
     qDebug() << __PRETTY_FUNCTION__ << event.toString();
 
     if (event.contactId() > 0) {
-        contactCache.insert(event.remoteUid(),
+        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
                             qMakePair(event.contactId(), event.contactName()));
     } else {
-        if (contactCache.contains(event.remoteUid())) {
-            event.setContactId(contactCache.value(event.remoteUid()).first);
-            event.setContactName(contactCache.value(event.remoteUid()).second);
-        }
+        setContactFromCache(event);
     }
 
     QModelIndex index = findParent(event);
@@ -255,9 +252,8 @@ void EventModelPrivate::modifyInModel(Event &event)
     Q_Q(EventModel);
     qDebug() << __PRETTY_FUNCTION__ << event.id();
 
-    if (event.contactId() <= 0 && contactCache.contains(event.remoteUid())) {
-        event.setContactId(contactCache.value(event.remoteUid()).first);
-        event.setContactName(contactCache.value(event.remoteUid()).second);
+    if (event.contactId() <= 0) {
+        setContactFromCache(event);
     }
 
     QModelIndex index = findEvent(event.id());
@@ -355,7 +351,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         }
 
         if (event.contactId() > 0) {
-            contactCache.insert(event.remoteUid(),
+            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
                                 qMakePair(event.contactId(), event.contactName()));
         }
 
@@ -571,7 +567,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                 eventChanged = true;
             }
 
-            QMutableMapIterator<QString, QPair<int, QString> > i(contactCache);
+            QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
             while (i.hasNext()) {
                 i.next();
                 if ((quint32)(i.value().first) == contactId)
@@ -596,11 +592,11 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                 }
             }
 
-            QMutableMapIterator<QString, QPair<int, QString> > i(contactCache);
+            QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
             while (i.hasNext()) {
                 i.next();
-                if (ContactListener::addressMatchesList(QString(),//TODO: change contactCache to support localUid at last
-                                                        i.key(),
+                if (ContactListener::addressMatchesList(i.key().first,
+                                                        i.key().second,
                                                         contactAddresses)) {
                     // update old record
                     i.value().first = contactId;
@@ -649,4 +645,16 @@ TrackerIO* EventModelPrivate::tracker()
     if (!m_pTracker)
         m_pTracker = new TrackerIO(this);
     return m_pTracker;
+}
+
+bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
+{
+    QPair<int,QString> contact = contactCache.value(qMakePair(event.localUid(),
+                                                              event.remoteUid()));
+    if (contact.first > 0) {
+        event.setContactId(contact.first);
+        event.setContactName(contact.second);
+        return true;
+    }
+    return false;
 }

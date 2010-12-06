@@ -154,6 +154,7 @@ public:
     void deleteQueryRunners();
 
     TrackerIO *tracker();
+    bool setContactFromCache(CommHistory::Event &event);
 
     // This is the root node for the internal event tree. In a standard
     // flat model, eventRootNode has rowCount() children with events.
@@ -184,9 +185,8 @@ public:
 
     QSharedPointer<ContactListener> contactListener;
 
-    // remote id -> contact id and name
-    // TODO: contact should be defined by <localId, remoteId>, at least for IM
-    QMap<QString, QPair<int, QString> > contactCache;
+    // (local id, remote id) -> (contact id, name)
+    QMap<QPair<QString,QString>, QPair<int, QString> > contactCache;
 
     QList<CommittingTransaction> transactions;
 
