@@ -32,6 +32,8 @@
 #include <QContactId>
 #include <QContactName>
 
+#include "commonutils.h"
+
 #include "contactlistener.h"
 
 using namespace CommHistory;
@@ -155,18 +157,39 @@ void ContactListener::slotResultsAvailable()
     qDebug() << Q_FUNC_INFO << request->contacts().size() << "contacts";
 
     foreach (QContact contact, request->contacts()) {
-        QStringList addresses;
+        QList< QPair<QString,QString> > addresses;
         foreach (QContactOnlineAccount account,
                  contact.details(QContactOnlineAccount::DefinitionName)) {
-            addresses += account.accountUri();
+            addresses += qMakePair(account.value(QLatin1String("AccountPath")),
+                                   account.accountUri());
         }
         foreach (QContactPhoneNumber phoneNumber,
                  contact.details(QContactPhoneNumber::DefinitionName)) {
-            addresses += phoneNumber.number();
+            addresses += qMakePair(QString(), phoneNumber.number());
         }
 
         emit contactUpdated(contact.localId(), contact.displayLabel(), addresses);
     }
 
     request->deleteLater();
+}
+
+bool ContactListener::addressMatchesList(const QString &localUid,
+                                         const QString &remoteUid,
+                                         const QList< QPair<QString,QString> > &contactAddresses)
+{
+    bool found = false;
+
+    QListIterator<QPair<QString,QString> > i(contactAddresses);
+    while (i.hasNext()) {
+        QPair<QString,QString> address = i.next();
+        if ((address.first.isEmpty() || address.first == localUid)
+            && CommHistory::remoteAddressMatch(remoteUid, address.second)) {
+            found = true;
+            break;
+        }
+    }
+
+    return found;
+
 }

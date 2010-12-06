@@ -114,7 +114,7 @@ public Q_SLOTS:
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
-                            const QStringList &contactAddresses);
+                            const QList< QPair<QString,QString> > &contactAddresses);
 
     void slotContactRemoved(quint32 localId);
 

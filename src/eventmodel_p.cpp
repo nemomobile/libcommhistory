@@ -42,19 +42,6 @@ using namespace CommHistory;
 
 namespace {
     static const int defaultChunkSize = 50;
-
-    bool addressMatchesList(const QString &remoteUid, const QStringList &addresses)
-    {
-        bool found = false;
-        foreach (QString address, addresses) {
-            if (CommHistory::remoteAddressMatch(remoteUid, address)) {
-                found = true;
-                break;
-            }
-        }
-
-        return found;
-    }
 }
 
 uint EventModelPrivate::modelSerial = 0;
@@ -386,9 +373,9 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         if (contactChangesEnabled && !contactListener) {
             contactListener = ContactListener::instance();
             connect(contactListener.data(),
-                    SIGNAL(contactUpdated(quint32, const QString &, const QStringList &)),
+                    SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
                     this,
-                    SLOT(slotContactUpdated(quint32, const QString &, const QStringList &)));
+                    SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
             connect(contactListener.data(),
                     SIGNAL(contactRemoved(quint32)),
                     this,
@@ -562,7 +549,7 @@ bool EventModelPrivate::canFetchMore() const
 void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                                                 quint32 contactId,
                                                 const QString &contactName,
-                                                const QStringList &contactAddresses,
+                                                const QList< QPair<QString,QString> > &contactAddresses,
                                                 EventTreeItem *parent)
 {
     qDebug() << Q_FUNC_INFO;
@@ -591,7 +578,9 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                     i.remove();
             }
         } else if (changeType == ContactUpdated) {
-            if (addressMatchesList(event->remoteUid(), contactAddresses)) {
+            if (ContactListener::addressMatchesList(event->localUid(),
+                                                    event->remoteUid(),
+                                                    contactAddresses)) {
                 if ((quint32)event->contactId() != contactId
                     || event->contactName() != contactName) {
                     event->setContactId(contactId);
@@ -610,7 +599,9 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
             QMutableMapIterator<QString, QPair<int, QString> > i(contactCache);
             while (i.hasNext()) {
                 i.next();
-                if (addressMatchesList(i.key(), contactAddresses)) {
+                if (ContactListener::addressMatchesList(QString(),//TODO: change contactCache to support localUid at last
+                                                        i.key(),
+                                                        contactAddresses)) {
                     // update old record
                     i.value().first = contactId;
                     i.value().second = contactName;
@@ -643,14 +634,14 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
 
 void EventModelPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
-                                           const QStringList &contactAddresses)
+                                           const QList< QPair<QString,QString> > &contactAddresses)
 {
     changeContactsRecursive(ContactUpdated, localId, contactName, contactAddresses, eventRootItem);
 }
 
 void EventModelPrivate::slotContactRemoved(quint32 localId)
 {
-    changeContactsRecursive(ContactRemoved, localId, QString(), QStringList(), eventRootItem);
+    changeContactsRecursive(ContactRemoved, localId, QString(), QList< QPair<QString,QString> >(), eventRootItem);
 }
 
 TrackerIO* EventModelPrivate::tracker()

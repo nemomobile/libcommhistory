@@ -44,20 +44,6 @@ bool groupLessThan(CommHistory::Group &a, CommHistory::Group &b)
     return a.endTime() > b.endTime(); // descending order
 }
 
-
-bool addressMatchesList(const QString &remoteUid, const QStringList &addresses)
-{
-    bool found = false;
-    foreach (QString address, addresses) {
-        if (CommHistory::remoteAddressMatch(remoteUid, address)) {
-            found = true;
-            break;
-        }
-    }
-
-    return found;
-}
-
 static const int defaultChunkSize = 50;
 
 }
@@ -279,9 +265,9 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
         if (!contactListener) {
             contactListener = ContactListener::instance();
             connect(contactListener.data(),
-                    SIGNAL(contactUpdated(quint32, const QString &, const QStringList &)),
+                    SIGNAL(contactUpdated(quint32, const QString &, const QList<QPair<QString,QString> > &)),
                     this,
-                    SLOT(slotContactUpdated(quint32, const QString &, const QStringList &)));
+                    SLOT(slotContactUpdated(quint32, const QString &, const QList<QPair<QString,QString> > &)));
             connect(contactListener.data(),
                     SIGNAL(contactRemoved(quint32)),
                     this,
@@ -559,7 +545,7 @@ TrackerIO* GroupModelPrivate::tracker()
 
 void GroupModelPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
-                                           const QStringList &contactAddresses)
+                                           const QList< QPair<QString,QString> > &contactAddresses)
 {
     Q_Q(GroupModel);
 
@@ -567,8 +553,9 @@ void GroupModelPrivate::slotContactUpdated(quint32 localId,
         Group group = groups.at(row);
         bool updatedGroup = false;
 
-        if (addressMatchesList(group.remoteUids().first(),
-                               contactAddresses)) {
+        if (ContactListener::addressMatchesList(group.localUid(),
+                                                group.remoteUids().first(),
+                                                contactAddresses)) {
                 group.setContactId(localId);
                 group.setContactName(contactName);
                 updatedGroup = true;

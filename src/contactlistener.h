@@ -54,10 +54,14 @@ public:
 
     ~ContactListener();
 
+    static bool addressMatchesList(const QString &localUid,
+                                   const QString &remoteUid,
+                                   const QList< QPair<QString,QString> > &contactAddresses);
+
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,
-                        const QStringList &contactAddresses);
+                        const QList< QPair<QString,QString> > &contactAddresses);
     void contactRemoved(quint32 localId);
 
 private Q_SLOTS:
