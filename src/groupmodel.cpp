@@ -262,17 +262,7 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
         groups.append(result);
         q->endInsertRows();
 
-        if (!contactListener) {
-            contactListener = ContactListener::instance();
-            connect(contactListener.data(),
-                    SIGNAL(contactUpdated(quint32, const QString &, const QList<QPair<QString,QString> > &)),
-                    this,
-                    SLOT(slotContactUpdated(quint32, const QString &, const QList<QPair<QString,QString> > &)));
-            connect(contactListener.data(),
-                    SIGNAL(contactRemoved(quint32)),
-                    this,
-                    SLOT(slotContactRemoved(quint32)));
-        }
+        startContactListening();
     }
 }
 
@@ -405,13 +395,14 @@ void GroupModelPrivate::groupAddedSlot(int id,
              << remoteUids << chatName << chatType << contactId << contactName
              << isPermanent;
 
-    for (int i = 0; i < groups.count(); i++)
-        if (groups.at(i).id() == id)
-            return;
-
     Group g;
-    // TODO: filter by first remoteUid for now
-    if ((filterLocalUid.isEmpty() || localUid == filterLocalUid)
+    for (int i = 0; i < groups.count(); i++)
+        if (groups.at(i).id() == id) {
+            g = groups.at(i);
+        }
+
+    if (!g.isValid()
+        && (filterLocalUid.isEmpty() || localUid == filterLocalUid)
         && (filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(filterRemoteUid, remoteUids.first()))) {
         g.setId(id);
@@ -424,6 +415,13 @@ void GroupModelPrivate::groupAddedSlot(int id,
         g.setPermanent(isPermanent);
 
         addToModel(g);
+    }
+
+    if (g.isValid() && g.contactId() <= 0) {
+        startContactListening();
+        if (contactListener)
+            contactListener->resolveContact(g.localUid(),
+                                            g.remoteUids().first());
     }
 }
 
@@ -588,6 +586,21 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
             emit q->dataChanged(q->index(row, 0),
                                 q->index(row, GroupModel::NumberOfColumns - 1));
         }
+    }
+}
+
+void GroupModelPrivate::startContactListening()
+{
+    if (!contactListener) {
+        contactListener = ContactListener::instance();
+        connect(contactListener.data(),
+                SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                this,
+                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
+        connect(contactListener.data(),
+                SIGNAL(contactRemoved(quint32)),
+                this,
+                SLOT(slotContactRemoved(quint32)));
     }
 }
 

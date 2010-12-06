@@ -84,6 +84,7 @@ public:
     void deleteQueryRunner();
 
     TrackerIO* tracker();
+    void startContactListening();
 
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
