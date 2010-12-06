@@ -94,14 +94,11 @@ void ContactListener::init()
     m_Initialized = true;
 }
 
-QContactFetchRequest *ContactListener::buildRequest(const QList<QContactLocalId> &contactIds)
+QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter)
 {
     QContactFetchRequest *request = new QContactFetchRequest();
     request->setManager(m_ContactManager);
     request->setParent(this);
-
-    QContactLocalIdFilter filter;
-    filter.setIds(contactIds);
     request->setFilter(filter);
 
     QStringList details;
@@ -140,7 +137,10 @@ void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactI
 
 void ContactListener::slotStartContactRequest()
 {
-    QContactFetchRequest *request = buildRequest(m_PendingContactIds);
+    QContactLocalIdFilter filter;
+    filter.setIds(m_PendingContactIds);
+
+    QContactFetchRequest *request = buildRequest(filter);
     connect(request, SIGNAL(resultsAvailable()),
             this, SLOT(slotResultsAvailable()));
 
@@ -192,4 +192,33 @@ bool ContactListener::addressMatchesList(const QString &localUid,
 
     return found;
 
+}
+
+void ContactListener::resolveContact(const QString &localUid,
+                                     const QString &remoteUid)
+{
+    QContactFilter filter;
+
+    QString number = CommHistory::normalizePhoneNumber(remoteUid);
+    if (number.isEmpty()) {
+        QContactDetailFilter filterLocal;
+        filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
+                                            QLatin1String("AccountPath"));
+        filterLocal.setValue(localUid);
+
+        QContactDetailFilter filterRemote;
+        filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
+                                             QContactOnlineAccount::FieldAccountUri);
+        filterRemote.setValue(remoteUid);
+
+        filter = filterLocal & filterRemote;
+    } else {
+        filter = QContactPhoneNumber::match(remoteUid);
+    }
+
+    QContactFetchRequest *request = buildRequest(filter);
+    connect(request, SIGNAL(resultsAvailable()),
+            this, SLOT(slotResultsAvailable()));
+
+    request->start();
 }

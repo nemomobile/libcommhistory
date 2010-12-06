@@ -58,6 +58,12 @@ public:
                                    const QString &remoteUid,
                                    const QList< QPair<QString,QString> > &contactAddresses);
 
+    /**
+     * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.
+     */
+    void resolveContact(const QString &localUid,
+                        const QString &remoteUid);
+
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,
@@ -74,7 +80,7 @@ private:
     ContactListener(QObject *parent = 0);
 
     void init();
-    QContactFetchRequest *buildRequest(const QList<QContactLocalId> &contactIds);
+    QContactFetchRequest *buildRequest(const QContactFilter &filter);
 
 private:
     static QWeakPointer<ContactListener> m_Instance;
