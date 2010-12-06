@@ -57,9 +57,9 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
 void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
     qDebug() << Q_FUNC_INFO;
-    // TODO: return if group chat
     if (filterDirection == Event::Outbound ||
-        filterGroupId == -1)
+        filterGroupId == -1 ||
+        chatType != Group::ChatTypeP2P)
         return;
 
     foreach (Group g, groups) {
