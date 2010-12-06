@@ -1820,7 +1820,7 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 {
     qDebug() << Q_FUNC_INFO << event.id() << backgroundThread;
 
-    Live<nmo::Message> msg = ::tracker()->liveNode(event.url());
+    Live<nmo::Message> msg = d->m_service->liveNode(event.url());
 
     if (event.type() == Event::MMSEvent) {
         if (d->isLastMmsEvent(event.messageToken())) {
