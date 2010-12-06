@@ -35,12 +35,27 @@
 #include "event.h"
 #include "constants.h"
 #include "committingtransaction.h"
+#include "contactlistener.h"
 
 namespace {
 
 bool groupLessThan(CommHistory::Group &a, CommHistory::Group &b)
 {
     return a.endTime() > b.endTime(); // descending order
+}
+
+
+bool addressMatchesList(const QString &remoteUid, const QStringList &addresses)
+{
+    bool found = false;
+    foreach (QString address, addresses) {
+        if (CommHistory::remoteAddressMatch(remoteUid, address)) {
+            found = true;
+            break;
+        }
+    }
+
+    return found;
 }
 
 static const int defaultChunkSize = 50;
@@ -260,6 +275,18 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
                            q->rowCount() + result.count() - 1);
         groups.append(result);
         q->endInsertRows();
+
+        if (!contactListener) {
+            contactListener = ContactListener::instance();
+            connect(contactListener.data(),
+                    SIGNAL(contactUpdated(quint32, const QString &, const QStringList &)),
+                    this,
+                    SLOT(slotContactUpdated(quint32, const QString &, const QStringList &)));
+            connect(contactListener.data(),
+                    SIGNAL(contactRemoved(quint32)),
+                    this,
+                    SLOT(slotContactRemoved(quint32)));
+        }
     }
 }
 
@@ -523,11 +550,58 @@ bool GroupModelPrivate::canFetchMore() const
     return threadCanFetchMore;
 }
 
-TrackerIO *GroupModelPrivate::tracker()
+TrackerIO* GroupModelPrivate::tracker()
 {
     if (!m_pTracker)
         m_pTracker = new TrackerIO(this);
     return m_pTracker;
+}
+
+void GroupModelPrivate::slotContactUpdated(quint32 localId,
+                                           const QString &contactName,
+                                           const QStringList &contactAddresses)
+{
+    Q_Q(GroupModel);
+
+    for (int row = 0; row < groups.count(); row++) {
+        Group group = groups.at(row);
+        bool updatedGroup = false;
+
+        if (addressMatchesList(group.remoteUids().first(),
+                               contactAddresses)) {
+                group.setContactId(localId);
+                group.setContactName(contactName);
+                updatedGroup = true;
+        } else if (localId == (quint32)group.contactId()) {
+            group.setContactId(0);
+            group.setContactName(QString());
+            updatedGroup = true;
+        }
+
+        if (updatedGroup) {
+            groups.replace(row, group);
+            emit q->dataChanged(q->index(row, 0),
+                                q->index(row, GroupModel::NumberOfColumns - 1));
+        }
+    }
+}
+
+void GroupModelPrivate::slotContactRemoved(quint32 localId)
+{
+    Q_Q(GroupModel);
+
+    for (int row = 0; row < groups.count(); row++) {
+        Group group = groups.at(row);
+
+        if (localId == (quint32)group.contactId()) {
+            group.setContactId(0);
+            group.setContactName(QString());
+            groups.replace(row, group);
+
+            emit q->dataChanged(q->index(row, 0),
+                                q->index(row, GroupModel::NumberOfColumns - 1));
+        }
+    }
 }
 
 GroupModel::GroupModel(QObject *parent)

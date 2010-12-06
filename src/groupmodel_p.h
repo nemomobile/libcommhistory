@@ -38,6 +38,7 @@ namespace CommHistory {
 
 class QueryRunner;
 class TrackerIO;
+class ContactListener;
 
 class GroupModelPrivate: public QObject
 {
@@ -111,6 +112,12 @@ public Q_SLOTS:
 
     void commitErrorSlot(QString message);
 
+    void slotContactUpdated(quint32 localId,
+                            const QString &contactName,
+                            const QStringList &contactAddresses);
+
+    void slotContactRemoved(quint32 localId);
+
 Q_SIGNALS:
     void groupAdded(int id,
                     const QString &localUid,
@@ -149,6 +156,8 @@ public:
     QThread *bgThread;
 
     TrackerIO *m_pTracker;
+
+    QSharedPointer<ContactListener> contactListener;
 };
 
 }
