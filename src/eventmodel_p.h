@@ -155,6 +155,7 @@ public:
 
     TrackerIO *tracker();
     bool setContactFromCache(CommHistory::Event &event);
+    void startContactListening();
 
     // This is the root node for the internal event tree. In a standard
     // flat model, eventRootNode has rowCount() children with events.

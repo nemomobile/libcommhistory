@@ -366,17 +366,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
     if (!events.isEmpty()) {
         // now we have some content -> start tracking contacts if enabled
-        if (contactChangesEnabled && !contactListener) {
-            contactListener = ContactListener::instance();
-            connect(contactListener.data(),
-                    SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
-                    this,
-                    SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
-            connect(contactListener.data(),
-                    SIGNAL(contactRemoved(quint32)),
-                    this,
-                    SLOT(slotContactRemoved(quint32)));
-        }
+        startContactListening();
 
         fillModel(start, end, events);
     }
@@ -657,4 +647,19 @@ bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
         return true;
     }
     return false;
+}
+
+void EventModelPrivate::startContactListening()
+{
+    if (contactChangesEnabled && !contactListener) {
+        contactListener = ContactListener::instance();
+        connect(contactListener.data(),
+                SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                this,
+                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
+        connect(contactListener.data(),
+                SIGNAL(contactRemoved(quint32)),
+                this,
+                SLOT(slotContactRemoved(quint32)));
+    }
 }

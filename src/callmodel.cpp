@@ -32,7 +32,7 @@
 #include "callmodel_p.h"
 #include "event.h"
 #include "commonutils.h"
-#include "queryresult.h" // buildContactName
+#include "contactlistener.h"
 
 using namespace SopranoLive;
 
@@ -311,15 +311,9 @@ void CallModelPrivate::addToModel( Event &event )
         if (!setContactFromCache(event)) {
             // calls don't have the luxury of only one contact per
             // conversation -> resolve unknowns and add to cache
-            int contactId = 0;
-            QString contactName;
-            if (resolveContact(event.remoteUid(),
-                               contactId, contactName)) {
-                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                                    qMakePair(contactId, contactName));
-                event.setContactId(contactId);
-                event.setContactName(contactName);
-            }
+            startContactListening();
+            if (contactListener)
+                contactListener->resolveContact(event.localUid(), event.remoteUid());
         }
     }
 
@@ -557,40 +551,6 @@ void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &even
         q->endResetModel();
         deleteSync = false;
     }
-}
-
-bool CallModelPrivate::resolveContact(const QString &remoteId,
-                                      int &contactId,
-                                      QString &contactName)
-{
-    RDFSelect query;
-
-    RDFVariable queryContact = RDFVariable::fromType<nco::PersonContact>();
-    query.addColumn(QLatin1String("contact"), queryContact);
-    query.addColumn(QLatin1String("id"), queryContact.function<nco::contactLocalUID>());
-    query.addColumn(QLatin1String("firstName"), queryContact.function<nco::nameGiven>());
-    query.addColumn(QLatin1String("lastName"), queryContact.function<nco::nameFamily>());
-
-    // non-numeric addresses are stored as nco:IMAddress
-    QString id = normalizePhoneNumber(remoteId);
-    if (id.isEmpty()) {
-        queryContact.property<nco::hasIMAddress>().property<nco::imID>(LiteralValue(remoteId));
-    } else {
-        queryContact.property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>()
-            = LiteralValue(id.right(PHONE_NUMBER_MATCH_LENGTH));
-    }
-
-    bool ok = false;
-    LiveNodes result = ::tracker()->modelQuery(query);
-    if (result->rowCount()) {
-        contactId = result->index(0, 1).data().toInt();
-        contactName = QueryResult::buildContactName(result->index(0, 2).data().toString(),
-                                                    result->index(0, 3).data().toString(),
-                                                    QString());
-        ok = true;
-    }
-
-    return ok;
 }
 
 /* ************************************************************************** *
