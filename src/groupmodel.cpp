@@ -67,6 +67,7 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
         , threadCanFetchMore(false)
         , bgThread(0)
         , m_pTracker(0)
+        , contactChangesEnabled(true)
 {
     qRegisterMetaType<QList<CommHistory::Event> >();
     qRegisterMetaType<QList<CommHistory::Group> >();
@@ -591,7 +592,7 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
 
 void GroupModelPrivate::startContactListening()
 {
-    if (!contactListener) {
+    if (contactChangesEnabled && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
@@ -1073,4 +1074,9 @@ QThread* GroupModel::backgroundThread()
 TrackerIO& GroupModel::trackerIO()
 {
     return *d->tracker();
+}
+
+void GroupModel::enableContactChanges(bool enabled)
+{
+    d->contactChangesEnabled = enabled;
 }

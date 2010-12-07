@@ -232,6 +232,17 @@ public:
      */
     TrackerIO& trackerIO();
 
+    /*!
+     * If enabled (default), Group::contactId and Group::contactName in model
+     * contents will be updated live (emitting dataChanged()) when
+     * contacts are added, changed or deleted.
+     * NOTE: This method must be called before getGroups() or it will
+     * not have any effect.
+     *
+     * \param enabled If true, track contact changes.
+     */
+    void enableContactChanges(bool enabled);
+
     /* reimp */
     virtual bool canFetchMore(const QModelIndex &parent) const;
     virtual void fetchMore(const QModelIndex &parent);

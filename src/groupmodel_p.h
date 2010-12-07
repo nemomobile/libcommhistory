@@ -159,6 +159,7 @@ public:
     TrackerIO *m_pTracker;
 
     QSharedPointer<ContactListener> contactListener;
+    bool contactChangesEnabled;
 };
 
 }
