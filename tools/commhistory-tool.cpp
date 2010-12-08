@@ -132,6 +132,7 @@ void printUsage()
     std::cout << "                 add [-newgroup] [-group group-id] [-date yyyymmdd] [{-sms|-mms}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
+    std::cout << "                 addClass0"                                                                                                              << std::endl;
     std::cout << "                 isread event-id {1|0}"                                                                                                  << std::endl;
     std::cout << "                 reportdelivery event-id {1|0}"                                                                                          << std::endl;
     std::cout << "                 setstatus event-id {unknown|sent|sending|delivered|temporarilyfailed|permanentlyfailed}"                                << std::endl;
@@ -405,6 +406,44 @@ int doAddVCard(const QStringList &arguments, const QVariantMap &options)
     }
 
     c.waitCommit();
+
+    return 0;
+}
+
+int doAddClass0(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED(arguments)
+    Q_UNUSED(options)
+
+    QStringList sosRemoteUids;
+    sosRemoteUids << "112"
+                  << "911"
+                  << "POLIZEI";
+
+    QStringList sosMessages;
+    sosMessages << "Don't fall asleep, Freddy is around."
+                << "Stay inside, storm is coming."
+                << "Class Zero SMS"
+                << "The Steelers has won the Superbowl. Party-time!";
+
+    // prepare class zero sms
+    Event e;
+    e.setRemoteUid(sosRemoteUids.at(qrand() % sosRemoteUids.count()));
+    e.setLocalUid(RING_ACCOUNT);
+    e.setDirection(Event::Inbound);
+    e.setType(Event::ClassZeroSMSEvent);
+    e.setFreeText(sosMessages.at(qrand() % sosMessages.count()));
+    QDateTime now = QDateTime::currentDateTime();
+    e.setStartTime(now);
+    e.setEndTime(now);
+
+    EventModel model;
+    if (!model.addEvent(e, true)) {
+
+        qCritical() << "Error adding events:" << model.lastError();
+        return -1;
+    }
+    qDebug() << "Added Class Zero SMS.";
 
     return 0;
 }
@@ -774,6 +813,8 @@ int main(int argc, char **argv)
         return doAddCall( args, options );
     } else if (args.at(1) == "addVCard") {
         return doAddVCard(args, options);
+    } else if (args.at(1) == "addClass0") {
+        return doAddClass0(args, options);
     } else if (args.at(1) == "listcalls" &&
                (args.count() == 2 ||
                 (args.count() == 3 && (args.at(2) == "bycontact" ||
