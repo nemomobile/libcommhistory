@@ -556,13 +556,6 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                 event->setContactName(QString());
                 eventChanged = true;
             }
-
-            QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
-            while (i.hasNext()) {
-                i.next();
-                if ((quint32)(i.value().first) == contactId)
-                    i.remove();
-            }
         } else if (changeType == ContactUpdated) {
             if (ContactListener::addressMatchesList(event->localUid(),
                                                     event->remoteUid(),
@@ -579,23 +572,6 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                     event->setContactId(0);
                     event->setContactName(QString());
                     eventChanged = true;
-                }
-            }
-
-            QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
-            while (i.hasNext()) {
-                i.next();
-                if (ContactListener::addressMatchesList(i.key().first,
-                                                        i.key().second,
-                                                        contactAddresses)) {
-                    // update old record
-                    i.value().first = contactId;
-                    i.value().second = contactName;
-                    break;
-                } else if ((quint32)(i.value().first) == contactId) {
-                    // old record doesn't match, remove
-                    i.remove();
-                    break;
                 }
             }
         } else {
@@ -622,11 +598,35 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
                                            const QList< QPair<QString,QString> > &contactAddresses)
 {
+    QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
+    while (i.hasNext()) {
+        i.next();
+        if (ContactListener::addressMatchesList(i.key().first,
+                                                i.key().second,
+                                                contactAddresses)) {
+            // update old record
+            i.value().first = localId;
+            i.value().second = contactName;
+            break;
+        } else if ((quint32)(i.value().first) == localId) {
+            // old record doesn't match, remove
+            i.remove();
+            break;
+        }
+    }
+
     changeContactsRecursive(ContactUpdated, localId, contactName, contactAddresses, eventRootItem);
 }
 
 void EventModelPrivate::slotContactRemoved(quint32 localId)
 {
+    QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
+    while (i.hasNext()) {
+        i.next();
+        if ((quint32)(i.value().first) == localId)
+            i.remove();
+    }
+
     changeContactsRecursive(ContactRemoved, localId, QString(), QList< QPair<QString,QString> >(), eventRootItem);
 }
 
