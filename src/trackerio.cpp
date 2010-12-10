@@ -1179,6 +1179,22 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
     }
 }
 
+void TrackerIOPrivate::writeCallProperties(UpdateQuery &query, Event &event, bool modifyMode)
+{
+    query.insertion(event.url(),
+                    nmo::isAnswered::iri(),
+                    LiteralValue(!event.isMissedCall()),
+                    modifyMode);
+    query.insertion(event.url(),
+                    nmo::isEmergency::iri(),
+                    LiteralValue(event.isEmergencyCall()),
+                    modifyMode);
+    query.insertion(event.url(),
+                    nmo::duration::iri(),
+                    LiteralValue(event.endTime().toTime_t() - event.startTime().toTime_t()),
+                    modifyMode);
+}
+
 void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
 {
     RDFVariable content(QString(LAT("content")));
@@ -1356,15 +1372,7 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
 
     writeCommonProperties(query, event, false);
 
-    query.insertion(eventSubject,
-                    nmo::isAnswered::iri(),
-                    LiteralValue(!event.isMissedCall()));
-    query.insertion(eventSubject,
-                    nmo::duration::iri(),
-                    LiteralValue(event.endTime().toTime_t() - event.startTime().toTime_t()));
-    query.insertion(eventSubject,
-                    nmo::isEmergency::iri(),
-                    LiteralValue(event.isEmergencyCall()));
+    writeCallProperties(query, event, false);
 }
 
 void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelId)
@@ -1745,6 +1753,9 @@ bool TrackerIO::modifyEvent(Event &event)
                         LiteralValue(event.lastModified()),
                         true);
     }
+
+    if (event.type() == Event::CallEvent)
+        d->writeCallProperties(query, event, true);
 
     d->writeCommonProperties(query, event, true);
 

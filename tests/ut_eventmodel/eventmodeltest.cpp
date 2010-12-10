@@ -303,6 +303,17 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.committedCount(), 0);
     //
     im.setId(imId);
+
+    // call properties
+    call.resetModifiedProperties();
+    call.setIsMissedCall(true);
+    call.setIsEmergencyCall(true);
+
+    QVERIFY(model.modifyEvent(call));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.updatedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(compareEvents(watcher.lastUpdated()[0], call));
 }
 
 void EventModelTest::testDeleteEvent()

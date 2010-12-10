@@ -86,6 +86,7 @@ public:
     void writeCommonProperties(UpdateQuery &query, Event &event, bool modifyMode);
     void writeSMSProperties(UpdateQuery &query, Event &event, bool modifyMode);
     void writeMMSProperties(UpdateQuery &query, Event &event, bool modifyMode);
+    void writeCallProperties(UpdateQuery &query, Event &event, bool modifyMode);
 
     void addMessageParts(UpdateQuery &query, Event &event);
     void setChannel(UpdateQuery &query, Event &event, int channelId);
