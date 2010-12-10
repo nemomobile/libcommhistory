@@ -299,7 +299,10 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
     query.orderBy(date, false);
     // enforce secondary sorting in the order of message saving
     // tracker::id() used instead of plain message uri for performance reason
-    query.orderBy(message.filter(LAT("tracker:id")), false);
+    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
+    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
+    query.addColumn(msgTrackerId);
+    query.orderBy(msgTrackerId, false);
 
     messageQuery = query;
 }
