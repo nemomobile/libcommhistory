@@ -381,6 +381,12 @@ void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
     }
 
     query.orderBy(date, false);
+    // enforce secondary sorting in the order of message saving
+    // tracker::id() used instead of plain message uri for performance reason
+    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
+    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
+    query.addColumn(msgTrackerId);
+    query.orderBy(msgTrackerId, false);
 
     messageQuery = query;
 }
