@@ -958,8 +958,6 @@ void EventModelTest::testStreaming()
     QSignalSpy modelReady(&streamModel, SIGNAL(modelReady()));
     QVERIFY(streamModel.getEvents(group1.id()));
 
-    QList<int> idsOrig;
-    QList<int> idsStream;
     int count = 0;
     int chunkSize = firstChunkSize;
     while (count < total) {
@@ -982,11 +980,7 @@ void EventModelTest::testStreaming()
         for (int i = count; i < expectedEnd + 1; i++) {
             Event event1 = model.index(i, 0).data(Qt::UserRole).value<Event>();
             Event event2 = streamModel.index(i, 0).data(Qt::UserRole).value<Event>();
-            QCOMPARE(event1.endTime(),event2.endTime());
-            idsOrig.append(event1.id());
-            idsStream.append(event2.id());
-            //QVERIFY(compareEvents(event1, event2)); // Cannot compare like this, because events having same timestamp
-            //can be in random order in data model.
+            QVERIFY(compareEvents(event1, event2));
         }
 
         // You should be able to fetch more if total number of messages is not yet reached:
@@ -1005,13 +999,6 @@ void EventModelTest::testStreaming()
     QVERIFY(rowsInserted.isEmpty());
     // TODO: NB#208137
     // QVERIFY(!streamModel.canFetchMore(QModelIndex()));
-
-    for ( int i = 0; i < idsStream.size(); i++ )
-    {
-        QCOMPARE(idsOrig.removeAll(idsStream[i]),1);
-    }
-
-    QCOMPARE(idsOrig.size(),0);
 
     modelThread.quit();
     modelThread.wait(3000);
