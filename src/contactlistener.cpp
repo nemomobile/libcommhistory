@@ -42,7 +42,7 @@ QWeakPointer<ContactListener> ContactListener::m_Instance;
 
 namespace {
     static const QLatin1String CONTACT_STORAGE_TYPE("tracker");
-    static const int CONTACT_REQUEST_THRESHOLD = 1000;
+    static const int CONTACT_REQUEST_THRESHOLD = 5000;
 }
 
 ContactListener::ContactListener(QObject *parent)
@@ -197,6 +197,7 @@ bool ContactListener::addressMatchesList(const QString &localUid,
 void ContactListener::resolveContact(const QString &localUid,
                                      const QString &remoteUid)
 {
+    qDebug() << Q_FUNC_INFO << localUid << remoteUid;
     QContactFilter filter;
 
     QString number = CommHistory::normalizePhoneNumber(remoteUid);
