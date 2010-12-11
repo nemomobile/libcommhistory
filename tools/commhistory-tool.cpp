@@ -147,6 +147,7 @@ void printUsage()
 int doAdd(const QStringList &arguments, const QVariantMap &options)
 {
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     QString localUid = arguments.at(2);
     QString remoteUid = arguments.at(3);
     int groupId = -1;
@@ -533,6 +534,7 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     bool showParts = options.contains("-p");
 
     GroupModel model;
+    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getGroups(localUid, remoteUid)) {
         qCritical() << "Error fetching groups:" << model.lastError();
