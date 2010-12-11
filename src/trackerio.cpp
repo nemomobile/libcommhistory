@@ -684,6 +684,7 @@ void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
     channelQuery.addColumn(LAT("imNickname"), imNickname);
 
     channelQuery.orderBy(lastDate, RDFSelect::Descending);
+    channel.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
 }
 
 QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &remoteUid)
