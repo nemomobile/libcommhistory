@@ -43,6 +43,16 @@ QWeakPointer<ContactListener> ContactListener::m_Instance;
 namespace {
     static const QLatin1String CONTACT_STORAGE_TYPE("tracker");
     static const int CONTACT_REQUEST_THRESHOLD = 5000;
+    static const int REQUEST_BATCH_SIZE = 10;
+
+    QContactFilter addContactFilter(const QContactFilter &existingFilter,
+                                    const QContactFilter &newFilter)
+    {
+        if (existingFilter == QContactFilter())
+            return newFilter;
+
+        return existingFilter | newFilter;
+    }
 }
 
 ContactListener::ContactListener(QObject *parent)
@@ -137,14 +147,50 @@ void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactI
 
 void ContactListener::slotStartContactRequest()
 {
-    QContactLocalIdFilter filter;
-    filter.setIds(m_PendingContactIds);
+    QContactFetchRequest *request = 0;
 
-    QContactFetchRequest *request = buildRequest(filter);
-    connect(request, SIGNAL(resultsAvailable()),
-            this, SLOT(slotResultsAvailable()));
+    if (!m_PendingUnresolvedContacts.isEmpty()) {
+        QContactFilter filter;
 
-    request->start();
+        for (int i = 0; i < REQUEST_BATCH_SIZE && !m_PendingUnresolvedContacts.isEmpty(); i++) {
+            QPair<QString,QString> contact = m_PendingUnresolvedContacts.takeFirst();
+
+            QString number = CommHistory::normalizePhoneNumber(contact.second);
+            if (number.isEmpty()) {
+                QContactDetailFilter filterLocal;
+                filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
+                                                    QLatin1String("AccountPath"));
+                filterLocal.setValue(contact.first);
+
+                QContactDetailFilter filterRemote;
+                filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
+                                                     QContactOnlineAccount::FieldAccountUri);
+                filterRemote.setValue(contact.second);
+
+                filter = addContactFilter(filter, filterLocal & filterRemote);
+            } else {
+                filter = addContactFilter(filter, QContactPhoneNumber::match(contact.second));
+            }
+        }
+        request = buildRequest(filter);
+    }
+
+    if (!request && !m_PendingContactIds.isEmpty()) {
+        QList<QContactLocalId> requestIds;
+
+        for (int i = 0; i < REQUEST_BATCH_SIZE && !m_PendingContactIds.isEmpty(); i++)
+            requestIds << m_PendingContactIds.takeFirst();
+
+        QContactLocalIdFilter filter;
+        filter.setIds(requestIds);
+        request = buildRequest(filter);
+    }
+
+    if (request) {
+        connect(request, SIGNAL(resultsAvailable()),
+                this, SLOT(slotResultsAvailable()));
+        request->start();
+    }
 }
 
 void ContactListener::slotResultsAvailable()
@@ -172,6 +218,8 @@ void ContactListener::slotResultsAvailable()
     }
 
     request->deleteLater();
+
+    slotStartContactRequest();
 }
 
 bool ContactListener::addressMatchesList(const QString &localUid,
@@ -191,35 +239,13 @@ bool ContactListener::addressMatchesList(const QString &localUid,
     }
 
     return found;
-
 }
 
 void ContactListener::resolveContact(const QString &localUid,
                                      const QString &remoteUid)
 {
     qDebug() << Q_FUNC_INFO << localUid << remoteUid;
-    QContactFilter filter;
 
-    QString number = CommHistory::normalizePhoneNumber(remoteUid);
-    if (number.isEmpty()) {
-        QContactDetailFilter filterLocal;
-        filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
-                                            QLatin1String("AccountPath"));
-        filterLocal.setValue(localUid);
-
-        QContactDetailFilter filterRemote;
-        filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
-                                             QContactOnlineAccount::FieldAccountUri);
-        filterRemote.setValue(remoteUid);
-
-        filter = filterLocal & filterRemote;
-    } else {
-        filter = QContactPhoneNumber::match(remoteUid);
-    }
-
-    QContactFetchRequest *request = buildRequest(filter);
-    connect(request, SIGNAL(resultsAvailable()),
-            this, SLOT(slotResultsAvailable()));
-
-    request->start();
+    m_PendingUnresolvedContacts << qMakePair(localUid, remoteUid);
+    m_ContactTimer.start();
 }

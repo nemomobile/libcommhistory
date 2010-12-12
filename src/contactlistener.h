@@ -88,7 +88,7 @@ private:
     QTimer m_ContactTimer;
     QPointer<QContactManager> m_ContactManager;
     QList<QContactLocalId> m_PendingContactIds;
-    QList<QContactFetchRequest *> m_ContactRequests;
+    QList<QPair<QString,QString> > m_PendingUnresolvedContacts;
 };
 
 }
