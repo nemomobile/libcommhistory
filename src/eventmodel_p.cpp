@@ -384,6 +384,7 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
         item->event().setMessageParts(parts);
+        item->event().resetModifiedProperty(Event::MessageParts);
         QModelIndex bottom = q->createIndex(index.row(),
                                             EventModel::NumberOfColumns - 1,
                                             index.internalPointer());

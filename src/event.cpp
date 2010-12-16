@@ -557,6 +557,11 @@ void Event::resetModifiedProperties()
     d->modifiedProperties.clear();
 }
 
+bool Event::resetModifiedProperty(Event::Property property)
+{
+    return d->modifiedProperties.remove(property);
+}
+
 void Event::setId(int id)
 {
     d->id = id;

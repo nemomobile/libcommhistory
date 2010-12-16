@@ -414,6 +414,8 @@ public:
 
     QString toString() const;
 
+    bool resetModifiedProperty(Event::Property property);
+
 private:
     QSharedDataPointer<EventPrivate> d;
 };
