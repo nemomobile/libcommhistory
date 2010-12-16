@@ -337,7 +337,7 @@ bool ConversationModel::getEventsWithType(int groupId, CommHistory::Group::ChatT
     d->clearEvents();
 
     RDFSelect query;
-    RDFVariable message;
+    RDFVariable message = RDFVariable::fromType<nmo::Message>();
 
     if (!d->filterAccount.isEmpty()) {
         RDFVariableList unions = message.unionChildren(2);
@@ -348,11 +348,9 @@ bool ConversationModel::getEventsWithType(int groupId, CommHistory::Group::ChatT
     }
 
     if (d->filterType == Event::IMEvent) {
-        message = RDFVariable::fromType<nmo::IMMessage>();
+        message.isOfType<nmo::IMMessage>();
     } else if (d->filterType == Event::SMSEvent) {
-        message = RDFVariable::fromType<nmo::SMSMessage>();
-    } else if (d->filterType == Event::UnknownType) {
-        message = RDFVariable::fromType<nmo::Message>();
+        message.isOfType<nmo::SMSMessage>();
     }
 
     if (d->filterDirection == Event::Outbound) {
