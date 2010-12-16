@@ -186,7 +186,6 @@ void ConversationModelPerfTest::getEvents()
         ConversationModel fetchModel;
         bool result = false;
 
-        fetchModel.setFilter(Event::SMSEvent);
         QSignalSpy rowsInserted(&fetchModel, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
 
         if (limit < 0) {
