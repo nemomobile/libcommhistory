@@ -1,0 +1,6 @@
+<set description="libcommhistory-tests:ut_callmodel" name="ut_callmodel">
+                <case description="libcommhistory-tests:ut_callmodel:" name="callmodel" level="Component" type="Functional">
+			<step expected_result="0">/usr/share/libcommhistory-tests/ut_callmodel</step>
+                 </case>
+                 <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
+</set>

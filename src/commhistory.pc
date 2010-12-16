@@ -1,0 +1,14 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+includedir=${prefix}/include/
+qt_config=lex yacc warn_on debug uic resources qt warn_on incremental link_prl exceptions no_mocdepend stl qt_no_framework link_pkgconfig shared debug create_prl create_pc dll shared moc thread
+
+Name: libcommhistory
+Description: Messaging/Call-History Library
+Version: 1.0.30
+Libs: -L${libdir} -lcommhistory
+Libs.private: -L/usr/lib  -lQtSql -lQtCore -lpthread
+Cflags:  -I${includedir}
+Requires: QtSql
+

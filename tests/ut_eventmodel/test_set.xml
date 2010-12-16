@@ -1,0 +1,6 @@
+<set description="libcommhistory-tests:ut_eventmodel" name="ut_eventmodel">
+    <case description="libcommhistory-tests:ut_eventmodel:" name="eventmodel" level="Component" type="Functional">
+        <step expected_result="0">/usr/share/libcommhistory-tests/ut_eventmodel</step>
+    </case>
+    <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
+</set>

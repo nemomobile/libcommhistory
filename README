@@ -1,0 +1,22 @@
+ README
+--------
+
+How to quickly generate test conversations:
+===========================================
+
+Ensure that your D-BUS is set up correctly, by either sourcing
+/tmp/session_bus_address.user or using dui-run.
+
+% commhistory-tool add -newgroup gabble/jabber/user1 friend@gmail.com 10
+% commhistory-tool add -newgroup gabble/jabber/user2 another@jabber.org 10
+...
+
+where "gabble/jabber/..." is the local telepathy account and 10 is the
+number of messages to create. Use listgroups and "add -group <id>" to
+add new messages into an existing conversation.
+
+"commhistory-tool deleteall" removes all messages and conversations from
+the tracker database. For best results (i.e. to avoid weird sync
+problems), kill all applications that use commhistory before deleteall
+and restart afterwards.
+

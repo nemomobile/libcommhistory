@@ -1,0 +1,6 @@
+<set description="libcommhistory-tests:ut_conversationmodel" name="ut_conversationmodel">
+                <case description="libcommhistory-tests:ut_conversationmodel:" name="conversationmodel" level="Component" type="Functional">
+			<step expected_result="0">/usr/share/libcommhistory-tests/ut_conversationmodel </step>
+                 </case>
+                 <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
+</set>
