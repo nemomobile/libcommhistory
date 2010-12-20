@@ -413,6 +413,18 @@ void GroupModelPrivate::groupAddedSlot(int id,
         && (filterLocalUid.isEmpty() || localUid == filterLocalUid)
         && (filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(filterRemoteUid, remoteUids.first()))) {
+        //TODO: get rid of temp groups
+        // if new group matches a temp group, remove it
+        for (int i = 0; i < groups.count(); i++) {
+            Group localGroup = groups.at(i);
+            if (!localGroup.isPermanent()
+                && localGroup.localUid() == localUid
+                && localGroup.remoteUids() == remoteUids
+                && localGroup.chatType() == chatType) {
+                deleteFromModel(localGroup);
+            }
+        }
+
         g.setId(id);
         g.setLocalUid(localUid);
         g.setRemoteUids(remoteUids);
