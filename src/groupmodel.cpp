@@ -212,6 +212,13 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
             } else {
                 newGroup = group;
             }
+
+            // keep contact info if sender does not have it
+            if (newGroup.contactId() == 0 && g.contactId() > 0) {
+                newGroup.setContactId(g.contactId());
+                newGroup.setContactName(g.contactName());
+            }
+
             groups.replace(row, newGroup);
 
             emit q->dataChanged(q->index(row, 0),
