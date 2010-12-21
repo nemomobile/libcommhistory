@@ -25,6 +25,7 @@
 #include <QDebug>
 #include <QProcess>
 #include <QDir>
+#include <QFSFileEngine>
 
 void MmsContentDeleter::deleteMessage(const QString &messageToken)
 {
@@ -72,6 +73,14 @@ void MmsContentDeleter::doMessageDelete(const QString &messageToken)
 
 void MmsContentDeleter::deleteDirWithContent(const QString &path)
 {
+    QFSFileEngine fse(path);
+    if (!fse.setPermissions( QFile::ReadOwner | QFile::ReadGroup | QFile::ReadOther |
+                             QFile::ExeOwner  | QFile::ExeGroup  | QFile::ExeOther |
+                             QFile::WriteOwner ) )
+    {
+        qWarning() << "[MMS-DELETER] failed to chmod dir " << path << " error:" << fse.errorString();
+    }
+
     QDir dir(path);
 
     if (dir.exists()) {
