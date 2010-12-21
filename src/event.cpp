@@ -202,6 +202,7 @@ EventPrivate::EventPrivate()
         , reportDelivery(false)
         , reportRead(false)
         , reportReadRequested(false)
+        , validityPeriod(0)
         , readStatus(Event::UnknownReadStatus)
 {
     lastModified = QDateTime::fromTime_t(0);
