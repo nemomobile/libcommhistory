@@ -145,7 +145,7 @@ public:
      * Add a new group. If successful, group.id() and group.isPermanent() are updated.
      *
      * \param group Group data to be inserted into the database.
-     * \toModelOnly Indicates wheter or not to save instance to database.
+     * \toModelOnly Indicates wheter or not to save instance to database. //TODO: remove on next API break
      * \return true if successful. Sets lastError() on failure.
      */
     bool addGroup(Group &group, bool toModelOnly = false);

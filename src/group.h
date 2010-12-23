@@ -74,7 +74,7 @@ public:
         LastVCardLabel,
         LastEventType,
         LastEventStatus,
-        IsPermanent,
+        IsPermanent, //TODO: remove on next API break
         LastModified,
         NumProperties
     };
@@ -234,7 +234,7 @@ public:
      * Indicates whether or not group is saved to database or exists in memory only
      * \return boolean value
      */
-    bool isPermanent() const;
+    bool isPermanent() const; //TODO: remove on next API break
 
     QDateTime lastModified() const;
 
@@ -255,7 +255,7 @@ public:
     void setLastVCardLabel(const QString &label);
     void setLastEventType(Event::EventType eventType);
     void setLastEventStatus(Event::EventStatus eventStatus);
-    void setPermanent(bool permanent);
+    void setPermanent(bool permanent); //TODO: remove on next API break
     void setLastModified(const QDateTime &modified);
 
 private:
