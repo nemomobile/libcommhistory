@@ -31,6 +31,7 @@
 #include <QContactPhoneNumber>
 #include <QContactId>
 #include <QContactName>
+#include <QContactDisplayLabel>
 
 #include "commonutils.h"
 
@@ -114,7 +115,8 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     QStringList details;
     details << QContactName::DefinitionName
             << QContactOnlineAccount::DefinitionName
-            << QContactPhoneNumber::DefinitionName;
+            << QContactPhoneNumber::DefinitionName
+            << QContactDisplayLabel::DefinitionName;
 
     QContactFetchHint hint;
     hint.setDetailDefinitionsHint(details);
