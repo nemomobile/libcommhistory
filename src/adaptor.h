@@ -50,9 +50,6 @@ Q_SIGNALS:
                     const QStringList &remoteUids,
                     const QString &chatName,
                     int chatType,
-                    // id and name of the contact that matches the first remoteUid
-                    int contactId,
-                    const QString &contactName,
                     bool isPermanent);
 
     void groupsUpdated(const QList<int> &groupIds);

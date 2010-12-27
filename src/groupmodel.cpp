@@ -95,8 +95,6 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
                             const QStringList &,
                             const QString &,
                             int,
-                            int,
-                            const QString &,
                             bool)));
     QDBusConnection::sessionBus().connect(
         QString(),
@@ -213,8 +211,9 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
                 newGroup = group;
             }
 
-            // keep contact info if sender does not have it
-            if (newGroup.contactId() == 0 && g.contactId() > 0) {
+            // preserve contact info if necessary
+            if (!newGroup.validProperties().contains(Group::ContactId)
+                && g.validProperties().contains(Group::ContactId)) {
                 newGroup.setContactId(g.contactId());
                 newGroup.setContactName(g.contactName());
             }
@@ -395,13 +394,10 @@ void GroupModelPrivate::groupAddedSlot(int id,
                                        const QStringList &remoteUids,
                                        const QString &chatName,
                                        int chatType,
-                                       int contactId,
-                                       const QString &contactName,
                                        bool isPermanent)
 {
     qDebug() << __PRETTY_FUNCTION__ << id << localUid
-             << remoteUids << chatName << chatType << contactId << contactName
-             << isPermanent;
+             << remoteUids << chatName << chatType << isPermanent;
 
     Group g;
     for (int i = 0; i < groups.count(); i++)
@@ -430,14 +426,12 @@ void GroupModelPrivate::groupAddedSlot(int id,
         g.setRemoteUids(remoteUids);
         g.setChatName(chatName);
         g.setChatType((Group::ChatType)chatType);
-        g.setContactId(contactId);
-        g.setContactName(contactName);
         g.setPermanent(isPermanent);
 
         addToModel(g);
     }
 
-    if (g.isValid() && g.contactId() <= 0) {
+    if (g.isValid()) {
         startContactListening();
         if (contactListener)
             contactListener->resolveContact(g.localUid(),
@@ -585,8 +579,8 @@ void GroupModelPrivate::slotContactUpdated(quint32 localId,
 
         if (updatedGroup) {
             groups.replace(row, group);
-            emit q->dataChanged(q->index(row, 0),
-                                q->index(row, GroupModel::NumberOfColumns - 1));
+            emit q->dataChanged(q->index(row, GroupModel::ContactId),
+                                q->index(row, GroupModel::ContactName));
         }
     }
 }
@@ -603,8 +597,8 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
             group.setContactName(QString());
             groups.replace(row, group);
 
-            emit q->dataChanged(q->index(row, 0),
-                                q->index(row, GroupModel::NumberOfColumns - 1));
+            emit q->dataChanged(q->index(row, GroupModel::ContactId),
+                                q->index(row, GroupModel::ContactName));
         }
     }
 }
@@ -896,8 +890,6 @@ bool GroupModel::addGroup(Group &group, bool toModelOnly)
                        group.remoteUids(),
                        group.chatName(),
                        (int)(group.chatType()),
-                       group.contactId(),
-                       group.contactName(),
                        group.isPermanent());
 
     return true;

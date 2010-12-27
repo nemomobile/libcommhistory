@@ -50,14 +50,13 @@ void GroupModelTest::eventsAddedSlot(const QList<CommHistory::Event> &events)
 void GroupModelTest::groupAddedSlot(int id, const QString &localUid,
                                     const QStringList &remoteUids,
                                     const QString &chatName, int chatType,
-                                    int contactId, const QString &contactName)
+                                    bool permanent)
 {
     Q_UNUSED(localUid);
     Q_UNUSED(remoteUids);
     Q_UNUSED(chatName);
     Q_UNUSED(chatType);
-    Q_UNUSED(contactId);
-    Q_UNUSED(contactName);
+    Q_UNUSED(permanent);
     qDebug() << "groupAddedSlot:" << id;
     loop->exit(0);
 }
@@ -115,7 +114,7 @@ void GroupModelTest::initTestCase()
     QVERIFY(QDBusConnection::sessionBus().connect(
                 QString(), QString(), "com.nokia.commhistory", "groupAdded",
                 this, SLOT(groupAddedSlot(int, const QString &, const QStringList &,
-                                          const QString &, int, int, const QString &))));
+                                          const QString &, int, bool))));
     QVERIFY(QDBusConnection::sessionBus().connect(
                 QString(), QString(), "com.nokia.commhistory", "groupsUpdated",
                 this, SLOT(groupsUpdatedSlot(const QList<int> &))));

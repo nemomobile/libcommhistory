@@ -94,8 +94,6 @@ public Q_SLOTS:
                         const QStringList &remoteUids,
                         const QString &chatName,
                         int chatType,
-                        int contactId,
-                        const QString &contactName,
                         bool isPermanent);
 
     void groupsUpdatedSlot(const QList<int> &groupIds);
@@ -125,8 +123,6 @@ Q_SIGNALS:
                     const QStringList &remoteUids,
                     const QString &chatName,
                     int chatType,
-                    int contactId,
-                    const QString &contactName,
                     bool isPermanent);
 
     void groupsUpdated(const QList<int> &groupIds);
