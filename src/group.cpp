@@ -423,7 +423,15 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
              << group.lastEventStatus() << group.isPermanent() << group.lastModified();
+
+    // pass valid properties
+    argument.beginArray(qMetaTypeId<int>());
+    foreach (int e, group.validProperties())
+        argument << e;
+    argument.endArray();
+
     argument.endStructure();
+
     return argument;
 }
 
@@ -440,27 +448,56 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
              >> p.lastEventId >> p.contactId >> p.contactName
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
              >> type >> status >> p.isPermanent >> p.lastModified;
+
+    //read valid properties
+    argument.beginArray();
+    while (!argument.atEnd()) {
+        int vp;
+        argument >> vp;
+        p.validProperties.insert((Group::Property)vp);
+    }
+    argument.endArray();
+
     argument.endStructure();
 
-    group.setId(p.id);
-    group.setLocalUid(p.localUid);
-    group.setRemoteUids(p.remoteUids);
-    group.setChatType((Group::ChatType)chatType);
-    group.setChatName(p.chatName);
-    group.setEndTime(p.endTime);
-    group.setTotalMessages(p.totalMessages);
-    group.setUnreadMessages(p.unreadMessages);
-    group.setSentMessages(p.sentMessages);
-    group.setLastEventId(p.lastEventId);
-    group.setContactId(p.contactId);
-    group.setContactName(p.contactName);
-    group.setLastMessageText(p.lastMessageText);
-    group.setLastVCardFileName(p.lastVCardFileName);
-    group.setLastVCardLabel(p.lastVCardLabel);
-    group.setLastEventType((Event::EventType)type);
-    group.setLastEventStatus((Event::EventStatus)status);
-    group.setPermanent(p.isPermanent);
-    group.setLastModified(p.lastModified);
+    if (p.validProperties.contains(Group::Id))
+        group.setId(p.id);
+    if (p.validProperties.contains(Group::LocalUid))
+        group.setLocalUid(p.localUid);
+    if (p.validProperties.contains(Group::RemoteUids))
+        group.setRemoteUids(p.remoteUids);
+    if (p.validProperties.contains(Group::Type))
+        group.setChatType((Group::ChatType)chatType);
+    if (p.validProperties.contains(Group::ChatName))
+        group.setChatName(p.chatName);
+    if (p.validProperties.contains(Group::EndTime))
+        group.setEndTime(p.endTime);
+    if (p.validProperties.contains(Group::TotalMessages))
+        group.setTotalMessages(p.totalMessages);
+    if (p.validProperties.contains(Group::UnreadMessages))
+        group.setUnreadMessages(p.unreadMessages);
+    if (p.validProperties.contains(Group::SentMessages))
+        group.setSentMessages(p.sentMessages);
+    if (p.validProperties.contains(Group::LastEventId))
+        group.setLastEventId(p.lastEventId);
+    if (p.validProperties.contains(Group::ContactId))
+        group.setContactId(p.contactId);
+    if (p.validProperties.contains(Group::ContactName))
+        group.setContactName(p.contactName);
+    if (p.validProperties.contains(Group::LastMessageText))
+        group.setLastMessageText(p.lastMessageText);
+    if (p.validProperties.contains(Group::LastVCardFileName))
+        group.setLastVCardFileName(p.lastVCardFileName);
+    if (p.validProperties.contains(Group::LastVCardLabel))
+        group.setLastVCardLabel(p.lastVCardLabel);
+    if (p.validProperties.contains(Group::LastEventType))
+        group.setLastEventType((Event::EventType)type);
+    if (p.validProperties.contains(Group::LastEventStatus))
+        group.setLastEventStatus((Event::EventStatus)status);
+    if (p.validProperties.contains(Group::IsPermanent))
+        group.setPermanent(p.isPermanent);
+    if (p.validProperties.contains(Group::LastModified))
+        group.setLastModified(p.lastModified);
 
     group.resetModifiedProperties();
 
