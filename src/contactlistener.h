@@ -81,6 +81,7 @@ private:
 
     void init();
     QContactFetchRequest *buildRequest(const QContactFilter &filter);
+    void startRequestOrTimer();
 
 private:
     static QWeakPointer<ContactListener> m_Instance;

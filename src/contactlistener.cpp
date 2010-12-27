@@ -133,7 +133,7 @@ void ContactListener::slotContactsUpdated(const QList<QContactLocalId> &contactI
     qDebug() << Q_FUNC_INFO << contactIds;
 
     m_PendingContactIds.append(contactIds);
-    m_ContactTimer.start();
+    startRequestOrTimer();
 }
 
 void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactIds)
@@ -149,6 +149,7 @@ void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactI
 
 void ContactListener::slotStartContactRequest()
 {
+    qDebug() << Q_FUNC_INFO;
     QContactFetchRequest *request = 0;
 
     if (!m_PendingUnresolvedContacts.isEmpty()) {
@@ -249,5 +250,15 @@ void ContactListener::resolveContact(const QString &localUid,
     qDebug() << Q_FUNC_INFO << localUid << remoteUid;
 
     m_PendingUnresolvedContacts << qMakePair(localUid, remoteUid);
+    startRequestOrTimer();
+}
+
+void ContactListener::startRequestOrTimer()
+{
+    // if it's only one new contact or conversation it's probably hand-added
+    // than start request right away and start timer to avoid subsequent requests if it's mass update
+    if (!m_ContactTimer.isActive()
+        && (m_PendingContactIds.size() + m_PendingUnresolvedContacts.size()) == 1)
+        slotStartContactRequest();
     m_ContactTimer.start();
 }
