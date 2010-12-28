@@ -76,7 +76,6 @@ GroupPrivate::GroupPrivate()
         , isPermanent(false)
 {
     lastModified = QDateTime::fromTime_t(0);
-    validProperties += Group::Id;
 }
 
 GroupPrivate::GroupPrivate(const GroupPrivate &other)

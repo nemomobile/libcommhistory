@@ -206,7 +206,6 @@ EventPrivate::EventPrivate()
         , readStatus(Event::UnknownReadStatus)
 {
     lastModified = QDateTime::fromTime_t(0);
-    validProperties += Event::Id;
 }
 
 EventPrivate::EventPrivate(const EventPrivate &other)
