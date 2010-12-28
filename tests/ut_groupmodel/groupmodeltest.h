@@ -38,8 +38,7 @@ class GroupModelTest : public QObject
 
 public slots:
     void eventsAddedSlot(const QList<CommHistory::Event> &);
-    void groupAddedSlot(int, const QString &, const QStringList &, const QString &,
-                        int, bool);
+    void groupAddedSlot(CommHistory::Group group);
     void groupsUpdatedSlot(const QList<int> &);
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &);
     void groupsDeletedSlot(const QList<int> &);

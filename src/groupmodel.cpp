@@ -90,12 +90,7 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
         COMM_HISTORY_SERVICE_NAME,
         GROUP_ADDED_SIGNAL,
         this,
-        SLOT(groupAddedSlot(int,
-                            const QString &,
-                            const QStringList &,
-                            const QString &,
-                            int,
-                            bool)));
+        SLOT(groupAddedSlot(CommHistory::Group)));
     QDBusConnection::sessionBus().connect(
         QString(),
         QString(),
@@ -389,45 +384,33 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
     }
 }
 
-void GroupModelPrivate::groupAddedSlot(int id,
-                                       const QString &localUid,
-                                       const QStringList &remoteUids,
-                                       const QString &chatName,
-                                       int chatType,
-                                       bool isPermanent)
+void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
 {
-    qDebug() << __PRETTY_FUNCTION__ << id << localUid
-             << remoteUids << chatName << chatType << isPermanent;
+    qDebug() << __PRETTY_FUNCTION__ << group.id() << group.localUid()
+             << group.remoteUids() << group.chatName() << group.chatType() << group.isPermanent();
 
     Group g;
     for (int i = 0; i < groups.count(); i++)
-        if (groups.at(i).id() == id) {
+        if (groups.at(i).id() == group.id()) {
             g = groups.at(i);
         }
 
     if (!g.isValid()
-        && (filterLocalUid.isEmpty() || localUid == filterLocalUid)
+        && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
         && (filterRemoteUid.isEmpty()
-            || CommHistory::remoteAddressMatch(filterRemoteUid, remoteUids.first()))) {
+            || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
         //TODO: get rid of temp groups
         // if new group matches a temp group, remove it
         for (int i = 0; i < groups.count(); i++) {
             Group localGroup = groups.at(i);
             if (!localGroup.isPermanent()
-                && localGroup.localUid() == localUid
-                && localGroup.remoteUids() == remoteUids
-                && localGroup.chatType() == chatType) {
+                && localGroup.localUid() == group.localUid()
+                && localGroup.remoteUids() == group.remoteUids()
+                && localGroup.chatType() == group.chatType()) {
                 deleteFromModel(localGroup);
             }
         }
-
-        g.setId(id);
-        g.setLocalUid(localUid);
-        g.setRemoteUids(remoteUids);
-        g.setChatName(chatName);
-        g.setChatType((Group::ChatType)chatType);
-        g.setPermanent(isPermanent);
-
+        g = group;
         addToModel(g);
     }
 
@@ -885,12 +868,7 @@ bool GroupModel::addGroup(Group &group, bool toModelOnly)
         endInsertRows();
     }
 
-    emit d->groupAdded(group.id(),
-                       group.localUid(),
-                       group.remoteUids(),
-                       group.chatName(),
-                       (int)(group.chatType()),
-                       group.isPermanent());
+    emit d->groupAdded(group);
 
     return true;
 }

@@ -45,12 +45,7 @@ Q_SIGNALS:
 
     void eventDeleted(int id);
 
-    void groupAdded(int id,
-                    const QString &localUid,
-                    const QStringList &remoteUids,
-                    const QString &chatName,
-                    int chatType,
-                    bool isPermanent);
+    void groupAdded(CommHistory::Group group);
 
     void groupsUpdated(const QList<int> &groupIds);
 

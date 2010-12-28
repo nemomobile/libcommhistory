@@ -89,12 +89,7 @@ public:
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
 
-    void groupAddedSlot(int id,
-                        const QString &localUid,
-                        const QStringList &remoteUids,
-                        const QString &chatName,
-                        int chatType,
-                        bool isPermanent);
+    void groupAddedSlot(CommHistory::Group group);
 
     void groupsUpdatedSlot(const QList<int> &groupIds);
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
@@ -118,12 +113,7 @@ public Q_SLOTS:
     void slotContactRemoved(quint32 localId);
 
 Q_SIGNALS:
-    void groupAdded(int id,
-                    const QString &localUid,
-                    const QStringList &remoteUids,
-                    const QString &chatName,
-                    int chatType,
-                    bool isPermanent);
+    void groupAdded(CommHistory::Group group);
 
     void groupsUpdated(const QList<int> &groupIds);
     void groupsUpdatedFull(const QList<CommHistory::Group> &groups);
