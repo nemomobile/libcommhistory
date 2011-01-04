@@ -193,7 +193,7 @@ void EventModelTest::testAddEvents()
     watcher.setModel(&model);
 
     QList<Event> events;
-    Event e1, e2;
+    Event e1, e2, e3;
     e1.setGroupId(group1.id());
     e1.setType(Event::IMEvent);
     e1.setDirection(Event::Outbound);
@@ -219,6 +219,23 @@ void EventModelTest::testAddEvents()
     QCOMPARE(watcher.committedCount(), 2);
     QVERIFY(compareEvents(watcher.lastAdded()[0], e1));
     QVERIFY(compareEvents(watcher.lastAdded()[1], e2));
+
+    e3.setGroupId(group1.id());
+    e3.setType(Event::IMEvent);
+    e3.setDirection(Event::Inbound);
+    e3.setStartTime(QDateTime::fromString("2010-01-08T13:37:20Z", Qt::ISODate));
+    e3.setEndTime(QDateTime::fromString("2010-01-08T13:37:20Z", Qt::ISODate));
+    e3.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
+    e3.setRemoteUid("td@localhost");
+    e3.setFreeText("addEvents 3");
+
+    events.clear();
+    events << e3;
+    QVERIFY(model.addEvents(events,true)); // Add to model only, not into tracker.
+    watcher.waitForSignals(-1); // -1 -> Do not wait for committed signal because we do not store to tracker.
+    QCOMPARE(watcher.addedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 0);
+    QVERIFY(compareEvents(watcher.lastAdded()[0], e3));
 }
 
 void EventModelTest::testModifyEvent()
@@ -910,8 +927,149 @@ void EventModelTest::testFindEvent()
     event = index.data(Qt::UserRole).value<Event>();
     QVERIFY(compareEvents(event, im));
 
+    // Test also EventModel's data-method for majority and most important event fields:
+    int row = index.row();
+    QModelIndex index2 = model.index(row,EventModel::EventId);
+    QVariant var2 = model.data(index2);
+    QVariant header2 = model.headerData(EventModel::EventId,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("id"));
+    int eventId = var2.toInt();
+    QCOMPARE(eventId,im.id());
+
+    index2 = model.index(row,EventModel::EventType);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::EventType,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("event_type"));
+    int eventType = var2.toInt();
+    QCOMPARE(eventType,(int)im.type());
+
+    index2 = model.index(row,EventModel::Direction);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::Direction,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("direction"));
+    int direction = var2.toInt();
+    QCOMPARE(direction,(int)im.direction());
+
+    index2 = model.index(row,EventModel::IsRead);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::IsRead,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("is_read"));
+    bool isRead = var2.toBool();
+    QCOMPARE(isRead,im.isRead());
+
+    index2 = model.index(row,EventModel::Status);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::Status,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("status"));
+    int status = var2.toInt();
+    QCOMPARE(status,(int)im.status());
+
+    index2 = model.index(row,EventModel::LocalUid);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::LocalUid,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("local_uid"));
+    QString localUid = var2.toString();
+    QCOMPARE(localUid,im.localUid());
+
+    index2 = model.index(row,EventModel::RemoteUid);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::RemoteUid,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("remote_uid"));
+    QString remoteUid = var2.toString();
+    QCOMPARE(remoteUid,im.remoteUid());
+
+    index2 = model.index(row,EventModel::FreeText);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::FreeText,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("free_text"));
+    QString freeText = var2.toString();
+    QCOMPARE(freeText,im.freeText());
+
+    index2 = model.index(row,EventModel::GroupId);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::GroupId,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("group_id"));
+    int groupId = var2.toInt();
+    QCOMPARE(groupId,im.groupId());
+
+    index2 = model.index(row,EventModel::MessageToken);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::MessageToken,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("message_token"));
+    QString messageToken = var2.toString();
+    QCOMPARE(messageToken,im.messageToken());
+
+    index2 = model.index(row,EventModel::ContactId);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::ContactId,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("contact_id"));
+    int contactId = var2.toInt();
+    QCOMPARE(contactId,im.contactId());
+
+    index2 = model.index(row,EventModel::StartTime);
+    var2 = model.data(index2);
+    header2 = model.headerData(EventModel::StartTime,Qt::Horizontal,Qt::DisplayRole);
+    QCOMPARE(header2.toString(),QString("start_time"));
+    QDateTime startTime = var2.toDateTime();
+    QCOMPARE(startTime.toTime_t(),im.startTime().toTime_t());
+
+
     index = model.findEvent(-1);
     QVERIFY(!index.isValid());
+}
+
+void EventModelTest::testMoveEvent()
+{
+    addTestGroup(group2,
+                 "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0",
+                 "td2@localhost");
+
+    EventModel model;
+    watcher.setModel(&model);
+    Event event;
+    event.setGroupId(group1.id());
+    event.setType(Event::IMEvent);
+    event.setDirection(Event::Inbound);
+    event.setStartTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
+    event.setEndTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
+    event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
+    event.setRemoteUid("td@localhost");
+    event.setFreeText("moveEvent 1");
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.addedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(compareEvents(watcher.lastAdded()[0], event));
+
+    QVERIFY(model.moveEvent(event,group2.id()));
+
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(),event.id());
+    QCOMPARE(watcher.addedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+
+    Event eventFromTracker;
+    QVERIFY(model.trackerIO().getEvent(event.id(), eventFromTracker));
+    QCOMPARE(eventFromTracker.groupId(),group2.id());
+
+    // Try with invalid event:
+    Event invalidEvent;
+    QVERIFY(!model.moveEvent(invalidEvent,group2.id()));
+
+    // Try to move event to the same group where event already is:
+    QVERIFY(model.moveEvent(eventFromTracker,group2.id()));
+
+    // Moving event from a group that has this event as the only one.
+    // Then the empty group should be deleted:
+    QVERIFY(model.moveEvent(eventFromTracker,group1.id()));
+
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(),eventFromTracker.id());
+    QCOMPARE(watcher.addedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
 }
 
 void EventModelTest::testStreaming_data()

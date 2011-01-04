@@ -1388,7 +1388,7 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
     writeCallProperties(query, event, false);
 }
 
-void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelId)
+void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelId, bool modify)
 {
     QUrl channelUrl = Group::idToUrl(channelId);
 
@@ -1402,7 +1402,8 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
                     true);
     query.insertion(event.url(),
                     nmo::communicationChannel::iri(),
-                    channelUrl);
+                    channelUrl,
+                    modify);
 }
 
 bool TrackerIO::addEvent(Event &event)
@@ -1814,17 +1815,23 @@ bool TrackerIO::modifyGroup(Group &group)
 
 bool TrackerIO::moveEvent(Event &event, int groupId)
 {
+    qDebug() << Q_FUNC_INFO << event.id() << groupId;
     UpdateQuery query;
 
-    d->setChannel(query, event, groupId);
+    d->setChannel(query, event, groupId, true); // true means modify
 
     if (event.direction() == Event::Inbound) {
+        qDebug() << Q_FUNC_INFO << "Direction INBOUND";
         QUrl remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
         query.insertion(event.url(),
                         nmo::from::iri(),
                         remoteContact,
                         true); //TODO: proper contact deletion
     }
+
+    qDebug() << Q_FUNC_INFO << "Executing query";
+    d->m_service->executeQuery(query.rdfUpdate());
+    qDebug() << Q_FUNC_INFO << "Query done";
 
     return true;
 }

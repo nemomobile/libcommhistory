@@ -100,7 +100,8 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(model.getEventByTokens("messageToken", "", -1));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    QCOMPARE(model.rowCount(), 1);
+    // Take into account the event with "messageToken" added already in getEventByUri test:
+    QCOMPARE(model.rowCount(), 2);
 
     Event modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));
@@ -108,7 +109,8 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(model.getEventByTokens("messageToken", "", group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    QCOMPARE(model.rowCount(), 1);
+    // Take into account the event with "messageToken" added already in getEventByUri test:
+    QCOMPARE(model.rowCount(), 2);
 
     modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));
@@ -118,10 +120,12 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 0);
 
+    // Can match either to token or mms id:
     QVERIFY(model.getEventByTokens("messageToken", "nonExistingMmsId", group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    QCOMPARE(model.rowCount(), 1);
+    // Take into account the event with "messageToken" added already in getEventByUri test:
+    QCOMPARE(model.rowCount(), 2);
 
     modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));

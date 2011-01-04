@@ -164,6 +164,35 @@ void SyncModelTest::addModifyGetSingleSmsEvents()
     evaluateModel(model, QStringList() << "Msg A");
 }
 
+void SyncModelTest::addFolders()
+{
+    qsrand(QDateTime::currentDateTime().toTime_t());
+    QDateTime folderCreationTime = QDateTime::fromTime_t(qrand());
+
+    FolderInfo folderA, folderB;
+    folderA.folderId = 7860;
+    folderA.parentId = ::MYFOLDER;
+    folderA.folderName = "TestFolderA";
+    folderA.createdTime = folderCreationTime;
+    folderA.modifiedTime = folderCreationTime;
+
+    folderCreationTime = QDateTime::fromTime_t(qrand());
+
+    folderB.folderId = 7861;
+    folderB.parentId = ::MYFOLDER;
+    folderB.folderName = "TestFolderB";
+    folderB.createdTime = folderCreationTime;
+    folderB.modifiedTime = folderCreationTime;
+
+    QList<FolderInfo> folders;
+    folders << folderA << folderB;
+
+    SyncSMSModel model;
+    QVERIFY(!model.addPrivateFolders(folders).isValid());
+
+    QVERIFY(model.folderExists(folderA.folderId));
+    QVERIFY(model.folderExists(folderB.folderId));
+}
 
 void SyncModelTest::cleanupTestCase()
 {

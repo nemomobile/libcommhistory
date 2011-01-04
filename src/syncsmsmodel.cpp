@@ -143,37 +143,7 @@ void SyncSMSModel::setSyncSmsFilter(const SyncSMSFilter& filter)
 
 QList<FolderInfo> SyncSMSModel::folderInfo() const
 {
-    QList<FolderInfo> folderList;
-
-    RDFSelect query;
-    RDFVariable folder = RDFVariable::fromType<nmo::SMSFolder>();
-    folder.addDerivedObject<nmo::phoneMessageFolderId>();
-    folder.addDerivedObject<nmo::containsPhoneMessageFolder>();
-    folder.addDerivedObject<nie::contentCreated>(); //folder creatiion time
-    folder.addDerivedObject<nie::contentLastModified>(); //folder last Modified Time
-    folder.addDerivedObject<nie::title>(); //folder name
-    query.addColumn(folder);
-
-    LiveNodes model = ::tracker()->modelQuery(query);
-    int numRows = model->rowCount();
-
-    for (int i = 0; i < numRows; i++) {
-        Live<nmo::SMSFolder> folderInfo = model->liveNode(i);
-        int folderId = folderInfo->getPhoneMessageFolderId().toInt(NULL, 16);
-
-        FolderInfo info;
-        info.folderId = folderId;
-        if ( (folderId >= ::INBOX && folderId <= ::SENT) || folderId == ::MYFOLDER) {
-            info.parentId = 0;
-        } else {
-            info.parentId = ::MYFOLDER;
-        }
-        info.createdTime = folderInfo->getContentCreated();
-        info.modifiedTime = folderInfo->getContentLastModified();
-        info.folderName = folderInfo->getTitle();
-        folderList.append(info);
-    }
-    return folderList;
+    return QList<FolderInfo>();
 }
 
 QSqlError SyncSMSModel::addPrivateFolders(QList<FolderInfo> listFolderInfo)

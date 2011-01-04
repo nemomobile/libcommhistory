@@ -55,6 +55,8 @@ private slots:
     void streamingQuery_data();
     void streamingQuery();
     void deleteMmsContent();
+    void markGroupAsRead();
+    void resolveContact();
     void cleanupTestCase();
     void init();
     void cleanup();

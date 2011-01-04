@@ -41,6 +41,7 @@ private slots:
     void testVCard();
     void testDeliveryStatus();
     void testFindEvent();
+    void testMoveEvent();
     void testReportDelivery();
     void testMessageParts();
     void testCcBcc();

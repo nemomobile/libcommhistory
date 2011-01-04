@@ -89,7 +89,16 @@ public:
     void writeCallProperties(UpdateQuery &query, Event &event, bool modifyMode);
 
     void addMessageParts(UpdateQuery &query, Event &event);
-    void setChannel(UpdateQuery &query, Event &event, int channelId);
+    /*!
+     * Sets the group for the event into tracker.
+     *
+     * \param query query to add insertions
+     * \param event to use
+     * \param channelId the group id
+     * \param modify true -> if channelId is going to be just updated for an event here,
+     *               false -> if channelId is set for the event for the first time
+     */
+    void setChannel(UpdateQuery &query, Event &event, int channelId, bool modify = false);
 
     /* Used by addEvent(). */
     void addIMEvent(UpdateQuery &query, Event &event);

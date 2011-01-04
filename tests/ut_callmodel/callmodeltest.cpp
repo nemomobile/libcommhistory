@@ -543,6 +543,28 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     QVERIFY(model.rowCount() == 0);
 }
 
+void CallModelTest::deleteAllCalls()
+{
+    CallModel model;
+    watcher.setModel(&model);
+    model.setQueryMode(EventModel::SyncQuery);
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent( model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs( 54 ), REMOTEUID1 );
+    watcher.waitForSignals();
+
+    QVERIFY(model.getEvents());
+    int callCount = model.rowCount();
+    qDebug() << __PRETTY_FUNCTION__ << "Found out " << callCount << " calls.";
+    QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
+    QVERIFY(model.deleteAll());
+    waitSignal(eventsCommitted, 5000);
+
+    QVERIFY(model.getEvents());
+    callCount = model.rowCount();
+    qDebug() << __PRETTY_FUNCTION__ << "Found out " << callCount << " calls after deleteAll()";
+    QCOMPARE(callCount,0);
+}
+
 void CallModelTest::cleanupTestCase()
 {
 }

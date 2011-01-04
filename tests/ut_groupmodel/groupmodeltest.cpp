@@ -23,6 +23,9 @@
 #include <QtTest/QtTest>
 #include <QtTracker/Tracker>
 
+#include <QContactManager>
+#include <QContactId>
+
 #include <QDBusConnection>
 #include "groupmodeltest.h"
 #include "groupmodel.h"
@@ -31,6 +34,8 @@
 #include "trackerio.h"
 
 using namespace CommHistory;
+
+QTM_USE_NAMESPACE
 
 Group group1, group2;
 QEventLoop *loop;
@@ -775,6 +780,107 @@ void GroupModelTest::deleteMmsContent()
     model.deleteGroups(QList<int>() << group1.id() << group2.id() << group3.id());
     QTest::qWait(1000);
     QVERIFY(content_dir.exists(mms_token3) == false);
+}
+
+void GroupModelTest::markGroupAsRead()
+{
+    EventModel eventModel;
+    GroupModel groupModel;
+
+    Group group;
+    group.setLocalUid(ACCOUNT2);
+    group.setRemoteUids(QStringList() << "td@localhost");
+    QVERIFY(groupModel.addGroup(group));
+    loop->exec();
+    idle(1000);
+    QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
+    // Test event is unread by default.
+    int eventId1 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 1");
+    waitSignal(eventsCommitted, 5000);
+
+    eventsCommitted.clear();
+    int eventId2 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 2");
+
+    QVERIFY(groupModel.markAsReadGroup(group.id()));
+    Event e1, e2;
+    QVERIFY(groupModel.trackerIO().getEvent(eventId1, e1));
+    QVERIFY(e1.isRead());
+
+    QVERIFY(groupModel.trackerIO().getEvent(eventId2, e2));
+    QVERIFY(e2.isRead());
+}
+
+void GroupModelTest::resolveContact()
+{
+    GroupModel groupModel;
+
+    connect(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
+            this, SLOT(dataChangedSlot(const QModelIndex &, const QModelIndex &)));
+
+    QString phoneNumber = QString().setNum(qrand() % 10000000);
+    QString contactName = QString("Test Contact 123");
+    addTestContact(contactName, phoneNumber);
+
+    idle(2000);
+
+    Group grp;
+    grp.setLocalUid(RING_ACCOUNT);
+    QStringList uids;
+    uids << phoneNumber;
+    grp.setRemoteUids(uids);
+
+    // CONTACT RESOLVING WHEN ADDING A GROUP:
+    QVERIFY(groupModel.addGroup(grp));
+    // Waiting for groupAdded signal.
+    loop->exec();
+    // Waiting for dataChanged signal to update resolved contact name into the group.
+    loop->exec();
+
+    QVERIFY(grp.id() != -1);
+
+    // Check that tracker is updated:
+    Group group;
+    QVERIFY(groupModel.trackerIO().getGroup(grp.id(), group));
+    QCOMPARE(group.id(), grp.id());
+    QCOMPARE(group.localUid(), grp.localUid());
+    QCOMPARE(group.remoteUids(), grp.remoteUids());
+    QCOMPARE(group.contactName(),contactName);
+
+    // Check that group model is updated:
+    group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.id(), grp.id());
+    QCOMPARE(group.contactName(),contactName);
+
+    // CHANGE CONTACT NAME:
+    QString newName = "Modified Test Contact 123";
+    modifyTestContact(newName, phoneNumber);
+
+    // Waiting for dataChanged signal to update contact name into the group.
+    loop->exec();
+
+    // Check that group model is updated:
+    group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.id(), grp.id());
+    QCOMPARE(group.localUid(), grp.localUid());
+    QCOMPARE(group.remoteUids(), grp.remoteUids());
+    QCOMPARE(group.contactName(),newName);
+
+    // DELETE CONTACT:
+    QPointer<QContactManager> contactManager = new QContactManager("tracker");
+    QContactLocalId qContactId(group.contactId());
+
+    QVERIFY(contactManager->removeContact(qContactId));
+    // Waiting for dataChanged signal to indicate that contact name has been removed from the group.
+    loop->exec();
+
+    // Check that group model is updated:
+    group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.id(), grp.id());
+    QCOMPARE(group.localUid(), grp.localUid());
+    QCOMPARE(group.remoteUids(), grp.remoteUids());
+    QCOMPARE(group.contactName(),QString());
+    QCOMPARE(group.contactId(),0);
+    contactManager->deleteLater();
 }
 
 QTEST_MAIN(GroupModelTest)

@@ -126,6 +126,16 @@ void addTestContact(const QString &name, const QString &remoteUid)
     contact->setNameFamily(name);
 }
 
+void modifyTestContact(const QString &name, const QString &remoteUid)
+{
+    Live<nco::PersonContact> contact;
+    QUrl contactURI;
+
+    contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
+    contact = ::tracker()->liveNode(contactURI);
+    contact->setNameFamily(name);
+}
+
 bool compareEvents(Event &e1, Event &e2)
 {
     if (e1.type() != e2.type()) {

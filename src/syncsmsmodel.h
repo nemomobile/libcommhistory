@@ -100,7 +100,7 @@ public:
       */
     void setSyncSmsFilter(const SyncSMSFilter& filter);
 
-    QList<FolderInfo> folderInfo() const;
+    Q_DECL_DEPRECATED QList<FolderInfo> folderInfo() const;
 
     QSqlError addPrivateFolders(QList<FolderInfo> listFolderInfo);
 
