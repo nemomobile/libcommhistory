@@ -74,6 +74,8 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
     if (eventToFill.type() == Event::CallEvent) {
         if (result.propertyMask.contains(Event::IsMissedCall))
             eventToFill.setIsMissedCall(!(RESULT_INDEX(LAT("isAnswered")).toBool()));
+        if (result.propertyMask.contains(Event::IsEmergencyCall))
+            eventToFill.setIsEmergencyCall(RESULT_INDEX(LAT("isEmergency")).toBool());
         // remove all non-call properties from set
         propertyMask &= commonPropertySet;
     }

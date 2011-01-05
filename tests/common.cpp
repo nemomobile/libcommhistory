@@ -166,6 +166,10 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
         return false;
     }
+    if (e1.isEmergencyCall() != e2.isEmergencyCall()) {
+        qWarning() << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
+        return false;
+    }
 //    QCOMPARE(e1.bytesSent(), e2.bytesSent());
 //    QCOMPARE(e1.bytesReceived(), e2.bytesReceived());
     if (e1.localUid() != e2.localUid()) {
@@ -192,6 +196,11 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
         return false;
     }
+    if (e1.status() != e2.status()) {
+        qWarning() << "status:" << e1.status() << e2.status();
+        return false;
+    }
+
 //    QCOMPARE(e1.messageToken(), e2.messageToken());
     return true;
 }

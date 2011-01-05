@@ -302,6 +302,9 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.committedCount(), 1);
     QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
 
+    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(im, event));
+
     im.setStatus(CommHistory::Event::DeliveredStatus);
     im.setEndTime(QDateTime::currentDateTime());
 
@@ -310,6 +313,9 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
     QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+
+    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(im, event));
 
     int imId = im.id();
     im.setId(imId + 999);
@@ -331,6 +337,10 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
     QVERIFY(compareEvents(watcher.lastUpdated()[0], call));
+
+    QVERIFY(model.trackerIO().getEvent(call.id(), event));
+
+    QVERIFY(compareEvents(call, event));
 }
 
 void EventModelTest::testDeleteEvent()
