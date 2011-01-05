@@ -1,0 +1,212 @@
+1.0.25:
+=======
+* New feature: Property mask.
+
+  You can specify a property mask before executing getEvents() in a
+  model. The less properties (see Event::Property) you use, the more
+  efficient the tracker query will be, so you're strongly encouraged to
+  use a minimal property mask. Event::allProperties() will return a full
+  set for an easier starting point if you use a lot of different
+  properties.
+
+  The rest of the properties for events returned with a masked query are
+  to be considered invalid until manually set.
+
+  Example:
+    CommHistory::ConversationModel model;
+    CommHistory::Event::PropertySet propertyMask = CommHistory::Event::allProperties();
+    propertyMask -= CommHistory::Event::Encoding; // not going to use this ever
+    propertyMask -= CommHistory::Event::Language; // or this
+    model.setPropertyMask(propertyMask);
+    if (!model.getEvents(...)) ...
+
+Changes in 1.0.24:
+==================
+* Added message parts in Event (for MMS). -p in commhistory-tool shows
+  parts when listing a conversation.
+
+* addEvent() now has an optional isBlocking argument. If true, blocks
+  until the tracker query has returned.
+
+* Query thread has an optional queued mode (used for message parts).
+
+* Fixed nco:IMAddress, now uses ! as URI separator for compatibility
+  with latest contacts.
+
+Changes in 1.0.23:
+==================
+* Namespace name changed from RTComCommHistory to CommHistory.
+
+* Removed commhistory prefix from file and class names, old headers are all
+  deprecated, they will be removed in next release.
+
+* Added Qt-like headers and group headers, e.g. Event, CallModel; Events, Models
+
+* Minor API break in CallModel:
+  -----------------------------
+  ** No Sorting in constructor
+  ** setFilter() is used to speficy filtering
+
+* Backward compatibility is assured for now.
+
++-------------------------------------------+
+| How to apply API changes in existing code |
++-------------------------------------------+
+1) Change namespace name RTComCommHistory to CommHistory
+
+2) Remove 'commhistory' prefix from included file and class names,
+   if there is any:
+   - commhistorycallmodel.h             -> callmodel.h
+   - commhistoryconversationmodel.h     -> conversationmodel.h
+   ...
+   - class CommHistoryCallModel         -> class CallModel
+   - class CommHistoryConversationModel -> class ConversationModel
+   ...
+
+   Exceptions:
+   - commhistorymodel.h            -> eventmodel.h
+   - commhistorymodel_p.h          -> eventmodel_p.h
+   - class CommHistoryModel        -> EventModel
+   - class CommHistoryModelPrivate -> EventModelPrivate
+
+3) Add 'CommHistory/' folder prefix to all includes:
+   - #include <callmodel.h> -> #include <CommHistory/callmodel.h>
+   - #include <event.h>     -> #include <CommHistory/event.h>
+   ...
+
+4) Start using Qt-like headers provided from this version of the libcommhistory
+   package on, except if you are model developer:
+   - #include <CommHistory/callmodel.h>  -> #include <CommHistory/CallModel>
+   - #include <CommHistory/event.h>      -> #include <CommHistory/Event>
+   - #include <CommHistory/eventmodel.h> -> #include <CommHistory/EventModel>
+   - #include <CommHistory/groupmodel.h> -> #include <CommHistory/GroupModel>
+   ...
+
+
+Changes in 1.0.22:
+==================
+* New tracker queries, improved performance.
+
+* Partial integration with contacts. Event::contactId and
+  Event::contactName are filled in queries if there is a contact
+  matching the remote id. Last digits matching for phone numbers is not
+  yet implemented.
+
+* Reworked query threads for better stability.
+
+
+Changes in 1.0.20:
+==================
+* Minor API break in Event class for vcards (see sms/call changes below).
+
+* Added StatusMessage type to Event class. These events must not be saved to
+  database. See next point.
+
+* Event(s) can be added only to model through CommHistoryModel::addEvent[s]() by
+  specifying the second parameter: toModelOnly=true. These events will
+  show up in other compatible models, but are not added to the database.
+
+* Status messages don't show up in CommHistoryGroupModel, only in
+  CommHistoryConversationModel.
+
+* toString() added to Event class.
+
+* sms/call sync changes
+  ---------------------
+  ** New model CommHistorySyncSMSModel to get all SMS messages based on
+     time, date, last modified and deleted filters.
+
+  ** Changes in CommHistoryCallModel to support flat mode so as to be able to
+     get all call events based on type and time filters.
+
+  ** Addition of new fields in Event class: toVCardFileNames, toVCardFileLabels,
+     encoding, characterSet, language, and isDeleted to support the properties
+     for vmessage.
+
+  ** Marking a SMS message as deleted and not removing it completely to support
+     requirement to retrieve all deleted SMS since a given time.
+
+
+Changes from 1.0.19:
+====================
+* Number of messages in "commhistory-tool add" and "commhistory-tool adddraft" 
+  is now specified with the -n command line option, to avoid confusion with 
+  numeric remote ids.
+
+
+Changes in 1.0.16 (API breaks!):
+================================
+
+* Added async and streamed async query modes (streamed mode not yet
+  supported). Async is now the default mode.
+
+* Added query limit and offset support.
+
+* Added CommhistoryModel::addEvents() and modifyEvents().
+  Faster for batch updates.
+
+* CommhistoryModel::setIsRead() changed to markAsRead(list).
+
+* Tracker queries rewritten. Performance should be much better.
+
+* Column ids moved to CommHistoryModel and CommHistoryGroupModel.
+
+* Added event and group access via data(Qt::UserRole).
+
+* setPlugin removed from CommHistoryModel and CommHistoryGroupModel.
+
+* Changes to Event and Group classes:
+  * Event::tpMessageId() removed
+
+  * Event::contactId() and Group::contactId() are now updated at query
+    time to refer to the actual contact, if possible. Setting them has
+    no effect. The same goes for Event::contactName() and
+    Group::contactName().
+
+  * Group::lastEvent() removed and Group::lastMessageText() added. If you
+    need the full last event data,
+    use CommhistoryModel::getEvent( Group::lastEventId() ).
+
+  * Event::Flag enumeration, Event::flags(), Event::setFlags() removed,
+    and Event::isDraft(), Event::setIsDraft(), Event::isMissedCall(),
+    Event::setIsMissedCall() added instead. Status related flags were duplicate
+    of Event::EventStatus, thus they can be found and accessed through those.
+
+  * If VCard received with the message, Event class stores filename and
+    display name of the VCard to create a link to the actual file saved by
+    daemon.
+
+* Internals refactored. If you need to make your own model,
+  CommHistoryDraftModel is the simplest possible example. For more
+  advanced functionality, see commhistorymodel_p.h and override methods
+  as necessary.
+
+
+Dealing with the API update in 1.0.12:
+======================================
+If you only want to add, modify or delete events, you can use
+CommHistoryModel; if you also want to fetch and show events, use one of
+the subclasses. CommHistoryConversationModel corresponds to the former
+CommHistoryModel.
+
+
+Changes from 1.0.9:
+===================
+* Tracker used instead of sqlite.
+* localUid and remoteUid removed from getEvents(). Use groups.
+* getCallEvents() added.
+* addEvent() and addGroup() now return bool instead of id. You can
+  get the new id with event.id() and group.id().
+
+
+Changes from 1.0.8:
+===================
+* Event and Group are now implicitly shared Qt objects.
+  - Instead of event.id, use event.id() and event.setId().
+  - Instead of return 0 and if (!event), use "return Event();" and "if
+    (!event.isValid()) ..."
+* Added modifyEvent(), deleteEvent() and the signal eventDeleted().
+* Added lastModified field for events. Updated automatically.
+* Added draft support. Drafts are groupless events that can only be
+  accessed with getEvent() or getDraftEvents().
+

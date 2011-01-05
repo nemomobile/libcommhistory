@@ -44,7 +44,7 @@ void SingleEventModelTest::getEventByUri()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setRemoteUid("123456");
-    event.setMessageToken("messageToken");
+    event.setMessageToken("messageTokenA1");
 
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
@@ -74,7 +74,7 @@ void SingleEventModelTest::getEventByTokens()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setRemoteUid("123456");
-    event.setMessageToken("messageToken");
+    event.setMessageToken("messageTokenB1");
 
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
@@ -97,35 +97,32 @@ void SingleEventModelTest::getEventByTokens()
     watcher.waitForSignals();
     QVERIFY(mms2.id() != -1);
 
-    QVERIFY(model.getEventByTokens("messageToken", "", -1));
+    QVERIFY(model.getEventByTokens("messageTokenB1", "", -1));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    // Take into account the event with "messageToken" added already in getEventByUri test:
-    QCOMPARE(model.rowCount(), 2);
+    QCOMPARE(model.rowCount(), 1);
 
     Event modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));
 
-    QVERIFY(model.getEventByTokens("messageToken", "", group1.id()));
+    QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    // Take into account the event with "messageToken" added already in getEventByUri test:
-    QCOMPARE(model.rowCount(), 2);
+    QCOMPARE(model.rowCount(), 1);
 
     modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));
 
-    QVERIFY(model.getEventByTokens("messageToken", "", group1.id() + 1));
+    QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id() + 1));
     QVERIFY(watcher.waitForModelReady(5000));
 
     QCOMPARE(model.rowCount(), 0);
 
     // Can match either to token or mms id:
-    QVERIFY(model.getEventByTokens("messageToken", "nonExistingMmsId", group1.id()));
+    QVERIFY(model.getEventByTokens("messageTokenB1", "nonExistingMmsId", group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
-    // Take into account the event with "messageToken" added already in getEventByUri test:
-    QCOMPARE(model.rowCount(), 2);
+    QCOMPARE(model.rowCount(), 1);
 
     modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(event, modelEvent));

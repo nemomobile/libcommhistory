@@ -40,6 +40,7 @@ QTM_USE_NAMESPACE
 Group group1, group2;
 QEventLoop *loop;
 int modifiedGroupId = -1;
+int addedGroupId = -1;
 
 QString mms_token1("111-111-111");
 QString mms_token2("222-222-222");
@@ -133,39 +134,29 @@ void GroupModelTest::init()
     model.setQueryMode(EventModel::SyncQuery);
 
     Group g;
-    g.setLocalUid(ACCOUNT1);
-    g.setRemoteUids(QStringList() << "td@localhost");
-    QVERIFY(model.addGroup(g));
+    addTestGroup(g,ACCOUNT1,QString("td@localhost"));
     QVERIFY(g.id() != -1);
-    loop->exec();
 
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     // add an event to each group to get them to show up in getGroups()
     addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, g.id());
     waitSignal(eventsCommitted, 5000);
 
-    g.setLocalUid(ACCOUNT1);
-    g.setRemoteUids(QStringList() << "td2@localhost");
     g.setId(-1);
-    QVERIFY(model.addGroup(g));
-    loop->exec();
+    addTestGroup(g,ACCOUNT1,QString("td2@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT1, g.id());
     waitSignal(eventsCommitted, 5000);
 
-
-    g.setLocalUid(ACCOUNT2);
-    g.setRemoteUids(QStringList() << "td@localhost");
     g.setId(-1);
-    QVERIFY(model.addGroup(g));
-    loop->exec();
+    addTestGroup(g,ACCOUNT2,QString("td@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, g.id());
     waitSignal(eventsCommitted, 5000);
 
-    g.setLocalUid(ACCOUNT2);
-    g.setRemoteUids(QStringList() << "td2@localhost");
     g.setId(-1);
-    QVERIFY(model.addGroup(g));
-    loop->exec();
+    addTestGroup(g,ACCOUNT2,QString("td2@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, g.id());
     waitSignal(eventsCommitted, 5000);
 
@@ -788,11 +779,8 @@ void GroupModelTest::markGroupAsRead()
     GroupModel groupModel;
 
     Group group;
-    group.setLocalUid(ACCOUNT2);
-    group.setRemoteUids(QStringList() << "td@localhost");
-    QVERIFY(groupModel.addGroup(group));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group,ACCOUNT2,QString("td@localhost"));
+
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     // Test event is unread by default.
     int eventId1 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 1");
@@ -808,14 +796,18 @@ void GroupModelTest::markGroupAsRead()
 
     QVERIFY(groupModel.trackerIO().getEvent(eventId2, e2));
     QVERIFY(e2.isRead());
+
+    Group testGroup;
+    QVERIFY(groupModel.trackerIO().getGroup(group.id(), testGroup));
+    QCOMPARE(testGroup.id(), group.id());
+    QCOMPARE(testGroup.unreadMessages(),0);
 }
 
 void GroupModelTest::resolveContact()
 {
     GroupModel groupModel;
 
-    connect(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
-            this, SLOT(dataChangedSlot(const QModelIndex &, const QModelIndex &)));
+    QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
 
     QString phoneNumber = QString().setNum(qrand() % 10000000);
     QString contactName = QString("Test Contact 123");
@@ -834,7 +826,9 @@ void GroupModelTest::resolveContact()
     // Waiting for groupAdded signal.
     loop->exec();
     // Waiting for dataChanged signal to update resolved contact name into the group.
-    loop->exec();
+    waitSignal(groupDataChanged, 5000);
+    QCOMPARE(groupDataChanged.count(),1);
+    groupDataChanged.clear();
 
     QVERIFY(grp.id() != -1);
 
@@ -856,7 +850,9 @@ void GroupModelTest::resolveContact()
     modifyTestContact(newName, phoneNumber);
 
     // Waiting for dataChanged signal to update contact name into the group.
-    loop->exec();
+    waitSignal(groupDataChanged, 10000);
+    QCOMPARE(groupDataChanged.count(),1);
+    groupDataChanged.clear();
 
     // Check that group model is updated:
     group = groupModel.group(groupModel.index(0, 0));
@@ -871,7 +867,9 @@ void GroupModelTest::resolveContact()
 
     QVERIFY(contactManager->removeContact(qContactId));
     // Waiting for dataChanged signal to indicate that contact name has been removed from the group.
-    loop->exec();
+    waitSignal(groupDataChanged, 5000);
+    QCOMPARE(groupDataChanged.count(),1);
+    groupDataChanged.clear();
 
     // Check that group model is updated:
     group = groupModel.group(groupModel.index(0, 0));

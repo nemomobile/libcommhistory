@@ -554,6 +554,7 @@ void CallModelTest::deleteAllCalls()
 
     QVERIFY(model.getEvents());
     int callCount = model.rowCount();
+    QVERIFY(callCount > 0);
     qDebug() << __PRETTY_FUNCTION__ << "Found out " << callCount << " calls.";
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     QVERIFY(model.deleteAll());

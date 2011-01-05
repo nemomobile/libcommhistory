@@ -1024,6 +1024,8 @@ void EventModelTest::testMoveEvent()
                  "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0",
                  "td2@localhost");
 
+    groupDeleted = -1;
+
     EventModel model;
     watcher.setModel(&model);
     Event event;
@@ -1070,6 +1072,7 @@ void EventModelTest::testMoveEvent()
     QCOMPARE(watcher.lastDeletedId(),eventFromTracker.id());
     QCOMPARE(watcher.addedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
+    QCOMPARE(groupDeleted,group2.id());
 }
 
 void EventModelTest::testStreaming_data()

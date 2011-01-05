@@ -1829,9 +1829,7 @@ bool TrackerIO::moveEvent(Event &event, int groupId)
                         true); //TODO: proper contact deletion
     }
 
-    qDebug() << Q_FUNC_INFO << "Executing query";
     d->m_service->executeQuery(query.rdfUpdate());
-    qDebug() << Q_FUNC_INFO << "Query done";
 
     return true;
 }
