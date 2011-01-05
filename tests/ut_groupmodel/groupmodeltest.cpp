@@ -184,12 +184,8 @@ void GroupModelTest::addGroups()
     QVERIFY(!model.addGroup(group1));
     QVERIFY(model.lastError().isValid());
 
-    group1.setLocalUid(ACCOUNT1);
-    group1.setRemoteUids(QStringList() << "td@localhost");
-    QVERIFY(model.addGroup(group1));
+    addTestGroup(group1, ACCOUNT1, QString("td@localhost"));
     QVERIFY(group1.id() != -1);
-    loop->exec();
-    idle(1000);
 
     Group group;
     QVERIFY(model.trackerIO().getGroup(group1.id(), group));
@@ -208,29 +204,20 @@ void GroupModelTest::addGroups()
     addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, group.id());
     waitSignal(eventsCommitted, 5000);
 
-    group2.setLocalUid(ACCOUNT1);
-    group2.setRemoteUids(QStringList() << "td2@localhost");
-    QVERIFY(model.addGroup(group2));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group2, ACCOUNT1, QString("td2@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT1, group2.id());
     waitSignal(eventsCommitted, 5000);
 
     Group group3;
-    group3.setLocalUid(ACCOUNT2);
-    group3.setRemoteUids(QStringList() << "td@localhost");
-    QVERIFY(model.addGroup(group3));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group3, ACCOUNT2, QString("td@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group3.id());
     waitSignal(eventsCommitted, 5000);
 
     Group group4;
-    group4.setLocalUid(ACCOUNT2);
-    group4.setRemoteUids(QStringList() << "td2@localhost");
-    QVERIFY(model.addGroup(group4));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group4, ACCOUNT2, QString("td2@localhost"));
+
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group4.id());
     waitSignal(eventsCommitted, 5000);
 }
@@ -240,13 +227,9 @@ void GroupModelTest::modifyGroup()
     GroupModel model;
 
     Group group5;
-    group5.setLocalUid(ACCOUNT1);
-    group5.setRemoteUids(QStringList() << "td2@localhost");
     group5.setChatName("MUC topic");
-    QVERIFY(model.addGroup(group5));
+    addTestGroup(group5, ACCOUNT1, QString("td2@localhost"));
     QVERIFY(group5.id() != -1);
-    loop->exec();
-    idle(1000);
 
     Group testGroupA;
     QVERIFY(model.trackerIO().getGroup(group5.id(), testGroupA));
@@ -574,8 +557,7 @@ void GroupModelTest::streamingQuery()
     // insert some query folder
     for (int i = 0; i < 10; i++) {
         group1.setId(-1);
-        QVERIFY(groupModel.addGroup(group1));
-        loop->exec();
+        addTestGroup(group1, ACCOUNT1, QString("td@localhost"));
         addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, group1.id());
         QVERIFY(waitSignal(eventsCommitted, 5000));
     }
@@ -685,7 +667,7 @@ int addTestMms (EventModel &model,
 
 void GroupModelTest::deleteMmsContent()
 {
-    Group group1, group2;
+    Group group1, group2, group3;
     GroupModel model;
     EventModel eventModel;
     Event e;
@@ -699,25 +681,14 @@ void GroupModelTest::deleteMmsContent()
     model.setQueryMode(EventModel::SyncQuery);
 
     // Create 3 groups
-    group1.setLocalUid(ACCOUNT1);
-    group1.setRemoteUids(QStringList() << "mms-test1@localhost");
-    QVERIFY(model.addGroup(group1));
+    addTestGroup(group1, ACCOUNT1, QString("mms-test1@localhost"));
     QVERIFY(group1.id() != -1);
-    loop->exec();
-    idle(1000);
 
-    group2.setLocalUid(ACCOUNT1);
-    group2.setRemoteUids(QStringList() << "mms-test2@localhost");
-    QVERIFY(model.addGroup(group2));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group2, ACCOUNT1, QString("mms-test2@localhost"));
+    QVERIFY(group2.id() != -1);
 
-    Group group3;
-    group3.setLocalUid(ACCOUNT1);
-    group3.setRemoteUids(QStringList() << "mms-test3@localhost");
-    QVERIFY(model.addGroup(group3));
-    loop->exec();
-    idle(1000);
+    addTestGroup(group3, ACCOUNT1, QString("mms-test3@localhost"));
+    QVERIFY(group3.id() != -1);
 
     // Populate groups
     // ev1 -> token1
