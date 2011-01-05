@@ -553,17 +553,15 @@ void CallModelTest::deleteAllCalls()
     watcher.waitForSignals();
 
     QVERIFY(model.getEvents());
-    int callCount = model.rowCount();
-    QVERIFY(callCount > 0);
-    qDebug() << __PRETTY_FUNCTION__ << "Found out " << callCount << " calls.";
+    QVERIFY(model.rowCount() > 0);
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     QVERIFY(model.deleteAll());
     waitSignal(eventsCommitted, 5000);
 
+    QCOMPARE(model.rowCount(), 0);
+
     QVERIFY(model.getEvents());
-    callCount = model.rowCount();
-    qDebug() << __PRETTY_FUNCTION__ << "Found out " << callCount << " calls after deleteAll()";
-    QCOMPARE(callCount,0);
+    QCOMPARE(model.rowCount(), 0);
 }
 
 void CallModelTest::cleanupTestCase()

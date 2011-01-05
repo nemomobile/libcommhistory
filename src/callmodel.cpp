@@ -544,12 +544,11 @@ void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &even
     Q_Q(CallModel);
 
     // Empty events list means all events have been deleted (with deleteAll)
-    if (success && deleteSync && events.isEmpty()) {
+    if (success && events.isEmpty()) {
         qWarning() << __PRETTY_FUNCTION__ << "clearing model";
         q->beginResetModel();
         clearEvents();
         q->endResetModel();
-        deleteSync = false;
     }
 }
 

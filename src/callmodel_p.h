@@ -80,8 +80,6 @@ public:
     CallEvent::CallType eventType;
     QDateTime referenceTime;
     bool hasBeenFetched;
-    bool deleteSync;
-
 };
 
 }
