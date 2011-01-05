@@ -140,25 +140,25 @@ void GroupModelTest::init()
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     // add an event to each group to get them to show up in getGroups()
     addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, g.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     g.setId(-1);
     addTestGroup(g,ACCOUNT1,QString("td2@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT1, g.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     g.setId(-1);
     addTestGroup(g,ACCOUNT2,QString("td@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, g.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     g.setId(-1);
     addTestGroup(g,ACCOUNT2,QString("td2@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, g.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     // TODO: groupsCommitted() would be nice to have - spin loop to make
     // sure all new groups have been added
@@ -202,24 +202,24 @@ void GroupModelTest::addGroups()
     // add an event to each group to get them to show up in getGroups()
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, group.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     addTestGroup(group2, ACCOUNT1, QString("td2@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT1, group2.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     Group group3;
     addTestGroup(group3, ACCOUNT2, QString("td@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group3.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     Group group4;
     addTestGroup(group4, ACCOUNT2, QString("td2@localhost"));
 
     addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group4.id());
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 }
 
 void GroupModelTest::modifyGroup()
@@ -702,22 +702,22 @@ void GroupModelTest::deleteMmsContent()
 
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     id1 = addTestMms(eventModel, Event::Inbound, ACCOUNT1, group1.id(), mms_token1, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     id2 = addTestMms(eventModel, Event::Outbound, ACCOUNT1, group2.id(), mms_token2, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     id3 = addTestMms(eventModel, Event::Outbound, ACCOUNT1, group3.id(), mms_token2, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     addTestMms(eventModel, Event::Inbound, ACCOUNT1, group1.id(), mms_token3, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     addTestMms(eventModel, Event::Inbound, ACCOUNT1, group2.id(), mms_token3, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     addTestMms(eventModel, Event::Inbound, ACCOUNT1, group3.id(), mms_token3, "test MMS to delete");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
 
     QVERIFY(model.trackerIO().getEvent(id1, e));
@@ -755,7 +755,7 @@ void GroupModelTest::markGroupAsRead()
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     // Test event is unread by default.
     int eventId1 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 1");
-    waitSignal(eventsCommitted, 5000);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
 
     eventsCommitted.clear();
     int eventId2 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 2");
@@ -797,8 +797,7 @@ void GroupModelTest::resolveContact()
     // Waiting for groupAdded signal.
     loop->exec();
     // Waiting for dataChanged signal to update resolved contact name into the group.
-    waitSignal(groupDataChanged, 5000);
-    QCOMPARE(groupDataChanged.count(),1);
+    QVERIFY(waitSignal(groupDataChanged, 5000));
     groupDataChanged.clear();
 
     QVERIFY(grp.id() != -1);
@@ -821,8 +820,7 @@ void GroupModelTest::resolveContact()
     modifyTestContact(newName, phoneNumber);
 
     // Waiting for dataChanged signal to update contact name into the group.
-    waitSignal(groupDataChanged, 10000);
-    QCOMPARE(groupDataChanged.count(),1);
+    QVERIFY(waitSignal(groupDataChanged, 10000));
     groupDataChanged.clear();
 
     // Check that group model is updated:
@@ -838,8 +836,7 @@ void GroupModelTest::resolveContact()
 
     QVERIFY(contactManager->removeContact(qContactId));
     // Waiting for dataChanged signal to indicate that contact name has been removed from the group.
-    waitSignal(groupDataChanged, 5000);
-    QCOMPARE(groupDataChanged.count(),1);
+    QVERIFY(waitSignal(groupDataChanged, 5000));
     groupDataChanged.clear();
 
     // Check that group model is updated:
