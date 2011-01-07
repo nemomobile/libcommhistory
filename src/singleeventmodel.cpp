@@ -47,7 +47,7 @@ public:
 
     bool acceptsEvent(const Event &event) const {
         Q_UNUSED(event);
-        return true;
+        return false;
     }
 };
 

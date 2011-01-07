@@ -1108,9 +1108,6 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
                 query.deletion(event.url(),
                                nmo::mmsHasContent::iri(),
                                eventContent);
-
-                query.deletion(event.url(),
-                               nie::generator::iri());
                 query.endQuery();
             }
             addMessageParts(query, event);
