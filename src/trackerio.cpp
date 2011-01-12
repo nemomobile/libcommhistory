@@ -1719,6 +1719,8 @@ bool TrackerIO::modifyEvent(Event &event)
 {
     UpdateQuery query;
 
+    event.setLastModified(QDateTime::currentDateTime()); //always update modified times in case of modifyEvent
+                                                                                                         //irrespective whether client sets or not
     // allow uid changes for drafts
     if (event.isDraft()
         && (event.validProperties().contains(Event::LocalUid)
