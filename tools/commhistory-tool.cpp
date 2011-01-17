@@ -129,7 +129,7 @@ void printUsage()
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
     std::cout << "                 listdrafts"                                                                                                             << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
-    std::cout << "                 add [-newgroup] [-group group-id] [-date yyyymmdd] [{-sms|-mms}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
+    std::cout << "                 add [-newgroup] [-group group-id] [-date yyyyMMdd:hh:mm] [{-sms|-mms}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
     std::cout << "                 addClass0"                                                                                                              << std::endl;
@@ -193,12 +193,11 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
 
     QDateTime date = QDateTime::currentDateTime();
     if (options.contains("-date")) {
-        date = QDateTime::fromString(options.value("-date").toString(), "yyyyMMdd");
+        date = QDateTime::fromString(options.value("-date").toString(), "yyyyMMdd:hh:mm");
         if (!date.isValid()) {
             qCritical() << "Invalid date";
             return -1;
         }
-        date.setTime(QTime(12, 0));
     }
 
     qsrand(QDateTime::currentDateTime().toTime_t());
