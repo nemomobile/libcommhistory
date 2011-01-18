@@ -22,11 +22,15 @@
 
 #include <QString>
 #include <QRegExp>
+#include <QSettings>
 
 #include "commonutils.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
+
+static const int DEFAULT_PHONE_NUMBER_MATCH_LENGTH = 7;
+static int numberMatchLength = 0;
 
 LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
 {
@@ -65,10 +69,27 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
 
     // phone number
     QString matchPhone = normalizePhoneNumber(match);
-    if (!matchPhone.endsWith(phone.right(PHONE_NUMBER_MATCH_LENGTH)))
+    if (!matchPhone.endsWith(phone.right(phoneNumberMatchLength())))
         return false;
 
     return true;
+}
+
+LIBCOMMHISTORY_EXPORT int phoneNumberMatchLength()
+{
+    if (!numberMatchLength) {
+        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
+                           QLatin1String("Nokia"), QLatin1String("Contacts"));
+        bool valid;
+        int length = settings.value(QLatin1String("numberMatchLength")).toInt(&valid);
+
+        if (valid && length)
+            numberMatchLength = length;
+        else
+            numberMatchLength = DEFAULT_PHONE_NUMBER_MATCH_LENGTH;
+    }
+
+    return numberMatchLength;
 }
 
 }

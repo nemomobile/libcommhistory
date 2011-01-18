@@ -25,9 +25,6 @@
 
 #include <QString>
 
-// TODO: get this from some system-wide settings
-#define PHONE_NUMBER_MATCH_LENGTH 7
-
 namespace CommHistory {
 
 /*!
@@ -48,6 +45,13 @@ QString normalizePhoneNumber(const QString &number);
  * \return true if addresses match.
  */
 bool remoteAddressMatch(const QString &uid, const QString &match);
+
+/*!
+ * \return how many last digits are compared when matching phone
+ * numbers, obtained from system-wide settings.
+ */
+int phoneNumberMatchLength();
+
 }
 
 #endif /* COMMONUTILS_H */

@@ -339,7 +339,7 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
         QString phoneNumber = normalizePhoneNumber(event.remoteUid());
         if (!phoneNumber.isEmpty()) {
             foreach (QString uid, g.remoteUids()) {
-                if (uid.endsWith(phoneNumber.right(PHONE_NUMBER_MATCH_LENGTH))) {
+                if (uid.endsWith(phoneNumber.right(CommHistory::phoneNumberMatchLength()))) {
                     found = true;
                     break;
                 }

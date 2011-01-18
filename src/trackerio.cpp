@@ -626,7 +626,7 @@ void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
                 innerChannel.property<nmo::hasParticipant>()
                     .property<nco::hasPhoneNumber>()
                     .property<maemo::localPhoneNumber>() =
-                    LiteralValue(number.right(PHONE_NUMBER_MATCH_LENGTH));
+                    LiteralValue(number.right(CommHistory::phoneNumberMatchLength()));
             }
         }
     }
@@ -808,7 +808,7 @@ QUrl TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
         RDFFilter localDoesntExist = localPhone.variable(localPhoneNumber).isBound().not_();
         query.insertion(localPhone,
                         maemo::localPhoneNumber::iri(),
-                        LiteralValue(phoneNumber.right(PHONE_NUMBER_MATCH_LENGTH)));
+                        LiteralValue(phoneNumber.right(CommHistory::phoneNumberMatchLength())));
         query.endQuery();
     }
 
