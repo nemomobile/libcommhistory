@@ -402,7 +402,7 @@ public:
 
     void setContentLocation(const QString &location);
 
-    void setMessageParts(QList<MessagePart> &parts);
+    void setMessageParts(const QList<MessagePart> &parts);
 
     void addMessagePart(const MessagePart &part);
 

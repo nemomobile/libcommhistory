@@ -756,7 +756,7 @@ void Event::setContentLocation(const QString &location)
     d->propertyChanged(Event::ContentLocation);
 }
 
-void Event::setMessageParts(QList<MessagePart> &parts)
+void Event::setMessageParts(const QList<MessagePart> &parts)
 {
     d->messageParts = parts;
     d->propertyChanged(Event::MessageParts);

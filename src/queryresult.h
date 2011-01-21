@@ -26,6 +26,7 @@
 #include <QHash>
 #include <QString>
 #include <QtTracker/Tracker>
+#include <QSparqlResult>
 
 #include "event.h"
 
@@ -40,19 +41,18 @@ typedef enum {
 } QueryType;
 
 struct QueryResult {
-    bool isValid;
     SopranoLive::RDFSelect query;
     QueryType queryType;
     Event::PropertySet propertyMask;
-    SopranoLive::LiveNodes model;
+    QPointer<QSparqlResult> result;
     // Column mapping by header
     QHash<QString, int> columns;
     // for message part queries
     int eventId;
 
-    static void fillEventFromModel(QueryResult &result, int row, Event &event);
-    static void fillGroupFromModel(QueryResult &result, int row, Group &group);
-    static void fillMessagePartFromModel(QueryResult &result, int row, MessagePart &part);
+    static void fillEventFromModel(QueryResult &result, Event &event);
+    static void fillGroupFromModel(QueryResult &result, Group &group);
+    static void fillMessagePartFromModel(QueryResult &result, MessagePart &part);
 
 
     static QString buildContactName(const QString &firstName,

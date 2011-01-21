@@ -584,20 +584,26 @@ bool EventModel::modifyEvent(Event &event)
 
     QList<Event> events;
     events << event;
-    CommittingTransaction &t = d->commitTransaction(events);
+    CommittingTransaction *t = d->commitTransaction(events);
 
-    // add model update signals to emit on transaction commit
-    t.addSignal("eventsUpdated",
-                Q_ARG(QList<CommHistory::Event>, events));
-    if (event.id() == -1
-        && event.groupId() != -1
-        && !event.isDraft())
-        t.addSignal("groupsUpdated",
-                    Q_ARG(QList<int>, QList<int>() << event.groupId()));
+    if (t) {
+        // add model update signals to emit on transaction commit
+        t->addSignal(false,
+                     d,
+                     "eventsUpdated",
+                    Q_ARG(QList<CommHistory::Event>, events));
+        if (event.id() == -1
+            && event.groupId() != -1
+            && !event.isDraft())
+            t->addSignal(false,
+                         d,
+                         "groupsUpdated",
+                        Q_ARG(QList<int>, QList<int>() << event.groupId()));
+    }
 
     qDebug() << __FUNCTION__ << ": updated event" << event.id();
 
-    return true;
+    return t != 0;
 }
 
 bool EventModel::modifyEvents(QList<Event> &events)
@@ -639,13 +645,16 @@ bool EventModel::modifyEvents(QList<Event> &events)
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(events);
-    t.addSignal("eventsUpdated", Q_ARG(QList<CommHistory::Event>, events));
-    if (!modifiedGroups.isEmpty())
-        t.addSignal("groupsUpdated",
-                    Q_ARG(QList<int>, modifiedGroups));
+    CommittingTransaction *t = d->commitTransaction(events);
 
-    return true;
+    if (t) {
+        t->addSignal(false, d, "eventsUpdated", Q_ARG(QList<CommHistory::Event>, events));
+        if (!modifiedGroups.isEmpty())
+            t->addSignal(false, d, "groupsUpdated",
+                        Q_ARG(QList<int>, modifiedGroups));
+    }
+
+    return t != 0;
 }
 
 bool EventModel::deleteEvent(int id)
@@ -688,15 +697,17 @@ bool EventModel::deleteEvent(int id)
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(QList<Event>() << event);
-    t.addSignal("eventDeleted",
-                Q_ARG(int, id));
+    CommittingTransaction *t = d->commitTransaction(QList<Event>() << event);
+    if (t) {
+        t->addSignal(false, d, "eventDeleted",
+                    Q_ARG(int, id));
 
-    if (groupSignal)
-        t.addSignal(groupSignal,
-                    Q_ARG(QList<int>, QList<int>() << event.groupId()));
+        if (groupSignal)
+            t->addSignal(false, d, groupSignal,
+                        Q_ARG(QList<int>, QList<int>() << event.groupId()));
+    }
 
-    return true;
+    return t != 0;
 }
 
 bool EventModel::deleteEvent(Event &event)
@@ -749,15 +760,18 @@ bool EventModel::deleteEvent(Event &event)
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(QList<Event>() << event);
-    t.addSignal("eventDeleted",
-                Q_ARG(int, event.id()));
+    CommittingTransaction *t = d->commitTransaction(QList<Event>() << event);
 
-    if (groupSignal)
-        t.addSignal(groupSignal,
-                    Q_ARG(QList<int>, QList<int>() << event.groupId()));
+    if (t) {
+        t->addSignal(false, d, "eventDeleted",
+                    Q_ARG(int, event.id()));
 
-    return true;
+        if (groupSignal)
+            t->addSignal(false, d, groupSignal,
+                        Q_ARG(QList<int>, QList<int>() << event.groupId()));
+    }
+
+    return t != 0;
 }
 
 bool EventModel::moveEvent(Event &event, int groupId)
@@ -883,13 +897,21 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(events);
-    t.addSignal("eventsUpdated",
-                Q_ARG(QList<CommHistory::Event>, events));
-    t.addSignal("groupsUpdatedFull",
-                Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
+    CommittingTransaction *t = d->commitTransaction(events);
 
-    return true;
+    if (t) {
+        t->addSignal(false,
+                     d,
+                     "eventsUpdated",
+                    Q_ARG(QList<CommHistory::Event>, events));
+        t->addSignal(false,
+                     d,
+                     "groupsUpdatedFull",
+                    Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
+
+    }
+
+    return t != 0;
 }
 
 bool EventModel::canFetchMore(const QModelIndex &parent) const

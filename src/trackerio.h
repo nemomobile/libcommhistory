@@ -33,14 +33,16 @@
 namespace SopranoLive {
     class RDFSelect;
     class RDFVariable;
-    class RDFTransaction;
 }
+
+class QSparqlResult;
 
 namespace CommHistory {
 
 class TrackerIOPrivate;
 class Group;
 class UpdateQuery;
+class CommittingTransaction;
 
 /**
  * \class TrackerIO
@@ -53,8 +55,9 @@ class LIBCOMMHISTORY_EXPORT TrackerIO : public QObject
     Q_OBJECT
 
 public:
-    TrackerIO(QObject *parent = 0);
+    TrackerIO();
     ~TrackerIO();
+    static TrackerIO* instance();
 
     /*!
      * Returns and increases the next available event id.
@@ -291,7 +294,7 @@ public:
      *                   if false, the call is asynchronous and returns immediately
      * \return transaction object to track commit progress for non-blocking call
      */
-    QSharedPointer<SopranoLive::RDFTransaction> commit(bool isBlocking=false);
+    CommittingTransaction* commit(bool isBlocking=false);
 
     /*!
      * Cancels the current transaction.
@@ -301,6 +304,7 @@ public:
 
 private:
     friend class TrackerIOPrivate;
+    friend class QueryRunner;
     TrackerIOPrivate * const d;
 };
 

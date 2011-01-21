@@ -30,8 +30,7 @@ using namespace CommHistory;
 using namespace SopranoLive;
 
 // used for filling data from tracker result rows
-#define RESULT_INDEX(COL) model->index(row, result.columns[COL]).data()
-#define RESULT_CELL(ROW,COL) model->index(ROW,COL).data()
+#define RESULT_INDEX(COL) result.result->value(result.columns[QLatin1String(COL)])
 
 #define LAT(STR) QLatin1String(STR)
 
@@ -50,15 +49,12 @@ static Event::PropertySet smsOnlyPropertySet = Event::PropertySet() << Event::Pa
                                                << Event::ValidityPeriod;
 }
 
-void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
+void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
 {
     Event eventToFill;
+    eventToFill.setId(Event::urlToId(RESULT_INDEX("message").toString()));
 
-    LiveNodes model = result.model;
-
-    eventToFill.setId(Event::urlToId(RESULT_INDEX(LAT("message")).toString()));
-
-    QStringList types = RESULT_INDEX(LAT("type")).toString().split(QChar(','));
+    QStringList types = RESULT_INDEX("type").toString().split(QChar(','));
     if (types.contains(nmo::MMSMessage::iri().toString())) {
         eventToFill.setType(Event::MMSEvent);
     } else if (types.contains(nmo::SMSMessage::iri().toString())) {
@@ -73,9 +69,9 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
 
     if (eventToFill.type() == Event::CallEvent) {
         if (result.propertyMask.contains(Event::IsMissedCall))
-            eventToFill.setIsMissedCall(!(RESULT_INDEX(LAT("isAnswered")).toBool()));
+            eventToFill.setIsMissedCall(!(RESULT_INDEX("isAnswered").toBool()));
         if (result.propertyMask.contains(Event::IsEmergencyCall))
-            eventToFill.setIsEmergencyCall(RESULT_INDEX(LAT("isEmergency")).toBool());
+            eventToFill.setIsEmergencyCall(RESULT_INDEX("isEmergency").toBool());
         // remove all non-call properties from set
         propertyMask &= commonPropertySet;
     }
@@ -84,37 +80,37 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
     Event::PropertySet nonSMSProperties = propertyMask - smsOnlyPropertySet;
     foreach (Event::Property property, nonSMSProperties) {
         if (property == Event::MessageToken)
-            eventToFill.setMessageToken(RESULT_INDEX(LAT("messageId")).toString());
+            eventToFill.setMessageToken(RESULT_INDEX("messageId").toString());
         else if (property == Event::MmsId)
-            eventToFill.setMmsId(RESULT_INDEX(LAT("mmsId")).toString());
+            eventToFill.setMmsId(RESULT_INDEX("mmsId").toString());
         else if (property == Event::IsDraft)
-            eventToFill.setIsDraft(RESULT_INDEX(LAT("isDraft")).toBool());
+            eventToFill.setIsDraft(RESULT_INDEX("isDraft").toBool());
         else if (property == Event::Subject)
-            eventToFill.setSubject(RESULT_INDEX(LAT("messageSubject")).toString());
+            eventToFill.setSubject(RESULT_INDEX("messageSubject").toString());
         else if (property == Event::FreeText)
-            eventToFill.setFreeText(RESULT_INDEX(LAT("textContent")).toString());
+            eventToFill.setFreeText(RESULT_INDEX("textContent").toString());
         else if (property == Event::ReportDelivery)
-            eventToFill.setReportDelivery(RESULT_INDEX(LAT("reportDelivery")).toBool());
+            eventToFill.setReportDelivery(RESULT_INDEX("reportDelivery").toBool());
         else if (property == Event::ReportRead)
-            eventToFill.setReportRead(RESULT_INDEX(LAT("sentWithReportRead")).toBool());
+            eventToFill.setReportRead(RESULT_INDEX("sentWithReportRead").toBool());
         else if (property == Event::ReportReadRequested)
-            eventToFill.setReportReadRequested(RESULT_INDEX(LAT("mustAnswerReportRead")).toBool());
+            eventToFill.setReportReadRequested(RESULT_INDEX("mustAnswerReportRead").toBool());
         else if (property == Event::BytesReceived)
-            eventToFill.setBytesReceived(RESULT_INDEX(LAT("contentSize")).toInt());
+            eventToFill.setBytesReceived(RESULT_INDEX("contentSize").toInt());
         else if (property == Event::ContentLocation)
-            eventToFill.setContentLocation(RESULT_INDEX(LAT("contentLocation")).toString());
+            eventToFill.setContentLocation(RESULT_INDEX("contentLocation").toString());
         else if (property == Event::GroupId) {
-            QString channel = RESULT_INDEX(LAT("channel")).toString();
+            QString channel = RESULT_INDEX("channel").toString();
             if (!channel.isEmpty())
                 eventToFill.setGroupId(Group::urlToId(channel));
         } else if (property == Event::StartTime)
-            eventToFill.setStartTime(RESULT_INDEX(LAT("sentDate")).toDateTime().toLocalTime());
+            eventToFill.setStartTime(RESULT_INDEX("sentDate").toDateTime().toLocalTime());
         else if (property == Event::EndTime)
-            eventToFill.setEndTime(RESULT_INDEX(LAT("receivedDate")).toDateTime().toLocalTime());
+            eventToFill.setEndTime(RESULT_INDEX("receivedDate").toDateTime().toLocalTime());
         else if (property == Event::IsRead)
-            eventToFill.setIsRead(RESULT_INDEX(LAT("isRead")).toBool());
+            eventToFill.setIsRead(RESULT_INDEX("isRead").toBool());
         else if (property == Event::Status) {
-            QUrl status = RESULT_INDEX(LAT("deliveryStatus")).toString();
+            QUrl status = RESULT_INDEX("deliveryStatus").toString();
             if (!status.isEmpty()) {
                 if (status == nmo::delivery_status_sent::iri()) {
                     eventToFill.setStatus(Event::SentStatus);
@@ -129,7 +125,7 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
                 }
             }
         } else if (property == Event::ReadStatus) {
-            QUrl status = RESULT_INDEX(LAT("reportReadStatus")).toString();
+            QUrl status = RESULT_INDEX("reportReadStatus").toString();
             if (!status.isEmpty()) {
                 if (status == nmo::read_status_read::iri()) {
                     eventToFill.setReadStatus(Event::ReadStatusRead);
@@ -140,26 +136,26 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
                 }
             }
         } else if (property == Event::LastModified)
-            eventToFill.setLastModified(RESULT_INDEX(LAT("lastModified")).toDateTime().toLocalTime());
+            eventToFill.setLastModified(RESULT_INDEX("lastModified").toDateTime().toLocalTime());
     }
 
     // handle SMS/MMS properties
     if (eventToFill.type() == Event::SMSEvent
         || eventToFill.type() == Event::MMSEvent) {
         if (result.propertyMask.contains(Event::ParentId))
-            eventToFill.setParentId(RESULT_INDEX(LAT("smsId")).toInt());
+            eventToFill.setParentId(RESULT_INDEX("smsId").toInt());
 
         if (result.propertyMask.contains(Event::FromVCardFileName)
             || result.propertyMask.contains(Event::FromVCardLabel)) {
-            QString filename = RESULT_INDEX(LAT("fromVCardName")).toString();
+            QString filename = RESULT_INDEX("fromVCardName").toString();
             if (!filename.isEmpty())
-                eventToFill.setFromVCard(filename, RESULT_INDEX(LAT("fromVCardLabel")).toString());
+                eventToFill.setFromVCard(filename, RESULT_INDEX("fromVCardLabel").toString());
         }
 
         if (result.propertyMask.contains(Event::Encoding))
-            eventToFill.setEncoding(RESULT_INDEX(LAT("encoding")).toString());
+            eventToFill.setEncoding(RESULT_INDEX("encoding").toString());
         if (result.propertyMask.contains(Event::CharacterSet))
-            eventToFill.setCharacterSet(RESULT_INDEX(LAT("characterSet")).toString());
+            eventToFill.setCharacterSet(RESULT_INDEX("characterSet").toString());
         if (result.propertyMask.contains(Event::IsDeleted))
             eventToFill.setDeleted(RESULT_INDEX("isDeleted").toBool());
         if (result.propertyMask.contains(Event::ValidityPeriod))
@@ -170,7 +166,7 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
     if (result.propertyMask.contains(Event::LocalUid)
         || result.propertyMask.contains(Event::RemoteUid)
         || result.propertyMask.contains(Event::Direction)) {
-        if (RESULT_INDEX(LAT("isSent")).toBool()) {
+        if (RESULT_INDEX("isSent").toBool()) {
             eventToFill.setDirection(Event::Outbound);
         } else {
             eventToFill.setDirection(Event::Inbound);
@@ -178,8 +174,8 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
 
         // local contact: <telepathy:/org/.../gabble/jabber/dut_40localhost0>
         // remote contact: <telepathy:<account>!<imid>> or <tel:+35801234567>
-        QString fromId = RESULT_INDEX(LAT("from")).toString();
-        QString toId = RESULT_INDEX(LAT("to")).toString();
+        QString fromId = RESULT_INDEX("from").toString();
+        QString toId = RESULT_INDEX("to").toString();
 
         if (eventToFill.direction() == Event::Outbound) {
             eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
@@ -209,9 +205,9 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
     if (result.propertyMask.contains(Event::ContactId)
         || result.propertyMask.contains(Event::ContactName)) {
         eventToFill.setContactId(RESULT_INDEX("contactId").toInt());
-        QString name = buildContactName(RESULT_INDEX(LAT("contactFirstName")).toString(),
-                                        RESULT_INDEX(LAT("contactLastName")).toString(),
-                                        RESULT_INDEX(LAT("imNickname")).toString());
+        QString name = buildContactName(RESULT_INDEX("contactFirstName").toString(),
+                                        RESULT_INDEX("contactLastName").toString(),
+                                        RESULT_INDEX("imNickname").toString());
         eventToFill.setContactName(name);
     }
 
@@ -220,12 +216,11 @@ void QueryResult::fillEventFromModel(QueryResult &result, int row, Event &event)
     event.resetModifiedProperties();
 }
 
-void QueryResult::fillGroupFromModel(QueryResult &result, int row, Group &group)
+void QueryResult::fillGroupFromModel(QueryResult &result, Group &group)
 {
     Group groupToFill;
-    LiveNodes model = result.model;
 
-    QStringList types = RESULT_INDEX(LAT("type")).toString().split(QChar(','));
+    QStringList types = RESULT_INDEX("type").toString().split(QChar(','));
     if (types.contains(nmo::MMSMessage::iri().toString())) {
         groupToFill.setLastEventType(Event::MMSEvent);
     } else if (types.contains(nmo::SMSMessage::iri().toString())) {
@@ -234,7 +229,7 @@ void QueryResult::fillGroupFromModel(QueryResult &result, int row, Group &group)
         groupToFill.setLastEventType(Event::IMEvent);
     }
 
-    QUrl status = RESULT_INDEX(LAT("deliveryStatus")).toString();
+    QUrl status = RESULT_INDEX("deliveryStatus").toString();
     if (!status.isEmpty()) {
         if (status == nmo::delivery_status_sent::iri()) {
             groupToFill.setLastEventStatus(Event::SentStatus);
@@ -249,11 +244,11 @@ void QueryResult::fillGroupFromModel(QueryResult &result, int row, Group &group)
         }
     }
 
-    groupToFill.setId(Group::urlToId(RESULT_INDEX(LAT("channel")).toString()));
+    groupToFill.setId(Group::urlToId(RESULT_INDEX("channel").toString()));
 
-    groupToFill.setChatName(RESULT_INDEX(LAT("title")).toString());
+    groupToFill.setChatName(RESULT_INDEX("title").toString());
 
-    QString identifier = RESULT_INDEX(LAT("identifier")).toString();
+    QString identifier = RESULT_INDEX("identifier").toString();
     if (!identifier.isEmpty()) {
         bool ok = false;
         Group::ChatType chatType = (Group::ChatType)(identifier.toUInt(&ok));
@@ -261,22 +256,22 @@ void QueryResult::fillGroupFromModel(QueryResult &result, int row, Group &group)
             groupToFill.setChatType(chatType);
     }
 
-    groupToFill.setRemoteUids(QStringList() << RESULT_INDEX(LAT("remoteId")).toString());
-    groupToFill.setLocalUid(RESULT_INDEX(LAT("subject")).toString());
-    groupToFill.setContactId(RESULT_INDEX(LAT("contactId")).toInt());
-    QString name = buildContactName(RESULT_INDEX(LAT("contactFirstName")).toString(),
-                                    RESULT_INDEX(LAT("contactLastName")).toString(),
-                                    RESULT_INDEX(LAT("imNickname")).toString());
+    groupToFill.setRemoteUids(QStringList() << RESULT_INDEX("remoteId").toString());
+    groupToFill.setLocalUid(RESULT_INDEX("subject").toString());
+    groupToFill.setContactId(RESULT_INDEX("contactId").toInt());
+    QString name = buildContactName(RESULT_INDEX("contactFirstName").toString(),
+                                    RESULT_INDEX("contactLastName").toString(),
+                                    RESULT_INDEX("imNickname").toString());
     groupToFill.setContactName(name);
-    groupToFill.setTotalMessages(RESULT_INDEX(LAT("totalMessages")).toInt());
-    groupToFill.setUnreadMessages(RESULT_INDEX(LAT("unreadMessages")).toInt());
-    groupToFill.setSentMessages(RESULT_INDEX(LAT("sentMessages")).toInt());
-    groupToFill.setEndTime(RESULT_INDEX(LAT("lastDate")).toDateTime().toLocalTime());
-    groupToFill.setLastEventId(Event::urlToId(RESULT_INDEX(LAT("lastMessage")).toString()));
-    QString messageSubject = RESULT_INDEX(LAT("lastMessageSubject")).toString();
-    groupToFill.setLastMessageText(messageSubject.isEmpty() ? RESULT_INDEX(LAT("lastMessageText")).toString() : messageSubject);
-    groupToFill.setLastVCardFileName(RESULT_INDEX(LAT("lastVCardFileName")).toString());
-    groupToFill.setLastVCardLabel(RESULT_INDEX(LAT("lastVCardLabel")).toString());
+    groupToFill.setTotalMessages(RESULT_INDEX("totalMessages").toInt());
+    groupToFill.setUnreadMessages(RESULT_INDEX("unreadMessages").toInt());
+    groupToFill.setSentMessages(RESULT_INDEX("sentMessages").toInt());
+    groupToFill.setEndTime(RESULT_INDEX("lastDate").toDateTime().toLocalTime());
+    groupToFill.setLastEventId(Event::urlToId(RESULT_INDEX("lastMessage").toString()));
+    QString messageSubject = RESULT_INDEX("lastMessageSubject").toString();
+    groupToFill.setLastMessageText(messageSubject.isEmpty() ? RESULT_INDEX("lastMessageText").toString() : messageSubject);
+    groupToFill.setLastVCardFileName(RESULT_INDEX("lastVCardFileName").toString());
+    groupToFill.setLastVCardLabel(RESULT_INDEX("lastVCardLabel").toString());
 
     // tracker query returns 0 for non-existing messages... make the
     // value api-compatible
@@ -291,28 +286,27 @@ void QueryResult::fillGroupFromModel(QueryResult &result, int row, Group &group)
     // since we read it from db, it is permanent
     groupToFill.setPermanent(true);
 
-    groupToFill.setLastModified(RESULT_INDEX(LAT("lastModified")).toDateTime().toLocalTime());
+    groupToFill.setLastModified(RESULT_INDEX("lastModified").toDateTime().toLocalTime());
 
     group = groupToFill;
     group.resetModifiedProperties();
 }
 
-void QueryResult::fillMessagePartFromModel(QueryResult &result, int row,
+void QueryResult::fillMessagePartFromModel(QueryResult &result,
                                          MessagePart &messagePart)
 {
     MessagePart newPart;
-    LiveNodes model = result.model;
 
     if (!result.eventId) {
-        result.eventId = Event::urlToId(RESULT_INDEX(LAT("message")).toString());
+        result.eventId = Event::urlToId(RESULT_INDEX("message").toString());
     }
-    newPart.setUri(RESULT_INDEX(LAT("part")).toString());
-    newPart.setContentId(RESULT_INDEX(LAT("contentId")).toString());
-    newPart.setPlainTextContent(RESULT_INDEX(LAT("textContent")).toString());
-    newPart.setContentType(RESULT_INDEX(LAT("contentType")).toString());
-    newPart.setCharacterSet(RESULT_INDEX(LAT("characterSet")).toString());
-    newPart.setContentSize(RESULT_INDEX(LAT("contentSize")).toInt());
-    newPart.setContentLocation(RESULT_INDEX(LAT("contentLocation")).toString());
+    newPart.setUri(RESULT_INDEX("part").toString());
+    newPart.setContentId(RESULT_INDEX("contentId").toString());
+    newPart.setPlainTextContent(RESULT_INDEX("textContent").toString());
+    newPart.setContentType(RESULT_INDEX("contentType").toString());
+    newPart.setCharacterSet(RESULT_INDEX("characterSet").toString());
+    newPart.setContentSize(RESULT_INDEX("contentSize").toInt());
+    newPart.setContentLocation(RESULT_INDEX("contentLocation").toString());
 
     messagePart = newPart;
 }

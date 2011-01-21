@@ -28,10 +28,11 @@
 
 #include "event.h"
 #include "group.h"
-#include "trackerio.h"
 #include "queryresult.h"
 
 namespace CommHistory {
+
+class TrackerIO;
 
 /*!
  * \class QueryRunner
@@ -43,7 +44,7 @@ class QueryRunner: public QObject
     Q_OBJECT
 
 public:
-    QueryRunner(QObject *parent = 0);
+    QueryRunner(TrackerIO *trackerIO, QObject *parent = 0);
     ~QueryRunner();
 
     void setStreamedMode(bool mode);
@@ -78,19 +79,17 @@ Q_SIGNALS:
     void modelUpdated();
 
 private Q_SLOTS:
-    void rowsInsertedSlot(const QModelIndex &parent, int start, int end);
-    void modelUpdatedSlot();
+    void dataReady(int totalCount);
+    void finished();
     void nextSlot();
     void fetchMoreSlot();
 
 private:
-    /*!
-     * \brief Checks from Qt-Tracker's LiveNodes model if it can fetch more and compares that status
-     * to the previous one. If status has been changed from previous check, then emits a canFetchMoreChanged
-     * signal with the new status (boolean value).
-     */
     void checkCanFetchMoreChange();
     void startNextQueryIfReady();
+    bool reallyFetchMore(int pos);
+    void readData();
+    void endActiveQuery();
 
 private:
     bool m_streamedMode;
@@ -104,6 +103,9 @@ private:
 
     QList<CommHistory::QueryResult> m_queries;
     CommHistory::QueryResult m_activeQuery;
+    int lastReadPos;
+
+    TrackerIO *m_pTracker;
 
 #ifdef DEBUG
     QTime m_timer;

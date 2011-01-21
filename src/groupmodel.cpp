@@ -125,7 +125,7 @@ void GroupModelPrivate::resetQueryRunner()
 {
     deleteQueryRunner();
 
-    queryRunner = new QueryRunner();
+    queryRunner = new QueryRunner(tracker());
 
     connect(queryRunner,
             SIGNAL(groupsReceived(int, int, QList<CommHistory::Group>)),
@@ -164,19 +164,18 @@ QString GroupModelPrivate::newObjectPath()
         QString::number(modelSerial++);
 }
 
-CommittingTransaction& GroupModelPrivate::commitTransaction(QList<Group> groups)
+CommittingTransaction* GroupModelPrivate::commitTransaction(QList<Group> groups)
 {
-    CommittingTransaction t;
+    CommittingTransaction *t = tracker()->commit();
 
-    t.transaction = tracker()->commit();
+    if (t && !groups.isEmpty()) {
+        t->addSignal(false,
+                    this,
+                    "groupsUpdatedFull",
+                    Q_ARG(QList<CommHistory::Group>, groups));
+    }
 
-    connect(t.transaction.data(), SIGNAL(commitFinished()), SLOT(commitFinishedSlot()));
-    connect(t.transaction.data(), SIGNAL(commitError(QString)), SLOT(commitErrorSlot(QString)));
-
-    t.groups = groups;
-    transactions.append(t);
-
-    return transactions.last();
+    return t;
 }
 
 void GroupModelPrivate::addToModel(Group &group)
@@ -434,72 +433,6 @@ void GroupModelPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
     }
 }
 
-void GroupModelPrivate::commitFinishedSlot()
-{
-    qDebug() << __PRETTY_FUNCTION__;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction finished";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            QList<Group> modifiedGroups;
-            QMutableListIterator<Group> j(t.groups);
-            while (j.hasNext()) {
-                Group group = j.next();
-                qDebug() << __PRETTY_FUNCTION__ << " transaction finished for group " << group.id();
-                if (group.id() != -1
-                    && !modifiedGroups.contains(group)) {
-                        modifiedGroups.append(group);
-                }
-            }
-
-            t.sendSignals(this);
-
-            if (!modifiedGroups.isEmpty()) {
-                qDebug() << __PRETTY_FUNCTION__ << ": emitting groupsUpdatedFull signal";
-                emit groupsUpdatedFull(modifiedGroups);
-            }
-
-            i.remove();
-            break;
-        }
-    }
-}
-
-void GroupModelPrivate::commitErrorSlot(QString message)
-{
-    qDebug() << __PRETTY_FUNCTION__;
-    qDebug() << __PRETTY_FUNCTION__ << ": error while committing group changes into tracker:";
-    qDebug() << __PRETTY_FUNCTION__ << message;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction error";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            lastError = QSqlError();
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText(message);
-
-            i.remove();
-            break;
-        }
-    }
-}
-
 void GroupModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
     qDebug() << __PRETTY_FUNCTION__ << groups.count();
@@ -533,9 +466,7 @@ bool GroupModelPrivate::canFetchMore() const
 
 TrackerIO* GroupModelPrivate::tracker()
 {
-    if (!m_pTracker)
-        m_pTracker = new TrackerIO(this);
-    return m_pTracker;
+    return TrackerIO::instance();
 }
 
 void GroupModelPrivate::slotContactUpdated(quint32 localId,
@@ -976,10 +907,12 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(QList<Group>());
-    t.addSignal("groupsDeleted", Q_ARG(QList<int>, groupIds));
+    CommittingTransaction *t = d->commitTransaction(QList<Group>());
 
-    return true;
+    if (t)
+        t->addSignal(false, d, "groupsDeleted", Q_ARG(QList<int>, groupIds));
+
+    return t != 0;
 }
 
 bool GroupModel::deleteAll()

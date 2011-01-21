@@ -26,6 +26,8 @@ INCLUDEPATH += . ../../src ..
 LIBS += ../../src/libcommhistory.a -lqttracker
 DEPENDPATH  += $${INCLUDEPATH}
 
+CONFIG += qtsparql
+
 SOURCES += ../common.cpp ../modelwatcher.cpp
 HEADERS += ../common.h ../modelwatcher.h
 

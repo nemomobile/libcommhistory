@@ -98,8 +98,8 @@ void EventModelPrivate::resetQueryRunners()
 {
     deleteQueryRunners();
 
-    queryRunner = new QueryRunner();
-    partQueryRunner = new QueryRunner();
+    queryRunner = new QueryRunner(tracker());
+    partQueryRunner = new QueryRunner(tracker());
 
     connect(queryRunner, SIGNAL(eventsReceived(int, int, QList<CommHistory::Event>)),
             this, SLOT(eventsReceivedSlot(int, int, QList<CommHistory::Event>)));
@@ -371,7 +371,8 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         fillModel(start, end, events);
     }
 
-    partQueryRunner->startQueue();
+    if (!messagePartsReady)
+        partQueryRunner->startQueue();
 }
 
 void EventModelPrivate::messagePartsReceivedSlot(int eventId,
@@ -383,7 +384,8 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
     QModelIndex index = findEvent(eventId);
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-        item->event().setMessageParts(parts);
+        QList<CommHistory::MessagePart> newParts = item->event().messageParts() + parts;
+        item->event().setMessageParts(newParts);
         item->event().resetModifiedProperty(Event::MessageParts);
         QModelIndex bottom = q->createIndex(index.row(),
                                             EventModel::NumberOfColumns - 1,
@@ -446,81 +448,27 @@ void EventModelPrivate::eventDeletedSlot(int id)
     deleteFromModel(id);
 }
 
-CommittingTransaction& EventModelPrivate::commitTransaction(const QList<Event> &events)
+CommittingTransaction* EventModelPrivate::commitTransaction(const QList<Event> &events)
 {
-    CommittingTransaction t;
+    CommittingTransaction *t = tracker()->commit();
 
-    t.transaction = tracker()->commit();
+    if (t) {
+        t->addSignal(false,
+                    this,
+                    "eventsCommitted",
+                    Q_ARG(QList<CommHistory::Event>, events),
+                    Q_ARG(bool, true));
 
-    connect(t.transaction.data(), SIGNAL(commitFinished()),
-            SLOT(commitFinishedSlot()));
-    connect(t.transaction.data(), SIGNAL(commitError(QString)),
-            SLOT(commitErrorSlot(QString)));
-
-    t.events = events;
-    transactions.append(t);
-
-    return transactions.last();
-}
-
-void EventModelPrivate::commitFinishedSlot()
-{
-    qDebug() << Q_FUNC_INFO;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction finished";
-        return;
+        t->addSignal(true,
+                    this,
+                    "eventsCommitted",
+                    Q_ARG(QList<CommHistory::Event>, events),
+                    Q_ARG(bool, false));
+    } else {
+        lastError = tracker()->lastError();
     }
 
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            t.sendSignals(this);
-            emit eventsCommitted(t.events, true);
-
-            i.remove();
-            break;
-        }
-    }
-}
-
-void EventModelPrivate::commitErrorSlot(QString message)
-{
-    qDebug() << Q_FUNC_INFO << message;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction error";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            lastError = QSqlError();
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText(message);
-
-            emit eventsCommitted(t.events, false);
-
-            foreach (DelayedSignal s, t.modelSignals) {
-                int type = QMetaType::type(s.arg.typeName);
-                if (type)
-                    QMetaType::destroy(type, s.arg.data);
-                else
-                    qCritical() << "Invalid type" << s.arg.typeName;
-            }
-
-
-            i.remove();
-            break;
-        }
-    }
+    return t;
 }
 
 void EventModelPrivate::canFetchMoreChangedSlot(bool canFetch)
@@ -640,9 +588,7 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
 
 TrackerIO* EventModelPrivate::tracker()
 {
-    if (!m_pTracker)
-        m_pTracker = new TrackerIO(this);
-    return m_pTracker;
+    return TrackerIO::instance();
 }
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)

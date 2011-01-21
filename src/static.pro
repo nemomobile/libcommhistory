@@ -25,7 +25,7 @@ include( ../common-vars.pri )
 
 TEMPLATE  = lib
 QT       += sql
-CONFIG   += qdbus static mobility debug
+CONFIG   += qdbus static mobility debug qtsparql
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION
 TARGET    = commhistory

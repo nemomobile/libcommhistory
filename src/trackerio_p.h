@@ -28,17 +28,22 @@
 #include <QtTracker/Tracker>
 #include <QtSql>
 #include <QHash>
+#include <QThreadStorage>
+#include <QSparqlQuery>
 
 #include "idsource.h"
 #include "event.h"
 
 class MmsContentDeleter;
+class QSparqlConnection;
+class QSparqlResult;
 
 namespace CommHistory {
 
 class Group;
 class UpdateQuery;
 class TrackerIO;
+class CommittingTransaction;
 
 /**
  * \class TrackerIOPrivate
@@ -114,8 +119,8 @@ public:
                                           int parentId,
                                           const QDateTime& lastModTime);
 
-    void getMmsListForDeletingByGroup(int groupId, SopranoLive::LiveNodes& model);
-    void deleteMmsContentByGroup(int group);
+    QSparqlResult* getMmsListForDeletingByGroup(int groupId);
+    bool deleteMmsContentByGroup(int group);
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
@@ -125,12 +130,24 @@ public:
      * \param event - MMS event
      */
     template <class CopyOntology>
-    static QStringList queryMMSCopyAddresses(Event &event);
+    QStringList queryMMSCopyAddresses(Event &event);
 
     QStringList queryMmsToAddresses(Event &event);
     void checkAndDeletePendingMmsContent(QThread* backgroundThread);
 
-    SopranoLive::RDFTransactionPtr m_transaction;
+    QSparqlConnection& connection();
+    bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
+    bool handleQuery(const QSparqlQuery &query);
+    bool runBlockedQuery(QSparqlResult *result);
+
+public Q_SLOTS:
+    void runNextTransaction();
+
+public:
+    QThreadStorage<QSparqlConnection*> m_pConnection;
+    CommittingTransaction *m_pTransaction;
+    QQueue<CommittingTransaction*> m_pendingTransactions;
+
     SopranoLive::RDFServicePtr m_service;
 
     // Temporary contact cache, valid during a transaction
@@ -139,6 +156,7 @@ public:
     MmsContentDeleter *m_MmsContentDeleter;
     typedef QHash<QString, int> MessageTokenRefCount;
     MessageTokenRefCount m_messageTokenRefCount;
+    bool syncOnCommit;
 
     IdSource m_IdSource;
 

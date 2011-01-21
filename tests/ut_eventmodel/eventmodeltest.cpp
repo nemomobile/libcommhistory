@@ -35,8 +35,6 @@
 
 #include "modelwatcher.h"
 
-using namespace CommHistory;
-
 Group group1, group2;
 Event im, sms, call;
 QEventLoop loop;
@@ -731,6 +729,7 @@ void EventModelTest::testMessagePartsQuery()
     event.setGroupId(group.id());
 
     MessagePart part1;
+    part1.setContentId("blah_42");
     part1.setContentType("application/smil");
     part1.setPlainTextContent("<smil>blah</smil>");
     MessagePart part2;
@@ -816,6 +815,7 @@ void EventModelTest::testMessagePartsQuery()
 
     ModelWatcher convWatcher(&loop);
     ConversationModel convModel;
+    convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
 
     QSignalSpy modelReady(&convModel, SIGNAL(modelReady()));
@@ -867,6 +867,8 @@ void EventModelTest::testMessagePartsQuery()
     modelThread.quit();
     modelThread.wait(3000);
     qDebug() << "done";
+
+    QTest::qWait(1000);
 
     QString mmsPath = QString("%1/.mms/msg/").arg(QDir::homePath());
     QVERIFY(!QDir(mmsPath + "MSGTOKEN1").exists());
@@ -932,6 +934,7 @@ void EventModelTest::testCcBcc()
 void EventModelTest::testFindEvent()
 {
     ConversationModel model;
+    model.enableContactChanges(false);
     Event event;
 
     model.setQueryMode(EventModel::SyncQuery);
@@ -1114,10 +1117,12 @@ void EventModelTest::testStreaming()
     qDebug() << "total msgs: " << total;
 
     ConversationModel model;
+    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
 
     ConversationModel streamModel;
+    streamModel.enableContactChanges(false);
 
     if (useThread) {
         modelThread.start();
@@ -1143,16 +1148,28 @@ void EventModelTest::testStreaming()
 
         qDebug() << "chunk size: " << chunkSize;
 
-        QVERIFY(waitSignal(rowsInserted, 5000));
-
-        QList<QVariant> args = rowsInserted.takeFirst();
         int expectedEnd = count + chunkSize > total ? total - 1: count + chunkSize - 1;
-        qDebug() << "rows start in streaming model: " << args.at(1).toInt();
-        qDebug() << "rows start should be: " << count;
-        qDebug() << "rows end in streaming model: " << args.at(2).toInt();
-        qDebug() << "rows end should be: " << expectedEnd;
-        QCOMPARE(args.at(1).toInt(), count); // start
-        QCOMPARE(args.at(2).toInt(), expectedEnd); // end
+
+        int lastInserted = -1;
+        int firstInserted = -1;
+
+        while (expectedEnd != lastInserted) {
+            QVERIFY(waitSignal(rowsInserted, 5000));
+
+            if (firstInserted == -1)
+                firstInserted = rowsInserted.first().at(1).toInt();
+            lastInserted = rowsInserted.last().at(2).toInt(); // end
+
+            qDebug() << "rows start in streaming model: " << firstInserted;
+            qDebug() << "rows start should be: " << count;
+            qDebug() << "rows end in streaming model: " << lastInserted;
+            qDebug() << "rows end should be: " << expectedEnd;
+
+            rowsInserted.clear();
+        }
+
+        QCOMPARE(firstInserted, count); // start
+
         for (int i = count; i < expectedEnd + 1; i++) {
             Event event1 = model.index(i, 0).data(Qt::UserRole).value<Event>();
             Event event2 = streamModel.index(i, 0).data(Qt::UserRole).value<Event>();
@@ -1160,7 +1177,7 @@ void EventModelTest::testStreaming()
         }
 
         // You should be able to fetch more if total number of messages is not yet reached:
-        if ( args.at(2).toInt() < total-1 )
+        if ( lastInserted < total-1 )
         {
             QVERIFY(streamModel.canFetchMore(QModelIndex()));
             QVERIFY(modelReady.isEmpty());
@@ -1172,9 +1189,7 @@ void EventModelTest::testStreaming()
         count += chunkSize;
     }
     QVERIFY(waitSignal(modelReady, 5000));
-    QVERIFY(rowsInserted.isEmpty());
-    // TODO: NB#208137
-    // QVERIFY(!streamModel.canFetchMore(QModelIndex()));
+    QVERIFY(!streamModel.canFetchMore(QModelIndex()));
 
     modelThread.quit();
     modelThread.wait(3000);

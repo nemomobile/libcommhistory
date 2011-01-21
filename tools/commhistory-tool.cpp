@@ -556,6 +556,8 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         Event e;
         if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);
+        } else {
+            std::cout << "getEvent error " << qPrintable(eventModel.trackerIO().lastError().text()) << std::endl;
         }
 
         std::cout << std::endl;

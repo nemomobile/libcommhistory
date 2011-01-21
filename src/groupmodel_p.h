@@ -32,13 +32,13 @@
 #include "groupmodel.h"
 #include "eventmodel.h"
 #include "group.h"
-#include "committingtransaction.h"
 
 namespace CommHistory {
 
 class QueryRunner;
 class TrackerIO;
 class ContactListener;
+class CommittingTransaction;
 
 class GroupModelPrivate: public QObject
 {
@@ -78,7 +78,7 @@ public:
 
     void executeQuery(SopranoLive::RDFSelect &query);
 
-    CommittingTransaction& commitTransaction(QList<Group> groups);
+    CommittingTransaction* commitTransaction(QList<Group> groups);
 
     void resetQueryRunner();
     void deleteQueryRunner();
@@ -101,10 +101,6 @@ public Q_SLOTS:
     void modelUpdatedSlot();
 
     void canFetchMoreChangedSlot(bool canFetch);
-
-    void commitFinishedSlot();
-
-    void commitErrorSlot(QString message);
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
@@ -137,8 +133,6 @@ public:
 
     QueryRunner *queryRunner;
     bool threadCanFetchMore;
-
-    QList<CommittingTransaction> transactions;
 
     QThread *bgThread;
 

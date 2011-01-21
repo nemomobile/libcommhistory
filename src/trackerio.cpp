@@ -27,6 +27,12 @@
 #include <QtTracker/ontologies/nfo.h>
 #include <QtTracker/ontologies/rdfs.h>
 
+#include <QSparqlConnectionOptions>
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlResultRow>
+#include <QSparqlError>
+
 #include "commonutils.h"
 #include "event.h"
 #include "group.h"
@@ -34,6 +40,8 @@
 #include "mmscontentdeleter.h"
 #include "updatequery.h"
 #include "queryresult.h"
+#include "committingtransaction.h"
+#include "committingtransaction_p.h"
 
 #include "trackerio_p.h"
 #include "trackerio.h"
@@ -43,9 +51,14 @@ using namespace SopranoLive;
 
 #define LAT(STR) QLatin1String(STR)
 
+#define QSPARQL_DRIVER QLatin1String("QTRACKER_DIRECT")
+#define QSPARQL_DATA_READY_INTERVAL 25
+
+Q_GLOBAL_STATIC(TrackerIO, trackerIO)
+
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
-    m_transaction(0),
+    m_pTransaction(0),
     m_service(::tracker()),
     m_MmsContentDeleter(0),
     m_bgThread(0)
@@ -54,21 +67,28 @@ TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
 
 TrackerIOPrivate::~TrackerIOPrivate()
 {
+    foreach(CommittingTransaction* t, m_pendingTransactions)
+        t->deleteLater();
+
     if (m_MmsContentDeleter) {
         m_MmsContentDeleter->deleteLater();
         m_MmsContentDeleter = 0;
     }
 }
 
-TrackerIO::TrackerIO(QObject *parent)
-    : QObject(parent),
-    d(new TrackerIOPrivate(this))
+TrackerIO::TrackerIO()
+    : d(new TrackerIOPrivate(this))
 {
 }
 
 TrackerIO::~TrackerIO()
 {
     delete d;
+}
+
+TrackerIO* TrackerIO::instance()
+{
+    return trackerIO();
 }
 
 int TrackerIO::nextEventId()
@@ -1411,9 +1431,8 @@ bool TrackerIO::addEvent(Event &event)
                     nie::contentLastModified::iri(),
                     LiteralValue(event.lastModified()));
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::addGroup(Group &group)
@@ -1485,15 +1504,14 @@ bool TrackerIO::addGroup(Group &group)
                     nie::contentLastModified::iri(),
                     LiteralValue(group.lastModified()));
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 template<class CopyOntology>
 QStringList TrackerIOPrivate::queryMMSCopyAddresses(Event &event)
 {
-    LiveNodes model;
+    QStringList copyList;
     RDFSelect   copyQuery;
     RDFVariable copyMessage = event.url();
     RDFVariable copyContact = copyMessage.property<CopyOntology>();
@@ -1505,20 +1523,24 @@ QStringList TrackerIOPrivate::queryMMSCopyAddresses(Event &event)
                                    << copyContact.optional().property<nco::hasIMAddress>()
                                    .property<nco::imID>());
     copyQuery.addColumn(LAT("contact"), mergedCopyAddresses);
-    model = ::tracker()->modelQuery(copyQuery);
 
-    QStringList copyList;
-    if (model->rowCount()) {
-        for (int row = 0; row < model->rowCount(); row++) {
-            copyList << model->index(row, 0).data().toString();
-        }
+    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(copyQuery.getQuery())));
+
+    if (!runBlockedQuery(result.data())) // FIXIT
+        return copyList;
+
+    while (result->next()) {
+        QSparqlResultRow row = result->current();
+        if (!row.isEmpty())
+            copyList << row.value(0).toString();
     }
-    qDebug()<<"[MMS-COMM] Extracted CC/BCC list::"<<copyList;
+
     return copyList;
 }
 
 QStringList TrackerIOPrivate::queryMmsToAddresses(Event &event)
 {
+    QStringList copyList;
     LiveNodes model;
     RDFSelect   query;
     RDFVariable message = event.url();
@@ -1527,15 +1549,18 @@ QStringList TrackerIOPrivate::queryMmsToAddresses(Event &event)
     header.property<nmo::headerName>(LiteralValue("x-mms-to"));
 
     query.addColumn(LAT("header"), header.property<nmo::headerValue>());
-    model = ::tracker()->modelQuery(query);
 
-    QStringList copyList;
+    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(query.getQuery())));
 
-    if (model->rowCount() > 0 ) {
-        copyList << model->index(0, 0).data().toString().split(";", QString::SkipEmptyParts);
+    if (!runBlockedQuery(result.data())) // FIXIT
+        return copyList;
+
+    if (result->first()) {
+        QSparqlResultRow row = result->current();
+        if (!row.isEmpty())
+            copyList << row.value(0).toString().split(";", QString::SkipEmptyParts);
     }
 
-    qDebug()<<"[MMS-COMM] Extracted To list::" << copyList;
     return copyList;
 }
 
@@ -1548,37 +1573,56 @@ QStringList TrackerIOPrivate::queryMMSCopyAddresses<nmo::bcc>(Event &event);
 bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
 {
     QueryResult result;
-    LiveNodes model = ::tracker()->modelQuery(query);
-    result.model = model;
+
+    int i = 0;
+    foreach(SopranoLive::RDFSelectColumn col, query.columns()) {
+        result.columns.insert(col.name(), i++);
+    }
+
+    QScopedPointer<QSparqlResult> events(connection().exec(QSparqlQuery(query.getQuery())));
+
+    if (!runBlockedQuery(events.data())) // FIXIT
+        return false;
+
+    result.result = events.data();
     result.propertyMask = Event::allProperties();
-    if (!model->rowCount()) {
+    if (events->size() == 0) {
         QSqlError error;
         error.setType(QSqlError::TransactionError);
         error.setDatabaseText(LAT("Event not found"));
         lastError = error;
         return false;
     }
-    for (int i = 0; i < model->columnCount(); i++) {
-        result.columns.insert(model->headerData(i, Qt::Horizontal).toString(), i);
-    }
-    QueryResult::fillEventFromModel(result, 0, event);
+
+    events->first();
+    QSparqlResultRow row = events->current();
+
+    QueryResult::fillEventFromModel(result, event);
 
     if (event.type() == Event::MMSEvent) {
         RDFSelect partQuery;
         RDFVariable message = event.url();
         q->prepareMessagePartQuery(partQuery, message);
-        model = ::tracker()->modelQuery(partQuery);
-        result.model = model;
 
-        if (model->rowCount()) {
-            for (int i = 0; i < model->columnCount(); i++) {
-                result.columns.insert(model->headerData(i, Qt::Horizontal).toString(), i);
-            }
-            for (int row = 0; row < model->rowCount(); row++) {
+        i = 0;
+        foreach(SopranoLive::RDFSelectColumn col, partQuery.columns()) {
+            result.columns.insert(col.name(), i++);
+        }
+
+        QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery.getQuery())));
+
+        if (runBlockedQuery(parts.data()) &&
+            parts->size() > 0) {
+            result.result = parts.data();
+
+            parts->first();
+            QSparqlResultRow partRow = parts->current();
+
+            do {
                 MessagePart part;
-                QueryResult::fillMessagePartFromModel(result, row, part);
+                QueryResult::fillMessagePartFromModel(result, part);
                 event.addMessagePart(part);
-            }
+            } while (parts->next());
         }
 
         QStringList copyAddresses;
@@ -1597,6 +1641,7 @@ bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
 
 bool TrackerIO::getEvent(int id, Event &event)
 {
+    qDebug() << Q_FUNC_INFO << id;
     RDFSelect query;
 
     RDFVariable msg;
@@ -1607,8 +1652,12 @@ bool TrackerIO::getEvent(int id, Event &event)
                     << nmo::Call::iri());
     query.addColumn(LAT("type"), type);
 
-    LiveNodes model = ::tracker()->modelQuery(query);
-    int count = model->rowCount();
+    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(QSparqlQuery(query.getQuery())));
+
+    if (!d->runBlockedQuery(queryResult.data())) // FIXIT
+        return false;
+
+    int count = queryResult->size();
     bool isCall = (count == 2);
 
     if (count == 0) {
@@ -1619,6 +1668,8 @@ bool TrackerIO::getEvent(int id, Event &event)
         return false;
     }
 
+    // TODO: Istead of doing blocking query above, faster to request all
+    // properties for call and message
     RDFVariable message = RDFVariable::fromType<nmo::Message>();
     message == Event::idToUrl(id);
     if (isCall) {
@@ -1676,9 +1727,9 @@ bool TrackerIO::modifyEvent(Event &event)
 {
     UpdateQuery query;
 
-    event.setLastModified(QDateTime::currentDateTime()); //always update modified times in case of modifyEvent
-                                                                                                         //irrespective whether client sets or not
-    // allow uid changes for drafts
+    event.setLastModified(QDateTime::currentDateTime()); // always update modified times in case of modifyEvent
+                                                         // irrespective whether client sets or not
+                                                         // allow uid changes for drafts
     if (event.isDraft()
         && (event.validProperties().contains(Event::LocalUid)
             || event.validProperties().contains(Event::RemoteUid))) {
@@ -1729,9 +1780,8 @@ bool TrackerIO::modifyEvent(Event &event)
 
     d->writeCommonProperties(query, event, true);
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::modifyGroup(Group &group)
@@ -1764,20 +1814,17 @@ bool TrackerIO::modifyGroup(Group &group)
         }
     }
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::moveEvent(Event &event, int groupId)
 {
-    qDebug() << Q_FUNC_INFO << event.id() << groupId;
     UpdateQuery query;
 
     d->setChannel(query, event, groupId, true); // true means modify
 
     if (event.direction() == Event::Inbound) {
-        qDebug() << Q_FUNC_INFO << "Direction INBOUND";
         QUrl remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
         query.insertion(event.url(),
                         nmo::from::iri(),
@@ -1785,16 +1832,13 @@ bool TrackerIO::moveEvent(Event &event, int groupId)
                         true); //TODO: proper contact deletion
     }
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 {
     qDebug() << Q_FUNC_INFO << event.id() << backgroundThread;
-
-    Live<nmo::Message> msg = d->m_service->liveNode(event.url());
 
     if (event.type() == Event::MMSEvent) {
         if (d->isLastMmsEvent(event.messageToken())) {
@@ -1802,9 +1846,11 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
         }
     }
 
-    msg->remove();
+    QSparqlQuery deleteQuery(QLatin1String("DELETE {?:uri a rdfs:Resource}"),
+                             QSparqlQuery::DeleteStatement);
+    deleteQuery.bindValue(QLatin1String("uri"), event.url());
 
-    return true;
+    return d->handleQuery(deleteQuery);
 }
 
 bool TrackerIO::getGroup(int id, Group &group)
@@ -1815,9 +1861,18 @@ bool TrackerIO::getGroup(int id, Group &group)
     prepareGroupQuery(query, QString(), QString(), id);
     QueryResult result;
     result.query = query;
-    result.model = ::tracker()->modelQuery(query);
 
-    if (result.model->rowCount() == 0) {
+    int i = 0;
+    foreach(SopranoLive::RDFSelectColumn col, query.columns()) {
+        result.columns.insert(col.name(), i++);
+    }
+
+    QScopedPointer<QSparqlResult> groups(d->connection().exec(QSparqlQuery(query.getQuery())));
+
+    if (!d->runBlockedQuery(groups.data())) // FIXIT
+        return false;
+
+    if (groups->size() == 0) {
         QSqlError error;
         error.setType(QSqlError::TransactionError);
         error.setDatabaseText(LAT("Group not found"));
@@ -1825,15 +1880,17 @@ bool TrackerIO::getGroup(int id, Group &group)
         return false;
     }
 
-    for (int i = 0; i < result.model->columnCount(); i++)
-        result.columns.insert(result.model->headerData(i, Qt::Horizontal).toString(), i);
-    QueryResult::fillGroupFromModel(result, 0, groupToFill);
+    groups->first();
+    QSparqlResultRow row = groups->current();
+
+    result.result = groups.data();
+    QueryResult::fillGroupFromModel(result, groupToFill);
     group = groupToFill;
 
     return true;
 }
 
-void TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId, LiveNodes& model)
+QSparqlResult* TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId)
 {
     RDFSelect query;
     RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
@@ -1849,19 +1906,30 @@ void TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId, LiveNodes& mode
 
     query.addColumn(msgCountQuery.asExpression());
 
-    model = ::tracker()->modelQuery(query);
+    return connection().exec(QSparqlQuery(query.getQuery()));
 }
 
-void TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
+bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
 {
     // delete mms messages content from fs
-    LiveNodes model;
-    getMmsListForDeletingByGroup(groupId, model);
-    for(int r = 0; r < model->rowCount(); ++r){
-        QString messageToken(model->index(r,1).data().toString());
+    QScopedPointer<QSparqlResult> result(getMmsListForDeletingByGroup(groupId));
+
+    if (!runBlockedQuery(result.data())) // FIXIT
+        return false;
+
+    while (result->next()) {
+        QSparqlResultRow row = result->current();
+
+        if (row.isEmpty()) {
+            qWarning() << Q_FUNC_INFO << "Empty row";
+            continue;
+        }
+
+        QString messageToken(row.value(1).toString());
+        qDebug() << Q_FUNC_INFO << messageToken;
 
         if (!messageToken.isEmpty()) {
-            int refCount(model->index(r,2).data().toInt());
+            int refCount(row.value(2).toInt());
 
             MessageTokenRefCount::iterator it = m_messageTokenRefCount.find(messageToken);
 
@@ -1875,14 +1943,14 @@ void TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
             }
         }
     }
+
+    return true;
 }
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
 {
     Q_UNUSED(backgroundThread);
     qDebug() << __FUNCTION__ << groupId << deleteMessages << backgroundThread;
-
-    d->m_bgThread = backgroundThread;
 
     // error return left for possible future implementation
 
@@ -1895,37 +1963,47 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
         update.addDeletion(msg, rdf::type::iri(), rdfs::Resource::iri());
 
         // delete mms attachments
-        d->deleteMmsContentByGroup(groupId);
+        // FIXIT, make it async
+        if (!d->deleteMmsContentByGroup(groupId))
+            return false;
     }
+
+    d->m_bgThread = backgroundThread;
 
     // delete conversation
     update.addDeletion(group, rdf::type::iri(), rdfs::Resource::iri());
 
-    d->m_service->executeQuery(update);
-
-    return true;
+    return d->handleQuery(QSparqlQuery(update.getQuery(),
+                                       QSparqlQuery::DeleteStatement));
 }
 
 bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
 {
-    totalEvents = -1;
     RDFSelect query;
+
     RDFVariable message = RDFVariable::fromType<nmo::Message>();
     message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
     message.property<nmo::isDeleted>(LiteralValue(false));
     query.addCountColumn("total", message);
-    LiveNodes model = ::tracker()->modelQuery(query);
-    if (model->rowCount() > 0) {
-        totalEvents = model->index(0, 0).data().toInt();
+
+    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(QSparqlQuery(query.getQuery())));
+
+    if (!d->runBlockedQuery(queryResult.data())) // FIXIT
+        return false;
+
+    if (queryResult->first()) {
+        QSparqlResultRow row = queryResult->current();
+        if (!row.isEmpty()) {
+            totalEvents = row.value(0).toInt();
+            return true;
+        }
     }
 
-    return true;
+    return false;
 }
 
 bool TrackerIO::markAsReadGroup(int groupId)
 {
-    qDebug() << Q_FUNC_INFO << groupId;
-
     RDFUpdate update;
     RDFVariable msg = RDFVariable::fromType<nmo::Message>();
 
@@ -1934,57 +2012,105 @@ bool TrackerIO::markAsReadGroup(int groupId)
     update.addInsertion(msg, nmo::isRead::iri(), LiteralValue(true));
     //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
     QDateTime currDateTime = QDateTime::currentDateTime();
-    qDebug() << "Setting modified time for group" << currDateTime;
+
     update.addDeletion(msg, nie::contentLastModified::iri(), RDFVariable());
     update.addInsertion(msg, nie::contentLastModified::iri(), LiteralValue(currDateTime));
 
-    d->m_service->executeQuery(update);
-
-    return true;
+    return d->handleQuery(QSparqlQuery(update.getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 void TrackerIO::transaction(bool syncOnCommit)
 {
-    RDFTransaction::Mode mode = syncOnCommit ?
-        (RDFTransaction::Mode)BackEnds::Tracker::SyncOnCommit :
-        (RDFTransaction::Mode)RDFTransaction::Default;
+    Q_ASSERT(d->m_pTransaction == 0);
 
-    d->m_transaction = ::tracker()->createTransaction(mode);
-    if (d->m_transaction) {
-        d->m_service = d->m_transaction->service();
-    } else {
-        qWarning() << __PRETTY_FUNCTION__ << ": error starting transaction";
-        d->m_service = ::tracker();
-    }
-
+    d->syncOnCommit = syncOnCommit;
+    d->m_pTransaction = new CommittingTransaction(this);
     d->m_messageTokenRefCount.clear(); // make sure that nothing is removed if not requested
 }
 
-QSharedPointer<SopranoLive::RDFTransaction> TrackerIO::commit(bool isBlocking)
+CommittingTransaction* TrackerIO::commit(bool isBlocking)
 {
-    RDFTransactionPtr result = d->m_transaction;
+    Q_ASSERT(d->m_pTransaction);
 
-    if (d->m_transaction) {
-        d->m_transaction->commit(isBlocking);
+    CommittingTransaction *returnTransaction = 0;
+
+    if (isBlocking) {
+        foreach (QSparqlQuery query, d->m_pTransaction->d->queries()) {
+            QScopedPointer<QSparqlResult> result(d->connection().exec(query));
+            if (!d->runBlockedQuery(result.data())) {
+                break;
+            }
+        }
+        delete d->m_pTransaction;
+    } else {
+        if (!d->m_pTransaction->d->queries().isEmpty()) {
+            d->m_pendingTransactions.enqueue(d->m_pTransaction);
+            d->runNextTransaction();
+            returnTransaction = d->m_pTransaction;
+        } else {
+            qWarning() << Q_FUNC_INFO << "Empty transaction committing";
+            delete d->m_pTransaction;
+        }
+
     }
-    d->m_service = ::tracker();
-    d->m_transaction.clear();
+
     d->m_imContactCache.clear();
-
     d->checkAndDeletePendingMmsContent(d->m_bgThread);
+    d->m_pTransaction = 0;
 
-    return result;
+    return returnTransaction;
+}
+
+void TrackerIOPrivate::runNextTransaction()
+{
+    qDebug() << Q_FUNC_INFO;
+
+    if (m_pendingTransactions.isEmpty())
+        return;
+
+    CommittingTransaction *t = m_pendingTransactions.head();
+
+    Q_ASSERT(t);
+
+    if (t->isFinished()) {
+        t->deleteLater(); // straight delete causes crash or lockup?
+        m_pendingTransactions.dequeue();
+        t = 0;
+
+        if (!m_pendingTransactions.isEmpty())
+            t = m_pendingTransactions.head();
+    }
+
+    if (t && !t->isRunning()) {
+        foreach (QSparqlQuery query, t->d->queries()) {
+            QScopedPointer<QSparqlResult> result(connection().exec(query));
+            if (checkPendingResult(result.data(), false)) {
+                t->d->addResult(result.take());
+            } else {
+                qWarning() << Q_FUNC_INFO << "abort transaction" << t;
+                emit t->finished();
+                m_pendingTransactions.dequeue();
+                delete t;
+                t = 0;
+            }
+        }
+
+        if (t) {
+            connect(t,
+                    SIGNAL(finished()),
+                    this,
+                    SLOT(runNextTransaction()));
+        }
+    }
 }
 
 void TrackerIO::rollback()
 {
-    if (d->m_transaction) {
-        d->m_transaction->rollback();
-    }
-    d->m_service = ::tracker();
-    d->m_transaction.clear();
     d->m_imContactCache.clear();
     d->m_messageTokenRefCount.clear(); // Clear cache to avoid deletion after rollback
+    delete d->m_pTransaction;
+    d->m_pTransaction = 0;
 }
 
 bool TrackerIO::deleteAllEvents(Event::EventType eventType)
@@ -2007,10 +2133,9 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
             return false;
     }
 
-    d->m_service->executeQuery(update);
-    return true;
+    return d->handleQuery(QSparqlQuery(update.getQuery(),
+                                       QSparqlQuery::DeleteStatement));
 }
-
 
 void TrackerIOPrivate::calculateParentId(Event& event)
 {
@@ -2047,19 +2172,25 @@ void TrackerIOPrivate::setFolderLastModifiedTime(UpdateQuery &query,
     }
 
     if (!folder.isEmpty()) {
-        query.deletion(folder, nie::contentLastModified::iri());
-        query.insertion(folder, nie::contentLastModified::iri(), LiteralValue(lastModTime));
+        query.insertion(folder,
+                        nie::contentLastModified::iri(),
+                        LiteralValue(lastModTime),
+                        true);
     }
 }
 
 bool TrackerIO::markAsRead(const QList<int> &eventIds)
 {
+    UpdateQuery query;
     foreach (int id, eventIds) {
-        Live<nmo::Message> msg = d->m_service->liveNode(Event::idToUrl(id));
-        if (msg)
-            msg->setIsRead(true);
+        query.insertion(Event::idToUrl(id),
+                        nmo::isRead::iri(),
+                        LiteralValue(true),
+                        true);
     }
-    return true;
+
+    return d->handleQuery(QSparqlQuery(query.rdfUpdate().getQuery(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 MmsContentDeleter& TrackerIOPrivate::getMmsDeleter(QThread *backgroundThread)
@@ -2085,14 +2216,22 @@ MmsContentDeleter& TrackerIOPrivate::getMmsDeleter(QThread *backgroundThread)
 
 bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
 {
+    qDebug() << Q_FUNC_INFO << messageToken;
     int total = -1;
     RDFSelect query;
     RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
     message.property<nmo::messageId>(LiteralValue(messageToken));
     query.addCountColumn("total", message);
-    LiveNodes model = ::tracker()->modelQuery(query);
-    if (model->rowCount() > 0) {
-        total = model->index(0, 0).data().toInt();
+
+    QScopedPointer<QSparqlResult> queryResult(connection().exec(QSparqlQuery(query.getQuery())));
+
+    if (!runBlockedQuery(queryResult.data())) // FIXIT
+        return false;
+
+    if (queryResult->first()) {
+        QSparqlResultRow row = queryResult->current();
+        if (!row.isEmpty())
+            total = row.value(0).toInt();
     }
 
     return (total == 1);
@@ -2118,4 +2257,58 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread
 
         m_messageTokenRefCount.clear();
     }
+}
+
+QSparqlConnection& TrackerIOPrivate::connection()
+{
+    if (!m_pConnection.hasLocalData()) {
+        QSparqlConnectionOptions ops;
+        ops.setDataReadyInterval(QSPARQL_DATA_READY_INTERVAL);
+        m_pConnection.setLocalData(new QSparqlConnection(QSPARQL_DRIVER, ops));
+    }
+
+    return *m_pConnection.localData();
+}
+
+bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnFinished)
+{
+    if (result->hasError()) {
+        QSqlError ret;
+        ret.setType(QSqlError::TransactionError);
+        ret.setDatabaseText(result->lastError().message());
+        lastError = ret;
+        if (destroyOnFinished)
+            delete result;
+    }
+
+    return !result->hasError();
+}
+
+bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query)
+{
+    bool result = true;
+
+    if (m_pTransaction) {
+        // add query
+        m_pTransaction->d->addQuery(query);
+    } else {
+        QSparqlResult *sResult = connection().exec(query);
+        result = runBlockedQuery(sResult);
+        delete sResult;
+    }
+
+    return result;
+}
+
+bool TrackerIOPrivate::runBlockedQuery(QSparqlResult *result)
+{
+    if (!checkPendingResult(result, false))
+        return false;
+
+    result->waitForFinished();
+
+    if (!checkPendingResult(result, false))
+        return false;
+
+    return true;
 }

@@ -26,11 +26,19 @@
 #include <QtTracker/ontologies/nmo.h>
 #include <QFile>
 #include <QTextStream>
+
+#include <QContactManager>
+#include <QContact>
+#include <QContactName>
+#include <QContactPhoneNumber>
+
 #include "eventmodel.h"
 #include "groupmodel.h"
 #include "event.h"
 #include "common.h"
 #include "trackerio.h"
+
+QTM_USE_NAMESPACE
 
 using namespace CommHistory;
 using namespace SopranoLive;
@@ -98,6 +106,8 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 
     QVERIFY(groupModel.addGroup(grp));
 
+    QTest::qWait(1000);
+
     // wait till group is really added to tracker, so getGroup will not fail in
     // testcases
     bool added = false;
@@ -105,99 +115,102 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
         Group group;
         added = groupModel.trackerIO().getGroup(grp.id(), group);
         if (!added)
-            sleep(1);
+            QTest::qWait(1000);
     }
 }
 
 void addTestContact(const QString &name, const QString &remoteUid)
 {
-    Live<nco::PersonContact> contact;
-    Live<nco::VoicePhoneNumber> number;
-    QUrl contactURI;
-    QUrl phoneNumberURI;
+    QContactManager cm;
+    QContact contact;
 
-    phoneNumberURI = QString(QLatin1String("tel:%1")).arg(remoteUid);
-    number = ::tracker()->liveNode(phoneNumberURI);
+    QContactName cName;
+    cName.setLastName(name);
+    contact.saveDetail(&cName);
 
-    contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
-    contact = ::tracker()->liveNode(contactURI);
-    contact->setContactUID(remoteUid + remoteUid);
-    contact->addHasPhoneNumber(number);
-    contact->setNameFamily(name);
+    QContactPhoneNumber number;
+    number.setNumber(remoteUid);
+    contact.saveDetail(&number);
+
+    QVERIFY(cm.saveContact(&contact));
 }
 
 void modifyTestContact(const QString &name, const QString &remoteUid)
 {
-    Live<nco::PersonContact> contact;
-    QUrl contactURI;
+    QContactManager cm;
+    QList<QContact> results = cm.contacts(QContactPhoneNumber::match(remoteUid));
 
-    contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
-    contact = ::tracker()->liveNode(contactURI);
-    contact->setNameFamily(name);
+    QVERIFY(!results.isEmpty());
+
+    QContactName cName = results.first().detail<QContactName>();
+    cName.setLastName(name);
+    results.first().saveDetail(&cName);
+
+    QVERIFY(cm.saveContact(&results.first()));
 }
 
 bool compareEvents(Event &e1, Event &e2)
 {
     if (e1.type() != e2.type()) {
-        qWarning() << "type:" << e1.type() << e2.type();
+        qWarning() << Q_FUNC_INFO << "type:" << e1.type() << e2.type();
         return false;
     }
     if (e1.direction() != e2.direction()) {
-        qWarning() << "direction:" << e1.direction() << e2.direction();
+        qWarning() << Q_FUNC_INFO << "direction:" << e1.direction() << e2.direction();
         return false;
     }
     if (e1.startTime().toTime_t() != e2.startTime().toTime_t()) {
-        qWarning() << "startTime:" << e1.startTime() << e2.startTime();
+        qWarning() << Q_FUNC_INFO << "startTime:" << e1.startTime() << e2.startTime();
         return false;
     }
     if (e1.endTime().toTime_t() != e2.endTime().toTime_t()) {
-        qWarning() << "endTime:" << e1.endTime() << e2.endTime();
+        qWarning() << Q_FUNC_INFO << "endTime:" << e1.endTime() << e2.endTime();
         return false;
     }
     if (e1.isDraft() != e2.isDraft()) {
-        qWarning() << "isDraft:" << e1.isDraft() << e2.isDraft();
+        qWarning() << Q_FUNC_INFO << "isDraft:" << e1.isDraft() << e2.isDraft();
         return false;
     }
     if (e1.isRead() != e2.isRead()) {
-        qWarning() << "isRead:" << e1.isRead() << e2.isRead();
+        qWarning() << Q_FUNC_INFO << "isRead:" << e1.isRead() << e2.isRead();
         return false;
     }
     if (e1.isMissedCall() != e2.isMissedCall()) {
-        qWarning() << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
+        qWarning() << Q_FUNC_INFO << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
         return false;
     }
     if (e1.isEmergencyCall() != e2.isEmergencyCall()) {
-        qWarning() << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
+        qWarning() << Q_FUNC_INFO << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
         return false;
     }
 //    QCOMPARE(e1.bytesSent(), e2.bytesSent());
 //    QCOMPARE(e1.bytesReceived(), e2.bytesReceived());
     if (e1.localUid() != e2.localUid()) {
-        qWarning() << "localUid:" << e1.localUid() << e2.localUid();
+        qWarning() << Q_FUNC_INFO << "localUid:" << e1.localUid() << e2.localUid();
         return false;
     }
     if (e1.remoteUid() != e2.remoteUid()) {
-        qWarning() << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
+        qWarning() << Q_FUNC_INFO << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
         return false;
     }
     if (e1.freeText() != e2.freeText()) {
-        qWarning() << "freeText:" << e1.freeText() << e2.freeText();
+        qWarning() << Q_FUNC_INFO << "freeText:" << e1.freeText() << e2.freeText();
         return false;
     }
     if (e1.groupId() != e2.groupId()) {
-        qWarning() << "groupId:" << e1.groupId() << e2.groupId();
+        qWarning() << Q_FUNC_INFO << "groupId:" << e1.groupId() << e2.groupId();
         return false;
     }
     if (e1.fromVCardFileName() != e2.fromVCardFileName()) {
-        qWarning() << "vcardFileName:" << e1.fromVCardFileName() << e2.fromVCardFileName();
+        qWarning() << Q_FUNC_INFO << "vcardFileName:" << e1.fromVCardFileName() << e2.fromVCardFileName();
         return false;
     }
     if (e1.fromVCardLabel() != e2.fromVCardLabel()) {
-        qWarning() << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
+        qWarning() << Q_FUNC_INFO << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
         return false;
     }
     if (e1.status() != e2.status()) {
-        qWarning() << "status:" << e1.status() << e2.status();
+        qWarning() << Q_FUNC_INFO << "status:" << e1.status() << e2.status();
         return false;
     }
 

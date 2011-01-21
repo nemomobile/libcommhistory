@@ -35,12 +35,12 @@
 #include "eventtreeitem.h"
 #include "trackerio.h"
 #include "libcommhistoryexport.h"
-#include "committingtransaction.h"
 
 namespace CommHistory {
 
 class QueryRunner;
 class ContactListener;
+class CommittingTransaction;
 
 /*!
  * \class EventModelPrivate
@@ -130,7 +130,7 @@ public:
     QString newObjectPath();
     QModelIndex findEventRecursive(int id, EventTreeItem *parent) const;
 
-    CommittingTransaction& commitTransaction(const QList<Event> &events);
+    CommittingTransaction* commitTransaction(const QList<Event> &events);
 
     bool canFetchMore() const;
 
@@ -189,8 +189,6 @@ public:
     // (local id, remote id) -> (contact id, name)
     QMap<QPair<QString,QString>, QPair<int, QString> > contactCache;
 
-    QList<CommittingTransaction> transactions;
-
     QThread *bgThread;
 
     TrackerIO *m_pTracker;
@@ -209,9 +207,6 @@ public Q_SLOTS:
     virtual void eventsUpdatedSlot(const QList<CommHistory::Event> &events);
 
     virtual void eventDeletedSlot(int id);
-
-    void commitFinishedSlot();
-    void commitErrorSlot(QString message);
 
     void canFetchMoreChangedSlot(bool canFetch);
 

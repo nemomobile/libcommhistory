@@ -42,10 +42,10 @@ QEventLoop *loop;
 int modifiedGroupId = -1;
 int addedGroupId = -1;
 
-QString mms_token1("111-111-111");
-QString mms_token2("222-222-222");
-QString mms_token3("333-333-333");
-QString mms_content_path(".mms/msg");
+#define mms_token1 QLatin1String("111-111-111")
+#define mms_token2 QLatin1String("222-222-222")
+#define mms_token3 QLatin1String("333-333-333")
+#define mms_content_path QLatin1String(".mms/msg")
 
 void GroupModelTest::eventsAddedSlot(const QList<CommHistory::Event> &events)
 {
@@ -86,14 +86,6 @@ void GroupModelTest::dataChangedSlot(const QModelIndex &start, const QModelIndex
     Q_UNUSED(end);
     qDebug() << "dataChanged";
     loop->exit(0);
-}
-
-void GroupModelTest::idle(int msec)
-{
-    QTime timer;
-    timer.start();
-    while (timer.elapsed() < msec)
-        QCoreApplication::processEvents();
 }
 
 void GroupModelTest::initTestCase()
@@ -160,16 +152,19 @@ void GroupModelTest::init()
 
     // TODO: groupsCommitted() would be nice to have - spin loop to make
     // sure all new groups have been added
-    idle(2000);
+    QTest::qWait(2000);
 }
 
 void GroupModelTest::cleanup()
 {
+    QTest::qWait(1000);
+
     deleteAll();
     QDir mms_content(QDir::homePath() + QDir::separator() + mms_content_path);
     mms_content.rmdir(mms_token1);
     mms_content.rmdir(mms_token2);
     mms_content.rmdir(mms_token3);
+    QTest::qWait(1000);
 }
 
 void GroupModelTest::addGroups()
@@ -245,7 +240,7 @@ void GroupModelTest::modifyGroup()
     group5.setChatName("MUC topic modified");
     QVERIFY(model.modifyGroup(group5));
     loop->exec();
-    idle(1000);
+    QTest::qWait(1000);
 
     QCOMPARE(modifiedGroupId,group5.id());
     modifiedGroupId = -1;
@@ -298,7 +293,7 @@ void GroupModelTest::getGroups()
     group.setId(-1);
     QVERIFY(model.addGroup(group));
     loop->exec();
-    idle(1000);
+    QTest::qWait(1000);
     QCOMPARE(model.rowCount(), 5);
     QCOMPARE(listenerModel.rowCount(), 5);
 
@@ -328,7 +323,7 @@ void GroupModelTest::getGroups()
     QCOMPARE(model.rowCount(), 3);
     QCOMPARE(listenerModel.rowCount(), 3);
 
-    idle(1000);
+    QTest::qWait(1000);
 
     /* filter by localUid and IM remoteUid */
     modelReady.clear();
@@ -355,7 +350,7 @@ void GroupModelTest::getGroups()
     QCOMPARE(model.rowCount(), 2);
     QCOMPARE(listenerModel.rowCount(), 2);
 
-    idle(1000);
+    QTest::qWait(1000);
 
     /* filter by localUid and phone number remoteUid */
     modelReady.clear();
@@ -396,7 +391,7 @@ void GroupModelTest::updateGroups()
             this, SLOT(dataChangedSlot(const QModelIndex &, const QModelIndex &)));
 
     // update last event of group
-    idle(1000); // separate event from the rest
+    QTest::qWait(1000); // separate event from the rest
     EventModel model;
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
 
@@ -499,7 +494,7 @@ void GroupModelTest::deleteGroups()
     messageId = groupModel.group(groupModel.index(0, 0)).lastEventId();
     deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id());
     loop->exec();
-    idle(1000);
+    QTest::qWait(1000);
     QCOMPARE(groupModel.rowCount(), numGroups - 1);
     QVERIFY(!model.trackerIO().getEvent(messageId, event));
 
@@ -508,7 +503,7 @@ void GroupModelTest::deleteGroups()
     deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id(),
                               false);
     loop->exec();
-    idle(1000);
+    QTest::qWait(1000);
     QCOMPARE(groupModel.rowCount(), numGroups - 2);
     QVERIFY(model.trackerIO().getEvent(messageId, event));
 
@@ -543,7 +538,7 @@ void GroupModelTest::deleteGroups()
 
     deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id());
     loop->exec();
-    idle(1000);
+    QTest::qWait(1000);
     QCOMPARE(groupModel.rowCount(), numGroups - 3);
 
     QVERIFY(!model.trackerIO().getEvent(sms.id(), event));
@@ -583,7 +578,7 @@ void GroupModelTest::streamingQuery()
         addTestEvent(eventModel, Event::IMEvent, Event::Outbound, ACCOUNT1, group1.id());
         QVERIFY(waitSignal(eventsCommitted, 5000));
     }
-    idle(2000);
+    QTest::qWait(2000);
     QVERIFY(groupModel.getGroups());
 
     int total = groupModel.rowCount();
@@ -612,17 +607,28 @@ void GroupModelTest::streamingQuery()
 
         qDebug() << "chunk size: " << chunkSize;
 
-        QVERIFY(waitSignal(rowsInserted, 5000));
-
-        QList<QVariant> args = rowsInserted.takeFirst();
         bool lastBatch = count + chunkSize >= total;
         int expectedEnd = lastBatch ? total -1 : count + chunkSize -1;
-        qDebug() << "rows start in streaming model: " << args.at(1).toInt();
-        qDebug() << "rows start should be: " << count;
-        qDebug() << "rows end in streaming model: " << args.at(2).toInt();
-        qDebug() << "rows end should be: " << expectedEnd;
-        QCOMPARE(args.at(1).toInt(), count); // start
-        QCOMPARE(args.at(2).toInt(), expectedEnd); // end
+        int lastInserted = -1;
+        int firstInserted = -1;
+
+        while (expectedEnd != lastInserted) {
+            QVERIFY(waitSignal(rowsInserted, 5000));
+
+            if (firstInserted == -1)
+                firstInserted = rowsInserted.first().at(1).toInt();
+            lastInserted = rowsInserted.last().at(2).toInt(); // end
+
+            qDebug() << "rows start in streaming model: " << firstInserted;
+            qDebug() << "rows start should be: " << count;
+            qDebug() << "rows end in streaming model: " << lastInserted;
+            qDebug() << "rows end should be: " << expectedEnd;
+
+            rowsInserted.clear();
+        }
+
+        QCOMPARE(firstInserted, count); // start
+
         for (int i = count; i < expectedEnd + 1; i++) {
             Group group1 = groupModel.group(groupModel.index(i, 0));
             Group group2 = streamModel.group(streamModel.index(i, 0));
@@ -634,22 +640,19 @@ void GroupModelTest::streamingQuery()
         }
 
         // You should be able to fetch more if total number of groups is not yet reached:
-        if ( args.at(2).toInt() < total-1 )
+        if ( expectedEnd < total-1 )
         {
             QVERIFY(streamModel.canFetchMore(QModelIndex()));
-        }
-
-        if (!lastBatch)
             QVERIFY(modelReady.isEmpty());
 
-        qDebug() << "Calling fetchMore from streaming model...";
-        streamModel.fetchMore(QModelIndex());
+            qDebug() << "Calling fetchMore from streaming model...";
+            streamModel.fetchMore(QModelIndex());
+        }
+
         count += chunkSize;
     }
     QVERIFY(waitSignal(modelReady, 5000));
-    QVERIFY(rowsInserted.isEmpty());
-    // TODO: NB#208137
-    //QVERIFY(!streamModel.canFetchMore(QModelIndex()));
+    QVERIFY(!streamModel.canFetchMore(QModelIndex()));
     QCOMPARE(idsOrig.toSet().size(), idsOrig.size());
     QCOMPARE(idsStream.toSet().size(), idsStream.size());
     QVERIFY(idsOrig.toSet() == idsStream.toSet());
@@ -742,7 +745,6 @@ void GroupModelTest::deleteMmsContent()
     addTestMms(eventModel, Event::Inbound, ACCOUNT1, group3.id(), mms_token3, "test MMS to delete");
     QVERIFY(waitSignal(eventsCommitted, 5000));
 
-
     QVERIFY(model.trackerIO().getEvent(id1, e));
     QVERIFY(model.trackerIO().deleteEvent(e, 0));
     QTest::qWait(1000);
@@ -785,6 +787,9 @@ void GroupModelTest::markGroupAsRead()
     int eventId2 = addTestEvent(eventModel, Event::IMEvent, Event::Inbound, ACCOUNT2, group.id(), "Mark group as read test 2");
 
     QVERIFY(groupModel.markAsReadGroup(group.id()));
+
+    QTest::qWait(1000);
+
     Event e1, e2;
     QVERIFY(groupModel.trackerIO().getEvent(eventId1, e1));
     QVERIFY(e1.isRead());
@@ -808,7 +813,7 @@ void GroupModelTest::resolveContact()
     QString contactName = QString("Test Contact 123");
     addTestContact(contactName, phoneNumber);
 
-    idle(2000);
+    QTest::qWait(2000);
 
     Group grp;
     grp.setLocalUid(RING_ACCOUNT);
@@ -822,7 +827,6 @@ void GroupModelTest::resolveContact()
     loop->exec();
     // Waiting for dataChanged signal to update resolved contact name into the group.
     QVERIFY(waitSignal(groupDataChanged, 5000));
-    groupDataChanged.clear();
 
     QVERIFY(grp.id() != -1);
 
@@ -844,8 +848,8 @@ void GroupModelTest::resolveContact()
     modifyTestContact(newName, phoneNumber);
 
     // Waiting for dataChanged signal to update contact name into the group.
-    QVERIFY(waitSignal(groupDataChanged, 10000));
     groupDataChanged.clear();
+    QVERIFY(waitSignal(groupDataChanged, 30000));
 
     // Check that group model is updated:
     group = groupModel.group(groupModel.index(0, 0));
@@ -855,13 +859,13 @@ void GroupModelTest::resolveContact()
     QCOMPARE(group.contactName(),newName);
 
     // DELETE CONTACT:
-    QPointer<QContactManager> contactManager = new QContactManager("tracker");
+    QContactManager contactManager;
     QContactLocalId qContactId(group.contactId());
 
-    QVERIFY(contactManager->removeContact(qContactId));
+    QVERIFY(contactManager.removeContact(qContactId));
     // Waiting for dataChanged signal to indicate that contact name has been removed from the group.
-    QVERIFY(waitSignal(groupDataChanged, 5000));
     groupDataChanged.clear();
+    QVERIFY(waitSignal(groupDataChanged, 5000));
 
     // Check that group model is updated:
     group = groupModel.group(groupModel.index(0, 0));
@@ -870,7 +874,6 @@ void GroupModelTest::resolveContact()
     QCOMPARE(group.remoteUids(), grp.remoteUids());
     QCOMPARE(group.contactName(),QString());
     QCOMPARE(group.contactId(),0);
-    contactManager->deleteLater();
 }
 
 QTEST_MAIN(GroupModelTest)
