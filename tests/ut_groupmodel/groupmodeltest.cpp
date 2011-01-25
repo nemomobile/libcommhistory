@@ -129,9 +129,7 @@ void GroupModelTest::initTestCase()
 
 void GroupModelTest::init()
 {
-    GroupModel model;
     EventModel eventModel;
-    model.setQueryMode(EventModel::SyncQuery);
 
     Group g;
     addTestGroup(g,ACCOUNT1,QString("td@localhost"));
@@ -178,6 +176,7 @@ void GroupModelTest::addGroups()
 {
     GroupModel model;
     EventModel eventModel;
+    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
 
     /* add invalid group */
@@ -225,6 +224,7 @@ void GroupModelTest::addGroups()
 void GroupModelTest::modifyGroup()
 {
     GroupModel model;
+    model.enableContactChanges(false);
 
     Group group5;
     group5.setChatName("MUC topic");
@@ -271,8 +271,11 @@ void GroupModelTest::getGroups()
     QFETCH(bool, useThread);
 
     GroupModel model;
+    model.enableContactChanges(false);
+
     QSignalSpy modelReady(&model, SIGNAL(modelReady()));
     GroupModel listenerModel;
+    listenerModel.enableContactChanges(false);
 
     QThread modelThread;
     if (useThread) {
@@ -386,6 +389,7 @@ void GroupModelTest::getGroups()
 void GroupModelTest::updateGroups()
 {
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     groupModel.setQueryMode(EventModel::SyncQuery);
     QVERIFY(groupModel.getGroups(ACCOUNT1));
     connect(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
@@ -466,6 +470,7 @@ void GroupModelTest::deleteGroups()
     Event event;
     int messageId = 0;
 
+    groupModel.enableContactChanges(false);
     groupModel.setQueryMode(EventModel::SyncQuery);
     QVERIFY(groupModel.getGroups());
     int numGroups = groupModel.rowCount();
@@ -543,8 +548,10 @@ void GroupModelTest::streamingQuery()
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     groupModel.setQueryMode(EventModel::SyncQuery);
     GroupModel streamModel;
+    streamModel.enableContactChanges(false);
 
     QThread modelThread;
     if (useThread) {
@@ -669,6 +676,7 @@ void GroupModelTest::deleteMmsContent()
 {
     Group group1, group2, group3;
     GroupModel model;
+    model.enableContactChanges(false);
     EventModel eventModel;
     Event e;
     int id1, id2, id3;
@@ -749,6 +757,7 @@ void GroupModelTest::markGroupAsRead()
     EventModel eventModel;
     GroupModel groupModel;
 
+    groupModel.enableContactChanges(false);
     Group group;
     addTestGroup(group,ACCOUNT2,QString("td@localhost"));
 

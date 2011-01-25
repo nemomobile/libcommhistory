@@ -90,6 +90,7 @@ void addTestGroups(Group &group1, Group &group2)
 void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 {
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     grp.setLocalUid(localUid);
     QStringList uids;
     uids << remoteUid;

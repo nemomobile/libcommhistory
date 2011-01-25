@@ -124,6 +124,7 @@ void UnreadEventModelTest::addEvent()
     watcher.setModel(&model);
     model.setQueryMode(EventModel::SyncQuery);
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
 
     group1.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     QStringList uids;

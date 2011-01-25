@@ -395,6 +395,7 @@ void EventModelTest::testDeleteEventGroupUpdated()
     watcher.setModel(&model);
 
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     Group group;
     const QString LOCAL_ID("/org/freedesktop/Telepathy/Account/ring/tel/ring");
     const QString REMOTE_ID("12345");
@@ -1099,6 +1100,7 @@ void EventModelTest::testStreaming()
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
     Group group;
 
     QThread modelThread;
@@ -1197,6 +1199,7 @@ void EventModelTest::testModifyInGroup()
 
     Group group;
     GroupModel groupModel;
+    groupModel.enableContactChanges(false);
 
     QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), event.id());
