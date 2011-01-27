@@ -657,7 +657,8 @@ void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
         contacts[0].isOfType<nco::PersonContact>();
         RDFVariable imChannel = contacts[0].variable(contactChannel);
         RDFVariable imParticipant = imChannel.property<nmo::hasParticipant>();
-        RDFVariable imAddress = contacts[0].property<nco::hasIMAddress>();
+        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
+        RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
         imAddress = imParticipant.property<nco::hasIMAddress>();
 
         // by phone number (last digits)
