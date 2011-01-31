@@ -228,40 +228,28 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
         RDFVariable subContact = contactSelect.newColumnAs(contact);
 
         RDFVariable channel = contactSelect.variable(LAT("channel"));
-        RDFVariableList contacts = subContact.unionChildren(3);
+        RDFVariableList contacts = subContact.unionChildren(2);
 
         // by IM address...
         contacts[0].isOfType<nco::PersonContact>();
         RDFVariable imChannel = contacts[0].variable(channel);
         RDFVariable imParticipant;
+        RDFVariable imAddress;
         if (communicationChannel.isEmpty()) {
             imChannel = subMessage.property<nmo::communicationChannel>();
             imParticipant = imChannel.property<nmo::hasParticipant>();
+            imAddress = imParticipant.property<nco::hasIMAddress>();
         } else {
             imChannel = communicationChannel;
             imParticipant = imChannel.property<nmo::hasParticipant>();
+            imAddress = imParticipant.property<nco::hasIMAddress>();
         }
-        RDFVariable imAddress = contacts[0].property<nco::hasIMAddress>();
-        imAddress = imParticipant.property<nco::hasIMAddress>(); // not an assignment
-
-        // or phone number (last digits)
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable phoneChannel = contacts[1].variable(channel);
-        RDFVariable phoneParticipant;
-        if (communicationChannel.isEmpty()) {
-            phoneChannel = subMessage.property<nmo::communicationChannel>();
-            phoneParticipant = phoneChannel.property<nmo::hasParticipant>();
-        } else {
-            phoneChannel = communicationChannel;
-            phoneParticipant = phoneChannel.property<nmo::hasParticipant>();
-        }
-        RDFVariable number = phoneParticipant.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-        contacts[1].property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>() = number;
+        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
+        imAffiliation.property<nco::hasIMAddress>() = imAddress;
 
         // affiliation (work number)
-        contacts[2].isOfType<nco::PersonContact>();
-        RDFVariable affChannel = contacts[2].variable(channel);
+        contacts[1].isOfType<nco::PersonContact>();
+        RDFVariable affChannel = contacts[1].variable(channel);
         RDFVariable affParticipant;
         if (communicationChannel.isEmpty()) {
             affChannel = subMessage.property<nmo::communicationChannel>();
@@ -272,7 +260,7 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
         }
         RDFVariable affPhoneNumber = affParticipant.property<nco::hasPhoneNumber>()
             .property<maemo::localPhoneNumber>();
-        contacts[2].property<nco::hasAffiliation>()
+        contacts[1].property<nco::hasAffiliation>()
             .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>() = affPhoneNumber;
 
         subSelect.addColumnAs(contactSelect.asExpression(), contact);
@@ -370,7 +358,8 @@ void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
         RDFSubSelect contactSelect;
         RDFVariable subContact = contactSelect.newColumnAs(contact);
         subContact.isOfType<nco::PersonContact>();
-        subContact.property<nco::hasIMAddress>(targetAddress);
+        RDFVariable imAffiliation = subContact.property<nco::hasAffiliation>();
+        imAffiliation.property<nco::hasIMAddress>(targetAddress);
 
         subSelect.addColumnAs(contactSelect.asExpression(), contact);
 
@@ -425,76 +414,43 @@ void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
         || propertyMask.contains(Event::ContactName)) {
         RDFSubSelect contactSelect;
         RDFVariable subContact = contactSelect.newColumnAs(contact);
-        RDFVariableList contacts = subContact.unionChildren(4);
+        RDFVariableList contacts = subContact.unionChildren(2);
 
         /*
-          contact -> nco:hasIMAddress) == (call from/to -> nco:hasIMAddress)
-        */
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable imCall = contacts[0].variable(subCall);
-        RDFVariable imAddress = contacts[0].variable(LAT("imAddress"));
-        RDFVariable contactIMAddress = contacts[0].property<nco::hasIMAddress>();
-
-        RDFPattern imFrom = contacts[0].pattern().child();
-        RDFPattern imTo = contacts[0].pattern().child();
-        imFrom.union_(imTo);
-        imFrom.variable(subCall).property<nmo::from>(imAddress);
-        imTo.variable(subCall).property<nmo::to>(imAddress);
-
-        imAddress.property<nco::hasIMAddress>(contactIMAddress);
-
-        /*
-          work address:
           (contact -> nco:hasAffiliation -> nco:hasIMAddress) ==
           (call nmo:from|nmo:to -> nco:hasIMAddress)
         */
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable affCall = contacts[1].variable(subCall);
-        RDFVariable affAddress = contacts[1].variable(LAT("imAddress"));
-        RDFVariable affIMAddress = contacts[1].property<nco::hasIMAddress>();
+        contacts[0].isOfType<nco::PersonContact>();
+        RDFVariable affCall = contacts[0].variable(subCall);
+        RDFVariable affAddress = contacts[0].variable(LAT("imAddress"));
+//        RDFVariable affIMAddress = contacts[0].property<nco::hasIMAddress>();
         RDFVariable affiliation;
-        contacts[1].property<nco::hasAffiliation>(affiliation);
+        contacts[0].property<nco::hasAffiliation>(affiliation);
         affiliation.property<nco::hasIMAddress>(affAddress);
 
-        RDFPattern affFrom = contacts[1].pattern().child();
-        RDFPattern affTo = contacts[1].pattern().child();
+        RDFPattern affFrom = contacts[0].pattern().child();
+        RDFPattern affTo = contacts[0].pattern().child();
         affFrom.union_(affTo);
-        affFrom.variable(subCall).property<nmo::from>(affAddress);
-        affTo.variable(subCall).property<nmo::to>(affAddress);
 
-        affAddress.property<nco::hasIMAddress>(contactIMAddress);
+        RDFVariable callFrom = affFrom.variable(subCall).property<nmo::from>();
+        RDFVariable callFromAddress = callFrom.property<nco::hasIMAddress>(affAddress);
 
-        /*
-          (contact -> nco:hasPhoneNumber -> maemo:localPhoneNumber) ==
-          (call nmo:from|nmo:to -> nco:hasPhoneNumber -> maemo:localPhoneNumber)
-        */
-        contacts[2].isOfType<nco::PersonContact>();
+        RDFVariable callTo = affTo.variable(subCall).property<nmo::to>();
+        RDFVariable callToAddress = callTo.property<nco::hasIMAddress>(affAddress);
 
-        RDFVariable phoneNumber = contacts[2].variable(LAT("phoneNumber"));
-        RDFVariable contactPhoneNumber = contacts[2].property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-
-        RDFPattern phoneFrom = contacts[2].pattern().child();
-        RDFPattern phoneTo = contacts[2].pattern().child();
-        phoneFrom.union_(phoneTo);
-        phoneFrom.variable(subCall).property<nmo::from>(phoneNumber);
-        phoneTo.variable(subCall).property<nmo::to>(phoneNumber);
-
-        phoneNumber.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>(contactPhoneNumber);
+//        affAddress.property<nco::hasIMAddress>(affIMAddress);
 
         /*
-          work number:
           (contact -> nco:hasAffiliation -> nco:hasPhoneNumber -> maemo:localPhoneNumber) ==
           (call nmo:from|nmo:to -> nco:hasPhoneNumber -> maemo:localPhoneNumber)
         */
-        contacts[3].isOfType<nco::PersonContact>();
-        RDFVariable affPhoneNumber = contacts[3].variable(LAT("phoneNumber"));
-        RDFVariable affContactPhoneNumber = contacts[3].property<nco::hasAffiliation>()
+        contacts[1].isOfType<nco::PersonContact>();
+        RDFVariable affPhoneNumber = contacts[1].variable(LAT("phoneNumber"));
+        RDFVariable affContactPhoneNumber = contacts[1].property<nco::hasAffiliation>()
             .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>();
 
-        RDFPattern affPhoneFrom = contacts[3].pattern().child();
-        RDFPattern affPhoneTo = contacts[3].pattern().child();
+        RDFPattern affPhoneFrom = contacts[1].pattern().child();
+        RDFPattern affPhoneTo = contacts[1].pattern().child();
         affPhoneFrom.union_(affPhoneTo);
         affPhoneFrom.variable(subCall).property<nmo::from>(affPhoneNumber);
         affPhoneTo.variable(subCall).property<nmo::to>(affPhoneNumber);
@@ -508,7 +464,7 @@ void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
         query.addColumn(LAT("contactId"), contact.function<nco::contactLocalUID>());
         query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
         query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), contactIMAddress.function<nco::imNickname>());
+        query.addColumn(LAT("imNickname"), affAddress.function<nco::imNickname>());
     }
 
     if (propertyMask.contains(Event::Direction))
