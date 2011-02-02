@@ -194,7 +194,7 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
     RDFSubSelect subSelect;
     RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
     subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::sentDate>();
+    date = subMessage.property<nmo::receivedDate>();
     RDFVariable subDate = subSelect.newColumnAs(date);
 
     query.addColumn(LAT("type"), outerMessage.function<rdf::type>());
@@ -309,7 +309,7 @@ void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
     RDFSubSelect subSelect;
     RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
     subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::sentDate>();
+    date = subMessage.property<nmo::receivedDate>();
     RDFVariable subDate = subSelect.newColumnAs(date);
 
     RDFVariable outerAddress;
