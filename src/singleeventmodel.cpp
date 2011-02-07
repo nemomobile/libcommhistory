@@ -70,7 +70,7 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
     RDFSelect query;
     RDFVariable message = RDFVariable::fromType<nmo::Message>();
     message == uri;
-    d->tracker()->prepareMessageQuery(query, message, Event::allProperties());
+    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
 
     return d->executeQuery(query);
 }
@@ -100,7 +100,7 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     if (groupId > -1)
         message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
 
-    d->tracker()->prepareMessageQuery(query, message, Event::allProperties());
+    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
 
     query.distinct();
 
