@@ -36,7 +36,8 @@ SUBDIRS = model_example \
           ut_syncmodel \
           ut_unreadeventsmodel \
           ut_classzerosmsmodel \
-          ut_singleeventmodel
+          ut_singleeventmodel \
+          ut_eventsquery
 CONFIG += ordered
 
 # make sure the destination path exists
