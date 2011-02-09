@@ -21,9 +21,12 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
-#include <QtTracker/rdfunbound.h>
-#include <QtTracker/ontologies/nmo.h>
+
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlQuery>
+#include <QSparqlError>
+
 #include <QFile>
 #include <QTextStream>
 
@@ -220,60 +223,33 @@ bool compareEvents(Event &e1, Event &e2)
 
 void deleteAll()
 {
-    SopranoLive::RDFTransactionPtr transaction;
-    transaction = ::tracker()->createTransaction();
+    qDebug() << __FUNCTION__ << "- Deleting all";
 
-    qDebug() << __FUNCTION__ << "- Deleting all messages";
-    RDFUpdate messageDeleter;
-    messageDeleter.addDeletion(RDFVariable::fromType<nmo::Message>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(messageDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all attachments";
-    RDFUpdate attachmentDeleter;
-    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Attachment>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Multipart>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(attachmentDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all calls";
-    RDFUpdate callDeleter;
-    callDeleter.addDeletion(RDFVariable::fromType<nmo::Call>(),
-                            rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(callDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all groups";
-    RDFUpdate groupDeleter;
-    groupDeleter.addDeletion(RDFVariable::fromType<nmo::CommunicationChannel>(),
-                             rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(groupDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all contacts";
-    RDFUpdate contactDeleter;
-    contactDeleter.addDeletion(RDFVariable::fromType<nco::PersonContact>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(contactDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all phone numbers";
-    RDFUpdate numberDeleter;
-    numberDeleter.addDeletion(RDFVariable::fromType<nco::PhoneNumber>(),
-                              rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(numberDeleter);
-    transaction->commit(true);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String(
+            "DELETE {?n a rdfs:Resource}"
+            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                "nmo:Call,"
+                                                "nmo:CommunicationChannel,"
+                                                "nco:Contact,"
+                                                "nco:IMAddress,"
+                                                "nco:PhoneNumber))}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
+    if (result->hasError())
+        qDebug() << result->lastError().message();
 }
 
 void deleteSmsMsgs()
 {
-    RDFUpdate deleter;
-    deleter.addDeletion(RDFVariable::fromType<nmo::SMSMessage>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(deleter);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String("DELETE {?n a rdfs:Resource} WHERE {?n rdf:type nmo:SMSMessage}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
+    if (result->hasError())
+        qDebug() << result->lastError().message();
 }
 
 QString randomMessage(int words)
