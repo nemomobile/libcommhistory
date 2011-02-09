@@ -24,9 +24,6 @@
 #define COMMHISTORY_DRAFTMODEL_H
 
 #include "eventmodel.h"
-#include "event.h"
-#include "callevent.h"
-#include "group.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
