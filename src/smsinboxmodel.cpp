@@ -20,18 +20,11 @@
 **
 ******************************************************************************/
 
-#include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
-#include "trackerio.h"
-#include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "smsinboxmodel.h"
-#include "event.h"
-
-using namespace SopranoLive;
+#include "eventsquery.h"
 
 namespace CommHistory {
 
@@ -70,13 +63,13 @@ bool SMSInboxModel::getEvents()
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::SMSMessage>();
-    message.property<nmo::isSent>(LiteralValue(false));
-    message.property<nmo::isDraft>(LiteralValue(false));
-    message.property<nmo::isDeleted>(LiteralValue(false));
+    EventsQuery query(d->propertyMask);
 
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
+    query.addPattern(QLatin1String("%1 nmo:isSent \"false\"; "
+                                      "nmo:isDraft \"false\"; "
+                                      "nmo:isDeleted \"false\"; "
+                                      "rdf:type nmo:SMSMessage ."))
+            .variable(Event::Id);
 
     return d->executeQuery(query);
 }
