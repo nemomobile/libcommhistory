@@ -24,15 +24,11 @@
 #define COMMHISTORY_SYNCSMSMODEL_H
 
 #include <QDateTime>
-#include <QtTracker/Tracker>
-#include <QtTracker/ontologies/nmo.h>
-#include <QtTracker/ontologies/nfo.h>
 
 #include "eventmodel.h"
 #include "event.h"
 #include "libcommhistoryexport.h"
 
-using namespace SopranoLive;
 namespace CommHistory {
 
 struct LIBCOMMHISTORY_EXPORT SyncSMSFilter
@@ -48,19 +44,6 @@ struct LIBCOMMHISTORY_EXPORT SyncSMSFilter
     {
     }
 
-};
-
-struct LIBCOMMHISTORY_EXPORT FolderInfo
-{
-    FolderInfo() { }
-    FolderInfo(int folder, int parent)
-            :folderId(folder), parentId(parent)
-    {}
-    int folderId;
-    int parentId;
-    QString folderName;
-    QDateTime createdTime;
-    QDateTime modifiedTime;
 };
 
 class SyncSMSModelPrivate;
@@ -99,12 +82,6 @@ public:
       * If filter.time is set and either of lastModified or deleted are  set, then all messages whose sent/received time is lesser than  filter.time and lastModifiedTime is greater or equal to filter.time would be fetched
       */
     void setSyncSmsFilter(const SyncSMSFilter& filter);
-
-    Q_DECL_DEPRECATED QList<FolderInfo> folderInfo() const;
-
-    QSqlError addPrivateFolders(QList<FolderInfo> listFolderInfo);
-
-    bool folderExists(int folderId);
 
 private:
     Q_DECLARE_PRIVATE(SyncSMSModel);

@@ -42,7 +42,6 @@ private slots:
     void addSmsEvents();
     void addModifyGetSingleSmsEvents();
     void readAddedSmsEventsFromConvModel();
-    void addFolders();
     void cleanupTestCase();
 
 private:

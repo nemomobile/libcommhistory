@@ -20,13 +20,17 @@
 **
 ******************************************************************************/
 
+#include <QtTracker/Tracker>
+#include <QtTracker/ontologies/nmo.h>
+#include <QtTracker/ontologies/nfo.h>
 #include <QtTracker/ontologies/nco.h>
 #include <QtTracker/ontologies/tracker.h>
+
 #include "eventmodel_p.h"
 #include "syncsmsmodel.h"
 #include "trackerio.h"
 
-#include <QtSql>
+using namespace SopranoLive;
 
 namespace CommHistory
 {
@@ -139,48 +143,4 @@ void SyncSMSModel::setSyncSmsFilter(const SyncSMSFilter& filter)
     d->parentId = filter.parentId;
     d->dtTime = filter.time;
     d->lastModified = filter.lastModified;
-}
-
-QList<FolderInfo> SyncSMSModel::folderInfo() const
-{
-    return QList<FolderInfo>();
-}
-
-QSqlError SyncSMSModel::addPrivateFolders(QList<FolderInfo> listFolderInfo)
-{
-    Live<nmo::SMSFolder> myFolder = ::tracker()->strictLiveNode(nmo::iri("predefined-phone-msg-folder-myfolder"));
-    QSqlError errStatus;
-    if (!myFolder) {
-        errStatus.setType(QSqlError::TransactionError);
-        errStatus.setDatabaseText(QLatin1String("Cannot find default MyFolder"));
-        return errStatus;
-    }
-
-    foreach (FolderInfo info, listFolderInfo) {
-        QString folderId = QString(QLatin1String("0x%1")).arg(info.folderId, 0, 16);
-        QString url_folderId = QString(QLatin1String("sms-folder-myfolder-%1")).arg(folderId);;
-        QUrl folderUrl(url_folderId);
-        Live<nmo::SMSFolder> folder = ::tracker()->liveNode(folderUrl);
-        folder->setPhoneMessageFolderId(folderId);
-        folder->setTitle(info.folderName);
-        folder->setContentCreated(QDateTime::currentDateTime()); //setting created time
-        myFolder->addContainsPhoneMessageFolder(folder);
-    }
-
-    if (!listFolderInfo.isEmpty()) { //if there have been any folders added
-        myFolder->setContentLastModified(QDateTime::currentDateTime()); //MyFolder modified time
-    }
-    return errStatus;
-}
-
-bool SyncSMSModel::folderExists(int id)
-{
-    QString folderId = QString(QLatin1String("0x%1")).arg(id, 0, 16);
-    QString folderUrl = QString(QLatin1String("sms-folder-myfolder-%1")).arg(folderId);;
-    Live<nmo::SMSFolder> myFolder = ::tracker()->strictLiveNode(QUrl(folderUrl));
-    if (!myFolder) {
-        qDebug() << "Cannot find My Folder with id" <<  folderId;
-        return false;
-    }
-    return true;
 }
