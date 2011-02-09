@@ -21,24 +21,24 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
-#include "trackerio.h"
-#include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "conversationmodel.h"
 #include "conversationmodel_p.h"
-#include "event.h"
-#include "group.h"
 #include "constants.h"
+#include "eventsquery.h"
 
-using namespace SopranoLive;
-
+namespace {
+static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
+                                             << CommHistory::Event::IsDraft
+                                             << CommHistory::Event::IsMissedCall
+                                             << CommHistory::Event::IsEmergencyCall
+                                             << CommHistory::Event::BytesSent
+                                             << CommHistory::Event::BytesReceived
+                                             << CommHistory::Event::EventCount;
+}
 namespace CommHistory {
-
-using namespace CommHistory;
 
 ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             : EventModelPrivate(model)
@@ -52,14 +52,17 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
     QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", "groupsUpdatedFull",
         this, SLOT(groupsUpdatedFullSlot(const QList<CommHistory::Group> &)));
+    // remove call properties
+    propertyMask -= unusedProperties;
 }
 
 void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
     qDebug() << Q_FUNC_INFO;
-    if (filterDirection == Event::Outbound ||
-        filterGroupId == -1 ||
-        chatType != Group::ChatTypeP2P)
+    if (filterDirection == Event::Outbound
+        || filterGroupId == -1
+        || chatType != Group::ChatTypeP2P
+        || !propertyMask.contains(Event::ContactId))
         return;
 
     foreach (Group g, groups) {
@@ -336,45 +339,78 @@ bool ConversationModel::getEventsWithType(int groupId, CommHistory::Group::ChatT
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-
-    if (!d->filterAccount.isEmpty()) {
-        RDFVariableList unions = message.unionChildren(2);
-        unions[0].property<nmo::to>().property<nco::hasContactMedium>() =
-            QUrl(QString(QLatin1String("telepathy:%1")).arg(d->filterAccount));
-        unions[1].property<nmo::from>().property<nco::hasContactMedium>() =
-            QUrl(QString(QLatin1String("telepathy:%1")).arg(d->filterAccount));
-    }
-
-    if (d->filterType == Event::IMEvent) {
-        message.isOfType<nmo::IMMessage>();
-    } else if (d->filterType == Event::SMSEvent) {
-        message.isOfType<nmo::SMSMessage>();
-    }
-
-    if (d->filterDirection == Event::Outbound) {
-        message.property<nmo::isSent>(LiteralValue(true));
-    } else if (d->filterDirection == Event::Inbound) {
-        message.property<nmo::isSent>(LiteralValue(false));
-    }
-
-    message.property<nmo::isDraft>(LiteralValue(false));
-    message.property<nmo::isDeleted>(LiteralValue(false));
+    EventsQuery query(d->propertyMask);
 
     if (chatType == Group::ChatTypeP2P) {
-        d->tracker()->prepareMessageQuery(query, message, d->propertyMask,
-                                          Group::idToUrl(groupId));
+        query.addPattern(QLatin1String(
+                "{"
+                "SELECT tracker:id(?contact) AS %2 "
+                "fn:string-join((nco:nameGiven(?contact), nco:nameFamily(?contact), nco:imNickname(?imAddress)),\",\") AS %3 "
+                "WHERE { OPTIONAL {"
+                "{?contact nco:hasAffiliation [nco:hasIMAddress ?imAddress] ."
+                " %1 nmo:hasParticipant [nco:hasIMAddress ?imAddress] . "
+                "} "
+                "UNION "
+                "{?contact nco:hasAffiliation [nco:hasPhoneNumber [ maemo:localPhoneNumber ?contactPhone]] ."
+                " %1 nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?contactPhone]] .} "
+                "?contact rdf:type nco:PersonContact . "
+                "}}}"))
+                .variable(Event::GroupId)
+                .variable(Event::ContactId)
+                .variable(Event::ContactName);
     } else if (chatType == Group::ChatTypeUnnamed
                || chatType == Group::ChatTypeRoom) {
-        d->tracker()->prepareMUCQuery(query, message, d->propertyMask,
-                                      Group::idToUrl(groupId));
+        query.addPattern(QLatin1String(
+                "{"
+                "SELECT tracker:id(?contact) AS %2 "
+                "fn:string-join((nco:nameGiven(?contact), nco:nameFamily(?contact), nco:imNickname(?imAddress)),\",\") AS %3 "
+                "WHERE { OPTIONAL {"
+                "?contact nco:hasAffiliation [nco:hasIMAddress ?imAddress] ."
+                "{ %1 nmo:to [nco:hasIMAddress ?imAddress]; nmo:isSent \"true\"} "
+                "UNION "
+                "{ %1 nmo:from [nco:hasIMAddress ?imAddress]; nmo:isSent \"false\"} "
+                "?contact rdf:type nco:PersonContact . "
+                "}}}"))
+                .variable(Event::Id)
+                .variable(Event::ContactId)
+                .variable(Event::ContactName);
     } else {
         qWarning() << Q_FUNC_INFO << ": unsupported chat type" << chatType << "???";
         return false;
     }
 
-    d->chatType = chatType;
+    if (!d->filterAccount.isEmpty()) {
+        query.addPattern(QString(QLatin1String("{%2 nmo:to [nco:hasContactMedium <telepathy:%1>]} "
+                                               "UNION "
+                                               "{%2 nmo:from [nco:hasContactMedium <telepathy:%1>]}"))
+                         .arg(d->filterAccount))
+                .variable(Event::Id);
+    }
+
+    if (d->filterType == Event::IMEvent) {
+        query.addPattern(QLatin1String("%1 rdf:type nmo:IMMessage ."))
+                        .variable(Event::Id);
+    } else if (d->filterType == Event::SMSEvent) {
+        query.addPattern(QLatin1String("%1 rdf:type nmo:SMSMessage ."))
+                        .variable(Event::Id);
+    }
+
+    if (d->filterDirection == Event::Outbound) {
+        query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
+                        .variable(Event::Id);
+    } else if (d->filterDirection == Event::Inbound) {
+        query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
+                         .variable(Event::Id);
+    }
+
+    query.addPattern(QLatin1String("%1 nmo:isDraft \"false\"; nmo:isDeleted \"false\" .")).variable(Event::Id);
+    query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
+                     .arg(Group::idToUrl(groupId).toString()))
+            .variable(Event::Id);
+
+    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
+                     .variable(Event::EndTime)
+                     .variable(Event::Id);
 
     return d->executeQuery(query);
 }

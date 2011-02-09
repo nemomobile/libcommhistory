@@ -110,8 +110,14 @@ void ConversationModelTest::getEvents()
     QVERIFY(watcher.waitForModelReady(5000));
 
     QCOMPARE(model.rowCount(), 10);
-    for (int i = 0; i < model.rowCount(); i++)
-        QVERIFY(model.event(model.index(i, 0)).type() != Event::CallEvent);
+    for (int i = 0; i < model.rowCount(); i++) {
+        Event e1, e2;
+        QModelIndex ind = model.index(i, 0);
+        e1 = model.event(ind);
+        QVERIFY(model.trackerIO().getEvent(e1.id(), e2));
+        QVERIFY(compareEvents(e1, e2));
+        QVERIFY(model.event(ind).type() != Event::CallEvent);
+    }
 
     // add but don't save status message and check content again
     addTestEvent(model, Event::StatusMessageEvent, Event::Outbound, ACCOUNT1,
@@ -170,6 +176,21 @@ void ConversationModelTest::getEvents()
         QCOMPARE(model.event(model.index(i, 0)).type(), Event::IMEvent);
         QCOMPARE(model.event(model.index(i, 0)).localUid(), ACCOUNT1);
         QCOMPARE(model.event(model.index(i, 0)).direction(), Event::Outbound);
+    }
+
+    // run muc query
+    QVERIFY(model.setFilter(Event::IMEvent));
+    QVERIFY(watcher.waitForModelReady(5000));// ignore that it runs query
+    QVERIFY(model.getEventsWithType(group1.id(), CommHistory::Group::ChatTypeRoom));
+    QVERIFY(watcher.waitForModelReady(5000));
+    QCOMPARE(model.rowCount(), 6);
+    for (int i = 0; i < model.rowCount(); i++) {
+        Event e1, e2;
+        QModelIndex ind = model.index(i, 0);
+        e1 = model.event(ind);
+        QVERIFY(model.trackerIO().getEvent(e1.id(), e2));
+        QVERIFY(compareEvents(e1, e2));
+        QCOMPARE(model.event(ind).type(), Event::IMEvent);
     }
 
     modelThread.quit();
@@ -260,6 +281,8 @@ void ConversationModelTest::modifyEvent()
     /* modify invalid event */
     QVERIFY(!model.modifyEvent(event));
     QVERIFY(model.lastError().isValid());
+
+    QVERIFY(model.rowCount() > 0);
 
     int row = rand() % model.rowCount();
     event = model.event(model.index(row, 0));
