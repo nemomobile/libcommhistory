@@ -20,22 +20,15 @@
 **
 ******************************************************************************/
 
-#include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
-#include "trackerio.h"
-#include "eventmodel.h"
 #include "eventmodel_p.h"
-#include "unreadeventsmodel.h"
-#include "event.h"
+#include "eventsquery.h"
 
-using namespace SopranoLive;
+#include "unreadeventsmodel.h"
+
 
 namespace CommHistory {
-
-using namespace CommHistory;
 
 class UnreadEventsModelPrivate : public EventModelPrivate {
 public:
@@ -101,16 +94,15 @@ bool UnreadEventsModel::getEvents(bool includeSentEvents)
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::isRead>(LiteralValue(false));
-    message.property<nmo::isDraft>(LiteralValue(false));
-    message.property<nmo::isDeleted>(LiteralValue(false));
-    if(!includeSentEvents) {
-        message.property<nmo::isSent>(LiteralValue(false));
-    }
+    EventsQuery query(d->propertyMask);
 
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
+    query.addPattern(QLatin1String("%1 nmo:isRead \"false\"; "
+                                      "nmo:isDraft \"false\"; "
+                                      "nmo:isDeleted \"false\" . "))
+            .variable(Event::Id);
+
+    if(!includeSentEvents)
+        query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . ")).variable(Event::Id);
 
     return d->executeQuery(query);
 }
