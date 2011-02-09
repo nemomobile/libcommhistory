@@ -20,18 +20,11 @@
 **
 ******************************************************************************/
 
-#include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
-#include "trackerio.h"
-#include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "outboxmodel.h"
-#include "event.h"
-
-using namespace SopranoLive;
+#include "eventsquery.h"
 
 namespace CommHistory {
 
@@ -75,15 +68,15 @@ bool OutboxModel::getEvents()
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::isSent>(LiteralValue(true));
-    message.property<nmo::isDraft>(LiteralValue(false));
-    message.property<nmo::isDeleted>(LiteralValue(false));
+    EventsQuery query(d->propertyMask);
 
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
+    query.addPattern(QLatin1String("%1 nmo:isSent \"true\"; "
+                                      "nmo:isDraft \"false\"; "
+                                      "nmo:isDeleted \"false\" ."))
+            .variable(Event::Id);
 
     return d->executeQuery(query);
+
 }
 
 }
