@@ -24,8 +24,6 @@
 #define COMMHISTORY_SINGLE_EVENT_MODEL_H
 
 #include "eventmodel.h"
-#include "event.h"
-#include "group.h"
 #include "libcommhistoryexport.h"
 
 class QUrl;
@@ -33,7 +31,6 @@ class QUrl;
 namespace CommHistory {
 
 class SingleEventModelPrivate;
-class Event;
 
 /*!
  * \class UnreadEventsModel

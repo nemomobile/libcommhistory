@@ -20,18 +20,13 @@
 **
 ******************************************************************************/
 
-#include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
-#include "trackerio.h"
-#include "eventmodel.h"
 #include "eventmodel_p.h"
-#include "singleeventmodel.h"
-#include "event.h"
+#include "group.h"
+#include "eventsquery.h"
 
-using namespace SopranoLive;
+#include "singleeventmodel.h"
 
 namespace CommHistory {
 
@@ -67,10 +62,12 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message == uri;
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
+    EventsQuery query(d->propertyMask);
+
+    query.addPattern(QString(QLatin1String("FILTER(%2 = <%1>) ")).arg(uri.toString()))
+            .variable(Event::Id);
+
+    query.addModifier(QLatin1String("LIMIT 1"));
 
     return d->executeQuery(query);
 }
@@ -84,25 +81,24 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     reset();
     d->clearEvents();
 
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
+    EventsQuery query(d->propertyMask);
 
-    RDFPattern pattern = message.pattern().child();
+    QStringList pattern;
     if (!token.isEmpty()) {
-        pattern.variable(message).property<nmo::messageId>() = LiteralValue(token);
+        pattern << QString(QLatin1String("{ %2 nmo:messageId \"%1\" }")).arg(token);
     }
     if (!mmsId.isEmpty()) {
-        pattern = pattern.union_();
-        pattern.variable(message).property<nmo::mmsId>() = LiteralValue(mmsId);
-        message.property<nmo::isSent>(LiteralValue(true));
+        pattern << QString(QLatin1String("{ %2 nmo:mmsId \"%1\" }")).arg(mmsId);
     }
 
+    query.addPattern(pattern.join(QLatin1String("UNION"))).variable(Event::Id);
     if (groupId > -1)
-        message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
+        query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
+                         .arg(Group::idToUrl(groupId).toString()))
+        .variable(Event::Id);
 
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
-
-    query.distinct();
+    query.addModifier(QLatin1String("LIMIT 1"));
+    query.setDistinct(true);
 
     return d->executeQuery(query);
 }

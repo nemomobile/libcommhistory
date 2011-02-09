@@ -46,6 +46,13 @@ void SingleEventModelTest::getEventByUri()
     event.setRemoteUid("123456");
     event.setMessageToken("messageTokenA1");
 
+    // ignore call properties
+    Event::PropertySet p = Event::allProperties();
+    p.remove(Event::IsEmergencyCall);
+    p.remove(Event::IsMissedCall);
+    model.setPropertyMask(p);
+
+    //TODO: add reading invalid id
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
 
@@ -62,6 +69,12 @@ void SingleEventModelTest::getEventByUri()
 void SingleEventModelTest::getEventByTokens()
 {
     SingleEventModel model;
+    // ignore call properties
+    Event::PropertySet p = Event::allProperties();
+    p.remove(Event::IsEmergencyCall);
+    p.remove(Event::IsMissedCall);
+    model.setPropertyMask(p);
+
 
     watcher.setModel(&model);
 
@@ -132,11 +145,6 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 0);
 
-    QVERIFY(model.getEventByTokens("mmsMessageToken", "", -1));
-    QVERIFY(watcher.waitForModelReady(5000));
-
-    QCOMPARE(model.rowCount(), 2);
-
     QVERIFY(model.getEventByTokens("", "mmsId", group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
@@ -144,11 +152,6 @@ void SingleEventModelTest::getEventByTokens()
 
     modelEvent = model.event(model.index(0, 0));
     QVERIFY(compareEvents(mms, modelEvent));
-
-    QVERIFY(model.getEventByTokens("", "mmsId", -1));
-    QVERIFY(watcher.waitForModelReady(5000));
-
-    QCOMPARE(model.rowCount(), 2);
 
     QVERIFY(model.getEventByTokens("", "mmsId", group2.id()));
     QVERIFY(watcher.waitForModelReady(5000));
