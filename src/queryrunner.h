@@ -67,6 +67,11 @@ public:
     void runQuery(SopranoLive::RDFSelect &query, QueryType queryType,
                   const Event::PropertySet &propertyMask = Event::allProperties());
 
+    void runEventsQuery(const QString &query, const QList<Event::Property> &properties);
+
+    void runGroupQuery(const QString &query);
+    void runMessagePartQuery(const QString &query);
+
     void startQueue();
 
     void fetchMore();

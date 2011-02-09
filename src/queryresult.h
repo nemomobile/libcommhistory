@@ -25,7 +25,6 @@
 
 #include <QHash>
 #include <QString>
-#include <QtTracker/Tracker>
 #include <QSparqlResult>
 
 #include "event.h"
@@ -41,7 +40,7 @@ typedef enum {
 } QueryType;
 
 struct QueryResult {
-    SopranoLive::RDFSelect query;
+    QString query;
     QueryType queryType;
     Event::PropertySet propertyMask;
     QPointer<QSparqlResult> result;
@@ -49,8 +48,10 @@ struct QueryResult {
     QHash<QString, int> columns;
     // for message part queries
     int eventId;
+    QList<Event::Property> properties; //TODO: it should be int to use with group model as well
 
     static void fillEventFromModel(QueryResult &result, Event &event);
+    void fillEventFromModel2(Event &event);
     static void fillGroupFromModel(QueryResult &result, Group &group);
     static void fillMessagePartFromModel(QueryResult &result, MessagePart &part);
 

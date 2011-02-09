@@ -31,6 +31,7 @@ using namespace SopranoLive;
 
 // used for filling data from tracker result rows
 #define RESULT_INDEX(COL) result.result->value(result.columns[QLatin1String(COL)])
+#define RESULT_INDEX2(COL) result->value(properties.indexOf(COL))
 
 #define LAT(STR) QLatin1String(STR)
 
@@ -209,6 +210,196 @@ void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
                                         RESULT_INDEX("contactLastName").toString(),
                                         RESULT_INDEX("imNickname").toString());
         eventToFill.setContactName(name);
+    }
+
+    // save data and give back as parameter
+    event = eventToFill;
+    event.resetModifiedProperties();
+}
+
+void QueryResult::fillEventFromModel2(Event &event)
+{
+    Event eventToFill;
+
+    // handle properties common to all events
+    foreach (Event::Property property, properties) {
+        switch (property) {
+        case Event::Id:
+            eventToFill.setId(Event::urlToId(RESULT_INDEX2(Event::Id).toString()));
+            break;
+        case Event::Type: {
+            QStringList types = RESULT_INDEX2(Event::Type).toString().split(QChar(','));
+            if (types.contains(nmo::MMSMessage::iri().toString())) {
+                eventToFill.setType(Event::MMSEvent);
+            } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+                eventToFill.setType(Event::SMSEvent);
+            } else if (types.contains(nmo::IMMessage::iri().toString())) {
+                eventToFill.setType(Event::IMEvent);
+            } else if (types.contains(nmo::Call::iri().toString())) {
+                eventToFill.setType(Event::CallEvent);
+            }
+            break;
+        }
+        case Event::Direction:
+            if (RESULT_INDEX2(Event::Direction).toBool()) {
+                eventToFill.setDirection(Event::Outbound);
+            } else {
+                eventToFill.setDirection(Event::Inbound);
+            }
+            break;
+        case Event::MessageToken:
+            eventToFill.setMessageToken(RESULT_INDEX2(Event::MessageToken).toString());
+            break;
+        case Event::MmsId:
+            eventToFill.setMmsId(RESULT_INDEX2(Event::MmsId).toString());
+            break;
+        case Event::IsDraft:
+            eventToFill.setIsDraft(RESULT_INDEX2(Event::IsDraft).toBool());
+            break;
+        case Event::Subject:
+            eventToFill.setSubject(RESULT_INDEX2(Event::Subject).toString());
+            break;
+        case Event::FreeText:
+            eventToFill.setFreeText(RESULT_INDEX2(Event::FreeText).toString());
+            break;
+        case Event::ReportDelivery:
+            eventToFill.setReportDelivery(RESULT_INDEX2(Event::ReportDelivery).toBool());
+            break;
+        case Event::ReportRead:
+            eventToFill.setReportRead(RESULT_INDEX2(Event::ReportRead).toBool());
+            break;
+        case Event::ReportReadRequested:
+            eventToFill.setReportReadRequested(RESULT_INDEX2(Event::ReportReadRequested).toBool());
+            break;
+        case Event::BytesReceived:
+            eventToFill.setBytesReceived(RESULT_INDEX2(Event::BytesReceived).toInt());
+            break;
+        case Event::ContentLocation:
+            eventToFill.setContentLocation(RESULT_INDEX2(Event::ContentLocation).toString());
+            break;
+        case Event::GroupId: {
+            QString channel = RESULT_INDEX2(Event::GroupId).toString();
+            if (!channel.isEmpty())
+                eventToFill.setGroupId(Group::urlToId(channel));
+            break;
+        }
+        case Event::StartTime:
+            eventToFill.setStartTime(RESULT_INDEX2(Event::StartTime).toDateTime().toLocalTime());
+            break;
+        case Event::EndTime:
+            eventToFill.setEndTime(RESULT_INDEX2(Event::EndTime).toDateTime().toLocalTime());
+            break;
+        case Event::IsRead:
+            eventToFill.setIsRead(RESULT_INDEX2(Event::IsRead).toBool());
+            break;
+        case Event::Status: {
+            QUrl status = RESULT_INDEX2(Event::Status).toString();
+            if (!status.isEmpty()) {
+                if (status == nmo::delivery_status_sent::iri()) {
+                    eventToFill.setStatus(Event::SentStatus);
+                } else if (status == nmo::delivery_status_delivered::iri()) {
+                    eventToFill.setStatus(Event::DeliveredStatus);
+                } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
+                    eventToFill.setStatus(Event::TemporarilyFailedStatus);
+                } else if (status == nmo::delivery_status_permanently_failed::iri()) {
+                    eventToFill.setStatus(Event::PermanentlyFailedStatus);
+                } else {
+                    eventToFill.setStatus(Event::UnknownStatus);
+                }
+            }
+            break;
+        }
+        case Event::ReadStatus: {
+            QUrl status = RESULT_INDEX2(Event::ReadStatus).toString();
+            if (!status.isEmpty()) {
+                if (status == nmo::read_status_read::iri()) {
+                    eventToFill.setReadStatus(Event::ReadStatusRead);
+                } else if (status == nmo::read_status_deleted::iri()) {
+                    eventToFill.setReadStatus(Event::ReadStatusDeleted);
+                } else {
+                    eventToFill.setReadStatus(Event::UnknownReadStatus);
+                }
+            }
+            break;
+        }
+        case Event::LastModified:
+            eventToFill.setLastModified(RESULT_INDEX2(Event::LastModified).toDateTime().toLocalTime());
+            break;
+        case Event::IsMissedCall:
+            eventToFill.setIsMissedCall(!(RESULT_INDEX2(Event::IsMissedCall).toBool()));
+            break;
+        case Event::IsEmergencyCall:
+            eventToFill.setIsEmergencyCall(RESULT_INDEX2(Event::IsEmergencyCall).toBool());
+            break;
+        case Event::ParentId:
+            eventToFill.setParentId(RESULT_INDEX2(Event::ParentId).toInt());
+            break;
+        case Event::FromVCardFileName: { // handle Event::FromVCardLabel as well
+            QString filename = RESULT_INDEX2(Event::FromVCardFileName).toString();
+            if (!filename.isEmpty())
+                eventToFill.setFromVCard(filename, RESULT_INDEX2(Event::FromVCardLabel).toString());
+            break;
+        }
+        case Event::Encoding:
+            eventToFill.setEncoding(RESULT_INDEX2(Event::Encoding).toString());
+            break;
+        case Event::CharacterSet:
+            eventToFill.setCharacterSet(RESULT_INDEX2(Event::CharacterSet).toString());
+            break;
+        case Event::IsDeleted:
+            eventToFill.setDeleted(RESULT_INDEX2(Event::IsDeleted).toBool());
+            break;
+        case Event::ValidityPeriod:
+            eventToFill.setValidityPeriod(RESULT_INDEX2(Event::ValidityPeriod).toInt());
+            break;
+        default:
+            break;// handle below
+        }
+    }
+
+    // local/remote id and direction are common to all events
+    if (properties.contains(Event::LocalUid)
+        || properties.contains(Event::RemoteUid)) {
+        // local contact: <telepathy:/org/.../gabble/jabber/dut_40localhost0>
+        // remote contact: <telepathy:<account>!<imid>> or <tel:+35801234567>
+        QString fromId = RESULT_INDEX2(Event::LocalUid).toString();
+        QString toId = RESULT_INDEX2(Event::RemoteUid).toString();
+
+        if (eventToFill.direction() == Event::Outbound) {
+            eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
+            if (toId.startsWith(LAT("tel:"))) {
+                eventToFill.setRemoteUid(toId.section(QLatin1Char(':'), 1));
+            } else {
+                eventToFill.setRemoteUid(toId.section(IM_ADDRESS_SEPARATOR, -1));
+            }
+        } else {
+            eventToFill.setLocalUid(toId.mid(TELEPATHY_URI_PREFIX_LEN));
+            if (fromId.startsWith(LAT("tel:"))) {
+                eventToFill.setRemoteUid(fromId.section(QLatin1Char(':'), 1));
+            } else {
+                eventToFill.setRemoteUid(fromId.section(IM_ADDRESS_SEPARATOR, -1));
+            }
+        }
+    }
+
+    if (eventToFill.status() == Event::UnknownStatus &&
+        (eventToFill.type() == Event::SMSEvent || eventToFill.type() == Event::MMSEvent) &&
+        !eventToFill.isDraft() &&
+        eventToFill.direction() == Event::Outbound) {
+        // treat missing status as sending for outbound SMS
+        eventToFill.setStatus(Event::SendingStatus);
+    }
+
+    if (properties.contains(Event::ContactId)) {
+
+        eventToFill.setContactId(RESULT_INDEX2(Event::ContactId).toInt());
+        if (properties.contains(Event::ContactName)) {
+            //        QString name = buildContactName(RESULT_INDEX2("contactFirstName").toString(),
+            //                                        RESULT_INDEX2("contactLastName").toString(),
+            //                                        RESULT_INDEX2("imNickname").toString());
+            QString name = RESULT_INDEX2(Event::ContactName).toString();
+            eventToFill.setContactName(name);
+        }
     }
 
     // save data and give back as parameter

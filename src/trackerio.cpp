@@ -1860,7 +1860,6 @@ bool TrackerIO::getGroup(int id, Group &group)
     RDFSelect query;
     prepareGroupQuery(query, QString(), QString(), id);
     QueryResult result;
-    result.query = query;
 
     int i = 0;
     foreach(SopranoLive::RDFSelectColumn col, query.columns()) {

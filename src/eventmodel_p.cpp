@@ -35,6 +35,7 @@
 #include "commonutils.h"
 #include "contactlistener.h"
 #include "committingtransaction.h"
+#include "eventsquery.h"
 
 using namespace SopranoLive;
 
@@ -181,6 +182,31 @@ bool EventModelPrivate::executeQuery(RDFSelect &query)
         if (queryOffset) query.offset(queryOffset);
     }
     queryRunner->runQuery(query, EventQuery, propertyMask);
+    if (queryMode == EventModel::SyncQuery) {
+        QEventLoop loop;
+        while (!isReady || !messagePartsReady) {
+            loop.processEvents(QEventLoop::WaitForMoreEvents);
+        }
+    }
+
+    return true;
+}
+
+bool EventModelPrivate::executeQuery(EventsQuery &query)
+{
+    qDebug() << __PRETTY_FUNCTION__;
+
+    isReady = false;
+    if (queryMode == EventModel::StreamedAsyncQuery) {
+        queryRunner->setStreamedMode(true);
+        queryRunner->setChunkSize(chunkSize);
+        queryRunner->setFirstChunkSize(firstChunkSize);
+    } else {
+        //if (queryLimit) query.limit(queryLimit);
+        //if (queryOffset) query.offset(queryOffset);
+    }
+    QString sparqlQuery = query.query();
+    queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
     if (queryMode == EventModel::SyncQuery) {
         QEventLoop loop;
         while (!isReady || !messagePartsReady) {

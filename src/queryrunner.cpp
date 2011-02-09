@@ -86,7 +86,7 @@ void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
     QMutexLocker locker(&m_mutex);
 
     QueryResult result;
-    result.query = query;
+    result.query = query.getQuery();
     result.queryType = queryType;
     result.propertyMask = propertyMask;
     result.eventId = 0;
@@ -106,6 +106,77 @@ void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
         QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
 
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+}
+
+void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Property> &properties)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QMutexLocker locker(&m_mutex);
+
+    QueryResult result;
+    result.query = query;
+    result.queryType = EventQuery;
+    result.properties = properties;
+    result.eventId = 0;
+
+    m_queries.append(result);
+
+#ifdef DEBUG
+    m_timer.start();
+#endif
+
+    if (!m_enableQueue)
+        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
+
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+}
+
+void QueryRunner::runGroupQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QMutexLocker locker(&m_mutex);
+
+    QueryResult result;
+    result.query = query;
+    result.queryType = GroupQuery;
+
+    m_queries.append(result);
+
+#ifdef DEBUG
+    m_timer.start();
+#endif
+
+    if (!m_enableQueue)
+        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
+
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+
+}
+
+void QueryRunner::runMessagePartQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QMutexLocker locker(&m_mutex);
+
+    QueryResult result;
+    result.query = query;
+    result.queryType = MessagePartQuery;
+    result.eventId = 0;
+
+    m_queries.append(result);
+
+#ifdef DEBUG
+    m_timer.start();
+#endif
+
+    if (!m_enableQueue)
+        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
+
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+
 }
 
 void QueryRunner::startQueue()
@@ -135,7 +206,7 @@ void QueryRunner::startNextQueryIfReady()
 
         qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
         // try to put query execution to trackerIOPrivate
-        m_activeQuery.result = m_pTracker->d->connection().exec(QSparqlQuery(m_activeQuery.query.getQuery()));
+        m_activeQuery.result = m_pTracker->d->connection().exec(QSparqlQuery(m_activeQuery.query));
         lastReadPos = QSparql::BeforeFirstRow;
 
         connect(m_activeQuery.result.data(),
@@ -214,7 +285,10 @@ void QueryRunner::readData()
 
         while (m_activeQuery.result->next()) {
             Event event;
-            QueryResult::fillEventFromModel(m_activeQuery, event);
+            if (m_activeQuery.columns.isEmpty())
+                m_activeQuery.fillEventFromModel2(event);
+            else
+                QueryResult::fillEventFromModel(m_activeQuery, event);
             events.append(event);
             ++added;
             lastReadPos = m_activeQuery.result->pos();

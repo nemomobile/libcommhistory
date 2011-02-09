@@ -41,6 +41,7 @@ namespace CommHistory {
 class QueryRunner;
 class ContactListener;
 class CommittingTransaction;
+class EventsQuery;
 
 /*!
  * \class EventModelPrivate
@@ -98,7 +99,9 @@ public:
      * are received, and modelReady() is emitted when the query is
      * finished.
      */
-    virtual bool executeQuery(SopranoLive::RDFSelect &query);
+    bool executeQuery(SopranoLive::RDFSelect &query);
+
+    bool executeQuery(EventsQuery &query);
 
     /*!
      * Add new events from the query results to the internal event
