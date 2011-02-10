@@ -25,9 +25,8 @@
 
 #include <QHash>
 #include <QString>
+#include <QPointer>
 #include <QSparqlResult>
-
-#include "event.h"
 
 namespace CommHistory {
 

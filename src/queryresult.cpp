@@ -20,14 +20,11 @@
 **
 ******************************************************************************/
 
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nmo.h>
-
 #include "group.h"
+
 #include "queryresult.h"
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 // used for filling data from tracker result rows
 #define RESULT_INDEX(COL) result.result->value(result.columns[QLatin1String(COL)])
@@ -37,6 +34,8 @@ using namespace SopranoLive;
 
 #define TELEPATHY_URI_PREFIX_LEN (sizeof("telepathy:") - 1)
 #define IM_ADDRESS_SEPARATOR QLatin1Char('!')
+
+#define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
 namespace {
 static Event::PropertySet commonPropertySet = Event::PropertySet() << Event::StartTime
@@ -48,6 +47,20 @@ static Event::PropertySet smsOnlyPropertySet = Event::PropertySet() << Event::Pa
                                                << Event::FromVCardFileName
                                                << Event::FromVCardLabel
                                                << Event::ValidityPeriod;
+
+Event::EventStatus nmoStatusToEventStatus(const QString &status)
+{
+    if (status == LAT(NMO_ "delivery-status-sent"))
+         return Event::SentStatus;
+    else if (status == LAT(NMO_ "delivery-status-delivered"))
+         return Event::DeliveredStatus;
+    else if (status == LAT(NMO_ "delivery-status-temporarily-failed"))
+        return Event::TemporarilyFailedStatus;
+    else if(status == LAT(NMO_ "delivery-status-permanently-failed"))
+            return Event::PermanentlyFailedStatus;
+
+    return Event::UnknownStatus;
+}
 }
 
 void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
@@ -56,13 +69,13 @@ void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
     eventToFill.setId(Event::urlToId(RESULT_INDEX("message").toString()));
 
     QStringList types = RESULT_INDEX("type").toString().split(QChar(','));
-    if (types.contains(nmo::MMSMessage::iri().toString())) {
+    if (types.contains(LAT(NMO_ "MMSMessage"))) {
         eventToFill.setType(Event::MMSEvent);
-    } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "SMSMessage"))) {
         eventToFill.setType(Event::SMSEvent);
-    } else if (types.contains(nmo::IMMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "IMMessage"))) {
         eventToFill.setType(Event::IMEvent);
-    } else if (types.contains(nmo::Call::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "Call"))) {
         eventToFill.setType(Event::CallEvent);
     }
 
@@ -111,26 +124,15 @@ void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
         else if (property == Event::IsRead)
             eventToFill.setIsRead(RESULT_INDEX("isRead").toBool());
         else if (property == Event::Status) {
-            QUrl status = RESULT_INDEX("deliveryStatus").toString();
-            if (!status.isEmpty()) {
-                if (status == nmo::delivery_status_sent::iri()) {
-                    eventToFill.setStatus(Event::SentStatus);
-                } else if (status == nmo::delivery_status_delivered::iri()) {
-                    eventToFill.setStatus(Event::DeliveredStatus);
-                } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
-                    eventToFill.setStatus(Event::TemporarilyFailedStatus);
-                } else if (status == nmo::delivery_status_permanently_failed::iri()) {
-                    eventToFill.setStatus(Event::PermanentlyFailedStatus);
-                } else {
-                    eventToFill.setStatus(Event::UnknownStatus);
-                }
-            }
+            QString status = RESULT_INDEX("deliveryStatus").toString();
+            if (!status.isEmpty())
+                eventToFill.setStatus(nmoStatusToEventStatus(status));
         } else if (property == Event::ReadStatus) {
-            QUrl status = RESULT_INDEX("reportReadStatus").toString();
+            QString status = RESULT_INDEX("reportReadStatus").toString();
             if (!status.isEmpty()) {
-                if (status == nmo::read_status_read::iri()) {
+                if (status == LAT(NMO_ "read-status-read")) {
                     eventToFill.setReadStatus(Event::ReadStatusRead);
-                } else if (status == nmo::read_status_deleted::iri()) {
+                } else if (status == LAT(NMO_ "read-status-deleted")) {
                     eventToFill.setReadStatus(Event::ReadStatusDeleted);
                 } else {
                     eventToFill.setReadStatus(Event::UnknownReadStatus);
@@ -229,13 +231,13 @@ void QueryResult::fillEventFromModel2(Event &event)
             break;
         case Event::Type: {
             QStringList types = RESULT_INDEX2(Event::Type).toString().split(QChar(','));
-            if (types.contains(nmo::MMSMessage::iri().toString())) {
+            if (types.contains(LAT(NMO_ "MMSMessage"))) {
                 eventToFill.setType(Event::MMSEvent);
-            } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+            } else if (types.contains(LAT(NMO_ "SMSMessage"))) {
                 eventToFill.setType(Event::SMSEvent);
-            } else if (types.contains(nmo::IMMessage::iri().toString())) {
+            } else if (types.contains(LAT(NMO_ "IMMessage"))) {
                 eventToFill.setType(Event::IMEvent);
-            } else if (types.contains(nmo::Call::iri().toString())) {
+            } else if (types.contains(LAT(NMO_ "Call"))) {
                 eventToFill.setType(Event::CallEvent);
             }
             break;
@@ -293,28 +295,17 @@ void QueryResult::fillEventFromModel2(Event &event)
             eventToFill.setIsRead(RESULT_INDEX2(Event::IsRead).toBool());
             break;
         case Event::Status: {
-            QUrl status = RESULT_INDEX2(Event::Status).toString();
-            if (!status.isEmpty()) {
-                if (status == nmo::delivery_status_sent::iri()) {
-                    eventToFill.setStatus(Event::SentStatus);
-                } else if (status == nmo::delivery_status_delivered::iri()) {
-                    eventToFill.setStatus(Event::DeliveredStatus);
-                } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
-                    eventToFill.setStatus(Event::TemporarilyFailedStatus);
-                } else if (status == nmo::delivery_status_permanently_failed::iri()) {
-                    eventToFill.setStatus(Event::PermanentlyFailedStatus);
-                } else {
-                    eventToFill.setStatus(Event::UnknownStatus);
-                }
-            }
+            QString status = RESULT_INDEX2(Event::Status).toString();
+            if (!status.isEmpty())
+                eventToFill.setStatus(nmoStatusToEventStatus(status));
             break;
         }
         case Event::ReadStatus: {
-            QUrl status = RESULT_INDEX2(Event::ReadStatus).toString();
+            QString status = RESULT_INDEX2(Event::ReadStatus).toString();
             if (!status.isEmpty()) {
-                if (status == nmo::read_status_read::iri()) {
+                if (status == LAT(NMO_ "read-status-read")) {
                     eventToFill.setReadStatus(Event::ReadStatusRead);
-                } else if (status == nmo::read_status_deleted::iri()) {
+                } else if (status == LAT(NMO_ "read-status-deleted")) {
                     eventToFill.setReadStatus(Event::ReadStatusDeleted);
                 } else {
                     eventToFill.setReadStatus(Event::UnknownReadStatus);
@@ -412,28 +403,17 @@ void QueryResult::fillGroupFromModel(QueryResult &result, Group &group)
     Group groupToFill;
 
     QStringList types = RESULT_INDEX("type").toString().split(QChar(','));
-    if (types.contains(nmo::MMSMessage::iri().toString())) {
+    if (types.contains(LAT(NMO_ "MMSMessage"))) {
         groupToFill.setLastEventType(Event::MMSEvent);
-    } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "SMSMessage"))) {
         groupToFill.setLastEventType(Event::SMSEvent);
-    } else if (types.contains(nmo::IMMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "IMMessage"))) {
         groupToFill.setLastEventType(Event::IMEvent);
     }
 
-    QUrl status = RESULT_INDEX("deliveryStatus").toString();
-    if (!status.isEmpty()) {
-        if (status == nmo::delivery_status_sent::iri()) {
-            groupToFill.setLastEventStatus(Event::SentStatus);
-        } else if (status == nmo::delivery_status_delivered::iri()) {
-            groupToFill.setLastEventStatus(Event::DeliveredStatus);
-        } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
-            groupToFill.setLastEventStatus(Event::TemporarilyFailedStatus);
-        } else if(status == nmo::delivery_status_permanently_failed::iri()) {
-            groupToFill.setLastEventStatus(Event::PermanentlyFailedStatus);
-        } else {
-            groupToFill.setLastEventStatus(Event::UnknownStatus);
-        }
-    }
+    QString status = RESULT_INDEX("deliveryStatus").toString();
+    if (!status.isEmpty())
+        groupToFill.setLastEventStatus(nmoStatusToEventStatus(status));
 
     groupToFill.setId(Group::urlToId(RESULT_INDEX("channel").toString()));
 
@@ -488,28 +468,17 @@ void QueryResult::fillGroupFromModel2(Group &group)
     Group groupToFill;
 
     QStringList types = result->value(Group::LastEventType).toString().split(QChar(','));
-    if (types.contains(nmo::MMSMessage::iri().toString())) {
+    if (types.contains(LAT(NMO_ "MMSMessage"))) {
         groupToFill.setLastEventType(Event::MMSEvent);
-    } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "SMSMessage"))) {
         groupToFill.setLastEventType(Event::SMSEvent);
-    } else if (types.contains(nmo::IMMessage::iri().toString())) {
+    } else if (types.contains(LAT(NMO_ "IMMessage"))) {
         groupToFill.setLastEventType(Event::IMEvent);
     }
 
-    QUrl status = result->value(Group::LastEventStatus).toString();
-    if (!status.isEmpty()) {
-        if (status == nmo::delivery_status_sent::iri()) {
-            groupToFill.setLastEventStatus(Event::SentStatus);
-        } else if (status == nmo::delivery_status_delivered::iri()) {
-            groupToFill.setLastEventStatus(Event::DeliveredStatus);
-        } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
-            groupToFill.setLastEventStatus(Event::TemporarilyFailedStatus);
-        } else if(status == nmo::delivery_status_permanently_failed::iri()) {
-            groupToFill.setLastEventStatus(Event::PermanentlyFailedStatus);
-        } else {
-            groupToFill.setLastEventStatus(Event::UnknownStatus);
-        }
-    }
+    QString status = result->value(Group::LastEventStatus).toString();
+    if (!status.isEmpty())
+        groupToFill.setLastEventStatus(nmoStatusToEventStatus(status));
 
     groupToFill.setId(Group::urlToId(result->value(Group::Id).toString()));
 
