@@ -899,6 +899,10 @@ void EventModelTest::testCcBcc()
     bccList << "+777888" << "999888" << "333555";
     event.setBccList(bccList);
 
+    QStringList toList;
+    toList << "+10111" << "+10112" << "+10113";
+    event.setToList(toList);
+
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
     QCOMPARE(watcher.committedCount(), 1);
@@ -909,6 +913,7 @@ void EventModelTest::testCcBcc()
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
+    QCOMPARE(e.toList().toSet(), toList.toSet());
 
     event.resetModifiedProperties();
     ccList.clear();
@@ -919,6 +924,10 @@ void EventModelTest::testCcBcc()
     bccList << "314" << "15" << "16";
     event.setBccList(bccList);
 
+    toList.clear();
+    toList << "777" << "888" << "999";
+    event.setToList(toList);
+
     QVERIFY(model.modifyEvent(event));
     watcher.waitForSignals();
     QCOMPARE(watcher.committedCount(), 1);
@@ -928,6 +937,7 @@ void EventModelTest::testCcBcc()
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
+    QCOMPARE(e.toList().toSet(), toList.toSet());
 }
 
 
