@@ -54,6 +54,93 @@ using namespace SopranoLive;
 #define QSPARQL_DRIVER QLatin1String("QTRACKER_DIRECT")
 #define QSPARQL_DATA_READY_INTERVAL 25
 
+// NOTE projections in the query should have same order as Group::Property
+#define GROUP_QUERY QLatin1String( \
+"SELECT ?_channel" \
+"        ?_subject" \
+"     nie:generator(?_channel)" \
+"     nie:identifier(?_channel)" \
+"     nie:title(?_channel)" \
+"  ?_lastDate" \
+"(SELECT COUNT(?_total_messages)" \
+" WHERE {" \
+"  ?_total_messages nmo:communicationChannel ?_channel;" \
+"                   nmo:isDeleted \"false\" ." \
+" }" \
+")" \
+"(SELECT COUNT(?_total_unread_messages)" \
+" WHERE {" \
+"  ?_total_unread_messages nmo:communicationChannel ?_channel;" \
+"                   nmo:isRead \"false\";" \
+"                   nmo:isDeleted \"false\"" \
+" }" \
+")" \
+"(SELECT COUNT(?_total_sent_messages)" \
+" WHERE {" \
+"  ?_total_sent_messages nmo:communicationChannel ?_channel;" \
+"                   nmo:isSent \"true\";" \
+"                   nmo:isDeleted \"false\"" \
+" }" \
+")" \
+"  ?_lastMessage" \
+"  tracker:id(?_contact_1)" \
+"  fn:concat(tracker:coalesce(nco:nameGiven(?_contact_1), \'\'), \'\\u001e\'," \
+"            tracker:coalesce(nco:nameFamily(?_contact_1), \'\'), \'\\u001e\'," \
+"            tracker:coalesce(?_imNickname, \'\'))" \
+"   tracker:coalesce(nmo:messageSubject(?_lastMessage)," \
+"                    nie:plainTextContent(?_lastMessage))" \
+"     nfo:fileName(nmo:fromVCard(?_lastMessage))" \
+"     rdfs:label(nmo:fromVCard(?_lastMessage))" \
+"     rdf:type(?_lastMessage)" \
+"     nmo:deliveryStatus(?_lastMessage)" \
+"  ?_lastModified " \
+"WHERE" \
+"{" \
+"  {" \
+"    SELECT ?_channel ?_subject ?_lastDate ?_lastModified" \
+"         ( SELECT ?_message" \
+"  WHERE {" \
+"    ?_message nmo:communicationChannel ?_channel ;" \
+"              nmo:isDeleted \"false\" ." \
+"  }" \
+"    ORDER BY DESC(nmo:receivedDate(?_message)) DESC(tracker:id(?_message)) " \
+"    LIMIT 1)" \
+"      AS ?_lastMessage" \
+"         ( SELECT ?_contact" \
+"  WHERE {" \
+"        ?_contact rdf:type nco:PersonContact ." \
+"      {" \
+"        ?_channel nmo:hasParticipant [nco:hasIMAddress ?_12 ] ." \
+"        ?_contact nco:hasAffiliation [nco:hasIMAddress ?_12 ]" \
+"      }" \
+"      UNION" \
+"      {" \
+"        ?_channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]] ." \
+"        ?_contact nco:hasAffiliation [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]]" \
+"      }" \
+"  })" \
+"" \
+"      AS ?_contact_1" \
+"         ( SELECT ?_13" \
+"  WHERE {" \
+"" \
+"    ?_channel nmo:hasParticipant [nco:hasIMAddress [nco:imNickname ?_13 ]]" \
+"  })" \
+"" \
+"      AS ?_imNickname" \
+"    WHERE" \
+"    {" \
+"      ?_channel rdf:type nmo:CommunicationChannel; " \
+"      nie:subject ?_subject ; " \
+"      nmo:lastMessageDate ?_lastDate ; " \
+"      nie:contentLastModified ?_lastModified ." \
+"      %1"\
+"    }" \
+"  }" \
+"}" \
+"  ORDER BY DESC(?_lastDate)" \
+)
+
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
 
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
@@ -525,160 +612,29 @@ void TrackerIO::prepareMessagePartQuery(RDFSelect &query, RDFVariable &message)
     query.orderBy(part.function<nmo::contentId>(), RDFSelect::Ascending);
 }
 
-void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
-                                  const QString &localUid,
-                                  const QString &remoteUid,
-                                  int groupId)
+QString TrackerIO::prepareGroupQuery(const QString &localUid,
+                                     const QString &remoteUid,
+                                     int groupId)
 {
-    RDFVariable channel = channelQuery.newColumn(LAT("channel"));
-    RDFVariable subject = channelQuery.newColumn(LAT("subject")); // local tp account
-    channelQuery.addColumn(LAT("remoteId"), channel.function<nie::generator>());
-
-    // MUC title (topic/subject)
-    channelQuery.addColumn(LAT("title"), channel.function<nie::title>());
-    // CommHistory::Group::ChatType
-    channelQuery.addColumn(LAT("identifier"), channel.function<nie::identifier>());
-
-    RDFVariable contact = channelQuery.variable(LAT("contact"));
-    RDFVariable imNickname = channelQuery.variable(LAT("imNickname"));
-
-    RDFVariable lastDate = channelQuery.newColumn(LAT("lastDate"));
-    RDFVariable lastMessage = channelQuery.newColumn(LAT("lastMessage"));
-    RDFVariable lastModified = channelQuery.newColumn(LAT("lastModified"));
-    channelQuery.addColumn(LAT("lastMessageText"), lastMessage.function<nie::plainTextContent>());
-    channelQuery.addColumn(LAT("lastMessageSubject"), lastMessage.function<nmo::messageSubject>());
-
-    RDFVariable vcard = lastMessage.function<nmo::fromVCard>();
-    channelQuery.addColumn(LAT("lastVCardFileName"), vcard.function<nfo::fileName>());
-    channelQuery.addColumn(LAT("lastVCardLabel"), vcard.function<rdfs::label>());
-    channelQuery.addColumn(LAT("type"), lastMessage.function<rdf::type>());
-    channelQuery.addColumn(LAT("deliveryStatus"), lastMessage.function<nmo::deliveryStatus>());
-
-    {
-        // select count of all messages and add it as an expression column to outer
-        RDFSubSelect allSubsel;
-        RDFVariable message = allSubsel.newCountColumn(LAT("total messages"));
-        message.property<nmo::communicationChannel>(channel);
-        message.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("totalMessages"), allSubsel.asExpression());
-    }
-
-    {
-        // select count of all already read messages and add it as an expression column to outer
-        RDFSubSelect readSubsel;
-        RDFVariable readMsg = readSubsel.newCountColumn(LAT("total unread messages"));
-        readMsg.property<nmo::communicationChannel>(channel);
-        readMsg.property<nmo::isRead>(LiteralValue(false));
-        readMsg.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("unreadMessages"), readSubsel.asExpression());
-    }
-
-    {
-        // select count of all sent messages and add it as an expression column to outer
-        RDFSubSelect sentSubsel;
-        RDFVariable sentMsg = sentSubsel.newCountColumn(LAT("total sent messages"));
-        sentMsg.property<nmo::communicationChannel>(channel);
-        sentMsg.property<nmo::isSent>(LiteralValue(true));
-        sentMsg.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("sentMessages"), sentSubsel.asExpression());
-    }
-
-    RDFSubSelect innerSubsel;
-    RDFVariable innerChannel = innerSubsel.newColumnAs<nmo::CommunicationChannel>(channel);
-    RDFVariable innerSubject = innerSubsel.newColumnAs(subject);
-    RDFVariable innerLastDate = innerSubsel.newColumnAs(lastDate);
-    RDFVariable innerLastModified = innerSubsel.newColumnAs(lastModified);
-    innerChannel.property<nie::subject>(innerSubject);
-    innerChannel.property<nmo::lastMessageDate>(innerLastDate);
-    innerChannel.property<nie::contentLastModified>(innerLastModified);
-
-    // restrict by account / remote id
-    if (!localUid.isEmpty()) {
-        innerSubject == LiteralValue(localUid);
-        if (!remoteUid.isEmpty()) {
-            QString number = normalizePhoneNumber(remoteUid);
-            if (number.isEmpty()) {
-                innerChannel.property<nmo::hasParticipant>()
-                    .property<nco::hasIMAddress>()
-                    .property<nco::imID>(LiteralValue(remoteUid));
-            } else {
-                innerChannel.property<nmo::hasParticipant>()
-                    .property<nco::hasPhoneNumber>()
-                    .property<maemo::localPhoneNumber>() =
-                    LiteralValue(number.right(CommHistory::phoneNumberMatchLength()));
-            }
+    QString queryFormat(GROUP_QUERY);
+    QStringList constrains;
+    if (!remoteUid.isEmpty()) {
+        QString number = normalizePhoneNumber(remoteUid);
+        if (number.isEmpty()) {
+            constrains << QString(QLatin1String("?_channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
+                          .arg(remoteUid);
+        } else {
+            constrains << QString(QLatin1String("?_channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
+                          .arg(number.right(CommHistory::phoneNumberMatchLength()));
         }
     }
-
+    if (!localUid.isEmpty()) {
+        constrains << QString(QLatin1String("FILTER(?_subject = \"%1\") ")).arg(localUid);
+    }
     if (groupId != -1)
-        innerChannel == Group::idToUrl(groupId);
+        constrains << QString(QLatin1String("FILTER(?_channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
 
-    {
-        RDFSubSelect lastMsgSubsel;
-        RDFVariable message = lastMsgSubsel.newColumn(LAT("message"));
-        message.property<nmo::communicationChannel>(innerChannel);
-        message.property<nmo::isDeleted>(LiteralValue(false));
-        lastMsgSubsel
-            .orderBy(message.property<nmo::receivedDate>(), RDFSelect::Descending)
-            .orderBy(message.filter(LAT("tracker:id")), RDFSelect::Descending)
-            .limit(1);
-
-        innerSubsel.addColumnAs(lastMsgSubsel.asExpression(), lastMessage);
-    }
-
-    {
-        // contact match
-        RDFSubSelect contactSubsel;
-        RDFVariable subContact = contactSubsel.newColumn(LAT("contact"));
-        RDFVariable contactChannel = contactSubsel.variable(innerChannel);
-        RDFVariableList contacts = subContact.unionChildren(3);
-
-        // by IM address
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable imChannel = contacts[0].variable(contactChannel);
-        RDFVariable imParticipant = imChannel.property<nmo::hasParticipant>();
-        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
-        RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
-        imAddress = imParticipant.property<nco::hasIMAddress>();
-
-        // by phone number (last digits)
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable phoneChannel = contacts[1].variable(contactChannel);
-        RDFVariable phoneParticipant = phoneChannel.property<nmo::hasParticipant>();
-        RDFVariable number = contacts[1].property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-        number = phoneParticipant.property<nco::hasPhoneNumber>().
-            property<maemo::localPhoneNumber>();
-
-        // affiliation (work number)
-        contacts[2].isOfType<nco::PersonContact>();
-        RDFVariable affChannel = contacts[2].variable(contactChannel);
-        RDFVariable affParticipant = affChannel.property<nmo::hasParticipant>();
-        RDFVariable affNumber = contacts[2].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>();
-        affNumber = affParticipant.property<nco::hasPhoneNumber>().
-            property<maemo::localPhoneNumber>();
-        innerSubsel.addColumnAs(contactSubsel.asExpression(), contact);
-    }
-
-    {
-        // nickname associated with IM address
-        RDFSubSelect nickSubSelect;
-        RDFVariable nickChannel = nickSubSelect.variable(innerChannel);
-        RDFVariable participant = nickChannel.property<nmo::hasParticipant>();
-        nickSubSelect.addColumn(participant.property<nco::hasIMAddress>()
-                                .property<nco::imNickname>());
-        innerSubsel.addColumnAs(nickSubSelect.asExpression(), imNickname);
-    }
-
-    RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-    channelQuery.addColumn(LAT("contactId"), idFilter);
-    channelQuery.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-    channelQuery.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-    channelQuery.addColumn(LAT("imNickname"), imNickname);
-
-    channelQuery.orderBy(lastDate, RDFSelect::Descending);
-    channel.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
+    return queryFormat.arg(constrains.join(QLatin1String(" ")));
 }
 
 QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &remoteUid)
@@ -1857,16 +1813,10 @@ bool TrackerIO::getGroup(int id, Group &group)
 {
     Group groupToFill;
 
-    RDFSelect query;
-    prepareGroupQuery(query, QString(), QString(), id);
+    QSparqlQuery query(prepareGroupQuery(QString(), QString(), id));
     QueryResult result;
 
-    int i = 0;
-    foreach(SopranoLive::RDFSelectColumn col, query.columns()) {
-        result.columns.insert(col.name(), i++);
-    }
-
-    QScopedPointer<QSparqlResult> groups(d->connection().exec(QSparqlQuery(query.getQuery())));
+    QScopedPointer<QSparqlResult> groups(d->connection().exec(query));
 
     if (!d->runBlockedQuery(groups.data())) // FIXIT
         return false;
@@ -1883,7 +1833,7 @@ bool TrackerIO::getGroup(int id, Group &group)
     QSparqlResultRow row = groups->current();
 
     result.result = groups.data();
-    QueryResult::fillGroupFromModel(result, groupToFill);
+    result.fillGroupFromModel2(groupToFill);
     group = groupToFill;
 
     return true;

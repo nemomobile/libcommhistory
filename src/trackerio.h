@@ -103,10 +103,9 @@ public:
     /*!
      * Adds required message part properties to the query.
      */
-    static void prepareGroupQuery(SopranoLive::RDFSelect &query,
-                                  const QString &localUid = QString(),
-                                  const QString &remoteUid = QString(),
-                                  int groupId = -1);
+    static QString prepareGroupQuery(const QString &localUid = QString(),
+                                     const QString &remoteUid = QString(),
+                                     int groupId = -1);
 
     /*!
      * Helper for prepare*Query() methods.

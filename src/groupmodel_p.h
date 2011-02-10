@@ -27,7 +27,6 @@
 #include <QSqlError>
 #include <QList>
 #include <QPair>
-#include <QtTracker/Tracker>
 
 #include "groupmodel.h"
 #include "eventmodel.h"
@@ -76,7 +75,7 @@ public:
 
     bool canFetchMore() const;
 
-    void executeQuery(SopranoLive::RDFSelect &query);
+    void executeQuery(const QString query);
 
     CommittingTransaction* commitTransaction(QList<Group> groups);
 

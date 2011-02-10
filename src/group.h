@@ -74,8 +74,8 @@ public:
         LastVCardLabel,
         LastEventType,
         LastEventStatus,
-        IsPermanent, //TODO: remove on next API break
         LastModified,
+        IsPermanent, //TODO: remove on next API break
         NumProperties
     };
 

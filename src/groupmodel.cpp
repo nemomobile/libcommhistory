@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
 
 #include "commonutils.h"
@@ -45,10 +44,8 @@ bool groupLessThan(CommHistory::Group &a, CommHistory::Group &b)
 }
 
 static const int defaultChunkSize = 50;
-
 }
 
-using namespace SopranoLive;
 using namespace CommHistory;
 
 uint GroupModelPrivate::modelSerial = 0;
@@ -276,7 +273,7 @@ void GroupModelPrivate::modelUpdatedSlot()
     emit q->modelReady();
 }
 
-void GroupModelPrivate::executeQuery(RDFSelect &query)
+void GroupModelPrivate::executeQuery(const QString query)
 {
     isReady = false;
     if (queryMode == EventModel::StreamedAsyncQuery) {
@@ -284,11 +281,13 @@ void GroupModelPrivate::executeQuery(RDFSelect &query)
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
     } else {
-        if (queryLimit) query.limit(queryLimit);
-        if (queryOffset) query.offset(queryOffset);
+        // TODO: support this by query runner
+        //if (queryLimit) query.limit(queryLimit);
+        //if (queryOffset) query.offset(queryOffset);
     }
     qDebug() << Q_FUNC_INFO << this << queryRunner;
-    queryRunner->runQuery(query, GroupQuery);
+    queryRunner->runGroupQuery(query);
+
     if (queryMode == EventModel::SyncQuery) {
         QEventLoop loop;
         while (!isReady) {
@@ -843,9 +842,8 @@ bool GroupModel::getGroups(const QString &localUid,
     reset();
     d->groups.clear();
 
-    RDFSelect channelQuery;
-    d->tracker()->prepareGroupQuery(channelQuery, localUid, remoteUid);
-    d->executeQuery(channelQuery);
+    QSparqlQuery query(d->tracker()->prepareGroupQuery(localUid, remoteUid));
+    d->executeQuery(query.preparedQueryText());
 
     return true;
 }
