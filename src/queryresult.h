@@ -48,11 +48,12 @@ struct QueryResult {
     QHash<QString, int> columns;
     // for message part queries
     int eventId;
-    QList<Event::Property> properties; //TODO: it should be int to use with group model as well
+    QList<Event::Property> properties;
 
     static void fillEventFromModel(QueryResult &result, Event &event);
     void fillEventFromModel2(Event &event);
     static void fillGroupFromModel(QueryResult &result, Group &group);
+    void fillGroupFromModel2(Group &group);
     static void fillMessagePartFromModel(QueryResult &result, MessagePart &part);
 
 

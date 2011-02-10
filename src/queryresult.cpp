@@ -483,6 +483,81 @@ void QueryResult::fillGroupFromModel(QueryResult &result, Group &group)
     group.resetModifiedProperties();
 }
 
+void QueryResult::fillGroupFromModel2(Group &group)
+{
+    Group groupToFill;
+
+    QStringList types = result->value(Group::LastEventType).toString().split(QChar(','));
+    if (types.contains(nmo::MMSMessage::iri().toString())) {
+        groupToFill.setLastEventType(Event::MMSEvent);
+    } else if (types.contains(nmo::SMSMessage::iri().toString())) {
+        groupToFill.setLastEventType(Event::SMSEvent);
+    } else if (types.contains(nmo::IMMessage::iri().toString())) {
+        groupToFill.setLastEventType(Event::IMEvent);
+    }
+
+    QUrl status = result->value(Group::LastEventStatus).toString();
+    if (!status.isEmpty()) {
+        if (status == nmo::delivery_status_sent::iri()) {
+            groupToFill.setLastEventStatus(Event::SentStatus);
+        } else if (status == nmo::delivery_status_delivered::iri()) {
+            groupToFill.setLastEventStatus(Event::DeliveredStatus);
+        } else if (status == nmo::delivery_status_temporarily_failed::iri()) {
+            groupToFill.setLastEventStatus(Event::TemporarilyFailedStatus);
+        } else if(status == nmo::delivery_status_permanently_failed::iri()) {
+            groupToFill.setLastEventStatus(Event::PermanentlyFailedStatus);
+        } else {
+            groupToFill.setLastEventStatus(Event::UnknownStatus);
+        }
+    }
+
+    groupToFill.setId(Group::urlToId(result->value(Group::Id).toString()));
+
+    groupToFill.setChatName(result->value(Group::ChatName).toString());
+
+    QString identifier = result->value(Group::Type).toString();
+    if (!identifier.isEmpty()) {
+        bool ok = false;
+        Group::ChatType chatType = (Group::ChatType)(identifier.toUInt(&ok));
+        if (ok)
+            groupToFill.setChatType(chatType);
+    }
+
+    groupToFill.setRemoteUids(QStringList() << result->value(Group::RemoteUids).toString());
+    groupToFill.setLocalUid(result->value(Group::LocalUid).toString());
+    groupToFill.setContactId(result->value(Group::ContactId).toInt());
+    QString name = buildContactName(result->value(Group::ContactName).toString(), "", "");
+//                                    RESULT_INDEX("contactLastName").toString(),
+//                                    RESULT_INDEX("imNickname").toString());
+    groupToFill.setContactName(name);
+    groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
+    groupToFill.setUnreadMessages(result->value(Group::UnreadMessages).toInt());
+    groupToFill.setSentMessages(result->value(Group::SentMessages).toInt());
+    groupToFill.setEndTime(result->value(Group::EndTime).toDateTime().toLocalTime());
+    groupToFill.setLastEventId(Event::urlToId(result->value(Group::LastEventId).toString()));
+    groupToFill.setLastMessageText(result->value(Group::LastMessageText).toString());
+    groupToFill.setLastVCardFileName(result->value(Group::LastVCardFileName).toString());
+    groupToFill.setLastVCardLabel(result->value(Group::LastVCardLabel).toString());
+
+    // tracker query returns 0 for non-existing messages... make the
+    // value api-compatible
+    if (groupToFill.lastEventId() == 0)
+        groupToFill.setLastEventId(-1);
+
+    // we have to set nmo:sentTime for indexing, so consider time(0) as
+    // invalid
+    if (groupToFill.endTime() == QDateTime::fromTime_t(0))
+        groupToFill.setEndTime(QDateTime());
+
+    // since we read it from db, it is permanent
+    groupToFill.setPermanent(true);
+
+    groupToFill.setLastModified(result->value(Group::LastModified).toDateTime().toLocalTime());
+
+    group = groupToFill;
+    group.resetModifiedProperties();
+}
+
 void QueryResult::fillMessagePartFromModel(QueryResult &result,
                                          MessagePart &messagePart)
 {

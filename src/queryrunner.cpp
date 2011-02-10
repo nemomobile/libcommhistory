@@ -305,7 +305,10 @@ void QueryRunner::readData()
 
         while (m_activeQuery.result->next()) {
             Group group;
-            QueryResult::fillGroupFromModel(m_activeQuery, group);
+            if (m_activeQuery.columns.isEmpty())
+                m_activeQuery.fillGroupFromModel2(group);
+            else
+                QueryResult::fillGroupFromModel(m_activeQuery, group);
             groups.append(group);
             ++added;
             lastReadPos = m_activeQuery.result->pos();
