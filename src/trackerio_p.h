@@ -44,6 +44,7 @@ class Group;
 class UpdateQuery;
 class TrackerIO;
 class CommittingTransaction;
+class EventsQuery;
 
 /**
  * \class TrackerIOPrivate
@@ -112,7 +113,8 @@ public:
 
 
     // Helper for getEvent*().
-    bool querySingleEvent(SopranoLive::RDFSelect query, Event &event);
+    //bool querySingleEvent(SopranoLive::RDFSelect query, Event &event);
+    bool querySingleEvent(EventsQuery &query, Event &event);
 
     static void calculateParentId(Event& event);
     static void setFolderLastModifiedTime(UpdateQuery &query,
@@ -124,15 +126,6 @@ public:
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
-    /*!
-     * \brief Generate query request to get cc/bcc field from tracker
-     *        for specific MMS message
-     * \param event - MMS event
-     */
-    template <class CopyOntology>
-    QStringList queryMMSCopyAddresses(Event &event);
-
-    QStringList queryMmsToAddresses(Event &event);
     void checkAndDeletePendingMmsContent(QThread* backgroundThread);
 
     QSparqlConnection& connection();

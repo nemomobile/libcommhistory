@@ -178,11 +178,11 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "isRead:" << e1.isRead() << e2.isRead();
         return false;
     }
-    if (e1.isMissedCall() != e2.isMissedCall()) {
+    if (e1.type() == Event::CallEvent && e1.isMissedCall() != e2.isMissedCall()) {
         qWarning() << Q_FUNC_INFO << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
         return false;
     }
-    if (e1.isEmergencyCall() != e2.isEmergencyCall()) {
+    if (e1.type() == Event::CallEvent && e1.isEmergencyCall() != e2.isEmergencyCall()) {
         qWarning() << Q_FUNC_INFO << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
         return false;
     }
@@ -196,7 +196,7 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
         return false;
     }
-    if (e1.freeText() != e2.freeText()) {
+    if (e1.type() != Event::CallEvent && e1.freeText() != e2.freeText()) {
         qWarning() << Q_FUNC_INFO << "freeText:" << e1.freeText() << e2.freeText();
         return false;
     }
@@ -204,15 +204,15 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "groupId:" << e1.groupId() << e2.groupId();
         return false;
     }
-    if (e1.fromVCardFileName() != e2.fromVCardFileName()) {
+    if (e1.type() != Event::CallEvent && e1.fromVCardFileName() != e2.fromVCardFileName()) {
         qWarning() << Q_FUNC_INFO << "vcardFileName:" << e1.fromVCardFileName() << e2.fromVCardFileName();
         return false;
     }
-    if (e1.fromVCardLabel() != e2.fromVCardLabel()) {
+    if (e1.type() != Event::CallEvent && e1.fromVCardLabel() != e2.fromVCardLabel()) {
         qWarning() << Q_FUNC_INFO << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
         return false;
     }
-    if (e1.status() != e2.status()) {
+    if (e1.type() != Event::CallEvent && e1.status() != e2.status()) {
         qWarning() << Q_FUNC_INFO << "status:" << e1.status() << e2.status();
         return false;
     }

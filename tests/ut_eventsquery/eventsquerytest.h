@@ -19,6 +19,7 @@ private slots:
     void tofrom_data();
     void tofrom();
     void distinct();
+    void contact();
 
 private:
     QSparqlConnection *conn;

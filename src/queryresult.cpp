@@ -343,6 +343,15 @@ void QueryResult::fillEventFromModel2(Event &event)
         case Event::ValidityPeriod:
             eventToFill.setValidityPeriod(RESULT_INDEX2(Event::ValidityPeriod).toInt());
             break;
+        case Event::Cc:
+            eventToFill.setCcList(RESULT_INDEX2(Event::Cc).toString().split('\x1e'));
+            break;
+        case Event::Bcc:
+            eventToFill.setBccList(RESULT_INDEX2(Event::Bcc).toString().split('\x1e'));
+            break;
+        case Event::To:
+            eventToFill.setToList(RESULT_INDEX2(Event::To).toString().split('\x1e'));
+            break;
         default:
             break;// handle below
         }
@@ -385,11 +394,8 @@ void QueryResult::fillEventFromModel2(Event &event)
 
         eventToFill.setContactId(RESULT_INDEX2(Event::ContactId).toInt());
         if (properties.contains(Event::ContactName)) {
-            //        QString name = buildContactName(RESULT_INDEX2("contactFirstName").toString(),
-            //                                        RESULT_INDEX2("contactLastName").toString(),
-            //                                        RESULT_INDEX2("imNickname").toString());
             QString name = RESULT_INDEX2(Event::ContactName).toString();
-            eventToFill.setContactName(name);
+            eventToFill.setContactName(buildContactName(name));
         }
     }
 
@@ -495,10 +501,10 @@ void QueryResult::fillGroupFromModel2(Group &group)
     groupToFill.setRemoteUids(QStringList() << result->value(Group::RemoteUids).toString());
     groupToFill.setLocalUid(result->value(Group::LocalUid).toString());
     groupToFill.setContactId(result->value(Group::ContactId).toInt());
-    QString name = buildContactName(result->value(Group::ContactName).toString(), "", "");
-//                                    RESULT_INDEX("contactLastName").toString(),
-//                                    RESULT_INDEX("imNickname").toString());
+
+    QString name = buildContactName(result->value(Group::ContactName).toString());
     groupToFill.setContactName(name);
+
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
     groupToFill.setUnreadMessages(result->value(Group::UnreadMessages).toInt());
     groupToFill.setSentMessages(result->value(Group::SentMessages).toInt());
@@ -546,6 +552,14 @@ void QueryResult::fillMessagePartFromModel(QueryResult &result,
     messagePart = newPart;
 }
 
+QString QueryResult::buildContactName(const QString &names)
+{
+    QStringList parsed = names.split('\x1e');
+    if (parsed.size() == 3)
+        return buildContactName(parsed[0], parsed[1], parsed[2]);
+
+    return QString();
+}
 
 QString QueryResult::buildContactName(const QString &firstName,
                                       const QString &lastName,

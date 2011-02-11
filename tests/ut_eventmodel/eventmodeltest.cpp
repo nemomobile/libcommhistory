@@ -892,15 +892,15 @@ void EventModelTest::testCcBcc()
     event.setGroupId(group1.id());
 
     QStringList ccList;
-    ccList << "+12345" << "98765" << "555666";
+    ccList << "+12345" << "98765" << "cc@mms.com";
     event.setCcList(ccList);
 
     QStringList bccList;
-    bccList << "+777888" << "999888" << "333555";
+    bccList << "+777888" << "999888" << "bcc@mms.com";
     event.setBccList(bccList);
 
     QStringList toList;
-    toList << "+10111" << "+10112" << "+10113";
+    toList << "+10111" << "+10112" << "to@mms.com";
     event.setToList(toList);
 
     QVERIFY(model.addEvent(event));
@@ -917,15 +917,15 @@ void EventModelTest::testCcBcc()
 
     event.resetModifiedProperties();
     ccList.clear();
-    ccList << "112" << "358" << "134";
+    ccList << "112" << "358" << "mcc@mms.com";
     event.setCcList(ccList);
 
     bccList.clear();
-    bccList << "314" << "15" << "16";
+    bccList << "314" << "15" << "mbcc@mms.com";
     event.setBccList(bccList);
 
     toList.clear();
-    toList << "777" << "888" << "999";
+    toList << "777" << "888" << "mto@mms.com";
     event.setToList(toList);
 
     QVERIFY(model.modifyEvent(event));

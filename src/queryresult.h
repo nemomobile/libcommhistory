@@ -59,6 +59,7 @@ struct QueryResult {
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,
                                     const QString &imNickname);
+    static QString buildContactName(const QString &names);
 };
 
 } //namespace

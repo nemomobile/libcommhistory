@@ -42,6 +42,7 @@
 #include "queryresult.h"
 #include "committingtransaction.h"
 #include "committingtransaction_p.h"
+#include "eventsquery.h"
 
 #include "trackerio_p.h"
 #include "trackerio.h"
@@ -1075,7 +1076,7 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
                                 LiteralValue(LAT("x-mms-to")));
                 query.insertion(header,
                                 nmo::headerValue::iri(),
-                                LiteralValue(event.toList().join(LAT(";"))));
+                                LiteralValue(event.toList().join("\x1e")));
                 query.insertion(event.url(),
                                 nmo::messageHeader::iri(),
                                 header);
@@ -1464,85 +1465,18 @@ bool TrackerIO::addGroup(Group &group)
                                        QSparqlQuery::InsertStatement));
 }
 
-template<class CopyOntology>
-QStringList TrackerIOPrivate::queryMMSCopyAddresses(Event &event)
-{
-    QStringList copyList;
-    RDFSelect   copyQuery;
-    RDFVariable copyMessage = event.url();
-    RDFVariable copyContact = copyMessage.property<CopyOntology>();
-
-    RDFVariable mergedCopyAddresses;
-    mergedCopyAddresses.unionMerge(RDFVariableList()
-                                   << copyContact.optional().property<nco::hasPhoneNumber>()
-                                   .property<nco::phoneNumber>()
-                                   << copyContact.optional().property<nco::hasIMAddress>()
-                                   .property<nco::imID>());
-    copyQuery.addColumn(LAT("contact"), mergedCopyAddresses);
-
-    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(copyQuery.getQuery())));
-
-    if (!runBlockedQuery(result.data())) // FIXIT
-        return copyList;
-
-    while (result->next()) {
-        QSparqlResultRow row = result->current();
-        if (!row.isEmpty())
-            copyList << row.value(0).toString();
-    }
-
-    return copyList;
-}
-
-QStringList TrackerIOPrivate::queryMmsToAddresses(Event &event)
-{
-    QStringList copyList;
-    LiveNodes model;
-    RDFSelect   query;
-    RDFVariable message = event.url();
-    RDFVariable header = message.property<nmo::messageHeader>();
-
-    header.property<nmo::headerName>(LiteralValue("x-mms-to"));
-
-    query.addColumn(LAT("header"), header.property<nmo::headerValue>());
-
-    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(query.getQuery())));
-
-    if (!runBlockedQuery(result.data())) // FIXIT
-        return copyList;
-
-    if (result->first()) {
-        QSparqlResultRow row = result->current();
-        if (!row.isEmpty())
-            copyList << row.value(0).toString().split(";", QString::SkipEmptyParts);
-    }
-
-    return copyList;
-}
-
-// direct instanciation for specific ontolgies
-template
-QStringList TrackerIOPrivate::queryMMSCopyAddresses<nmo::cc>(Event &event);
-template
-QStringList TrackerIOPrivate::queryMMSCopyAddresses<nmo::bcc>(Event &event);
-
-bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
+bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
 {
     QueryResult result;
-
-    int i = 0;
-    foreach(SopranoLive::RDFSelectColumn col, query.columns()) {
-        result.columns.insert(col.name(), i++);
-    }
-
-    QScopedPointer<QSparqlResult> events(connection().exec(QSparqlQuery(query.getQuery())));
+    QScopedPointer<QSparqlResult> events(connection().exec(QSparqlQuery(query.query())));
 
     if (!runBlockedQuery(events.data())) // FIXIT
         return false;
 
     result.result = events.data();
-    result.propertyMask = Event::allProperties();
-    if (events->size() == 0) {
+    result.properties = query.eventProperties();
+
+    if (!events->first()) {
         QSqlError error;
         error.setType(QSqlError::TransactionError);
         error.setDatabaseText(LAT("Event not found"));
@@ -1550,21 +1484,21 @@ bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
         return false;
     }
 
-    events->first();
     QSparqlResultRow row = events->current();
 
-    QueryResult::fillEventFromModel(result, event);
+    result.fillEventFromModel2(event);
+    qDebug() << Q_FUNC_INFO << event.toString();
 
     if (event.type() == Event::MMSEvent) {
         RDFSelect partQuery;
         RDFVariable message = event.url();
         q->prepareMessagePartQuery(partQuery, message);
 
-        i = 0;
+        int i = 0;
         foreach(SopranoLive::RDFSelectColumn col, partQuery.columns()) {
             result.columns.insert(col.name(), i++);
         }
-
+        qDebug() << Q_FUNC_INFO << partQuery.getQuery();
         QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery.getQuery())));
 
         if (runBlockedQuery(parts.data()) &&
@@ -1580,15 +1514,6 @@ bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
                 event.addMessagePart(part);
             } while (parts->next());
         }
-
-        QStringList copyAddresses;
-        copyAddresses = queryMMSCopyAddresses<nmo::cc> (event);
-        event.setCcList(copyAddresses);
-
-        copyAddresses = queryMMSCopyAddresses<nmo::bcc> (event);
-        event.setBccList(copyAddresses);
-
-        event.setToList(queryMmsToAddresses(event));
         event.resetModifiedProperties();
     }
 
@@ -1598,85 +1523,57 @@ bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
 bool TrackerIO::getEvent(int id, Event &event)
 {
     qDebug() << Q_FUNC_INFO << id;
-    RDFSelect query;
+    EventsQuery query(Event::allProperties());
 
-    RDFVariable msg;
-    msg == Event::idToUrl(id);
-
-    RDFVariable type = msg.type();
-    type.isMemberOf(RDFVariableList() << nmo::Message::iri()
-                    << nmo::Call::iri());
-    query.addColumn(LAT("type"), type);
-
-    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(QSparqlQuery(query.getQuery())));
-
-    if (!d->runBlockedQuery(queryResult.data())) // FIXIT
-        return false;
-
-    int count = queryResult->size();
-    bool isCall = (count == 2);
-
-    if (count == 0) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Event not found"));
-        d->lastError = error;
-        return false;
-    }
-
-    // TODO: Istead of doing blocking query above, faster to request all
-    // properties for call and message
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message == Event::idToUrl(id);
-    if (isCall) {
-        prepareCallQuery(query, message, Event::allProperties());
-    } else {
-        prepareMessageQuery(query, message, Event::allProperties());
-    }
+    query.addPattern(QString(QLatin1String("FILTER(%2 = <%1>)"))
+                     .arg(Event::idToUrl(id).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMessageToken(const QString& token, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::messageId>() = LiteralValue(token);
-    prepareMessageQuery(query, message, Event::allProperties());
+    EventsQuery query(Event::allProperties());
+
+    query.addPattern(QString(QLatin1String("%2 nmo:messageId \"%1\" ."))
+                     .arg(token))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMessageToken(const QString &token, int groupId, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::messageId>() = LiteralValue(token);
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    prepareMessageQuery(query, message, Event::allProperties());
+    EventsQuery query(Event::allProperties());
+
+    query.addPattern(QString(QLatin1String("%3 nmo:messageId \"%1\";"
+                                           "nmo:communicationChannel <%2> ."))
+                     .arg(token)
+                     .arg(Group::idToUrl(groupId).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMmsId(const QString& mmsId, int groupId, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::mmsId>() = LiteralValue(mmsId);
+    EventsQuery query(Event::allProperties());
 
-    //when sending to self number, the id of the message will be the same, but we need to pick outgoing message here
-    message.property<nmo::isSent>(LiteralValue(true));
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-
-    prepareMessageQuery(query, message, Event::allProperties());
+    query.addPattern(QString(QLatin1String("%3 nmo:mmsId \"%1\";"
+                                           "nmo:isSent \"true\";"
+                                           "nmo:communicationChannel <%2> ."))
+                     .arg(mmsId)
+                     .arg(Group::idToUrl(groupId).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
-bool TrackerIO::getEventByUri(const QUrl& uri, Event &event)
+bool TrackerIO::getEventByUri(const QUrl &uri, Event &event)
 {
     int eventId = Event::urlToId(uri.toString());
-    return getEvent(eventId,event);
+    return getEvent(eventId, event);
 }
 
 bool TrackerIO::modifyEvent(Event &event)

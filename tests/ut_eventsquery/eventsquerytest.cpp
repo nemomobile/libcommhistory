@@ -134,4 +134,25 @@ void EventsQueryTest::distinct()
     result->waitForFinished();
     QVERIFY(!result->hasError());
 }
+
+void EventsQueryTest::contact()
+{
+    Event::PropertySet props;
+    props << Event::ContactId;
+
+    EventsQuery q(props);
+
+    QString query = q.query();
+    qDebug() << query;
+
+    QVERIFY(q.eventProperties().contains(Event::Id));
+    //QVERIFY(q.eventProperties().contains(Event::Type));
+    QVERIFY(q.eventProperties().contains(Event::ContactId));
+    QVERIFY(q.eventProperties().contains(Event::ContactName));
+
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query)));
+    result->waitForFinished();
+    QVERIFY(!result->hasError());
+}
+
 QTEST_MAIN(EventsQueryTest)

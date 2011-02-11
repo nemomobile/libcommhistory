@@ -153,10 +153,10 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nie:generator");
 //    case Event::MessageParts:
 //        return QLatin1String("nmo:");
-//    case Event::Cc: //FIXIT: mms address fields now hardcoded in querySingleEvent,
-//        return QLatin1String("nmo:");
-//    case Event::Bcc:
-//        return QLatin1String("nmo:");
+    case Event::Cc:
+        return QLatin1String("nmo:cc");
+    case Event::Bcc:
+        return QLatin1String("nmo:bcc");
 //    case Event::ReadStatus:
 //        return QLatin1String("nmo:");
     case Event::ReportRead:
@@ -209,11 +209,14 @@ QString functionForProperty(Event::Property p)
     case Event::ContentLocation:
     case Event::ReportRead:
     case Event::ReportReadRequested:
+    case Event::ReportReadStatus:
     case Event::MmsId:
         func << ontologyProperty(p)
              << "("
              << eventPropertyName(Event::Id)
              << ")";
+        break;
+    case Event::ReadStatus:
         break;
     case Event::LocalUid:
         func << QLatin1String("nco:hasContactMedium(")
@@ -229,18 +232,30 @@ QString functionForProperty(Event::Property p)
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:
         func << ontologyProperty(p)
-             << "("
-             <<  QLatin1String("nmo:fromVCard")
-             << "("
+             <<  QLatin1String("(nmo:fromVCard(")
              << eventPropertyName(Event::Id)
              << "))";
         break;
-    case Event::MessageParts:
     case Event::Cc:
     case Event::Bcc:
-    case Event::ReadStatus:
-    case Event::ReportReadStatus:
+        func << QString(QLatin1String(
+                "(SELECT GROUP_CONCAT(%1, \'\\u001e\') {"
+                "%2 %3 %1Contact . "
+                "{%1Contact nco:hasIMAddress [nco:imID %1]}"
+                "UNION"
+                "{%1Contact nco:hasPhoneNumber [nco:phoneNumber %1]}})"))
+             .arg(eventPropertyName(p))
+             .arg(eventPropertyName(Event::Id))
+             .arg(ontologyProperty(p));
+        break;
     case Event::To:
+        func << QString(QLatin1String(
+                "(SELECT %1 {"
+                "%2 nmo:messageHeader [nmo:headerName \"x-mms-to\"; nmo:headerValue %1]})"))
+                .arg(eventPropertyName(Event::To))
+                .arg(eventPropertyName(Event::Id));
+        break;
+    case Event::MessageParts:
         //return eventPropertyName(Event::Id);
         break;
     default:
@@ -301,8 +316,11 @@ QString patternForProperty(Event::Property p)
     //case Event::ContactName:
         pattern << QString(QLatin1String(
                 "{"
-                "SELECT tracker:id(?_pContact) AS %3 "
-                "fn:string-join((nco:nameGiven(?c), nco:nameFamily(?c), nco:imNickname(?_imAddress)),\",\") AS %4 "
+                "SELECT "
+                "tracker:coalesce(tracker:id(?_pContact), 0)  AS %3 "
+                "fn:concat(tracker:coalesce(nco:nameGiven(?_pContact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:nameFamily(?_pContact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:imNickname(?_imAddress), \'\')) AS %4 "
                 "WHERE { OPTIONAL {"
                 "{?_pContact nco:hasAffiliation [nco:hasIMAddress ?_imAddress] ."
                 "  { %1 nco:hasIMAddress ?_imAddress } "
@@ -379,6 +397,10 @@ public:
         if (!propertySet.contains(Event::ContactId)
             && propertySet.contains(Event::ContactName))
             variables.append(Event::ContactId);
+        // no contactId without contactName
+        if (!propertySet.contains(Event::ContactName)
+            && propertySet.contains(Event::ContactId))
+            variables.append(Event::ContactName);
         // no contactId withouth localUid/remoteUid
         if (!propertySet.contains(Event::LocalUid)
             && propertySet.contains(Event::ContactId))
