@@ -582,13 +582,13 @@ void Event::setType(Event::EventType type)
 
 void Event::setStartTime(const QDateTime &startTime)
 {
-    d->startTime = startTime;
+    d->startTime = startTime.toUTC();
     d->propertyChanged(Event::StartTime);
 }
 
 void Event::setEndTime(const QDateTime &endTime)
 {
-    d->endTime = endTime;
+    d->endTime = endTime.toUTC();
     d->propertyChanged(Event::EndTime);
 }
 
@@ -696,7 +696,7 @@ void Event::setMmsId(const QString &mmsId)
 
 void Event::setLastModified(const QDateTime &modified)
 {
-    d->lastModified = modified;
+    d->lastModified = modified.toUTC();
     d->propertyChanged(Event::LastModified);
 }
 

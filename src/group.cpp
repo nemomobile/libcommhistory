@@ -329,7 +329,7 @@ void Group::setChatName(const QString &name)
 
 void Group::setEndTime(const QDateTime &endTime)
 {
-    d->endTime = endTime;
+    d->endTime = endTime.toUTC();
     d->propertyChanged(Group::EndTime);
 }
 
@@ -407,7 +407,7 @@ void Group::setPermanent(bool permanent)
 
 void Group::setLastModified(const QDateTime &modified)
 {
-    d->lastModified = modified;
+    d->lastModified = modified.toUTC();
     d->propertyChanged(Group::LastModified);
 }
 
