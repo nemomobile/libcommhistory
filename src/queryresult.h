@@ -53,7 +53,7 @@ struct QueryResult {
     void fillEventFromModel2(Event &event);
     static void fillGroupFromModel(QueryResult &result, Group &group);
     void fillGroupFromModel2(Group &group);
-    static void fillMessagePartFromModel(QueryResult &result, MessagePart &part);
+    void fillMessagePartFromModel(MessagePart &part);
 
 
     static QString buildContactName(const QString &firstName,

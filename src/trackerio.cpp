@@ -598,19 +598,24 @@ void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
     callQuery = query;
 }
 
-void TrackerIO::prepareMessagePartQuery(RDFSelect &query, RDFVariable &message)
+QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
 {
-    RDFVariable content = message.property<nmo::mmsHasContent>();
-    RDFVariable part = content.property<nie::hasPart>();
-    query.addColumn(LAT("message"), message);
-    query.addColumn(LAT("part"), part);
-    query.addColumn(LAT("contentId"), part.function<nmo::contentId>());
-    query.addColumn(LAT("textContent"), part.function<nie::plainTextContent>());
-    query.addColumn(LAT("contentType"), part.function<nie::mimeType>());
-    query.addColumn(LAT("characterSet"), part.function<nie::characterSet>());
-    query.addColumn(LAT("contentSize"), part.function<nie::contentSize>());
-    query.addColumn(LAT("contentLocation"), part.function<nfo::fileName>());
-    query.orderBy(part.function<nmo::contentId>(), RDFSelect::Ascending);
+    QString query(QLatin1String(
+            "SELECT ?message "
+              "?part "
+              "?contentId "
+              "nie:plainTextContent(?part) "
+              "nie:mimeType(?part) "
+              "nie:characterSet(?part) "
+              "nie:contentSize(?part) "
+              "nie:url(?part) "
+            "WHERE { "
+              "?message  nmo:mmsHasContent [nie:hasPart ?part] . "
+              "?part nmo:contentId ?contentId "
+            "FILTER(?message = <%1>)} "
+            "ORDER BY ?contentId"));
+
+    return query.arg(messageUri);
 }
 
 QString TrackerIO::prepareGroupQuery(const QString &localUid,
@@ -1490,16 +1495,9 @@ bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
     qDebug() << Q_FUNC_INFO << event.toString();
 
     if (event.type() == Event::MMSEvent) {
-        RDFSelect partQuery;
-        RDFVariable message = event.url();
-        q->prepareMessagePartQuery(partQuery, message);
+        QString partQuery = q->prepareMessagePartQuery(event.url().toString());
 
-        int i = 0;
-        foreach(SopranoLive::RDFSelectColumn col, partQuery.columns()) {
-            result.columns.insert(col.name(), i++);
-        }
-        qDebug() << Q_FUNC_INFO << partQuery.getQuery();
-        QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery.getQuery())));
+        QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery)));
 
         if (runBlockedQuery(parts.data()) &&
             parts->size() > 0) {
@@ -1510,7 +1508,7 @@ bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
 
             do {
                 MessagePart part;
-                QueryResult::fillMessagePartFromModel(result, part);
+                result.fillMessagePartFromModel(part);
                 event.addMessagePart(part);
             } while (parts->next());
         }

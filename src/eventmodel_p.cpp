@@ -383,10 +383,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
             messagePartsReady = false;
-            RDFSelect query;
-            RDFVariable message = event.url();
-            tracker()->prepareMessagePartQuery(query, message);
-            partQueryRunner->runQuery(query, MessagePartQuery);
+            partQueryRunner->runMessagePartQuery(tracker()->prepareMessagePartQuery(event.url().toString()));
         }
     }
 

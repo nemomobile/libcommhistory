@@ -533,21 +533,20 @@ void QueryResult::fillGroupFromModel2(Group &group)
     group.resetModifiedProperties();
 }
 
-void QueryResult::fillMessagePartFromModel(QueryResult &result,
-                                         MessagePart &messagePart)
+void QueryResult::fillMessagePartFromModel(MessagePart &messagePart)
 {
     MessagePart newPart;
 
-    if (!result.eventId) {
-        result.eventId = Event::urlToId(RESULT_INDEX("message").toString());
+    if (!eventId) {
+        eventId = Event::urlToId(result->value(0).toString());
     }
-    newPart.setUri(RESULT_INDEX("part").toString());
-    newPart.setContentId(RESULT_INDEX("contentId").toString());
-    newPart.setPlainTextContent(RESULT_INDEX("textContent").toString());
-    newPart.setContentType(RESULT_INDEX("contentType").toString());
-    newPart.setCharacterSet(RESULT_INDEX("characterSet").toString());
-    newPart.setContentSize(RESULT_INDEX("contentSize").toInt());
-    newPart.setContentLocation(RESULT_INDEX("contentLocation").toString());
+    newPart.setUri(result->value(1).toString());
+    newPart.setContentId(result->value(2).toString());
+    newPart.setPlainTextContent(result->value(3).toString());
+    newPart.setContentType(result->value(4).toString());
+    newPart.setCharacterSet(result->value(5).toString());
+    newPart.setContentSize(result->value(6).toInt());
+    newPart.setContentLocation(result->value(7).toString());
 
     messagePart = newPart;
 }

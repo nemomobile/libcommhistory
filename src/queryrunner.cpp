@@ -324,7 +324,7 @@ void QueryRunner::readData()
         QList<MessagePart> parts;
         while (m_activeQuery.result->next()) {
             MessagePart part;
-            QueryResult::fillMessagePartFromModel(m_activeQuery, part);
+            m_activeQuery.fillMessagePartFromModel(part);
             parts.append(part);
             ++added;
             lastReadPos = m_activeQuery.result->pos();

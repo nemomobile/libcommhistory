@@ -97,8 +97,7 @@ public:
     /*!
      * Adds required message part properties to the query.
      */
-    static void prepareMessagePartQuery(SopranoLive::RDFSelect &query,
-                                        SopranoLive::RDFVariable &message);
+    static QString prepareMessagePartQuery(const QString &messageUri);
 
     /*!
      * Adds required message part properties to the query.
