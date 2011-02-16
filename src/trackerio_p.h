@@ -63,21 +63,21 @@ public:
     static QUrl uriForIMAddress(const QString &account, const QString &remoteUid);
 
     /*!
-     * Return IMContact node that corresponds to account/target (or
+     * Return IMContact node as blank anonymous SPARQL string
+     * that corresponds to account/target (or
      * account if imID is empty), creating if necessary. Uses internal
-     * cache during a transaction (TODO: general cache for all models
-     * with refcounts).
+     * cache during a transaction
      */
-    QUrl findLocalContact(UpdateQuery &query,
-                          const QString &accountPath);
-    QUrl findIMContact(UpdateQuery &query,
-                       const QString &accountPath,
-                       const QString &imID);
-    QUrl findPhoneContact(UpdateQuery &query,
-                          const QString &remoteId);
-    QUrl findRemoteContact(UpdateQuery &query,
-                           const QString &localUid,
-                           const QString &remoteUid);
+    QString findLocalContact(UpdateQuery &query,
+                             const QString &accountPath);
+    QString findIMContact(UpdateQuery &query,
+                          const QString &accountPath,
+                          const QString &imID);
+    QString findPhoneContact(UpdateQuery &query,
+                             const QString &remoteId);
+    QString findRemoteContact(UpdateQuery &query,
+                              const QString &localUid,
+                              const QString &remoteUid);
 
     /*!
      * Helper for inserting and modifying common parts of nmo:Messages.
@@ -143,8 +143,7 @@ public:
     SopranoLive::RDFServicePtr m_service;
 
     // Temporary contact cache, valid during a transaction
-    //TODO: rename
-    QHash<QUrl, QUrl> m_imContactCache;
+    QHash<QUrl, QString> m_contactCache;
     MmsContentDeleter *m_MmsContentDeleter;
     typedef QHash<QString, int> MessageTokenRefCount;
     MessageTokenRefCount m_messageTokenRefCount;

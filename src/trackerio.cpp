@@ -650,53 +650,56 @@ QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &re
     return QUrl(QString(LAT("telepathy:")) + account + QLatin1Char('!') + remoteUid);
 }
 
-QUrl TrackerIOPrivate::findLocalContact(UpdateQuery &query,
-                                        const QString &accountPath)
+QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
+                                           const QString &accountPath)
 {
-    QUrl contact;
+    QString contact;
     QUrl uri = QString(LAT("telepathy:%1")).arg(accountPath);
-    if (m_imContactCache.contains(uri)) {
-        contact = m_imContactCache[uri];
+    if (m_contactCache.contains(uri)) {
+        contact = m_contactCache[uri];
     } else {
-        contact = m_service->createUniqueIri(LAT("contactLocal"));
-        query.insertion(QString(LAT("<%1> rdf:type nco:IMAddress . "
-                                    "<%2> rdf:type nco:Contact; nco:hasIMAddress <%1> ."))
-                        .arg(uri.toString())
-                        .arg(contact.toString()));
-        m_imContactCache.insert(uri, contact);
+        contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
+                  .arg(uri.toString());
+        query.insertionRaw(uri,
+                           "rdf:type",
+                           LAT("nco:IMAddress"));
+
+        m_contactCache.insert(uri, contact);
     }
 
     return contact;
 }
 
-QUrl TrackerIOPrivate::findIMContact(UpdateQuery &query,
-                                     const QString &accountPath,
-                                     const QString &imID)
+QString TrackerIOPrivate::findIMContact(UpdateQuery &query,
+                                        const QString &accountPath,
+                                        const QString &imID)
 {
-    QUrl contact;
+    QString contact;
     QUrl imAddressURI = uriForIMAddress(accountPath, imID);
 
-    if (m_imContactCache.contains(imAddressURI)) {
-        contact = m_imContactCache[imAddressURI];
+    if (m_contactCache.contains(imAddressURI)) {
+        contact = m_contactCache[imAddressURI];
     } else {
-        contact = m_service->createUniqueIri(LAT("contactIM"));
+        contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
+                  .arg(imAddressURI.toString());
 
-        query.insertion(QString(LAT("<%1> rdf:type nco:IMAddress; nco:imID \"%2\" . "
-                                    "<%3> rdf:type nco:Contact; nco:hasIMAddress <%1> ."))
-                        .arg(imAddressURI.toString())
-                        .arg(imID)
-                        .arg(contact.toString()));
+        query.insertionRaw(imAddressURI,
+                           "rdf:type",
+                           LAT("nco:IMAddress"));
+        query.insertion(imAddressURI,
+                        "nco:imID",
+                        imID);
 
-        m_imContactCache.insert(imAddressURI, contact);
+        m_contactCache.insert(imAddressURI, contact);
     }
 
     return contact;
 }
 
-QUrl TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
-                                        const QString &remoteId)
+QString TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
+                                           const QString &remoteId)
 {
-    QUrl contact;
+    QString contact;
     QUrl phoneNumberURI;
 
     QString phoneNumber = normalizePhoneNumber(remoteId);
@@ -706,10 +709,11 @@ QUrl TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
         phoneNumberURI = QString(LAT("tel:%1")).arg(phoneNumber);
     }
 
-    if (m_imContactCache.contains(phoneNumberURI)) {
-        contact = m_imContactCache[phoneNumberURI];
+    if (m_contactCache.contains(phoneNumberURI)) {
+        contact = m_contactCache[phoneNumberURI];
     } else {
-        contact = m_service->createUniqueIri(LAT("contactPhone"));
+        contact = QString(LAT("[rdf:type nco:Contact; nco:hasPhoneNumber <%2>]"))
+                  .arg(phoneNumberURI.toString());
 
         query.insertionSilent(QString(LAT(
                 "<%1> rdf:type nco:PhoneNumber; nco:phoneNumber \"%2\"; maemo:localPhoneNumber \"%3\" . "))
@@ -717,21 +721,15 @@ QUrl TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
                         .arg(phoneNumber)
                         .arg(phoneNumber.right(CommHistory::phoneNumberMatchLength())));
 
-        query.insertion(QString(LAT(
-                "<%1> rdf:type nco:Contact; nco:hasPhoneNumber <%2> ."))
-                        .arg(contact.toString())
-                        .arg(phoneNumberURI.toString()));
-
-
-        m_imContactCache.insert(phoneNumberURI, contact);
+        m_contactCache.insert(phoneNumberURI, contact);
     }
 
     return contact;
 }
 
-QUrl TrackerIOPrivate::findRemoteContact(UpdateQuery &query,
-                                         const QString &localUid,
-                                         const QString &remoteUid)
+QString TrackerIOPrivate::findRemoteContact(UpdateQuery &query,
+                                            const QString &localUid,
+                                            const QString &remoteUid)
 {
     QString phoneNumber = normalizePhoneNumber(remoteUid);
     if (phoneNumber.isEmpty()) {
@@ -1014,31 +1012,29 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
             }
             break;
         case Event::Cc:
-            if (modifyMode) {
-                //TODO: clean contact nodes
+            if (modifyMode)
                 query.deletion(event.url(),
                                "nmo:cc");
-            }
+
             foreach (QString contactString, event.ccList()) {
-                QUrl ccContact = findRemoteContact(query, event.localUid(), contactString);
-                query.insertion(event.url(),
-                                "nmo:cc",
-                                ccContact,
-                                false);
+                QString ccContact = findRemoteContact(query, event.localUid(), contactString);
+                query.insertionRaw(event.url(),
+                                   "nmo:cc",
+                                   ccContact,
+                                   false);
             }
             break;
         case Event::Bcc:
-            if (modifyMode) {
-                //TODO: clean contact nodes
+            if (modifyMode)
                 query.deletion(event.url(),
                                "nmo:bcc");
-            }
+
             foreach (QString contactString, event.bccList()) {
-                QUrl bccContact = findRemoteContact(query, event.localUid(), contactString);
-                query.insertion(event.url(),
-                                "nmo:bcc",
-                                bccContact,
-                                false);
+                QString bccContact = findRemoteContact(query, event.localUid(), contactString);
+                query.insertionRaw(event.url(),
+                                   "nmo:bcc",
+                                   bccContact,
+                                   false);
             }
             break;
         case Event::ContentLocation:
@@ -1154,23 +1150,23 @@ void TrackerIOPrivate::addIMEvent(UpdateQuery &query, Event &event)
                        "rdf:type",
                        LAT("nmo:IMMessage"));
 
-    QUrl remoteContact = findIMContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString remoteContact = findIMContact(query, event.localUid(), event.remoteUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           remoteContact);
     } else {
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           remoteContact);
     }
     writeCommonProperties(query, event, false);
 }
@@ -1196,23 +1192,23 @@ void TrackerIOPrivate::addSMSEvent(UpdateQuery &query, Event &event)
     if (event.type() == Event::MMSEvent)
         writeMMSProperties(query, event, false);
 
-    QUrl remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           remoteContact);
     } else {
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           remoteContact);
     }
 }
 
@@ -1225,23 +1221,23 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
                        "rdf:type",
                        LAT("nmo:Call"));
 
-    QUrl remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           remoteContact);
     } else {
-        query.insertion(eventSubject,
-                        "nmo:to",
-                        localContact);
-        query.insertion(eventSubject,
-                        "nmo:from",
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           remoteContact);
     }
 
     writeCommonProperties(query, event, false);
@@ -1362,18 +1358,18 @@ bool TrackerIO::addGroup(Group &group)
     QString phoneNumber = normalizePhoneNumber(remoteUid);
 
     if (phoneNumber.isEmpty()) {
-        QUrl participant = d->findIMContact(query, group.localUid(), remoteUid);
-        query.insertion(channelSubject,
-                        "nmo:hasParticipant",
-                        participant);
+        QString participant = d->findIMContact(query, group.localUid(), remoteUid);
+        query.insertionRaw(channelSubject,
+                           "nmo:hasParticipant",
+                           participant);
         query.insertion(channelSubject,
                         "nie:generator",
                         remoteUid);
     } else {
-        QUrl participant = d->findPhoneContact(query, phoneNumber);
-        query.insertion(channelSubject,
-                        "nmo:hasParticipant",
-                        participant);
+        QString participant = d->findPhoneContact(query, phoneNumber);
+        query.insertionRaw(channelSubject,
+                           "nmo:hasParticipant",
+                           participant);
         query.insertion(channelSubject,
                         "nie:generator",
                         phoneNumber);
@@ -1507,23 +1503,23 @@ bool TrackerIO::modifyEvent(Event &event)
         && (event.validProperties().contains(Event::LocalUid)
             || event.validProperties().contains(Event::RemoteUid))) {
         // TODO: allow multiple remote uids
-        QUrl localContact = d->findLocalContact(query, event.localUid());
-        QUrl remoteContact = d->findRemoteContact(query, event.localUid(), event.remoteUid());
+        QString localContact = d->findLocalContact(query, event.localUid());
+        QString remoteContact = d->findRemoteContact(query, event.localUid(), event.remoteUid());
 
         if (event.direction() == Event::Outbound) {
-            query.insertion(event.url(),
-                            "nmo:from",
-                            localContact);
-            query.insertion(event.url(),
-                            "nmo:to",
-                            remoteContact);
+            query.insertionRaw(event.url(),
+                               "nmo:from",
+                               localContact);
+            query.insertionRaw(event.url(),
+                               "nmo:to",
+                               remoteContact);
         } else {
-            query.insertion(event.url(),
-                            "nmo:to",
-                            localContact);
-            query.insertion(event.url(),
-                            "nmo:from",
-                            remoteContact);
+            query.insertionRaw(event.url(),
+                               "nmo:to",
+                               localContact);
+            query.insertionRaw(event.url(),
+                               "nmo:from",
+                               remoteContact);
         }
     }
 
@@ -1598,11 +1594,11 @@ bool TrackerIO::moveEvent(Event &event, int groupId)
     d->setChannel(query, event, groupId, true); // true means modify
 
     if (event.direction() == Event::Inbound) {
-        QUrl remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
-        query.insertion(event.url(),
-                        "nmo:from",
-                        remoteContact,
-                        true); //TODO: proper contact deletion
+        QString remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
+        query.insertionRaw(event.url(),
+                           "nmo:from",
+                           remoteContact,
+                           true);
     }
 
     return d->handleQuery(QSparqlQuery(query.query(),
@@ -1821,7 +1817,7 @@ CommittingTransaction* TrackerIO::commit(bool isBlocking)
 
     }
 
-    d->m_imContactCache.clear();
+    d->m_contactCache.clear();
     d->checkAndDeletePendingMmsContent(d->m_bgThread);
     d->m_pTransaction = 0;
 
@@ -1873,7 +1869,7 @@ void TrackerIOPrivate::runNextTransaction()
 
 void TrackerIO::rollback()
 {
-    d->m_imContactCache.clear();
+    d->m_contactCache.clear();
     d->m_messageTokenRefCount.clear(); // Clear cache to avoid deletion after rollback
     delete d->m_pTransaction;
     d->m_pTransaction = 0;

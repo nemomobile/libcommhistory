@@ -231,7 +231,6 @@ void deleteAll()
             "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
                                                 "nmo:Call,"
                                                 "nmo:CommunicationChannel,"
-                                                "nco:Contact,"
                                                 "nco:IMAddress,"
                                                 "nco:PhoneNumber))}"),
                        QSparqlQuery::DeleteStatement);
