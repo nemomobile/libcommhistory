@@ -25,6 +25,9 @@
 
 #include <QString>
 
+// FIXME: keep this for now to avoid API break
+#define PHONE_NUMBER_MATCH_LENGTH 7
+
 namespace CommHistory {
 
 /*!
