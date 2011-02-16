@@ -74,7 +74,6 @@ public:
                        const QString &accountPath,
                        const QString &imID);
     QUrl findPhoneContact(UpdateQuery &query,
-                          const QString &accountPath,
                           const QString &remoteId);
     QUrl findRemoteContact(UpdateQuery &query,
                            const QString &localUid,

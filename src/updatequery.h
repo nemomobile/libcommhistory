@@ -23,65 +23,72 @@
 #ifndef COMMHISTORY_UPDATE_QUERY_H
 #define COMMHISTORY_UPDATE_QUERY_H
 
-#include <QtTracker/Tracker>
+#include <QUrl>
+#include <QStringList>
+#include <QDateTime>
+#include <QDebug>
 
 namespace CommHistory {
 
 class UpdateQuery {
-    typedef QPair<SopranoLive::RDFStatementList,SopranoLive::RDFStatementList> QueryOp;
 public:
-    void deletion(SopranoLive::RDFVariable const &subject,
-                  SopranoLive::RDFVariable const &predicate,
-                  SopranoLive::RDFVariable const &object = SopranoLive::RDFVariable()) {
-        if (m_operations.isEmpty())
-            startQuery();
+    UpdateQuery();
 
-        m_operations.top().first << SopranoLive::RDFStatement(subject, predicate, object);
-    }
+    void deletion(const QUrl &subject,
+                  const char *predicate,
+                  const QString &object = QString());
 
-    void insertion(SopranoLive::RDFVariable const &subject,
-                   SopranoLive::RDFVariable const &predicate,
-                   SopranoLive::RDFVariable const &object,
-                   bool modify = false) {
-        if (m_operations.isEmpty())
-            startQuery();
+    void resourceDeletion(const QUrl &subject,
+                          const char *predicate);
 
-        if (modify) {
-            // delete properties in separate queries
-            startQuery();
-            deletion(subject, predicate);
-            endQuery();
-        }
+    void deletion(const QString &query);
 
-        m_operations.top().second << SopranoLive::RDFStatement(subject, predicate, object);
-    }
+    void insertionRaw(const QUrl &subject,
+                      const char *predicate,
+                      const QString &object,
+                      bool modify = false);
 
-    void startQuery() {
-        m_operations.push(QueryOp());
-    }
+    void insertion(const QUrl &subject,
+                   const char *predicate,
+                   const QString &object,
+                   bool modify = false);
 
-    void endQuery() {
-        QueryOp op = m_operations.pop();
+    void insertion(const QUrl &subject,
+                   const char *predicate,
+                   const QDateTime &object,
+                   bool modify = false);
 
-        if (!op.first.isEmpty())
-            m_update.addDeletion(op.first);
+    void insertion(const QUrl &subject,
+                   const char *predicate,
+                   bool object,
+                   bool modify = false);
 
-        if (!op.second.isEmpty())
-            m_update.addInsertion(op.second);
-    }
+    void insertion(const QUrl &subject,
+                   const char *predicate,
+                   int object,
+                   bool modify = false);
 
-    const SopranoLive::RDFUpdate& rdfUpdate() {
-        while (!m_operations.isEmpty())
-            endQuery();
+    void insertion(const QUrl &subject,
+                   const char *predicate,
+                   const QUrl &object,
+                   bool modify = false);
 
-        return m_update;
-    }
+    void insertion(const QString &statement);
+
+    void insertionSilent(const QString &statement);
+
+    QString query();
 
 private:
-    SopranoLive::RDFUpdate m_update;
-    QStack<QueryOp> m_operations;
+    QString nextVariable();
+
+private:
+    int nextVar;
+    QStringList deletions;
+    QMultiMap<QUrl, QString> insertions;
+    QStringList silents;
 };
 
-}
+} // namespace
 
 #endif
