@@ -1715,12 +1715,13 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
     // error return left for possible future implementation
 
     QUrl group = Group::idToUrl(groupId);
-    RDFUpdate update;
+    UpdateQuery update;
 
     if (deleteMessages) {
-        RDFVariable msg = RDFVariable::fromType<nmo::Message>();
-        msg.property<nmo::communicationChannel>(group);
-        update.addDeletion(msg, rdf::type::iri(), rdfs::Resource::iri());
+        update.deletion(QString(LAT(
+                "DELETE {?msg rdf:type rdfs:Resource}"
+                "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel <%1>}"))
+                        .arg(group.toString()));
 
         // delete mms attachments
         // FIXIT, make it async
@@ -1731,9 +1732,11 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
     d->m_bgThread = backgroundThread;
 
     // delete conversation
-    update.addDeletion(group, rdf::type::iri(), rdfs::Resource::iri());
+    update.deletion(group,
+                    "rdf:type",
+                    LAT("rdfs:Resource"));
 
-    return d->handleQuery(QSparqlQuery(update.getQuery(),
+    return d->handleQuery(QSparqlQuery(update.query(),
                                        QSparqlQuery::DeleteStatement));
 }
 
