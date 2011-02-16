@@ -1654,21 +1654,19 @@ bool TrackerIO::getGroup(int id, Group &group)
 
 QSparqlResult* TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    query.addColumn(message);
-    query.addColumn("messageId", message.function<nmo::messageId>());
+    QSparqlQuery query(LAT(
+            "SELECT ?message "
+              "nmo:messageId(?message) "
+              "(SELECT COUNT(?otherMessage) "
+                "WHERE {"
+                "?otherMessage rdf:type nmo:MMSMessage; nmo:isDeleted \"false\" "
+                "FILTER(nmo:messageId(?otherMessage) = nmo:messageId(?message))})"
+            "WHERE {"
+              "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?:conversation}"));
 
-    RDFSubSelect msgCountQuery;
-    RDFVariable innerMessage = RDFVariable::fromType<nmo::MMSMessage>();
-    innerMessage.property<nmo::isDeleted>(LiteralValue(false));
-    innerMessage.property<nmo::messageId>(msgCountQuery.variable(message).property<nmo::messageId>());
-    msgCountQuery.addCountColumn("total", innerMessage);
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
 
-    query.addColumn(msgCountQuery.asExpression());
-
-    return connection().exec(QSparqlQuery(query.getQuery()));
+    return connection().exec(query);
 }
 
 bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
