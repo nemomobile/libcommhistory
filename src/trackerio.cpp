@@ -1742,14 +1742,15 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
 
 bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
 {
-    RDFSelect query;
+    QSparqlQuery query(LAT(
+            "SELECT COUNT(?message) "
+            "WHERE {"
+              "?message rdf:type nmo:Message; nmo:isDeleted \"false\";"
+              "nmo:communicationChannel ?:conversation}"));
 
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    message.property<nmo::isDeleted>(LiteralValue(false));
-    query.addCountColumn("total", message);
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
 
-    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(QSparqlQuery(query.getQuery())));
+    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(query));
 
     if (!d->runBlockedQuery(queryResult.data())) // FIXIT
         return false;
