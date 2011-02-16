@@ -278,7 +278,8 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
         imNicknameSubSelect.addColumn(LAT("imNickname"), imNickAddress);
         subSelect.addColumnAs(imNicknameSubSelect.asExpression(), outerImAddress);
 
-        query.addColumn(LAT("contactId"), contact.function<nco::contactLocalUID>());
+        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
+        query.addColumn(LAT("contactId"), idFilter);
         query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
         query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
         query.addColumn(LAT("imNickname"), outerImAddress.function<nco::imNickname>());
@@ -363,7 +364,8 @@ void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
 
         subSelect.addColumnAs(contactSelect.asExpression(), contact);
 
-        query.addColumn(LAT("contactId"), contact.function<nco::contactLocalUID>());
+        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
+        query.addColumn(LAT("contactId"), idFilter);
         query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
         query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
         query.addColumn(LAT("imNickname"), outerAddress.function<nco::imNickname>());
@@ -461,7 +463,8 @@ void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
 
         subSelect.addColumnAs(contactSelect.asExpression(), contact);
 
-        query.addColumn(LAT("contactId"), contact.function<nco::contactLocalUID>());
+        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
+        query.addColumn(LAT("contactId"), idFilter);
         query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
         query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
         query.addColumn(LAT("imNickname"), affAddress.function<nco::imNickname>());
@@ -647,7 +650,8 @@ void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
         innerSubsel.addColumnAs(nickSubSelect.asExpression(), imNickname);
     }
 
-    channelQuery.addColumn(LAT("contactId"), contact.function<nco::contactLocalUID>());
+    RDFVariable idFilter = contact.filter(LAT("tracker:id"));
+    channelQuery.addColumn(LAT("contactId"), idFilter);
     channelQuery.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
     channelQuery.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
     channelQuery.addColumn(LAT("imNickname"), imNickname);

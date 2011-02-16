@@ -122,7 +122,6 @@ void addTestContact(const QString &name, const QString &remoteUid)
     contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
     contact = ::tracker()->liveNode(contactURI);
     contact->setContactUID(remoteUid + remoteUid);
-    contact->setContactLocalUID(remoteUid);
     contact->addHasPhoneNumber(number);
     contact->setNameFamily(name);
 }
