@@ -1685,7 +1685,7 @@ void TrackerIO::transaction(bool syncOnCommit)
 {
     Q_ASSERT(d->m_pTransaction == 0);
 
-    d->syncOnCommit = syncOnCommit;
+    d->syncOnCommit = syncOnCommit; //TODO: support syncOnCommit, call tracker's Sync dbus method directly
     d->m_pTransaction = new CommittingTransaction(this);
     d->m_messageTokenRefCount.clear(); // make sure that nothing is removed if not requested
 }

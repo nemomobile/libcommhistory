@@ -253,6 +253,14 @@ Q_SIGNALS:
      */
     void modelReady(bool successful);
 
+    /*!
+     * Emitted when group operation finishes.
+     *
+     * \param group ids
+     * \param successful or false in case of an error
+     */
+    void groupsCommitted(const QList<int> &groupIds, bool successful);
+
 private:
     friend class GroupModelPrivate;
     GroupModelPrivate *d;

@@ -106,20 +106,11 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
     QStringList uids;
     uids << remoteUid;
     grp.setRemoteUids(uids);
-
+    QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QVERIFY(groupModel.addGroup(grp));
 
-    QTest::qWait(1000);
-
-    // wait till group is really added to tracker, so getGroup will not fail in
-    // testcases
-    bool added = false;
-    for (int i=0; i < 5 && !added; i++) {
-        Group group;
-        added = groupModel.trackerIO().getGroup(grp.id(), group);
-        if (!added)
-            QTest::qWait(1000);
-    }
+    QVERIFY(waitSignal(ready, 1000));
+    QVERIFY(ready.first().at(1).toBool());
 }
 
 void addTestContact(const QString &name, const QString &remoteUid)
@@ -229,7 +220,6 @@ void deleteAll()
     QSparqlQuery query(QLatin1String(
             "DELETE {?n a rdfs:Resource}"
             "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                "nmo:Call,"
                                                 "nmo:CommunicationChannel,"
                                                 "nco:IMAddress,"
                                                 "nco:PhoneNumber))}"),

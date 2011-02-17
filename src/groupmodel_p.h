@@ -60,10 +60,6 @@ public:
      * \param parent Parent object.
      */
     GroupModelPrivate(GroupModel *parent = 0);
-
-    /*!
-     * Destructor.
-     */
     ~GroupModelPrivate();
 
     QString newObjectPath();
@@ -76,7 +72,7 @@ public:
 
     void executeQuery(const QString query);
 
-    CommittingTransaction* commitTransaction(QList<Group> groups);
+    CommittingTransaction* commitTransaction(QList<int> groupIds);
 
     void resetQueryRunner();
     void deleteQueryRunner();

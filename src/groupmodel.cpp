@@ -161,15 +161,21 @@ QString GroupModelPrivate::newObjectPath()
         QString::number(modelSerial++);
 }
 
-CommittingTransaction* GroupModelPrivate::commitTransaction(QList<Group> groups)
+CommittingTransaction* GroupModelPrivate::commitTransaction(QList<int> groupIds)
 {
     CommittingTransaction *t = tracker()->commit();
 
-    if (t && !groups.isEmpty()) {
+    if (t) {
         t->addSignal(false,
-                    this,
-                    "groupsUpdatedFull",
-                    Q_ARG(QList<CommHistory::Group>, groups));
+                     q_ptr,
+                     "groupsCommitted",
+                     Q_ARG(QList<int>, groupIds),
+                     Q_ARG(bool, true));
+        t->addSignal(true,
+                     q_ptr,
+                     "groupsCommitted",
+                     Q_ARG(QList<int>, groupIds),
+                     Q_ARG(bool, false));
     }
 
     return t;
@@ -565,7 +571,6 @@ int GroupModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
 
-    // The last column is LastVCardLabel.
     return NumberOfColumns;
 }
 
@@ -737,7 +742,9 @@ bool GroupModel::addGroup(Group &group)
         d->tracker()->rollback();
         return false;
     }
-    d->tracker()->commit();
+
+    if (!d->commitTransaction(QList<int>() << group.id()))
+        return false;
 
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
@@ -772,9 +779,14 @@ bool GroupModel::modifyGroup(Group &group)
         return false;
     }
 
-    d->commitTransaction(QList<Group>() << group);
+    CommittingTransaction *t = d->commitTransaction(QList<int>() << group.id());
+    if (t)
+        t->addSignal(false,
+                     d,
+                     "groupsUpdatedFull",
+                     Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
 
-    return true;
+    return t != 0;
 }
 
 bool GroupModel::getGroups(const QString &localUid,
@@ -803,7 +815,8 @@ bool GroupModel::markAsReadGroup(int id)
         return false;
     }
 
-    d->tracker()->commit();
+    if (!d->commitTransaction(QList<int>() << id))
+        return false;
 
     Group group;
 
@@ -843,7 +856,7 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
         }
     }
 
-    CommittingTransaction *t = d->commitTransaction(QList<Group>());
+    CommittingTransaction *t = d->commitTransaction(groupIds);
 
     if (t)
         t->addSignal(false, d, "groupsDeleted", Q_ARG(QList<int>, groupIds));
