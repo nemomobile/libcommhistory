@@ -118,9 +118,9 @@ void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
             if (!channel.isEmpty())
                 eventToFill.setGroupId(Group::urlToId(channel));
         } else if (property == Event::StartTime)
-            eventToFill.setStartTime(RESULT_INDEX("sentDate").toDateTime().toLocalTime());
+            eventToFill.setStartTime(RESULT_INDEX("sentDate").toDateTime());
         else if (property == Event::EndTime)
-            eventToFill.setEndTime(RESULT_INDEX("receivedDate").toDateTime().toLocalTime());
+            eventToFill.setEndTime(RESULT_INDEX("receivedDate").toDateTime());
         else if (property == Event::IsRead)
             eventToFill.setIsRead(RESULT_INDEX("isRead").toBool());
         else if (property == Event::Status) {
@@ -139,7 +139,7 @@ void QueryResult::fillEventFromModel(QueryResult &result, Event &event)
                 }
             }
         } else if (property == Event::LastModified)
-            eventToFill.setLastModified(RESULT_INDEX("lastModified").toDateTime().toLocalTime());
+            eventToFill.setLastModified(RESULT_INDEX("lastModified").toDateTime());
     }
 
     // handle SMS/MMS properties
@@ -286,10 +286,10 @@ void QueryResult::fillEventFromModel2(Event &event)
             break;
         }
         case Event::StartTime:
-            eventToFill.setStartTime(RESULT_INDEX2(Event::StartTime).toDateTime().toLocalTime());
+            eventToFill.setStartTime(RESULT_INDEX2(Event::StartTime).toDateTime());
             break;
         case Event::EndTime:
-            eventToFill.setEndTime(RESULT_INDEX2(Event::EndTime).toDateTime().toLocalTime());
+            eventToFill.setEndTime(RESULT_INDEX2(Event::EndTime).toDateTime());
             break;
         case Event::IsRead:
             eventToFill.setIsRead(RESULT_INDEX2(Event::IsRead).toBool());
@@ -314,7 +314,7 @@ void QueryResult::fillEventFromModel2(Event &event)
             break;
         }
         case Event::LastModified:
-            eventToFill.setLastModified(RESULT_INDEX2(Event::LastModified).toDateTime().toLocalTime());
+            eventToFill.setLastModified(RESULT_INDEX2(Event::LastModified).toDateTime());
             break;
         case Event::IsMissedCall:
             eventToFill.setIsMissedCall(!(RESULT_INDEX2(Event::IsMissedCall).toBool()));
@@ -443,7 +443,7 @@ void QueryResult::fillGroupFromModel(Group &group)
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
     groupToFill.setUnreadMessages(result->value(Group::UnreadMessages).toInt());
     groupToFill.setSentMessages(result->value(Group::SentMessages).toInt());
-    groupToFill.setEndTime(result->value(Group::EndTime).toDateTime().toLocalTime());
+    groupToFill.setEndTime(result->value(Group::EndTime).toDateTime());
     groupToFill.setLastEventId(Event::urlToId(result->value(Group::LastEventId).toString()));
     groupToFill.setLastMessageText(result->value(Group::LastMessageText).toString());
     groupToFill.setLastVCardFileName(result->value(Group::LastVCardFileName).toString());
@@ -462,7 +462,7 @@ void QueryResult::fillGroupFromModel(Group &group)
     // since we read it from db, it is permanent
     groupToFill.setPermanent(true);
 
-    groupToFill.setLastModified(result->value(Group::LastModified).toDateTime().toLocalTime());
+    groupToFill.setLastModified(result->value(Group::LastModified).toDateTime());
 
     group = groupToFill;
     group.resetModifiedProperties();
