@@ -1883,24 +1883,33 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
 {
     qDebug() << __FUNCTION__ << eventType;
 
-    RDFUpdate update;
+    QSparqlQuery query(LAT("DELETE {?e a rdfs:Resource}"
+                           "WHERE {?e rdf:type ?:eventType}"),
+                       QSparqlQuery::DeleteStatement);
+
+    QUrl eventTypeUrl;
+
     switch(eventType) {
-        // TODO: handle other event types
-        case Event::CallEvent:
-            // avoid "jump to case label crosses initialization" error by making
-            // call variable's scope smaller
-            {
-                RDFVariable call = RDFVariable::fromType<nmo::Call>();
-                update.addDeletion(call, rdf::type::iri(), rdfs::Resource::iri());
-            }
-            break;
-        default:
-            qDebug() << __FUNCTION__ << "Unsupported type" << eventType;
-            return false;
+    case Event::IMEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "IMMessage"));
+        break;
+    case Event::SMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "SMSMessage"));
+        break;
+    case Event::CallEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "Call"));
+        break;
+    case Event::MMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
+        break;
+    default:
+        qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
+        return false;
     }
 
-    return d->handleQuery(QSparqlQuery(update.getQuery(),
-                                       QSparqlQuery::DeleteStatement));
+    query.bindValue(LAT("eventType"), eventTypeUrl);
+
+    return d->handleQuery(query);
 }
 
 void TrackerIOPrivate::calculateParentId(Event& event)
