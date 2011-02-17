@@ -51,8 +51,7 @@ struct QueryResult {
 
     static void fillEventFromModel(QueryResult &result, Event &event);
     void fillEventFromModel2(Event &event);
-    static void fillGroupFromModel(QueryResult &result, Group &group);
-    void fillGroupFromModel2(Group &group);
+    void fillGroupFromModel(Group &group);
     void fillMessagePartFromModel(MessagePart &part);
 
 

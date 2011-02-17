@@ -406,92 +406,6 @@ void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &messag
     messageQuery = query;
 }
 
-void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
-                                const Event::PropertySet &propertyMask,
-                                QUrl communicationChannel)
-{
-    RDFSelect query;
-
-    RDFVariable contact;
-
-    RDFVariable outerMessage = query.newColumn(LAT("message"));
-    RDFVariable date = query.newColumn(LAT("date"));
-
-    RDFSubSelect subSelect;
-    RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
-    subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::receivedDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    RDFVariable outerAddress;
-    RDFVariable targetAddress;
-
-    query.addColumn(LAT("type"), outerMessage.function<rdf::type>());
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        query.addColumn(LAT("contact"), contact);
-    }
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-        RDFVariable from = query.newColumn(LAT("from"));
-        RDFVariable to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subMessage.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subMessage.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)
-        || propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-
-        outerAddress = query.newColumn(LAT("targetAddress"));
-        targetAddress = subSelect.newColumnAs(outerAddress);
-
-        RDFVariable target = subSelect.variable(LAT("target"));
-        RDFVariableList fromToUnion = subMessage.unionChildren(2);
-        fromToUnion[0].property<nmo::isSent>(LiteralValue(false));
-        fromToUnion[0].property<nmo::from>(target);
-        fromToUnion[1].property<nmo::isSent>(LiteralValue(true));
-        fromToUnion[1].property<nmo::to>(target);
-        target.property<nco::hasIMAddress>(targetAddress);
-    }
-
-    subMessage.property<nmo::communicationChannel>(communicationChannel);
-
-    addMessagePropertiesToQuery(query, propertyMask, outerMessage);
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-        subContact.isOfType<nco::PersonContact>();
-        RDFVariable imAffiliation = subContact.property<nco::hasAffiliation>();
-        imAffiliation.property<nco::hasIMAddress>(targetAddress);
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), outerAddress.function<nco::imNickname>());
-    }
-
-    query.orderBy(date, false);
-    // enforce secondary sorting in the order of message saving
-    // tracker::id() used instead of plain message uri for performance reason
-    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
-    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
-    query.addColumn(msgTrackerId);
-    query.orderBy(msgTrackerId, false);
-
-    messageQuery = query;
-}
-
 void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
                                  const Event::PropertySet &propertyMask)
 {
@@ -1646,7 +1560,7 @@ bool TrackerIO::getGroup(int id, Group &group)
     QSparqlResultRow row = groups->current();
 
     result.result = groups.data();
-    result.fillGroupFromModel2(groupToFill);
+    result.fillGroupFromModel(groupToFill);
     group = groupToFill;
 
     return true;

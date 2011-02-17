@@ -404,72 +404,7 @@ void QueryResult::fillEventFromModel2(Event &event)
     event.resetModifiedProperties();
 }
 
-void QueryResult::fillGroupFromModel(QueryResult &result, Group &group)
-{
-    Group groupToFill;
-
-    QStringList types = RESULT_INDEX("type").toString().split(QChar(','));
-    if (types.contains(LAT(NMO_ "MMSMessage"))) {
-        groupToFill.setLastEventType(Event::MMSEvent);
-    } else if (types.contains(LAT(NMO_ "SMSMessage"))) {
-        groupToFill.setLastEventType(Event::SMSEvent);
-    } else if (types.contains(LAT(NMO_ "IMMessage"))) {
-        groupToFill.setLastEventType(Event::IMEvent);
-    }
-
-    QString status = RESULT_INDEX("deliveryStatus").toString();
-    if (!status.isEmpty())
-        groupToFill.setLastEventStatus(nmoStatusToEventStatus(status));
-
-    groupToFill.setId(Group::urlToId(RESULT_INDEX("channel").toString()));
-
-    groupToFill.setChatName(RESULT_INDEX("title").toString());
-
-    QString identifier = RESULT_INDEX("identifier").toString();
-    if (!identifier.isEmpty()) {
-        bool ok = false;
-        Group::ChatType chatType = (Group::ChatType)(identifier.toUInt(&ok));
-        if (ok)
-            groupToFill.setChatType(chatType);
-    }
-
-    groupToFill.setRemoteUids(QStringList() << RESULT_INDEX("remoteId").toString());
-    groupToFill.setLocalUid(RESULT_INDEX("subject").toString());
-    groupToFill.setContactId(RESULT_INDEX("contactId").toInt());
-    QString name = buildContactName(RESULT_INDEX("contactFirstName").toString(),
-                                    RESULT_INDEX("contactLastName").toString(),
-                                    RESULT_INDEX("imNickname").toString());
-    groupToFill.setContactName(name);
-    groupToFill.setTotalMessages(RESULT_INDEX("totalMessages").toInt());
-    groupToFill.setUnreadMessages(RESULT_INDEX("unreadMessages").toInt());
-    groupToFill.setSentMessages(RESULT_INDEX("sentMessages").toInt());
-    groupToFill.setEndTime(RESULT_INDEX("lastDate").toDateTime().toLocalTime());
-    groupToFill.setLastEventId(Event::urlToId(RESULT_INDEX("lastMessage").toString()));
-    QString messageSubject = RESULT_INDEX("lastMessageSubject").toString();
-    groupToFill.setLastMessageText(messageSubject.isEmpty() ? RESULT_INDEX("lastMessageText").toString() : messageSubject);
-    groupToFill.setLastVCardFileName(RESULT_INDEX("lastVCardFileName").toString());
-    groupToFill.setLastVCardLabel(RESULT_INDEX("lastVCardLabel").toString());
-
-    // tracker query returns 0 for non-existing messages... make the
-    // value api-compatible
-    if (groupToFill.lastEventId() == 0)
-        groupToFill.setLastEventId(-1);
-
-    // we have to set nmo:sentTime for indexing, so consider time(0) as
-    // invalid
-    if (groupToFill.endTime() == QDateTime::fromTime_t(0))
-        groupToFill.setEndTime(QDateTime());
-
-    // since we read it from db, it is permanent
-    groupToFill.setPermanent(true);
-
-    groupToFill.setLastModified(RESULT_INDEX("lastModified").toDateTime().toLocalTime());
-
-    group = groupToFill;
-    group.resetModifiedProperties();
-}
-
-void QueryResult::fillGroupFromModel2(Group &group)
+void QueryResult::fillGroupFromModel(Group &group)
 {
     Group groupToFill;
 
@@ -576,5 +511,3 @@ QString QueryResult::buildContactName(const QString &firstName,
 
     return name;
 }
-
-
