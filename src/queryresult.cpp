@@ -391,12 +391,9 @@ void QueryResult::fillEventFromModel2(Event &event)
     }
 
     if (properties.contains(Event::ContactId)) {
-
-        eventToFill.setContactId(RESULT_INDEX2(Event::ContactId).toInt());
-        if (properties.contains(Event::ContactName)) {
-            QString name = RESULT_INDEX2(Event::ContactName).toString();
-            eventToFill.setContactName(buildContactName(name));
-        }
+        QStringList contactIds = RESULT_INDEX2(Event::ContactId).toString().split('\x1e');
+        // TODO: fill list when Event supports multiple contacts
+        eventToFill.setContactId(contactIds.first().toInt());
     }
 
     // save data and give back as parameter

@@ -110,9 +110,9 @@ QLatin1String ontologyProperty(Event::Property p)
     // the properties are always requested togeather,
     // NOTE: the mapping should be same in queryresult.cpp !!!
     case Event::LocalUid:
-        return QLatin1String("nmo:from");
+        return QLatin1String("?from");
     case Event::RemoteUid:
-        return QLatin1String("nmo:to");
+        return QLatin1String("?to");
 //    case Event::ContactId:
 //        return QLatin1String("nmo:");
 //    case Event::ContactName:
@@ -212,17 +212,29 @@ QString functionForProperty(Event::Property p)
              << ")";
         break;
     case Event::LocalUid:
+    case Event::RemoteUid:
         func << QLatin1String("nco:hasContactMedium(")
              << ontologyProperty(p)
-             << "("
-             << eventPropertyName(Event::Id)
-             << "))";
+             << ")";
         break;
     case Event::RemoteUid:
         break;//pattern only
     case Event::ContactId:
+        // join all contact matches
+        func << QLatin1String(
+            "(SELECT GROUP_CONCAT(tracker:id(?contact), \"\\u001e\") "
+            "WHERE { "
+            "{"
+            "  ?target nco:hasIMAddress ?address . "
+            "  ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . "
+            "} UNION {"
+            "  ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . "
+            "  ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . "
+            "}"
+            "}) AS ?contacts "
+            );
+        break;
     case Event::ContactName:
-        // patterns only
         break;
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:
@@ -272,7 +284,6 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::Type:
     case Event::StartTime:
-    case Event::EndTime:
     case Event::Direction:
     case Event::IsDraft:
     case Event::IsRead:
@@ -300,37 +311,14 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
+    case Event::EndTime:
+/*
         pattern << eventPropertyName(Event::Id)
                 << ontologyProperty(p)
                 << QLatin1String("[ nco:hasContactMedium")
                 << eventPropertyName(p)
                 << "] .";
-        break;
-    case Event::ContactId:
-    //case Event::ContactName:
-        pattern << QString(QLatin1String(
-                "OPTIONAL {"
-                "SELECT %1 tracker:id(?_pContact)  AS %2 "
-                "fn:concat(tracker:coalesce(nco:nameGiven(?_pContact), \'\'), \'\\u001e\',"
-                "          tracker:coalesce(nco:nameFamily(?_pContact), \'\'), \'\\u001e\',"
-                "          tracker:coalesce(nco:imNickname(?_imAddress), \'\')) AS %3 "
-                "WHERE { "
-                "?_pContact rdf:type nco:PersonContact . "
-                "{?_pContact nco:hasAffiliation [nco:hasIMAddress ?_imAddress] ."
-                "  {%1 nmo:to [nco:hasIMAddress ?_imAddress]}"
-                "  UNION "
-                "  {%1 nmo:from [nco:hasIMAddress ?_imAddress]} "
-                "} "
-                "UNION "
-                "{?_pContact nco:hasAffiliation [nco:hasPhoneNumber [ maemo:localPhoneNumber ?_contactPhone]] ."
-                "  { %1 nmo:to [nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]]} "
-                "  UNION "
-                "  { %1 nmo:from [nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]]} "
-                "} "
-                "}}"))
-                .arg(eventPropertyName(Event::Id))
-                .arg(eventPropertyName(Event::ContactId))
-                .arg(eventPropertyName(Event::ContactName));
+*/
         break;
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:
@@ -341,6 +329,8 @@ QString patternForProperty(Event::Property p)
                 << eventPropertyName(p)
                 << "] .";
         break;
+    case Event::ContactId:
+    case Event::ContactName:
     case Event::ContentLocation:
     case Event::MessageParts:
     case Event::Cc:
@@ -358,6 +348,11 @@ QString patternForProperty(Event::Property p)
     }
 
     return pattern.join(" ");
+}
+
+bool isPropertyObject(Event::Property p)
+{
+    return (p == Event::Id);
 }
 
 class EventsQueryPrivate {
@@ -511,10 +506,6 @@ QString EventsQuery::query() const
             d->variables.removeOne(p);
             continue;
         }
-        if (p == Event::ContactName) {// defined with ContactId
-            projections.append(eventPropertyName(p));
-            continue;
-        }
 
         if (d->parts[EventsQueryPrivate::Modifiers].variables.contains(p)) {
             // variable referenced in modifiers, use pattern instead of function
@@ -550,8 +541,13 @@ QString EventsQuery::query() const
         query << QLatin1String("DISTINCT");
     query << projections.join(" ");
     query << QLatin1String("WHERE {");
+    query << QLatin1String(
+        "SELECT ?message ?endTime ?from ?to "
+        "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
+        "WHERE {"
+        "?message nmo:from ?from ; nmo:to ?to ; nmo:receivedDate ?endTime . ");
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
-    query << QLatin1String("}");
+    query << QLatin1String("} }");
     query << d->parts[EventsQueryPrivate::Modifiers].patterns;
 
     return query.join(" ");

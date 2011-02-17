@@ -54,7 +54,6 @@ struct QueryResult {
     void fillGroupFromModel(Group &group);
     void fillMessagePartFromModel(MessagePart &part);
 
-
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,
                                     const QString &imNickname);

@@ -52,7 +52,7 @@ using namespace SopranoLive;
 
 #define LAT(STR) QLatin1String(STR)
 
-#define QSPARQL_DRIVER QLatin1String("QTRACKER_DIRECT")
+#define QSPARQL_DRIVER QLatin1String("QTRACKER")
 #define QSPARQL_DATA_READY_INTERVAL 25
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
