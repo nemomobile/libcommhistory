@@ -1993,12 +1993,14 @@ bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
 {
     qDebug() << Q_FUNC_INFO << messageToken;
     int total = -1;
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
-    message.property<nmo::messageId>(LiteralValue(messageToken));
-    query.addCountColumn("total", message);
 
-    QScopedPointer<QSparqlResult> queryResult(connection().exec(QSparqlQuery(query.getQuery())));
+    QSparqlQuery query(LAT(
+            "SELECT COUNT(?message) "
+            "WHERE {?message rdf:type nmo:MMSMessage; nmo:messageId ?:token}"));
+
+    query.bindValue(LAT("token"), messageToken);
+
+    QScopedPointer<QSparqlResult> queryResult(connection().exec(query));
 
     if (!runBlockedQuery(queryResult.data())) // FIXIT
         return false;
