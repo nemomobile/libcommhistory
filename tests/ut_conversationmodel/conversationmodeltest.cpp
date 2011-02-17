@@ -181,7 +181,7 @@ void ConversationModelTest::getEvents()
     // run muc query
     QVERIFY(model.setFilter(Event::IMEvent));
     QVERIFY(watcher.waitForModelReady(5000));// ignore that it runs query
-    QVERIFY(model.getEventsWithType(group1.id(), CommHistory::Group::ChatTypeRoom));
+    QVERIFY(model.getEvents(group1.id(), CommHistory::Group::ChatTypeRoom));
     QVERIFY(watcher.waitForModelReady(5000));
     QCOMPARE(model.rowCount(), 6);
     for (int i = 0; i < model.rowCount(); i++) {

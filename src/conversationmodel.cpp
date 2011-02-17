@@ -319,18 +319,13 @@ bool ConversationModel::setFilter(Event::EventType type,
     d->filterDirection = direction;
 
     if (d->filterGroupId != -1) {
-        return getEventsWithType(d->filterGroupId, d->chatType);
+        return getEvents(d->filterGroupId, d->chatType);
     }
 
     return true;
 }
 
-bool ConversationModel::getEvents(int groupId)
-{
-    return getEventsWithType(groupId, Group::ChatTypeP2P);
-}
-
-bool ConversationModel::getEventsWithType(int groupId, CommHistory::Group::ChatType chatType)
+bool ConversationModel::getEvents(int groupId, Group::ChatType chatType)
 {
     Q_D(ConversationModel);
 

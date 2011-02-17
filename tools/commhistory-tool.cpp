@@ -496,7 +496,7 @@ int doList(const QStringList &arguments, const QVariantMap &options)
     model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setTreeMode(tree);
-    if (!model.getEventsWithType(groupId, chatType)) {
+    if (!model.getEvents(groupId, chatType)) {
         qCritical() << "Error fetching events";
         return -1;
     }
