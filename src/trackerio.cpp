@@ -1768,20 +1768,22 @@ bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
 
 bool TrackerIO::markAsReadGroup(int groupId)
 {
-    RDFUpdate update;
-    RDFVariable msg = RDFVariable::fromType<nmo::Message>();
+    QSparqlQuery query(LAT(
+            "DELETE {?msg nmo:isRead ?r; nie:contentLastModified ?d}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation;"
+                   "nmo:isRead ?r; nie:contentLastModified ?d}"
+            "INSERT {?msg nmo:isRead ?:read; nie:contentLastModified ?:date}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation}"),
+                       QSparqlQuery::InsertStatement);
 
-    msg.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    update.addDeletion(msg, nmo::isRead::iri(), RDFVariable());
-    update.addInsertion(msg, nmo::isRead::iri(), LiteralValue(true));
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
+    query.bindValue(LAT("read"), true);
     //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
-    QDateTime currDateTime = QDateTime::currentDateTime();
+    query.bindValue(LAT("date"), QDateTime::currentDateTime());
 
-    update.addDeletion(msg, nie::contentLastModified::iri(), RDFVariable());
-    update.addInsertion(msg, nie::contentLastModified::iri(), LiteralValue(currDateTime));
+    qDebug() << query.preparedQueryText();
 
-    return d->handleQuery(QSparqlQuery(update.getQuery(),
-                                       QSparqlQuery::InsertStatement));
+    return d->handleQuery(query);
 }
 
 void TrackerIO::transaction(bool syncOnCommit)
