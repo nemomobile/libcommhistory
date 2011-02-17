@@ -385,7 +385,7 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
 void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
 {
     qDebug() << __PRETTY_FUNCTION__ << group.id() << group.localUid()
-             << group.remoteUids() << group.chatName() << group.chatType() << group.isPermanent();
+             << group.remoteUids() << group.chatName() << group.chatType();
 
     Group g;
     for (int i = 0; i < groups.count(); i++)
@@ -397,17 +397,6 @@ void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
         && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
         && (filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
-        //TODO: get rid of temp groups
-        // if new group matches a temp group, remove it
-        for (int i = 0; i < groups.count(); i++) {
-            Group localGroup = groups.at(i);
-            if (!localGroup.isPermanent()
-                && localGroup.localUid() == group.localUid()
-                && localGroup.remoteUids() == group.remoteUids()
-                && localGroup.chatType() == group.chatType()) {
-                deleteFromModel(localGroup);
-            }
-        }
         g = group;
         addToModel(g);
     }
@@ -655,9 +644,6 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         case LastEventStatus:
             var = QVariant::fromValue((int)group.lastEventStatus());
             break;
-        case IsPermanent:
-            var = QVariant::fromValue(group.isPermanent());
-            break;
         case LastModified:
             var = QVariant::fromValue(group.lastModified());
             break;
@@ -739,9 +725,6 @@ QVariant GroupModel::headerData(int section,
             case LastEventStatus:
                 name = QLatin1String("last_event_status");
                 break;
-            case IsPermanent:
-                name = QLatin1String("is_permanent");
-                break;
             case LastModified:
                 name = QLatin1String("last_modified");
                 break;
@@ -757,38 +740,19 @@ QVariant GroupModel::headerData(int section,
 bool GroupModel::addGroup(Group &group, bool toModelOnly)
 {
     if (toModelOnly) {
-
         group.setId(d->tracker()->nextGroupId());
-        group.setPermanent(false);
-    }
-    else {
+    } else {
         d->tracker()->transaction();
         if (!d->tracker()->addGroup(group)) {
             d->lastError = d->tracker()->lastError();
             if (d->lastError.isValid())
                 qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
-            // group was not saved, thus it is still transient
-            group.setPermanent(false);
             return false;
         }
         d->tracker()->commit();
     }
 
-    // if the group was a not-permanent group what we just now saved to tracker
-    // then we will find it in the internal list -> execute an update
-    for (int i = 0; i < d->groups.count(); i++) {
-
-        if (d->groups.at(i).id() == group.id()
-            && !d->groups.at(i).isPermanent()
-            && group.isPermanent()) {
-
-            emit d->groupsUpdatedFull(QList<CommHistory::Group>() << group);
-            return true;
-        }
-    }
-
-    //otherwise proceed as usual
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {

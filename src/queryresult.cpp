@@ -459,9 +459,6 @@ void QueryResult::fillGroupFromModel(Group &group)
     if (groupToFill.endTime() == QDateTime::fromTime_t(0))
         groupToFill.setEndTime(QDateTime());
 
-    // since we read it from db, it is permanent
-    groupToFill.setPermanent(true);
-
     groupToFill.setLastModified(result->value(Group::LastModified).toDateTime());
 
     group = groupToFill;

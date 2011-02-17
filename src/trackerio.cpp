@@ -1241,12 +1241,8 @@ bool TrackerIO::addGroup(Group &group)
         return false;
     }
 
-    // keep id of in-memory groups
-    if (!group.isValid()) {
-        group.setId(nextGroupId());
-    }
+    group.setId(nextGroupId());
 
-    group.setPermanent(true);
     qDebug() << __FUNCTION__ << group.url() << group.localUid() << group.remoteUids();
 
     QString channelSubject = group.url().toString();

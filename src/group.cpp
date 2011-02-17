@@ -56,7 +56,6 @@ public:
     QString lastVCardLabel;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
-    bool isPermanent;
     QDateTime lastModified;
 
     Group::PropertySet validProperties;
@@ -73,7 +72,6 @@ GroupPrivate::GroupPrivate()
         , contactId(0)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
-        , isPermanent(false)
 {
     lastModified = QDateTime::fromTime_t(0);
 }
@@ -97,7 +95,6 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , lastVCardLabel(other.lastVCardLabel)
         , lastEventType(other.lastEventType)
         , lastEventStatus(other.lastEventStatus)
-        , isPermanent(other.isPermanent)
         , lastModified(other.lastModified)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
@@ -277,11 +274,6 @@ Event::EventStatus Group::lastEventStatus() const
     return d->lastEventStatus;
 }
 
-bool Group::isPermanent() const
-{
-    return d->isPermanent;
-}
-
 QDateTime Group::lastModified() const
 {
     return d->lastModified;
@@ -399,12 +391,6 @@ void Group::setLastEventStatus(Event::EventStatus eventStatus)
     d->propertyChanged(Group::LastEventStatus);
 }
 
-void Group::setPermanent(bool permanent)
-{
-    d->isPermanent = permanent;
-    d->propertyChanged(Group::IsPermanent);
-}
-
 void Group::setLastModified(const QDateTime &modified)
 {
     d->lastModified = modified.toUTC();
@@ -421,7 +407,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.lastEventId() << group.contactId() << group.contactName()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
-             << group.lastEventStatus() << group.isPermanent() << group.lastModified();
+             << group.lastEventStatus() << group.lastModified();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -446,7 +432,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
              >> p.totalMessages >> p.unreadMessages >> p.sentMessages
              >> p.lastEventId >> p.contactId >> p.contactName
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
-             >> type >> status >> p.isPermanent >> p.lastModified;
+             >> type >> status >> p.lastModified;
 
     //read valid properties
     argument.beginArray();
@@ -493,8 +479,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setLastEventType((Event::EventType)type);
     if (p.validProperties.contains(Group::LastEventStatus))
         group.setLastEventStatus((Event::EventStatus)status);
-    if (p.validProperties.contains(Group::IsPermanent))
-        group.setPermanent(p.isPermanent);
     if (p.validProperties.contains(Group::LastModified))
         group.setLastModified(p.lastModified);
 
