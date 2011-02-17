@@ -24,7 +24,6 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 
 TEMPLATE  = lib
-QT       += sql
 CONFIG   += qdbus static mobility debug qtsparql
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION

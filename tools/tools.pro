@@ -24,7 +24,6 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 TEMPLATE = app
 QT -= gui
-QT += sql
 CONFIG += qdbus \
     debug \
     qtsparql

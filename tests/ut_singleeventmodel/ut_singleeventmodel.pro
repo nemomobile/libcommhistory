@@ -4,7 +4,6 @@ include( ../tests.pri )
 
 TARGET = ut_singleeventmodel
 DESTDIR = ../bin
-QT += sql
 QT -= gui
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility

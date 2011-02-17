@@ -24,7 +24,6 @@
 #define COMMHISTORY_GROUPMODEL_P_H
 
 #include <QAbstractItemModel>
-#include <QSqlError>
 #include <QList>
 #include <QPair>
 
@@ -97,7 +96,7 @@ public Q_SLOTS:
 
     void groupsReceivedSlot(int start, int end, QList<CommHistory::Group> result);
 
-    void modelUpdatedSlot();
+    void modelUpdatedSlot(bool successful);
 
     void canFetchMoreChangedSlot(bool canFetch);
 
@@ -125,7 +124,6 @@ public:
     int queryOffset;
     bool isReady;
     QList<Group> groups;
-    QSqlError lastError;
 
     QString filterLocalUid;
     QString filterRemoteUid;

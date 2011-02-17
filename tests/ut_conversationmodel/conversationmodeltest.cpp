@@ -280,7 +280,6 @@ void ConversationModelTest::modifyEvent()
     Event event;
     /* modify invalid event */
     QVERIFY(!model.modifyEvent(event));
-    QVERIFY(model.lastError().isValid());
 
     QVERIFY(model.rowCount() > 0);
 
@@ -311,7 +310,6 @@ void ConversationModelTest::deleteEvent()
     Event event;
     /* delete invalid event */
     QVERIFY(!model.deleteEvent(event));
-    QVERIFY(model.lastError().isValid());
 
     int rows = model.rowCount();
     int row = rand() % rows;
@@ -320,7 +318,6 @@ void ConversationModelTest::deleteEvent()
     QVERIFY(model.deleteEvent(event.id()));
     watcher.waitForSignals();
     QVERIFY(!model.trackerIO().getEvent(event.id(), event));
-    QVERIFY(model.lastError().isValid());
     QVERIFY(model.event(model.index(row, 0)).id() != event.id());
     QVERIFY(model.rowCount() == rows - 1);
 }
@@ -481,7 +478,6 @@ void ConversationModelTest::asyncMode()
     ConversationModel model;
     model.enableContactChanges(false);
     watcher.setModel(&model);
-    connect(&model, SIGNAL(modelReady()), this, SLOT(modelReadySlot()));
     QVERIFY(model.getEvents(group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 }

@@ -72,7 +72,7 @@ public:
     /*!
      * Reset model and fetch sms events. Messages are fetched based on SyncSMSFilter
      * This method is used to retrieve the sms present in device during sync session
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvents();
 

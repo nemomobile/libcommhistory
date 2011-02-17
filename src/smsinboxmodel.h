@@ -56,7 +56,7 @@ public:
     /*!
      * Reset model and fetch draft events.
      *
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvents();
 

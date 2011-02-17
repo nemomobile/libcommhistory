@@ -26,6 +26,7 @@
 
 #include <QSparqlResultRow>
 #include <QSparqlConnection>
+#include <QSparqlError>
 
 #include "queryrunner.h"
 #include "queryresult.h"
@@ -44,7 +45,6 @@ QueryRunner::QueryRunner(TrackerIO *trackerIO, QObject *parent)
         , m_chunkSize(0)
         , m_firstChunkSize(0)
         , m_enableQueue(false)
-        , m_ready(true)
         , m_canFetchMore(false)
         , m_pTracker(trackerIO)
 {
@@ -201,7 +201,6 @@ void QueryRunner::startNextQueryIfReady()
     m_mutex.lock();
     if (!m_queries.isEmpty()) {
         // start new query
-        m_ready = false;
         m_activeQuery = m_queries.takeFirst();
 
         qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
@@ -212,11 +211,9 @@ void QueryRunner::startNextQueryIfReady()
         connect(m_activeQuery.result.data(),
                 SIGNAL(dataReady(int)),
                 this, SLOT(dataReady(int)));
-                //Qt::DirectConnection);
         connect(m_activeQuery.result.data(),
                 SIGNAL(finished()),
                 this, SLOT(finished()));
-                //Qt::DirectConnection);
     }
     m_mutex.unlock();
 }
@@ -363,22 +360,24 @@ void QueryRunner::finished()
             || lastReadPos < m_activeQuery.result->size() - 1))
         return;
 
-    checkCanFetchMoreChange();
-    endActiveQuery();
-
     bool continueNext = false;
-    {
-        QMutexLocker locker(&m_mutex);
-        continueNext = m_enableQueue && !m_queries.isEmpty();
+    bool abort = m_activeQuery.result->hasError();
+    if (abort) {
+        qWarning() << m_activeQuery.result->lastError().message();
+    } else {
+        checkCanFetchMoreChange();
+        {
+            QMutexLocker locker(&m_mutex);
+            continueNext = m_enableQueue && !m_queries.isEmpty();
+        }
     }
-
-    m_ready = true;
+    endActiveQuery();
 
     if (continueNext) {
         // start next query from queue
         nextSlot();
     } else {
-        emit modelUpdated();
+        emit modelUpdated(!abort);
     }
 }
 

@@ -1211,10 +1211,6 @@ bool TrackerIO::addEvent(Event &event)
     } else if (event.type() == Event::CallEvent) {
         d->addCallEvent(query, event);
     } else if (event.type() != Event::StatusMessageEvent) {
-        QSqlError ret;
-        ret.setType(QSqlError::TransactionError);
-        ret.setDatabaseText(LAT("Event type not implemented"));
-        d->lastError = ret;
         qWarning() << "event type not implemented";
         return false;
     }
@@ -1234,10 +1230,7 @@ bool TrackerIO::addGroup(Group &group)
     UpdateQuery query;
 
     if (group.localUid().isEmpty()) {
-        QSqlError ret;
-        ret.setType(QSqlError::TransactionError);
-        ret.setDatabaseText(LAT("Local uid required for group"));
-        d->lastError = ret;
+        qWarning() << "Local uid required for group";
         return false;
     }
 
@@ -1310,10 +1303,7 @@ bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
     result.properties = query.eventProperties();
 
     if (!events->first()) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Event not found"));
-        lastError = error;
+        qWarning() << "Event not found";
         return false;
     }
 
@@ -1545,10 +1535,7 @@ bool TrackerIO::getGroup(int id, Group &group)
         return false;
 
     if (groups->size() == 0) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Group not found"));
-        d->lastError = error;
+        qWarning() << "Group not found";
         return false;
     }
 
@@ -1690,8 +1677,6 @@ bool TrackerIO::markAsReadGroup(int groupId)
     query.bindValue(LAT("read"), true);
     //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
     query.bindValue(LAT("date"), QDateTime::currentDateTime());
-
-    qDebug() << query.preparedQueryText();
 
     return d->handleQuery(query);
 }
@@ -1924,11 +1909,6 @@ bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
     return (total == 1);
 }
 
-QSqlError TrackerIO::lastError() const
-{
-    return d->lastError;
-}
-
 void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread)
 {
     if (!m_messageTokenRefCount.isEmpty()) {
@@ -1960,10 +1940,7 @@ QSparqlConnection& TrackerIOPrivate::connection()
 bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnFinished)
 {
     if (result->hasError()) {
-        QSqlError ret;
-        ret.setType(QSqlError::TransactionError);
-        ret.setDatabaseText(result->lastError().message());
-        lastError = ret;
+        qWarning() << result->lastError().message();
         if (destroyOnFinished)
             delete result;
     }

@@ -25,7 +25,6 @@
 
 #include <QObject>
 #include <QUrl>
-#include <QSqlError>
 
 #include "event.h"
 #include "libcommhistoryexport.h"
@@ -118,7 +117,7 @@ public:
      * updated if successfully added.
      *
      * \param event New event.
-     * \return error (isValid() if insertion failed).
+     * \return true if successful, otherwise false
      */
     bool addEvent(Event &event);
 
@@ -127,7 +126,7 @@ public:
      * updated if successfully added.
      *
      * \param group New group.
-     * \return error (isValid() if insertion failed).
+     * \return true if successful, otherwise false
      */
     bool addGroup(Group &group);
 
@@ -136,7 +135,7 @@ public:
      *
      * \param id Database id of the event.
      * \param event Return value for event details.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvent(int id, Event &event);
 
@@ -145,7 +144,7 @@ public:
      *
      * \param Uri of the message to be fetched
      * \param event Return value for event details.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEventByUri(const QUrl &uri, Event &event);
 
@@ -154,7 +153,7 @@ public:
      *
      * \param token Message token
      * \param event Return value for event details.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEventByMessageToken(const QString &token, Event &event);
 
@@ -164,7 +163,7 @@ public:
      * \param token Message token
      * \param groupId Group ID
      * \param event Return value for event details.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEventByMessageToken(const QString &token, int groupId, Event &event);
 
@@ -174,7 +173,7 @@ public:
      * \param mmsId mms id
      * \param groupId Group ID
      * \param event Return value for event details.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEventByMmsId(const QString &mmsId, int groupId, Event &event);
 
@@ -182,7 +181,7 @@ public:
      * Modifye an event.
      *
      * \param event Existing event.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool modifyEvent(Event &event);
 
@@ -192,7 +191,7 @@ public:
      * \param event Existing event
      * \param groupId new group id
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool moveEvent(Event &event, int groupId);
 
@@ -202,7 +201,7 @@ public:
      * \param event Existing event to delete
      * \param backgroundThread optional thread (to delete mms attachments)
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool deleteEvent(Event &event, QThread *backgroundThread = 0);
 
@@ -211,7 +210,7 @@ public:
      *
      * \param id Database id of the group.
      * \param group Return value for group details.
-     * \return true if successful
+     * \return true if successful, otherwise false
      */
     bool getGroup(int id, Group &group);
 
@@ -219,7 +218,7 @@ public:
      * Modifye a group.
      *
      * \param event Existing group.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool modifyGroup(Group &group);
 
@@ -230,7 +229,7 @@ public:
      * \param deleteMessages flag to delete group's messages
      * \param backgroundThread optional thread (to delete mms attachments)
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool deleteGroup(int groupId, bool deleteMessages = true, QThread *backgroundThread = 0);
 
@@ -240,7 +239,7 @@ public:
      * \param groupId Existing group id
      * \param totalEvents result
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool totalEventsInGroup(int groupId, int &totalEvents);
 
@@ -249,7 +248,7 @@ public:
      *
      * \param groupId Existing group id
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool markAsReadGroup(int groupId);
 
@@ -258,7 +257,7 @@ public:
      *
      * \param eventIds list of events to mark
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool markAsRead(const QList<int> &eventIds);
 
@@ -267,16 +266,9 @@ public:
      *
      * \param eventType
      *
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool deleteAllEvents(Event::EventType eventType);
-
-    /*!
-     * Get details of the last error that occurred during the last query.
-     *
-     * \return error
-     */
-    QSqlError lastError() const;
 
     /*!
      * Initate a new tracker transaction.

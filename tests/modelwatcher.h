@@ -49,13 +49,14 @@ public:
     QList<CommHistory::Event> lastAdded() { return m_lastAdded; }
     QList<CommHistory::Event> lastUpdated() { return m_lastUpdated; }
     int lastDeletedId() { return m_lastDeleted; }
+    bool lastSuccess() {return m_success;}
 
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
     void eventsUpdatedSlot(const QList<CommHistory::Event> &events);
     void eventDeletedSlot(int eventId);
     void eventsCommittedSlot(const QList<CommHistory::Event> &events, bool successful);
-    void modelReadySlot();
+    void modelReadySlot(bool success);
 
 public:
     static int m_watcherId;
@@ -73,6 +74,7 @@ public:
     bool m_eventsCommitted;
     bool m_dbusSignalReceived;
     bool m_modelReady;
+    bool m_success;
     QEventLoop *m_loop;
 };
 

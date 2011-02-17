@@ -57,17 +57,21 @@ public:
 
     /*!
      * Polulate model with existing event.
+     *
      * \param uri, event uri to be fetched from database
-     * \return true if successful (modelReady() event will be emited), Sets lastError() on failure.
+     *
+     * \return true if successful, otherwise false
      */
     bool getEventByUri(const QUrl &uri);
 
     /*!
      * Polulate model with existing event identified by message token or mms id.
+     *
      * \param token, message token or empty string
      * \param mmsId, mms id or empty string
      * \param groupId
-     * \return true if successful (modelReady() event will be emited), Sets lastError() on failure.
+     *
+     * \return true if successful, otherwise false
      */
     bool getEventByTokens(const QString &token,
                           const QString &mmsId,

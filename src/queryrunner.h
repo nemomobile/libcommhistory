@@ -81,7 +81,7 @@ Q_SIGNALS:
     void groupsReceived(int start, int end, QList<CommHistory::Group> groups);
     void messagePartsReceived(int eventId, QList<CommHistory::MessagePart> parts);
     void canFetchMoreChanged(bool canFetch);
-    void modelUpdated();
+    void modelUpdated(bool successful);
 
 private Q_SLOTS:
     void dataReady(int totalCount);
@@ -101,7 +101,6 @@ private:
     int m_chunkSize;
     int m_firstChunkSize;
     bool m_enableQueue;
-    bool m_ready;
     bool m_canFetchMore;
 
     QMutex m_mutex; // protects m_queries

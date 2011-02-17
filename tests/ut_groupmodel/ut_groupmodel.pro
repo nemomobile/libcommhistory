@@ -26,7 +26,6 @@ include( ../tests.pri )
 
 TARGET = ut_groupmodel
 DESTDIR = ../bin
-QT += sql
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += groupmodeltest.cpp

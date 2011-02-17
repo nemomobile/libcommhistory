@@ -70,7 +70,7 @@ public:
      * \param type Event type (IM or SMS).
      * \param account Local telepathy account path.
      * \param direction Event direction.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool setFilter(Event::EventType type = Event::UnknownType,
                    const QString &account = QString(),
@@ -80,7 +80,7 @@ public:
      * Reset model to events from the specified group.
      *
      * \param groupId Valid group id
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvents(int groupId);
 
@@ -92,7 +92,7 @@ public:
      *
      * \param groupId Valid group id
      * \param chatType Type of the conversation
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     /*
      * FIXME: Combine this with getEvents() when it's safe to break.

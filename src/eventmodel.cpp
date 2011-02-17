@@ -44,7 +44,7 @@ EventModel::EventModel(QObject *parent)
         : QAbstractItemModel(parent)
         , d_ptr(new EventModelPrivate(this))
 {
-    connect(d_ptr, SIGNAL(modelReady()), this, SIGNAL(modelReady()));
+    connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
 }
@@ -52,7 +52,7 @@ EventModel::EventModel(QObject *parent)
 EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
         : QAbstractItemModel(parent), d_ptr(&dd)
 {
-    connect(d_ptr, SIGNAL(modelReady()), this, SIGNAL(modelReady()));
+    connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
 }
@@ -60,12 +60,6 @@ EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
 EventModel::~EventModel()
 {
     delete d_ptr;
-}
-
-QSqlError EventModel::lastError() const
-{
-    Q_D(const EventModel);
-    return d->lastError;
 }
 
 void EventModel::setPropertyMask(const Event::PropertySet &properties)
@@ -561,10 +555,7 @@ bool EventModel::modifyEvent(Event &event)
     d->tracker()->transaction(d->syncOnCommit);
 
     if (event.id() == -1) {
-        d->lastError = QSqlError();
-        d->lastError.setType(QSqlError::TransactionError);
-        d->lastError.setDatabaseText(QLatin1String("Event id not set"));
-        qWarning() << Q_FUNC_INFO << ":" << d->lastError;
+        qWarning() << Q_FUNC_INFO << "Event id not set";
         d->tracker()->rollback();
         return false;
     }
@@ -574,10 +565,6 @@ bool EventModel::modifyEvent(Event &event)
     }
 
     if (!d->tracker()->modifyEvent(event)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << __FUNCTION__ << ":" << d->lastError;
-
         d->tracker()->rollback();
         return false;
     }
@@ -616,10 +603,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
     while (i.hasNext()) {
         Event event = i.next();
         if (event.id() == -1) {
-            d->lastError = QSqlError();
-            d->lastError.setType(QSqlError::TransactionError);
-            d->lastError.setDatabaseText(QLatin1String("Event id not set"));
-            qWarning() << Q_FUNC_INFO << ":" << d->lastError;
+            qWarning() << Q_FUNC_INFO << "Event id not set";
             d->tracker()->rollback();
             return false;
         }
@@ -629,10 +613,6 @@ bool EventModel::modifyEvents(QList<Event> &events)
         }
 
         if (!d->tracker()->modifyEvent(event)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << __FUNCTION__ << ":" << d->lastError;
-
             d->tracker()->rollback();
             return false;
         }
@@ -675,18 +655,12 @@ bool EventModel::deleteEvent(int id)
     if (event.groupId() != -1 && !event.isDraft()) {
         int total;
         if (!d->tracker()->totalEventsInGroup(event.groupId(), total)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }
         if (total == 1) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
             if  (!d->tracker()->deleteGroup(event.groupId(), false)) {
-                d->lastError = d->tracker()->lastError();
-                if (d->lastError.isValid())
-                    qWarning() << Q_FUNC_INFO << d->lastError;
                 d->tracker()->rollback();
                 return false;
             } else {
@@ -716,19 +690,13 @@ bool EventModel::deleteEvent(Event &event)
     qDebug() << __FUNCTION__ << ":" << event.id();
 
     if (!event.isValid()) {
-        d->lastError = QSqlError();
-        d->lastError.setType(QSqlError::TransactionError);
-        d->lastError.setDatabaseText("Invalid event");
-        qWarning() << __FUNCTION__ << ":" << d->lastError;
+        qWarning() << __FUNCTION__ << "Invalid event";
         return false;
     }
 
     d->tracker()->transaction(d->syncOnCommit);
 
     if (!d->tracker()->deleteEvent(event, d->bgThread)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << d->lastError;
         d->tracker()->rollback();
         return false;
     }
@@ -737,9 +705,6 @@ bool EventModel::deleteEvent(Event &event)
     if (event.groupId() != -1 && !event.isDraft()) {
         int total;
         if (!d->tracker()->totalEventsInGroup(event.groupId(), total)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }
@@ -747,9 +712,6 @@ bool EventModel::deleteEvent(Event &event)
         if (total == 1) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
             if (!d->tracker()->deleteGroup(event.groupId(), false)) {
-                d->lastError = d->tracker()->lastError();
-                if (d->lastError.isValid())
-                    qWarning() << Q_FUNC_INFO << d->lastError;
                 d->tracker()->rollback();
                 return false;
             } else {
@@ -780,24 +742,17 @@ bool EventModel::moveEvent(Event &event, int groupId)
     qDebug() << __FUNCTION__ << ":" << event.id();
 
     if (!event.isValid()) {
-        d->lastError = QSqlError();
-        d->lastError.setType(QSqlError::TransactionError);
-        d->lastError.setDatabaseText("Invalid event");
-        qWarning() << __FUNCTION__ << ":" << d->lastError;
+        qWarning() << __FUNCTION__ << "Invalid event";
         return false;
     }
 
-    if(event.groupId() == groupId)
-    {
+    if(event.groupId() == groupId) {
         qDebug() << "Event already in proper group";
         return true;
     }
 
     d->tracker()->transaction(d->syncOnCommit);
     if (!d->tracker()->moveEvent(event, groupId)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << d->lastError;
         d->tracker()->rollback();
         return false;
     }
@@ -807,9 +762,6 @@ bool EventModel::moveEvent(Event &event, int groupId)
     if (event.groupId() != -1 && !event.isDraft()) {
         int total;
         if (!d->tracker()->totalEventsInGroup(event.groupId(), total)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }
@@ -817,9 +769,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
         if (total == 1) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
             if (!d->tracker()->deleteGroup(event.groupId(), false)) {
-                d->lastError = d->tracker()->lastError();
-                if (d->lastError.isValid())
-                    qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
+                qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->tracker()->rollback();
                 return false;
             } else {
@@ -853,10 +803,7 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
     while (i.hasNext()) {
         Event event = i.next();
         if (event.id() == -1) {
-            d->lastError = QSqlError();
-            d->lastError.setType(QSqlError::TransactionError);
-            d->lastError.setDatabaseText(QLatin1String("Event id not set"));
-            qWarning() << Q_FUNC_INFO << ":" << d->lastError;
+            qWarning() << Q_FUNC_INFO << "Event id not set";
             d->tracker()->rollback();
             return false;
         }
@@ -866,9 +813,6 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
         }
 
         if (!d->tracker()->modifyEvent(event)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << ":" << d->lastError;
             d->tracker()->rollback();
             return false;
         }

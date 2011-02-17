@@ -24,7 +24,6 @@
 #define COMMHISTORY_EVENTMODEL_P_H
 
 #include <QList>
-#include <QSqlError>
 #include <QGenericArgument>
 
 #include <QtTracker/Tracker>
@@ -183,7 +182,6 @@ public:
     SopranoLive::LiveNodes queryResult;
 
     static uint modelSerial;
-    QSqlError lastError;
 
     Event::PropertySet propertyMask;
 
@@ -201,9 +199,9 @@ public Q_SLOTS:
 
     virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);
 
-    virtual void modelUpdatedSlot();
+    virtual void modelUpdatedSlot(bool successful);
 
-    virtual void partsUpdatedSlot();
+    virtual void partsUpdatedSlot(bool successful);
 
     virtual void eventsAddedSlot(const QList<CommHistory::Event> &events);
 
@@ -231,7 +229,7 @@ Q_SIGNALS:
 
     void groupsDeleted(const QList<int> &groupIds);
 
-    void modelReady();
+    void modelReady(bool successful);
     void eventsCommitted(const QList<CommHistory::Event> &events, bool successful);
 
 };

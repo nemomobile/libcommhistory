@@ -111,15 +111,12 @@ void EventModelTest::testAddEvent()
 
     /* add invalid event */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
     im.setType(Event::IMEvent);
     /* missing direction, group id */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
     im.setDirection(Event::Outbound);
     /* missing group id */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
 
     /* add valid IM, SMS and call */
     im.setGroupId(group1.id());
@@ -258,7 +255,6 @@ void EventModelTest::testModifyEvent()
 
     Event event;
     QVERIFY(!model.modifyEvent(event));
-    QVERIFY(model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 0);
 
     im.resetModifiedProperties();
@@ -319,7 +315,7 @@ void EventModelTest::testModifyEvent()
     im.setId(imId + 999);
     QVERIFY(model.modifyEvent(im));
     watcher.waitForSignals();
-    QVERIFY(model.lastError().isValid());
+    QVERIFY(!watcher.lastSuccess());
     QCOMPARE(watcher.updatedCount(), 0);
     QCOMPARE(watcher.committedCount(), 0);
     //
@@ -348,7 +344,6 @@ void EventModelTest::testDeleteEvent()
 
     Event event;
     QVERIFY(!model.deleteEvent(event));
-    QVERIFY(model.lastError().isValid());
 
     event.setType(Event::IMEvent);
     event.setDirection(Event::Inbound);
@@ -488,7 +483,6 @@ void EventModelTest::testVCard()
 
     Event event;
     QVERIFY( !model.deleteEvent( event ) );
-    QVERIFY( model.lastError().isValid() );
 
     // create test data
     event.setType( Event::SMSEvent );
@@ -818,7 +812,7 @@ void EventModelTest::testMessagePartsQuery()
     convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
 
-    QSignalSpy modelReady(&convModel, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&convModel, SIGNAL(modelReady(bool)));
     QThread modelThread;
 
     if (useThread) {
@@ -1146,7 +1140,7 @@ void EventModelTest::testStreaming()
     streamModel.setFirstChunkSize(firstChunkSize);
     qRegisterMetaType<QModelIndex>("QModelIndex");
     QSignalSpy rowsInserted(&streamModel, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
-    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady(bool)));
     QVERIFY(streamModel.getEvents(group1.id()));
 
     int count = 0;
@@ -1242,7 +1236,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1262,7 +1255,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1281,7 +1273,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1323,7 +1314,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << newEvent, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 

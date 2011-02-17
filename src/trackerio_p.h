@@ -26,7 +26,6 @@
 #include <QObject>
 #include <QUrl>
 #include <QtTracker/Tracker>
-#include <QtSql>
 #include <QHash>
 #include <QThreadStorage>
 #include <QSparqlQuery>
@@ -155,8 +154,6 @@ public:
     Event::PropertySet smsOnlyPropertySet;
 
     QThread *m_bgThread;
-
-    QSqlError lastError;
 };
 
 } // namespace

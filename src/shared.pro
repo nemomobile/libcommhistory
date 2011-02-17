@@ -35,7 +35,6 @@ TEMPLATE = lib
 TARGET   = commhistory
 VERSION  = $$LIBRARY_VERSION
 
-QT      += sql
 CONFIG  += qdbus \
            shared \
            mobility \

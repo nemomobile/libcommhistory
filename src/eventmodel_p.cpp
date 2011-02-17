@@ -106,11 +106,11 @@ void EventModelPrivate::resetQueryRunners()
             this, SLOT(eventsReceivedSlot(int, int, QList<CommHistory::Event>)));
     connect(queryRunner, SIGNAL(canFetchMoreChanged(bool)),
             this, SLOT(canFetchMoreChangedSlot(bool)));
-    connect(queryRunner, SIGNAL(modelUpdated()), this, SLOT(modelUpdatedSlot()));
+    connect(queryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(modelUpdatedSlot(bool)));
 
     connect(partQueryRunner, SIGNAL(messagePartsReceived(int, QList<CommHistory::MessagePart>)),
             this, SLOT(messagePartsReceivedSlot(int, QList<CommHistory::MessagePart>)));
-    connect(partQueryRunner, SIGNAL(modelUpdated()), this, SLOT(partsUpdatedSlot()));
+    connect(partQueryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(partsUpdatedSlot(bool)));
     partQueryRunner->enableQueue(true);
 
     if (bgThread) {
@@ -310,32 +310,23 @@ void EventModelPrivate::deleteFromModel(int id)
 bool EventModelPrivate::doAddEvent( Event &event )
 {
     if (event.type() == Event::UnknownType) {
-        lastError.setType(QSqlError::TransactionError);
-        lastError.setDatabaseText("Event type not set");
-        qWarning() << Q_FUNC_INFO << ":" << lastError;
+        qWarning() << Q_FUNC_INFO << "Event type not set";
         return false;
     }
 
     if (event.direction() == Event::UnknownDirection) {
-        lastError.setType(QSqlError::TransactionError);
-        lastError.setDatabaseText("Event direction not set");
-        qWarning() << Q_FUNC_INFO << ":" << lastError;
+        qWarning() << Q_FUNC_INFO << "Event direction not set";
         return false;
     }
 
     if (event.groupId() == -1) {
         if (!event.isDraft() && event.type() != Event::CallEvent) {
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText("Group id not set");
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
+            qWarning() << Q_FUNC_INFO << "Group id not set";
             return false;
         }
     }
 
     if (!tracker()->addEvent(event)) {
-        lastError = tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
         return false;
     }
 
@@ -346,17 +337,11 @@ bool EventModelPrivate::doDeleteEvent( int id, Event &event )
 {
     // fetch event from database
     if (!tracker()->getEvent(id, event)) {
-        lastError =tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
         return false;
     }
 
     // delete it
     if (!tracker()->deleteEvent(event, bgThread)) {
-        lastError = tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << __FUNCTION__ << ":" << lastError;
         return false;
     }
     return true;
@@ -417,23 +402,29 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
     }
 }
 
-void EventModelPrivate::modelUpdatedSlot()
+void EventModelPrivate::modelUpdatedSlot(bool successful)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
     isReady = true;
-    if (messagePartsReady) {
-        emit modelReady();
+    if (successful) {
+        if (messagePartsReady)
+            emit modelReady(true);
+    } else {
+        emit modelReady(false);
     }
 }
 
-void EventModelPrivate::partsUpdatedSlot()
+void EventModelPrivate::partsUpdatedSlot(bool successful)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
     messagePartsReady = true;
-    if (isReady) {
-        emit modelReady();
+    if (successful) {
+        if (isReady)
+            emit modelReady(true);
+    } else {
+        emit modelReady(false);
     }
 }
 
@@ -487,8 +478,6 @@ CommittingTransaction* EventModelPrivate::commitTransaction(const QList<Event> &
                     "eventsCommitted",
                     Q_ARG(QList<CommHistory::Event>, events),
                     Q_ARG(bool, false));
-    } else {
-        lastError = tracker()->lastError();
     }
 
     return t;

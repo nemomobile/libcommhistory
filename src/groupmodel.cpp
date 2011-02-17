@@ -133,9 +133,9 @@ void GroupModelPrivate::resetQueryRunner()
             this,
             SLOT(canFetchMoreChangedSlot(bool)));
     connect(queryRunner,
-            SIGNAL(modelUpdated()),
+            SIGNAL(modelUpdated(bool)),
             this,
-            SLOT(modelUpdatedSlot()));
+            SLOT(modelUpdatedSlot(bool)));
 
     if (bgThread) {
         qDebug() << Q_FUNC_INFO << "MOVE" << queryRunner;
@@ -195,7 +195,6 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
             Group newGroup;
             if (query) {
                 if (!tracker()->getGroup(id, newGroup)) {
-                    qWarning() << Q_FUNC_INFO << tracker()->lastError();
                     return;
                 }
             } else {
@@ -264,13 +263,12 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
     }
 }
 
-void GroupModelPrivate::modelUpdatedSlot()
+void GroupModelPrivate::modelUpdatedSlot(bool successful)
 {
     Q_Q(GroupModel);
 
     isReady = true;
-    lastError = QSqlError();
-    emit q->modelReady();
+    emit q->modelReady(successful);
 }
 
 void GroupModelPrivate::executeQuery(const QString query)
@@ -532,11 +530,6 @@ GroupModel::~GroupModel()
     d = 0;
 }
 
-QSqlError GroupModel::lastError() const
-{
-    return d->lastError;
-}
-
 void GroupModel::setQueryMode(EventModel::QueryMode mode)
 {
     d->queryMode = mode;
@@ -744,9 +737,6 @@ bool GroupModel::addGroup(Group &group, bool toModelOnly)
     } else {
         d->tracker()->transaction();
         if (!d->tracker()->addGroup(group)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }
@@ -772,10 +762,7 @@ bool GroupModel::modifyGroup(Group &group)
     d->tracker()->transaction();
 
     if (group.id() == -1) {
-        d->lastError = QSqlError();
-        d->lastError.setType(QSqlError::TransactionError);
-        d->lastError.setDatabaseText(QLatin1String("Group id not set"));
-        qWarning() << __FUNCTION__ << ":" << d->lastError.text();
+        qWarning() << __FUNCTION__ << "Group id not set";
         d->tracker()->rollback();
         return false;
     }
@@ -785,9 +772,6 @@ bool GroupModel::modifyGroup(Group &group)
     }
 
     if (!d->tracker()->modifyGroup(group)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << __FUNCTION__ << ":" << d->lastError;
         d->tracker()->rollback();
         return false;
     }
@@ -819,9 +803,6 @@ bool GroupModel::markAsReadGroup(int id)
     d->tracker()->transaction();
 
     if (!d->tracker()->markAsReadGroup(id)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << Q_FUNC_INFO << d->lastError;
         d->tracker()->rollback();
         return false;
     }
@@ -861,9 +842,6 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
     d->tracker()->transaction();
     foreach (int id, groupIds) {
         if (!d->tracker()->deleteGroup(id, deleteMessages, d->bgThread)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }

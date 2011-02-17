@@ -24,7 +24,6 @@ include( ../../common-project-config.pri )
 include( ../../common-vars.pri )
 
 TARGET = async_example
-QT += sql
 CONFIG += qdbus debug mobility
 MOBILITY += contacts
 HEADERS += asyncquery.h

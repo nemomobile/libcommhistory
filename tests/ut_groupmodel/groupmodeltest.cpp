@@ -175,7 +175,6 @@ void GroupModelTest::addGroups()
 
     /* add invalid group */
     QVERIFY(!model.addGroup(group1));
-    QVERIFY(model.lastError().isValid());
 
     addTestGroup(group1, ACCOUNT1, QString("td@localhost"));
     QVERIFY(group1.id() != -1);
@@ -234,7 +233,6 @@ void GroupModelTest::modifyGroup()
 
     Group group6;
     QVERIFY(!model.modifyGroup(group6));
-    QVERIFY(model.lastError().isValid());
 
     group5.setChatName("MUC topic modified");
     QVERIFY(model.modifyGroup(group5));
@@ -267,7 +265,7 @@ void GroupModelTest::getGroups()
     GroupModel model;
     model.enableContactChanges(false);
 
-    QSignalSpy modelReady(&model, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
     GroupModel listenerModel;
     listenerModel.enableContactChanges(false);
 
@@ -591,7 +589,7 @@ void GroupModelTest::streamingQuery()
     streamModel.setFirstChunkSize(firstChunkSize);
     qRegisterMetaType<QModelIndex>("QModelIndex");
     QSignalSpy rowsInserted(&streamModel, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
-    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady(bool)));
     QVERIFY(streamModel.getGroups());
 
     QList<int> idsOrig;

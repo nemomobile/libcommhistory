@@ -99,8 +99,7 @@ public:
      * \param referenceTime Only call events with newer startTime() are in
      * result set if value is valid.
      *
-     * \return true if successful; false, otherwise. Additionally, it sets
-     * lastError() on failure.
+     * \return true if successful; false, otherwise
      */
     bool setFilter(CallModel::Sorting sortBy = SortByContact,
                    CallEvent::CallType type = CallEvent::UnknownCallType,
@@ -109,8 +108,7 @@ public:
     /*!
      * \brief Resets model and fetch call events.
      *
-     * \return true if successful; false, otherwise. Additionally, it sets
-     * lastError() on failure.
+     * \return true if successful; false, otherwise.
      */
     bool getEvents();
 
@@ -127,8 +125,7 @@ public:
      * \param referenceTime Only call events with newer startTime() are in
      * result set if value is valid.
      *
-     * \return true if successful; false, otherwise. Additionally, it sets
-     * lastError() on failure.
+     * \return true if successful; false, otherwise
      */
     bool getEvents(CallModel::Sorting sortBy,
                    CallEvent::CallType type = CallEvent::UnknownCallType,
