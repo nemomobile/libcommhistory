@@ -33,9 +33,9 @@
 #include "../src/group.h"
 #include "../src/trackerio.h"
 
-#include <QtTracker/Tracker>
-#include <QtTracker/rdfunbound.h>
-#include <QtTracker/ontologies/nmo.h>
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlQuery>
 
 #include "catcher.h"
 
@@ -479,9 +479,19 @@ int doList(const QStringList &arguments, const QVariantMap &options)
     }
 
     Group::ChatType chatType = Group::ChatTypeP2P;
-    Live<nmo::CommunicationChannel> conversation = ::tracker()->strictLiveNode(Group::idToUrl(groupId));
-    if (conversation)
-        chatType = (Group::ChatType)conversation->getIdentifier().toUInt();
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String(
+            "SELECT nie:identifier(?c) {?c rdf:type nmo:CommunicationChannel FILTER(?c = ?:conversation)}"));
+    query.bindValue(QLatin1String("conversation"), Group::idToUrl(groupId));
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
+    if (result->first()) {
+        QSparqlResultRow row = result->current();
+        if (!row.isEmpty()) {
+            chatType = (Group::ChatType) row.value(0).toUInt();
+        }
+    }
+
 
     ConversationModel model;
     model.enableContactChanges(false);
@@ -786,12 +796,14 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     Q_UNUSED(arguments);
     Q_UNUSED(options);
 
-    RDFUpdate deleter;
-    deleter.addDeletion(RDFVariable::fromType<nmo::Message>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    deleter.addDeletion(RDFVariable::fromType<nmo::CommunicationChannel>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(deleter);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String(
+            "DELETE {?n a rdfs:Resource}"
+            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                "nmo:CommunicationChannel))}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
 
     return 0;
 }
