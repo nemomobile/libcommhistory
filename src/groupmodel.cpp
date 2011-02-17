@@ -730,18 +730,14 @@ QVariant GroupModel::headerData(int section,
     return var;
 }
 
-bool GroupModel::addGroup(Group &group, bool toModelOnly)
+bool GroupModel::addGroup(Group &group)
 {
-    if (toModelOnly) {
-        group.setId(d->tracker()->nextGroupId());
-    } else {
-        d->tracker()->transaction();
-        if (!d->tracker()->addGroup(group)) {
-            d->tracker()->rollback();
-            return false;
-        }
-        d->tracker()->commit();
+    d->tracker()->transaction();
+    if (!d->tracker()->addGroup(group)) {
+        d->tracker()->rollback();
+        return false;
     }
+    d->tracker()->commit();
 
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
