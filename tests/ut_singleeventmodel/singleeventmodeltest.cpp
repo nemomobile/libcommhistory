@@ -1,5 +1,4 @@
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 
 #include <time.h>
 #include "singleeventmodeltest.h"

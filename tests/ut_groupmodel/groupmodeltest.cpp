@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 
 #include <QContactManager>
 #include <QContactId>

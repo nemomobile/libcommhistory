@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 #include <QDateTime>
 #include <QDBusConnection>
 #include <cstdlib>
@@ -95,9 +94,6 @@ void ConversationModelPerfTest::getEvents()
 
     qDebug() << __FUNCTION__ << "- Creating" << contacts << "new contacts";
 
-    SopranoLive::RDFTransactionPtr contactTransaction;
-    contactTransaction = ::tracker()->createTransaction();
-
     int ci = 0;
     while(ci < contacts) {
         ci++;
@@ -108,21 +104,17 @@ void ConversationModelPerfTest::getEvents()
         if(ci % commitBatchSize == 0 && ci < contacts) {
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
-            contactTransaction->commitAndReinitiate(true);
             waitForIdle(5000);
         }
     }
     qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
         << ci << "/" << contacts << ")";
-    contactTransaction->commit(true);
     waitForIdle(5000);
     QTest::qWait(TIMEOUT);
 
     qDebug() << __FUNCTION__ << "- Creating" << messages << "new messages";
 
     QList<Event> eventList;
-    SopranoLive::RDFTransactionPtr eventTransaction;
-    eventTransaction = ::tracker()->createTransaction();
 
     int ei = 0;
     while(ei < messages) {
@@ -149,7 +141,6 @@ void ConversationModelPerfTest::getEvents()
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "messages (" << ei << "/" << messages << ")";
             QVERIFY(addModel.addEvents(eventList, false));
-            eventTransaction->commitAndReinitiate(true);
             eventList.clear();
             waitForIdle();
         }
@@ -158,7 +149,6 @@ void ConversationModelPerfTest::getEvents()
     QVERIFY(addModel.addEvents(eventList, false));
     qDebug() << __FUNCTION__ << "- adding rest of the messages ("
         << ei << "/" << messages << ")";
-    eventTransaction->commit(true);
     eventList.clear();
     waitForIdle();
 

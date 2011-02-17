@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 #include <QDateTime>
 #include <QDBusConnection>
 #include <QModelIndex>
@@ -82,9 +81,6 @@ void GroupModelPerfTest::getGroups()
 
     qDebug() << __FUNCTION__ << "- Creating" << groups << "new contacts and groups";
 
-    SopranoLive::RDFTransactionPtr groupTransaction;
-    groupTransaction = ::tracker()->createTransaction();
-
     int gi = 0;
     while(gi < groups) {
         gi++;
@@ -104,13 +100,11 @@ void GroupModelPerfTest::getGroups()
         if(gi % commitBatchSize == 0 && gi < groups) {
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "groups (" << gi << "/" << groups << ")";
-            QVERIFY(groupTransaction->commitAndReinitiate(true));
             waitForIdle(5000);
         }
     }
     qDebug() << __FUNCTION__ << "- adding rest of the groups ("
              << gi << "/" << groups << ")";
-    QVERIFY(groupTransaction->commit(true));
     waitForIdle(5000);
     QTest::qWait(TIMEOUT);
 
@@ -122,8 +116,6 @@ void GroupModelPerfTest::getGroups()
     foreach (Group grp, groupList) {
         gi++;
         QList<Event> eventList;
-        SopranoLive::RDFTransactionPtr eventTransaction;
-        eventTransaction = ::tracker()->createTransaction();
 
         for(int i = 0; i < messages; i++) {
 
@@ -145,7 +137,6 @@ void GroupModelPerfTest::getGroups()
         QVERIFY(eventModel.addEvents(eventList, false));
         qDebug() << __FUNCTION__ << "- adding" << messages << "messages ("
                  << gi << "/" << groups << ")";
-        eventTransaction->commit(true);
         eventList.clear();
         waitForIdle();
     }
