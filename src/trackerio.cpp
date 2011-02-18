@@ -56,6 +56,8 @@ using namespace SopranoLive;
 #define QSPARQL_DATA_READY_INTERVAL 25
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
+#define GRAPH_CALL_CHANNEL "commhistory:call-channels"
+#define GRAPH_MESSAGE_CHANNEL "commhistory:message-channels"
 
 // NOTE projections in the query should have same order as Group::Property
 #define GROUP_QUERY LAT( \
@@ -1121,6 +1123,47 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
     writeCommonProperties(query, event, false);
 
     writeCallProperties(query, event, false);
+
+    QString callGroupRemoteId;
+    QString number = normalizePhoneNumber(event.remoteUid());
+    if (number.isEmpty()) {
+        callGroupRemoteId = event.remoteUid();
+    } else {
+        callGroupRemoteId = number.right(phoneNumberMatchLength());
+    }
+
+    QUrl channelUri(QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId));
+    QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
+    QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
+    query.insertionSilent(
+        QString(LAT("GRAPH <%1> { "
+                    "<%2> a nmo:CommunicationChannel ;"
+                    " nmo:hasParticipant <%3> ;"
+                    " nmo:hasParticipant %4 ."
+                    "}"))
+        .arg(GRAPH_CALL_CHANNEL)
+        .arg(channelUri.toString())
+        .arg(localUri)
+        .arg(remoteContact));
+
+    query.deletion(channelUri, "nmo:lastMessageDate");
+    query.deletion(channelUri, "nie:contentLastModified");
+    query.insertion(QString(LAT("GRAPH <%1> { "
+                                "<%2> nmo:lastMessageDate \"%3Z\"^^xsd:dateTime ;"
+                                " nie:contentLastModified \"%3Z\"^^xsd:dateTime . }"))
+                    .arg(GRAPH_CALL_CHANNEL)
+                    .arg(channelUri.toString())
+                    .arg(eventDate));
+
+    if (!event.isMissedCall()) {
+        query.deletion(channelUri, "nmo:lastSuccessfulMessageDate");
+        query.insertion(QString(LAT("GRAPH <%1> { <%2> nmo:lastSuccessfulMessageDate \"%3Z\"^^xsd:dateTime }"))
+                        .arg(GRAPH_CALL_CHANNEL)
+                        .arg(channelUri.toString())
+                        .arg(eventDate));
+    }
+
+    query.insertion(eventSubject, "nmo:communicationChannel", channelUri);
 }
 
 void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelId, bool modify)
@@ -1204,9 +1247,9 @@ bool TrackerIO::addGroup(Group &group)
 
     QString channelSubject = group.url().toString();
 
-    query.insertionRaw(channelSubject,
-                       "rdf:type",
-                       LAT("nmo:CommunicationChannel"));
+    query.insertion(QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
+                    .arg(GRAPH_MESSAGE_CHANNEL)
+                    .arg(channelSubject));
 
     // TODO: ontology
     query.insertion(channelSubject,
@@ -1479,9 +1522,27 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
         }
     }
 
-    QSparqlQuery deleteQuery(LAT("DELETE {?:uri a rdfs:Resource}"),
-                             QSparqlQuery::DeleteStatement);
+    QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
+
+    // delete empty call groups
+    if (event.type() == Event::CallEvent) {
+        query += LAT(
+            "DELETE { ?chan a rdfs:Resource } WHERE { "
+            "GRAPH ?:graph { "
+            "?chan a nmo:CommunicationChannel . "
+            "} "
+            "OPTIONAL { "
+            "?call a nmo:Call ; "
+            "nmo:communicationChannel ?chan . "
+            "} "
+            "FILTER (!BOUND(?call)) "
+            "}");
+    }
+
+    QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
     deleteQuery.bindValue(LAT("uri"), event.url());
+    if (event.type() == Event::CallEvent)
+        deleteQuery.bindValue(LAT("graph"), GRAPH_CALL_CHANNEL);
 
     return d->handleQuery(deleteQuery);
 }
