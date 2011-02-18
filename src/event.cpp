@@ -105,7 +105,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.endTime() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
-             << event.bytesSent() << event.bytesReceived() << event.localUid()
+             << event.bytesReceived() << event.localUid()
              << event.remoteUid() << event.contactId() << event.contactName()
              << event.parentId() << event.freeText() << event.groupId()
              << event.messageToken() << event.mmsId() << event.lastModified()
@@ -128,7 +128,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     argument.beginStructure();
     argument >> p.id >> type >> p.startTime >> p.endTime
              >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
-             >> status >> p.bytesSent >> p.bytesReceived >> p.localUid >> p.remoteUid
+             >> status >> p.bytesReceived >> p.localUid >> p.remoteUid
              >> p.contactId >> p.contactName >> p.parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
@@ -148,7 +148,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setIsMissedCall( p.isMissedCall );
     event.setIsEmergencyCall( p.isEmergencyCall );
     event.setStatus((Event::EventStatus)status);
-    event.setBytesSent(p.bytesSent);
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
     event.setRemoteUid(p.remoteUid);
@@ -192,7 +191,6 @@ EventPrivate::EventPrivate()
         , isMissedCall( false )
         , isEmergencyCall( false )
         , status(Event::UnknownStatus)
-        , bytesSent(0)
         , bytesReceived(0)
         , contactId(0)
         , parentId(-1)
@@ -220,7 +218,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , isMissedCall( other.isMissedCall )
         , isEmergencyCall( other.isEmergencyCall )
         , status(other.status)
-        , bytesSent(other.bytesSent)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
         , remoteUid(other.remoteUid)
@@ -400,11 +397,6 @@ bool Event::isEmergencyCall() const
 Event::EventStatus Event::status() const
 {
     return d->status;
-}
-
-int Event::bytesSent() const
-{
-    return d->bytesSent;
 }
 
 int Event::bytesReceived() const
@@ -628,12 +620,6 @@ void Event::setStatus( Event::EventStatus status )
     d->propertyChanged(Event::Status);
 }
 
-void Event::setBytesSent(int bytes)
-{
-    d->bytesSent = bytes;
-    d->propertyChanged(Event::BytesSent);
-}
-
 void Event::setBytesReceived(int bytes)
 {
     d->bytesReceived = bytes;
@@ -815,7 +801,6 @@ QString Event::toString() const
                    QString::number(isDraft())         % QChar('|') %
                    QString::number(isRead())          % QChar('|') %
                    QString::number(isMissedCall())    % QChar('|') %
-                   QString::number(bytesSent())       % QChar('|') %
                    QString::number(bytesReceived())   % QChar('|') %
                    localUid()                         % QChar('|') %
                    remoteUid()                        % QChar('|') %

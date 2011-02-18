@@ -88,7 +88,6 @@ Event createEvent(QString user)
                         -(qrand() % 600 + 10) : 0)));
     prevEndTime = e.endTime().toTime_t();
     e.setIsRead(false);
-    e.setBytesSent(qrand() % 1024);
     e.setBytesReceived(qrand() % 1024);
     if (e.type() == Event::SMSEvent) {
         e.setLocalUid("ring/tel/ring");

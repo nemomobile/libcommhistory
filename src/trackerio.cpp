@@ -747,9 +747,6 @@ void TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
                                 modifyMode);
             break;
         }
-        case Event::BytesSent:
-            // TODO: not implemented, do we need this?
-            break;
         case Event::BytesReceived:
             query.insertion(event.url(),
                             "nie:contentSize",

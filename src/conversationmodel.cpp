@@ -34,7 +34,6 @@ static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::Pr
                                              << CommHistory::Event::IsDraft
                                              << CommHistory::Event::IsMissedCall
                                              << CommHistory::Event::IsEmergencyCall
-                                             << CommHistory::Event::BytesSent
                                              << CommHistory::Event::BytesReceived
                                              << CommHistory::Event::EventCount;
 }

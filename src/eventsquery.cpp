@@ -104,8 +104,6 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:isEmergency");
     case Event::Status:
         return QLatin1String("nmo:deliveryStatus");
-//    case Event::BytesSent:
-//        return QLatin1String("WTF");
     case Event::BytesReceived:
         return QLatin1String("nie:contentSize");
     // LocalUid/RemoteUid map to to/from depending on the direction
@@ -191,7 +189,6 @@ QString functionForProperty(Event::Property p)
     case Event::IsMissedCall:
     case Event::IsEmergencyCall:
     case Event::Status:
-    case Event::BytesSent:
     case Event::BytesReceived:
     case Event::ParentId:
     case Event::Subject:
@@ -284,7 +281,6 @@ QString patternForProperty(Event::Property p)
     case Event::IsMissedCall:
     case Event::IsEmergencyCall:
     case Event::Status:
-    case Event::BytesSent:
     case Event::BytesReceived:
     case Event::ParentId:
     case Event::Subject:
@@ -510,8 +506,7 @@ QString EventsQuery::query() const
     QStringList projections;
     foreach(Event::Property p, d->variables) {
 
-        if (p == Event::BytesSent // not used
-            || p == Event::EventCount) { // runtime
+        if (p == Event::EventCount) { // runtime
             d->variables.removeOne(p);
             continue;
         }

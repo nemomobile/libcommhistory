@@ -75,7 +75,6 @@ public:
         IsRead,
         IsMissedCall,
         Status,
-        BytesSent,     // not implemented
         BytesReceived, // not implemented
         LocalUid,
         RemoteUid,

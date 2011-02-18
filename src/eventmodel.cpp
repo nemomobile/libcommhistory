@@ -236,9 +236,6 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case Status:
             var = QVariant::fromValue((int)(event.status()));
             break;
-        case BytesSent:
-            var = QVariant::fromValue(event.bytesSent());
-            break;
         case BytesReceived:
             var = QVariant::fromValue(event.bytesReceived());
             break;
@@ -347,9 +344,6 @@ QVariant EventModel::headerData(int section,
                 break;
             case Status:
                 name = QLatin1String("status");
-                break;
-            case BytesSent:
-                name = QLatin1String("bytes_sent");
                 break;
             case BytesReceived:
                 name = QLatin1String("bytes_received");

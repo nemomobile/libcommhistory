@@ -281,7 +281,6 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         } else {
             e.setIsRead(false);
         }
-        e.setBytesSent(qrand() % 1024);
         e.setBytesReceived(qrand() % 1024);
         e.setGroupId(groupId);
         if (randomRemote) {

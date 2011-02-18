@@ -124,7 +124,6 @@ public:
         IsMissedCall,
         IsEmergencyCall,
         Status,
-        BytesSent,
         BytesReceived,
         LocalUid,
         RemoteUid,
@@ -250,8 +249,6 @@ public:
 
     Event::EventStatus status() const;
 
-    int bytesSent() const;
-
     int bytesReceived() const;
 
     QString localUid() const;  /* telepathy account */
@@ -343,8 +340,6 @@ public:
     void setIsEmergencyCall( bool isEmergency );
 
     void setStatus(Event::EventStatus status);
-
-    void setBytesSent(int bytes);
 
     void setBytesReceived(int bytes);
 
