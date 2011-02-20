@@ -169,6 +169,74 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(mms, modelEvent));
 }
 
+void SingleEventModelTest::contactMatching_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+    QTest::addColumn<int>("eventType");
+
+    QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bad@singlelocalhost"
+            << (int)Event::IMEvent;
+    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+            << "+11382394"
+            << (int)Event::SMSEvent;
+
+}
+
+void SingleEventModelTest::contactMatching()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+    QFETCH(int, eventType);
+
+    SingleEventModel model;
+    Event::PropertySet p;
+    p.insert(Event::ContactId);
+    p.insert(Event::ContactName);
+    model.setPropertyMask(p);
+
+    watcher.setModel(&model);
+
+
+    int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
+                 "text", false, false, QDateTime::currentDateTime(), remoteId);
+    watcher.waitForSignals();
+    QVERIFY(eventId != -1);
+
+    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(watcher.waitForModelReady(5000));
+    Event event = model.event(model.index(0, 0));
+    QCOMPARE(event.id(), eventId);
+    QCOMPARE(event.contactId(), 0);
+
+    QString noMatch = remoteId;
+    noMatch += remoteId[1];
+
+    int contactId1 = addTestContact("Really1Bad",
+                   noMatch,
+                   localId);
+
+    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(watcher.waitForModelReady(5000));
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.id(), eventId);
+    QCOMPARE(event.contactId(), 0);
+
+    int contactId = addTestContact("Really Bad", remoteId, localId);
+
+    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(watcher.waitForModelReady(5000));
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.id(), eventId);
+
+    QCOMPARE(event.contactId(), contactId);
+    QCOMPARE(event.contactName(), QString("Really Bad"));
+
+    deleteTestContact(contactId1);
+    deleteTestContact(contactId);
+}
+
 void SingleEventModelTest::cleanupTestCase()
 {
 }

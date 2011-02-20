@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 
 #include <time.h>
 #include "eventmodeltest.h"
@@ -1320,6 +1319,59 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), newEvent.id());
     QCOMPARE(group.unreadMessages(), unread);
+}
+
+void EventModelTest::testContactMatching_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+    QTest::addColumn<int>("eventType");
+
+    QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bad@localhost"
+            << (int)Event::IMEvent;
+    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+            << "+42382394"
+            << (int)Event::SMSEvent;
+}
+
+void EventModelTest::testContactMatching()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+    QFETCH(int, eventType);
+
+    EventModel model;
+    watcher.setModel(&model);
+
+
+    int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
+                 "text", false, false, QDateTime::currentDateTime(), remoteId);
+    watcher.waitForSignals();
+    QVERIFY(eventId != -1);
+
+    Event event;
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), 0);
+
+    QString noMatch = remoteId;
+    noMatch += remoteId[1];
+
+    int contactId1 = addTestContact("Really Bad",
+                   noMatch,
+                   localId);
+
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), 0);
+
+    int contactId = addTestContact("Really Bad", remoteId, localId);
+
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), contactId);
+    QCOMPARE(event.contactName(), QString("Really Bad"));
+
+    deleteTestContact(contactId1);
+    deleteTestContact(contactId);
 }
 
 void EventModelTest::cleanupTestCase()
