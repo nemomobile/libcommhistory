@@ -34,12 +34,14 @@
 #include <QContact>
 #include <QContactName>
 #include <QContactPhoneNumber>
+#include <QContactOnlineAccount>
 
 #include "eventmodel.h"
 #include "groupmodel.h"
 #include "event.h"
 #include "common.h"
 #include "trackerio.h"
+#include "commonutils.h"
 
 QTM_USE_NAMESPACE
 
@@ -113,7 +115,7 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
     QVERIFY(ready.first().at(1).toBool());
 }
 
-void addTestContact(const QString &name, const QString &remoteUid)
+int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
 {
     QContactManager cm;
     QContact contact;
@@ -122,25 +124,39 @@ void addTestContact(const QString &name, const QString &remoteUid)
     cName.setLastName(name);
     contact.saveDetail(&cName);
 
-    QContactPhoneNumber number;
-    number.setNumber(remoteUid);
-    contact.saveDetail(&number);
+    QString normal = normalizePhoneNumber(remoteUid);
+    if (normal.isEmpty()) {
+        QContactOnlineAccount online;
+        online.setAccountUri(remoteUid);
+        online.setValue(QLatin1String("AccountPath"), localUid);
+        contact.saveDetail(&online);
+    } else {
+        QContactPhoneNumber number;
+        number.setNumber(remoteUid);
+        contact.saveDetail(&number);
+    }
 
-    QVERIFY(cm.saveContact(&contact));
+    cm.saveContact(&contact);
+
+    return (int)contact.localId();
 }
 
-void modifyTestContact(const QString &name, const QString &remoteUid)
+void modifyTestContact(int id, const QString &name)
 {
     QContactManager cm;
-    QList<QContact> results = cm.contacts(QContactPhoneNumber::match(remoteUid));
+    QContact contact= cm.contact(id);
 
-    QVERIFY(!results.isEmpty());
-
-    QContactName cName = results.first().detail<QContactName>();
+    QContactName cName = contact.detail<QContactName>();
     cName.setLastName(name);
-    results.first().saveDetail(&cName);
+    contact.saveDetail(&cName);
 
-    QVERIFY(cm.saveContact(&results.first()));
+    cm.saveContact(&contact);
+}
+
+void deleteTestContact(int id)
+{
+    QContactManager cm;
+    cm.removeContact(id);
 }
 
 bool compareEvents(Event &e1, Event &e2)

@@ -843,7 +843,7 @@ void GroupModelTest::resolveContact()
 
     QString phoneNumber = QString().setNum(qrand() % 10000000);
     QString contactName = QString("Test Contact 123");
-    addTestContact(contactName, phoneNumber);
+    int contactId = addTestContact(contactName, phoneNumber);
 
     //QTest::qWait(2000);
 
@@ -879,8 +879,8 @@ void GroupModelTest::resolveContact()
     QCOMPARE(group.contactName(),contactName);
 
     // CHANGE CONTACT NAME:
-    QString newName = "Modified Test Contact 123";
-    modifyTestContact(newName, phoneNumber);
+    QString newName("Modified Test Contact 123");
+    modifyTestContact(contactId, newName);
 
     // Waiting for dataChanged signal to update contact name into the group.
     groupDataChanged.clear();
