@@ -39,7 +39,6 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "isMissedCall",
                                  "isEmergencyCall",
                                  "status",
-                                 "bytesSent",
                                  "bytesReceived",
                                  "localUid",
                                  "remoteUid",
@@ -180,6 +179,8 @@ QString functionForProperty(Event::Property p)
     QStringList func;
 
     switch(p) {
+    case Event::Id:
+        break; //pattern only
     case Event::Type:
     case Event::StartTime:
     case Event::EndTime:
@@ -222,6 +223,8 @@ QString functionForProperty(Event::Property p)
              << eventPropertyName(Event::Id)
              << "))";
         break;
+    case Event::RemoteUid:
+        break;//pattern only
     case Event::ContactId:
     case Event::ContactName:
         // patterns only
@@ -311,28 +314,26 @@ QString patternForProperty(Event::Property p)
     case Event::ContactId:
     //case Event::ContactName:
         pattern << QString(QLatin1String(
-                "{"
-                "SELECT "
-                "tracker:coalesce(tracker:id(?_pContact), 0)  AS %3 "
+                "OPTIONAL {"
+                "SELECT %1 tracker:id(?_pContact)  AS %2 "
                 "fn:concat(tracker:coalesce(nco:nameGiven(?_pContact), \'\'), \'\\u001e\',"
                 "          tracker:coalesce(nco:nameFamily(?_pContact), \'\'), \'\\u001e\',"
-                "          tracker:coalesce(nco:imNickname(?_imAddress), \'\')) AS %4 "
-                "WHERE { OPTIONAL {"
+                "          tracker:coalesce(nco:imNickname(?_imAddress), \'\')) AS %3 "
+                "WHERE { "
+                "?_pContact rdf:type nco:PersonContact . "
                 "{?_pContact nco:hasAffiliation [nco:hasIMAddress ?_imAddress] ."
-                "  { %1 nco:hasIMAddress ?_imAddress } "
+                "  {%1 nmo:to [nco:hasIMAddress ?_imAddress]}"
                 "  UNION "
-                "  { %2 nco:hasIMAddress ?_imAddress } "
+                "  {%1 nmo:from [nco:hasIMAddress ?_imAddress]} "
                 "} "
                 "UNION "
                 "{?_pContact nco:hasAffiliation [nco:hasPhoneNumber [ maemo:localPhoneNumber ?_contactPhone]] ."
-                "  { %1 nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]} "
+                "  { %1 nmo:to [nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]]} "
                 "  UNION "
-                "  { %2 nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]} "
+                "  { %1 nmo:from [nco:hasPhoneNumber [maemo:localPhoneNumber ?_contactPhone]]} "
                 "} "
-                "?_pContact rdf:type nco:PersonContact . "
-                "}}}"))
-                .arg(eventPropertyName(Event::LocalUid))
-                .arg(eventPropertyName(Event::RemoteUid))
+                "}}"))
+                .arg(eventPropertyName(Event::Id))
                 .arg(eventPropertyName(Event::ContactId))
                 .arg(eventPropertyName(Event::ContactName));
         break;
@@ -363,13 +364,6 @@ QString patternForProperty(Event::Property p)
     }
 
     return pattern.join(" ");
-}
-
-bool isPropertyObject(Event::Property p)
-{
-    return (p == Event::Id
-            || p == Event::ContactId
-            || p == Event::RemoteUid);
 }
 
 class EventsQueryPrivate {
@@ -411,6 +405,11 @@ public:
         if (!propertySet.contains(Event::FromVCardLabel)
             && propertySet.contains(Event::FromVCardFileName))
             variables.append(Event::FromVCardLabel);
+
+        if (propertySet.contains(Event::ContactId)) {
+            parts[Patterns].variables.insert(Event::LocalUid);
+            parts[Patterns].variables.insert(Event::RemoteUid);
+        }
 
         // direction is needed to set the following properties correctly
         if (!propertySet.contains(Event::Direction)
@@ -519,21 +518,14 @@ QString EventsQuery::query() const
             // variable referenced in modifiers, use pattern instead of function
             QString varName = eventPropertyName(p);
             projections.append(varName);
-            if (!isPropertyObject(p)) {
-                d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
-            }
+            d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
         } else if (d->parts[EventsQueryPrivate::Patterns].variables.contains(p)) {
             // TODO: varable referenced in used defined pattern and should be defined there
             QString varName = eventPropertyName(p);
             projections.append(varName);
-            if (!isPropertyObject(p)) {
-                d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
-            }
+            d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
         } else {
-            QString func;
-
-            if (!isPropertyObject(p))
-                func = functionForProperty(p);
+            QString func = functionForProperty(p);
 
             if (!func.isEmpty())
                 projections.append(func);
