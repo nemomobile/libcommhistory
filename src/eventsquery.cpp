@@ -541,11 +541,13 @@ QString EventsQuery::query() const
         query << QLatin1String("DISTINCT");
     query << projections.join(" ");
     query << QLatin1String("WHERE {");
+
     query << QLatin1String(
         "SELECT ?message ?endTime ?from ?to "
         "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
         "WHERE {"
         "?message nmo:from ?from ; nmo:to ?to ; nmo:receivedDate ?endTime . ");
+
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
     query << QLatin1String("} }");
     query << d->parts[EventsQueryPrivate::Modifiers].patterns;

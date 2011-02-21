@@ -26,6 +26,9 @@
 #include "event.h"
 #include "libcommhistoryexport.h"
 
+#define COMMHISTORY_GRAPH_CALL_CHANNEL "commhistory:call-channels"
+#define COMMHISTORY_GRAPH_MESSAGE_CHANNEL "commhistory:message-channels"
+
 namespace CommHistory {
 
 class EventsQueryPrivate;

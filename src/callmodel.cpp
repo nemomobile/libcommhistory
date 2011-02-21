@@ -33,6 +33,7 @@
 #include "event.h"
 #include "commonutils.h"
 #include "contactlistener.h"
+#include "eventsquery.h"
 
 using namespace SopranoLive;
 
@@ -614,38 +615,69 @@ bool CallModel::getEvents()
     d->clearEvents();
     endResetModel();
 
-    RDFSelect query;
-    RDFVariable call = RDFVariable::fromType<nmo::Call>();
+    if (d->sortBy == SortByContact) {
+        RDFSelect query;
+        RDFVariable call = RDFVariable::fromType<nmo::Call>();
 
-    if(!d->referenceTime.isNull())
-    {
-        RDFVariable date = call.property<nmo::receivedDate>();
-        date.greaterOrEqual(LiteralValue(d->referenceTime));
-    }
-
-    if(d->eventType != CallEvent::UnknownCallType)
-    {
-        if(d->eventType == CallEvent::ReceivedCallType ||
-           d->eventType == CallEvent::MissedCallType)
+        if(!d->referenceTime.isNull())
         {
-            call.property<nmo::isSent>(LiteralValue(false));
+            RDFVariable date = call.property<nmo::receivedDate>();
+            date.greaterOrEqual(LiteralValue(d->referenceTime));
+        }
 
-            if(d->eventType == CallEvent::MissedCallType)
+        if(d->eventType != CallEvent::UnknownCallType)
+        {
+            if(d->eventType == CallEvent::ReceivedCallType ||
+               d->eventType == CallEvent::MissedCallType)
             {
-                call.property<nmo::isAnswered>(LiteralValue(false));
-            }
+                call.property<nmo::isSent>(LiteralValue(false));
+
+                if(d->eventType == CallEvent::MissedCallType)
+                {
+                    call.property<nmo::isAnswered>(LiteralValue(false));
+                }
+                else
+                {
+                    call.property<nmo::isAnswered>(LiteralValue(true));
+                }
+            } //event type == CallEvent::DialedCallType
             else
             {
-                call.property<nmo::isAnswered>(LiteralValue(true));
+                call.property<nmo::isSent>(LiteralValue(true));
             }
-        } //event type == CallEvent::DialedCallType
-        else
-        {
-            call.property<nmo::isSent>(LiteralValue(true));
+        }
+
+        d->tracker()->prepareCallQuery( query, call, d->propertyMask );
+        return d->executeQuery(query);
+    }
+
+    EventsQuery query(d->propertyMask);
+
+    if (d->eventType != CallEvent::UnknownCallType) {
+        if (d->eventType == CallEvent::ReceivedCallType
+            || d->eventType == CallEvent::MissedCallType) {
+            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
+                .variable(Event::Id);
+
+            if (d->eventType == CallEvent::MissedCallType) {
+                query.addPattern(QLatin1String("%1 nmo:isAnswered \"false\" ."))
+                    .variable(Event::Id);
+            }
+        } else {
+            query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
+                .variable(Event::Id);
+        }
+
+        if (!d->referenceTime.isNull()) {
+            query.addPattern(QString(QLatin1String("FILTER (nmo:receivedDate(%2) >= %1)"))
+                             .arg(d->referenceTime.toString()))
+                .variable(Event::Id);
         }
     }
 
-    d->tracker()->prepareCallQuery( query, call, d->propertyMask );
+    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
+                     .variable(Event::EndTime)
+                     .variable(Event::Id);
 
     return d->executeQuery(query);
 }
