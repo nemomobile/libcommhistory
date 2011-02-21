@@ -561,6 +561,13 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
             if (ContactListener::addressMatchesList(event->localUid(),
                                                     event->remoteUid(),
                                                     contactAddresses)) {
+
+                // If contact is not yet in cache, add it
+                QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
+                if (!contactCache.contains(cacheKey)) {
+                    contactCache.insert(cacheKey, qMakePair((int)contactId, contactName));
+                }
+
                 if ((quint32)event->contactId() != contactId
                     || event->contactName() != contactName) {
                     event->setContactId(contactId);
