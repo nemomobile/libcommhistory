@@ -59,89 +59,56 @@ using namespace SopranoLive;
 
 // NOTE projections in the query should have same order as Group::Property
 #define GROUP_QUERY LAT( \
-"SELECT ?_channel" \
-"        ?_subject" \
-"     nie:generator(?_channel)" \
-"     nie:identifier(?_channel)" \
-"     nie:title(?_channel)" \
-"  ?_lastDate" \
-"(SELECT COUNT(?_total_messages)" \
-" WHERE {" \
-"  ?_total_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isDeleted \"false\" ." \
-" }" \
-")" \
-"(SELECT COUNT(?_total_unread_messages)" \
-" WHERE {" \
-"  ?_total_unread_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isRead \"false\";" \
-"                   nmo:isDeleted \"false\"" \
-" }" \
-")" \
-"(SELECT COUNT(?_total_sent_messages)" \
-" WHERE {" \
-"  ?_total_sent_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isSent \"true\";" \
-"                   nmo:isDeleted \"false\"" \
-" }" \
-")" \
-"  ?_lastMessage" \
-"  tracker:id(?_contact_1)" \
-"  fn:concat(tracker:coalesce(nco:nameGiven(?_contact_1), \'\'), \'\\u001e\'," \
-"            tracker:coalesce(nco:nameFamily(?_contact_1), \'\'), \'\\u001e\'," \
-"            tracker:coalesce(?_imNickname, \'\'))" \
-"   tracker:coalesce(nmo:messageSubject(?_lastMessage)," \
-"                    nie:plainTextContent(?_lastMessage))" \
-"     nfo:fileName(nmo:fromVCard(?_lastMessage))" \
-"     rdfs:label(nmo:fromVCard(?_lastMessage))" \
-"     rdf:type(?_lastMessage)" \
-"     nmo:deliveryStatus(?_lastMessage)" \
-"  ?_lastModified " \
-"WHERE" \
-"{" \
-"  {" \
-"    SELECT ?_channel ?_subject ?_lastDate ?_lastModified" \
-"         ( SELECT ?_message" \
-"  WHERE {" \
-"    ?_message nmo:communicationChannel ?_channel ;" \
-"              nmo:isDeleted \"false\" ." \
-"  }" \
-"    ORDER BY DESC(nmo:receivedDate(?_message)) DESC(tracker:id(?_message)) " \
-"    LIMIT 1)" \
-"      AS ?_lastMessage" \
-"         ( SELECT ?_contact" \
-"  WHERE {" \
-"        ?_contact rdf:type nco:PersonContact ." \
-"      {" \
-"        ?_channel nmo:hasParticipant [nco:hasIMAddress ?_12 ] ." \
-"        ?_contact nco:hasAffiliation [nco:hasIMAddress ?_12 ]" \
-"      }" \
-"      UNION" \
-"      {" \
-"        ?_channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]] ." \
-"        ?_contact nco:hasAffiliation [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]]" \
-"      }" \
-"  })" \
-"" \
-"      AS ?_contact_1" \
-"         ( SELECT ?_13" \
-"  WHERE {" \
-"" \
-"    ?_channel nmo:hasParticipant [nco:hasIMAddress [nco:imNickname ?_13 ]]" \
-"  })" \
-"" \
-"      AS ?_imNickname" \
-"    WHERE" \
-"    {" \
-"      ?_channel rdf:type nmo:CommunicationChannel; " \
-"      nie:subject ?_subject ; " \
-"      nmo:lastMessageDate ?_lastDate ; " \
-"      nie:contentLastModified ?_lastModified ." \
-"      %1"\
-"    }" \
-"  }" \
+"SELECT ?channel " \
+"?subject " \
+"nie:generator(?channel) " \
+"nie:identifier(?channel) " \
+"nie:title(?channel) " \
+"?lastDate " \
+"(SELECT COUNT(?total) {?total nmo:communicationChannel ?channel; " \
+                              "nmo:isDeleted false}) " \
+"(SELECT COUNT(?unread) {?unread nmo:communicationChannel ?channel; " \
+                                "nmo:isRead false; nmo:isDeleted false}) " \
+"(SELECT COUNT(?sent) {?sent nmo:communicationChannel ?channel; " \
+                            "nmo:isSent true; nmo:isDeleted false}) " \
+"?lastMessage " \
+"tracker:id(?contact) " \
+"fn:concat(tracker:coalesce(nco:nameGiven(?contact), \'\'), \'\\u001e\'," \
+"          tracker:coalesce(nco:nameFamily(?contact), \'\'), \'\\u001e\'," \
+"          tracker:coalesce(nco:imNickname(?imAddress), \'\')) " \
+"tracker:coalesce(nmo:messageSubject(?lastMessage), " \
+"                 nie:plainTextContent(?lastMessage)) " \
+"nfo:fileName(nmo:fromVCard(?lastMessage)) " \
+"rdfs:label(nmo:fromVCard(?lastMessage)) " \
+"rdf:type(?lastMessage) " \
+"nmo:deliveryStatus(?lastMessage) " \
+"nie:contentLastModified(?channel) " \
+"WHERE {" \
+  "{SELECT ?channel " \
+      "?subject " \
+      "?lastDate " \
+      "(SELECT ?message {?message nmo:communicationChannel ?channel; nmo:isDeleted false} " \
+      " ORDER BY DESC(nmo:receivedDate(?message)) DESC(tracker:id(?message)) " \
+      " LIMIT 1) " \
+      "AS ?lastMessage " \
+      "(SELECT ?_c { " \
+      " ?_c rdf:type nco:PersonContact " \
+      " { " \
+          "?channel nmo:hasParticipant [nco:hasIMAddress ?imAddress] . " \
+          "?_c nco:hasAffiliation [nco:hasIMAddress ?imAddress] " \
+       "} UNION { " \
+          "?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?phoneNumber]] . " \
+          "?_c nco:hasAffiliation [nco:hasPhoneNumber [maemo:localPhoneNumber ?phoneNumber]]" \
+       "}}) AS ?contact " \
+   "WHERE { " \
+      "?channel rdf:type nmo:CommunicationChannel; " \
+               "nie:subject ?subject; " \
+               "nmo:lastMessageDate ?lastDate . " \
+      " %1 " \
+   "}" \
+  "}" \
 "}" \
-"  ORDER BY DESC(?_lastDate)" \
+"ORDER BY DESC(?lastDate)" \
 )
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
@@ -543,18 +510,18 @@ QString TrackerIO::prepareGroupQuery(const QString &localUid,
     if (!remoteUid.isEmpty()) {
         QString number = normalizePhoneNumber(remoteUid);
         if (number.isEmpty()) {
-            constrains << QString(LAT("?_channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
+            constrains << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
                           .arg(remoteUid);
         } else {
-            constrains << QString(LAT("?_channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
+            constrains << QString(LAT("?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
                           .arg(number.right(CommHistory::phoneNumberMatchLength()));
         }
     }
     if (!localUid.isEmpty()) {
-        constrains << QString(LAT("FILTER(?_subject = \"%1\") ")).arg(localUid);
+        constrains << QString(LAT("FILTER(?subject = \"%1\") ")).arg(localUid);
     }
     if (groupId != -1)
-        constrains << QString(LAT("FILTER(?_channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
+        constrains << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
 
     return queryFormat.arg(constrains.join(LAT(" ")));
 }
