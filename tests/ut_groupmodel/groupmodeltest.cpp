@@ -911,4 +911,133 @@ void GroupModelTest::resolveContact()
     QCOMPARE(group.contactId(),0);
 }
 
+void GroupModelTest::queryContacts()
+{
+    GroupModel model;
+    model.enableContactChanges(false);
+    QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
+
+    //add cellular groups
+    Group group;
+    addTestGroup(group, RING_ACCOUNT, "445566");
+    addTestGroup(group, RING_ACCOUNT, "+3851234567");
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+    QCOMPARE(model.rowCount(), 6);
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        QCOMPARE(g.contactId(), 0);
+        QVERIFY(g.contactName().isEmpty());
+    }
+
+    int contactIdNoMatch = addTestContact("NoMatch",
+                                          "nomatch",
+                                          ACCOUNT1);
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        QCOMPARE(g.contactId(), 0);
+    }
+
+    int contactIdNoMatchPhone = addTestContact("PhoneNoMatch",
+                                               "98765");
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        QCOMPARE(g.contactId(), 0);
+    }
+
+    int contactIdTD1 = addTestContact("TD1",
+                                      "td@localhost",
+                                      ACCOUNT1);
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        if (g.remoteUids().contains("td@localhost")
+            && g.localUid() == ACCOUNT1) {
+            QCOMPARE(g.contactId(), contactIdTD1);
+            QCOMPARE(g.contactName(), QString("TD1"));
+        } else {
+            QCOMPARE(g.contactId(), 0);
+        }
+    }
+
+    int contactIdTD2 = addTestContact("TD2",
+                                      "td2@localhost",
+                                      ACCOUNT2);
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        if (g.remoteUids().contains("td@localhost")
+            && g.localUid() == ACCOUNT1) {
+            QCOMPARE(g.contactId(), contactIdTD1);
+            QCOMPARE(g.contactName(), QString("TD1"));
+        } else if (g.remoteUids().contains("td2@localhost")
+                && g.localUid() == ACCOUNT2) {
+            QCOMPARE(g.contactId(), contactIdTD2);
+            QCOMPARE(g.contactName(), QString("TD2"));
+        } else {
+            QCOMPARE(g.contactId(), 0);
+        }
+    }
+
+    int contactIdPhone1 = addTestContact("CodeRed",
+                                         "445566");
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        if (g.localUid() == RING_ACCOUNT) {
+            if (g.remoteUids().contains("445566")) {
+                QCOMPARE(g.contactId(), contactIdPhone1);
+                QCOMPARE(g.contactName(), QString("CodeRed"));
+            } else {
+                QCOMPARE(g.contactId(), 0);
+            }
+        }
+    }
+
+    int contactIdPhone2 = addTestContact("CodeBlue",
+                                         "+3851234567");
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    for (int i=0; i < model.rowCount(); i++) {
+        Group g = model.group(model.index(i, 0));
+        if (g.localUid() == RING_ACCOUNT) {
+            if (g.remoteUids().contains("445566")) {
+                QCOMPARE(g.contactId(), contactIdPhone1);
+                QCOMPARE(g.contactName(), QString("CodeRed"));
+            } else if (g.remoteUids().contains("+3851234567")) {
+                QCOMPARE(g.contactId(), contactIdPhone1);
+                QCOMPARE(g.contactName(), QString("CodeBlue"));
+            }
+        }
+    }
+
+    deleteTestContact(contactIdNoMatchPhone);
+    deleteTestContact(contactIdNoMatch);
+    deleteTestContact(contactIdTD1);
+    deleteTestContact(contactIdTD2);
+    deleteTestContact(contactIdPhone1);
+    deleteTestContact(contactIdPhone2);
+}
+
 QTEST_MAIN(GroupModelTest)

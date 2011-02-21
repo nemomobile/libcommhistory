@@ -57,6 +57,7 @@ private slots:
     void deleteMmsContent();
     void markGroupAsRead();
     void resolveContact();
+    void queryContacts();
     void cleanupTestCase();
     void init();
     void cleanup();
