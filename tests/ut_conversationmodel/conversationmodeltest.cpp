@@ -526,6 +526,80 @@ void ConversationModelTest::sorting()
     QCOMPARE(conv.event(conv.index(4, 0)).freeText(), QLatin1String("I"));
 }
 
+void ConversationModelTest::contacts_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+    QTest::addColumn<int>("eventType");
+    QTest::addColumn<int>("chatType");
+
+    QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bad@cclocalhost"
+            << (int)Event::IMEvent
+            << (int)Group::ChatTypeP2P;
+    QTest::newRow("muc") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bada@muclocalhost"
+            << (int)Event::IMEvent
+            << (int)Group::ChatTypeUnnamed;
+    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+            << "+42992394"
+            << (int)Event::SMSEvent
+            << (int)Group::ChatTypeP2P;
+}
+
+void ConversationModelTest::contacts()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+    QFETCH(int, eventType);
+    QFETCH(int, chatType);
+
+    Group group;
+    addTestGroup(group, localId, remoteId);
+
+    ConversationModel model;
+    Event::PropertySet p;
+    p.insert(Event::ContactId);
+    p.insert(Event::ContactName);
+    model.setPropertyMask(p);
+
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId,
+                 group.id(), "text", false, false, QDateTime::currentDateTime(), remoteId);
+
+    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    Event event;
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), 0);
+
+    QString noMatch = remoteId;
+    noMatch += remoteId[1];
+
+    int contactId1 = addTestContact("Really1Funny",
+                   noMatch,
+                   localId);
+
+    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), 0);
+
+    int contactId = addTestContact("ReallyUFunny", remoteId, localId);
+    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), contactId);
+    QCOMPARE(event.contactName(), QString("ReallyUFunny"));
+
+    deleteTestContact(contactId1);
+    deleteTestContact(contactId);
+}
 
 void ConversationModelTest::cleanupTestCase()
 {

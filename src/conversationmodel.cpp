@@ -336,35 +336,37 @@ bool ConversationModel::getEvents(int groupId, Group::ChatType chatType)
     EventsQuery query(d->propertyMask);
 
     if (chatType == Group::ChatTypeP2P) {
-        query.addPattern(QLatin1String(
-                "{"
+        query.addPattern(QString(QLatin1String(
+                "OPTIONAL {"
                 "SELECT tracker:id(?contact) AS %2 "
-                "fn:string-join((nco:nameGiven(?contact), nco:nameFamily(?contact), nco:imNickname(?imAddress)),\",\") AS %3 "
-                "WHERE { OPTIONAL {"
-                "{?contact nco:hasAffiliation [nco:hasIMAddress ?imAddress] ."
-                " %1 nmo:hasParticipant [nco:hasIMAddress ?imAddress] . "
+                "fn:concat(tracker:coalesce(nco:nameGiven(?contact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:nameFamily(?contact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:imNickname(?imAddress), \'\')) AS %3 "
+                "WHERE {"
+                "{?contact a nco:PersonContact; nco:hasAffiliation [nco:hasIMAddress ?imAddress] ."
+                " <%1> nmo:hasParticipant [nco:hasIMAddress ?imAddress] . "
                 "} "
                 "UNION "
-                "{?contact nco:hasAffiliation [nco:hasPhoneNumber [ maemo:localPhoneNumber ?contactPhone]] ."
-                " %1 nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?contactPhone]] .} "
-                "?contact rdf:type nco:PersonContact . "
-                "}}}"))
-                .variable(Event::GroupId)
+                "{?contact a nco:PersonContact; nco:hasAffiliation [nco:hasPhoneNumber [ maemo:localPhoneNumber ?contactPhone]] ."
+                " <%1> nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?contactPhone]] .} "
+                "}}"))
+                         .arg(Group::idToUrl(groupId).toString())) //keep union subparts free of variables
                 .variable(Event::ContactId)
                 .variable(Event::ContactName);
     } else if (chatType == Group::ChatTypeUnnamed
                || chatType == Group::ChatTypeRoom) {
         query.addPattern(QLatin1String(
-                "{"
-                "SELECT tracker:id(?contact) AS %2 "
-                "fn:string-join((nco:nameGiven(?contact), nco:nameFamily(?contact), nco:imNickname(?imAddress)),\",\") AS %3 "
-                "WHERE { OPTIONAL {"
-                "?contact nco:hasAffiliation [nco:hasIMAddress ?imAddress] ."
-                "{ %1 nmo:to [nco:hasIMAddress ?imAddress]; nmo:isSent \"true\"} "
+                "OPTIONAL {"
+                "SELECT %1 tracker:id(?contact) AS %2 "
+                "fn:concat(tracker:coalesce(nco:nameGiven(?contact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:nameFamily(?contact), \'\'), \'\\u001e\',"
+                "          tracker:coalesce(nco:imNickname(?imAddress), \'\')) AS %3 "
+                "WHERE {"
+                "?contact a nco:PersonContact; nco:hasAffiliation [nco:hasIMAddress ?imAddress] . "
+                "{ %1 nmo:isSent true; nmo:to [nco:hasIMAddress ?imAddress]} "
                 "UNION "
-                "{ %1 nmo:from [nco:hasIMAddress ?imAddress]; nmo:isSent \"false\"} "
-                "?contact rdf:type nco:PersonContact . "
-                "}}}"))
+                "{ %1 nmo:isSent false; nmo:from [nco:hasIMAddress ?imAddress]} "
+                "}}"))
                 .variable(Event::Id)
                 .variable(Event::ContactId)
                 .variable(Event::ContactName);

@@ -406,8 +406,14 @@ public:
             && propertySet.contains(Event::FromVCardFileName))
             variables.append(Event::FromVCardLabel);
 
-        if (propertySet.contains(Event::ContactId)) {
+        if (propertySet.contains(Event::ContactId)
+            && !parts[Patterns].variables.contains(Event::LocalUid)) {
+            addToPart(Patterns, patternForProperty(Event::LocalUid));
             parts[Patterns].variables.insert(Event::LocalUid);
+        }
+        if (propertySet.contains(Event::ContactId)
+            && !parts[Patterns].variables.contains(Event::RemoteUid)) {
+            addToPart(Patterns, patternForProperty(Event::RemoteUid));
             parts[Patterns].variables.insert(Event::RemoteUid);
         }
 
@@ -445,6 +451,8 @@ public:
     {
         parts[lastAdded].patterns.last() = parts[lastAdded].patterns.last().arg(eventPropertyName(property));
         parts[lastAdded].variables.insert(property);
+        if (!variables.contains(property))
+            variables.append(property);
     }
 };
 
@@ -523,7 +531,7 @@ QString EventsQuery::query() const
             // TODO: varable referenced in used defined pattern and should be defined there
             QString varName = eventPropertyName(p);
             projections.append(varName);
-            d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
+            //d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
         } else {
             QString func = functionForProperty(p);
 
