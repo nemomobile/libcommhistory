@@ -255,7 +255,7 @@ void TrackerIO::addMessagePropertiesToQuery(SopranoLive::RDFSelect &query,
 
     if (propertyMask.contains(Event::ReportReadRequested))
         query.addColumn(LAT("mustAnswerReportRead"), message.function<nmo::mustAnswerReportRead>());
-    if (propertyMask.contains(Event::ReportReadStatus))
+    if (propertyMask.contains(Event::ReadStatus))
         query.addColumn(LAT("reportReadStatus"), message.function<nmo::reportReadStatus>());
 
     if (propertyMask.contains(Event::ValidityPeriod))

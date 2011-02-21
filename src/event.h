@@ -151,7 +151,6 @@ public:
         ReadStatus,
         ReportRead,
         ReportReadRequested,
-        ReportReadStatus,
         MmsId,
         To,
         //

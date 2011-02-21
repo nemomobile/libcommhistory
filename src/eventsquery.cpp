@@ -66,7 +66,6 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "readStatus",
                                  "reportRead",
                                  "reportReadRequested",
-                                 "reportReadStatus",
                                  "mmsId",
                                  "to"};
 
@@ -154,14 +153,12 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:cc");
     case Event::Bcc:
         return QLatin1String("nmo:bcc");
-//    case Event::ReadStatus:
-//        return QLatin1String("nmo:");
+    case Event::ReadStatus:
+        return QLatin1String("nmo:reportReadStatus");
     case Event::ReportRead:
         return QLatin1String("nmo:sentWithReportRead");
     case Event::ReportReadRequested:
         return QLatin1String("nmo:mustAnswerReportRead");
-    case Event::ReportReadStatus:
-        return QLatin1String("nmo:reportReadStatus");
     case Event::MmsId:
         return QLatin1String("nmo:mmsId");
 //    case Event::To:
@@ -207,14 +204,12 @@ QString functionForProperty(Event::Property p)
     case Event::ContentLocation:
     case Event::ReportRead:
     case Event::ReportReadRequested:
-    case Event::ReportReadStatus:
+    case Event::ReadStatus:
     case Event::MmsId:
         func << ontologyProperty(p)
              << "("
              << eventPropertyName(Event::Id)
              << ")";
-        break;
-    case Event::ReadStatus:
         break;
     case Event::LocalUid:
         func << QLatin1String("nco:hasContactMedium(")
@@ -353,7 +348,6 @@ QString patternForProperty(Event::Property p)
     case Event::ReadStatus:
     case Event::ReportRead:
     case Event::ReportReadRequested:
-    case Event::ReportReadStatus:
     case Event::MmsId:
     case Event::To:
         //return eventPropertyName(Event::Id);
