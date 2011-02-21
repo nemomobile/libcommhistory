@@ -23,7 +23,6 @@
 #include <QString>
 #include <QRegExp>
 #include <QSettings>
-#include <QtDebug>
 
 #include "commonutils.h"
 #include "libcommhistoryexport.h"
@@ -72,11 +71,6 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
     QString matchPhoneRight = normalizePhoneNumber(match).right(phoneNumberMatchLength());
     QString phoneNumberRight = phone.right(phoneNumberMatchLength());
 
-#ifdef QT_DEBUG
-    qDebug() << Q_FUNC_INFO << "Compared phone number sections:"
-                            << matchPhoneRight
-                            << phoneNumberRight;
-#endif
     return matchPhoneRight == phoneNumberRight;
 }
 
