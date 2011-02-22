@@ -222,7 +222,7 @@ QString functionForProperty(Event::Property p)
     case Event::ContactId:
         // join all contact matches
         func << QLatin1String(
-            "(SELECT GROUP_CONCAT(tracker:id(?contact), \"\\u001e\") "
+            "(SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), \"\\u001f\"), \"\\u001e\") "
             "WHERE { "
             "{"
             "  ?target nco:hasIMAddress ?address . "
@@ -235,6 +235,8 @@ QString functionForProperty(Event::Property p)
             );
         break;
     case Event::ContactName:
+        func << QLatin1String(
+            "(SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })");
         break;
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:
@@ -283,7 +285,6 @@ QString patternForProperty(Event::Property p)
                 << QLatin1String("a nmo:Message .");
         break;
     case Event::Type:
-    case Event::StartTime:
     case Event::Direction:
     case Event::IsDraft:
     case Event::IsRead:
@@ -311,6 +312,7 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
+    case Event::StartTime:
     case Event::EndTime:
 /*
         pattern << eventPropertyName(Event::Id)
@@ -542,11 +544,18 @@ QString EventsQuery::query() const
     query << projections.join(" ");
     query << QLatin1String("WHERE {");
 
+    /* handle a few properties separately for query purposes -
+     * take both start and end times as columns because messages are
+     * indexed by endTime (receivedDate) and calls by startTime
+     * (sentDate).
+     */
     query << QLatin1String(
-        "SELECT ?message ?endTime ?from ?to "
+        "SELECT ?message ?startTime ?endTime ?from ?to "
         "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
         "WHERE {"
-        "?message nmo:from ?from ; nmo:to ?to ; nmo:receivedDate ?endTime . ");
+        "?message nmo:from ?from ; nmo:to ?to ; "
+        "nmo:receivedDate ?endTime ; "
+        "nmo:sentDate ?startTime . ");
 
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
     query << QLatin1String("} }");

@@ -106,6 +106,11 @@ public:
                                      int groupId = -1);
 
     /*!
+     * Create query for calls grouped by contacts.
+     */
+    static QString prepareGroupedCallQuery();
+
+    /*!
      * Helper for prepare*Query() methods.
      */
     static void addMessagePropertiesToQuery(SopranoLive::RDFSelect &query,

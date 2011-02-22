@@ -391,9 +391,20 @@ void QueryResult::fillEventFromModel2(Event &event)
     }
 
     if (properties.contains(Event::ContactId)) {
-        QStringList contactIds = RESULT_INDEX2(Event::ContactId).toString().split('\x1e');
-        // TODO: fill list when Event supports multiple contacts
-        eventToFill.setContactId(contactIds.first().toInt());
+        QStringList contactsList = RESULT_INDEX2(Event::ContactId).toString().split('\x1e');
+        if (!contactsList.isEmpty()) {
+            QString imNickname = RESULT_INDEX2(Event::ContactName).toString();
+
+            // TODO: fill list when Event supports multiple contacts
+            QStringList contact = contactsList[0].split('\x1f');
+            QString firstName, lastName;
+            if (contact.size() >= 2)
+                firstName = contact[1];
+            if (contact.size() >= 3)
+                lastName = contact[2];
+            eventToFill.setContactId(contact[0].toInt());
+            eventToFill.setContactName(buildContactName(firstName, lastName, imNickname));
+        }
     }
 
     // save data and give back as parameter
@@ -478,6 +489,57 @@ void QueryResult::fillMessagePartFromModel(MessagePart &messagePart)
     newPart.setContentLocation(result->value(7).toString());
 
     messagePart = newPart;
+}
+
+void QueryResult::fillCallGroupFromModel(Event &event)
+{
+    Event eventToFill;
+
+    eventToFill.setId(Event::urlToId(result->value(1).toString()));
+    eventToFill.setStartTime(result->value(2).toDateTime().toLocalTime());
+    eventToFill.setEndTime(result->value(3).toDateTime().toLocalTime());
+    QString fromId = result->value(4).toString();
+    QString toId = result->value(5).toString();
+
+    if (result->value(6).toBool()) {
+        eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
+        if (toId.startsWith(LAT("tel:"))) {
+            eventToFill.setRemoteUid(toId.section(QLatin1Char(':'), 1));
+        } else {
+            eventToFill.setRemoteUid(toId.section(IM_ADDRESS_SEPARATOR, -1));
+        }
+    } else {
+        eventToFill.setLocalUid(toId.mid(TELEPATHY_URI_PREFIX_LEN));
+        if (fromId.startsWith(LAT("tel:"))) {
+            eventToFill.setRemoteUid(fromId.section(QLatin1Char(':'), 1));
+        } else {
+            eventToFill.setRemoteUid(fromId.section(IM_ADDRESS_SEPARATOR, -1));
+        }
+    }
+
+    eventToFill.setIsMissedCall(!(result->value(7).toBool()));
+    eventToFill.setIsEmergencyCall(result->value(8).toBool());
+    eventToFill.setIsRead(result->value(9).toBool());
+    eventToFill.setLastModified(result->value(10).toDateTime().toLocalTime());
+
+    QStringList contactsList = result->value(11).toString().split('\x1e');
+    if (!contactsList.isEmpty()) {
+        QString imNickname = result->value(12).toString();
+
+        // TODO: fill list when Event supports multiple contacts
+        QStringList contact = contactsList[0].split('\x1f');
+        QString firstName, lastName;
+        if (contact.size() >= 2)
+            firstName = contact[1];
+        if (contact.size() >= 3)
+            lastName = contact[2];
+        eventToFill.setContactId(contact[0].toInt());
+        eventToFill.setContactName(buildContactName(firstName, lastName, imNickname));
+    }
+
+    eventToFill.setEventCount(result->value(13).toInt());
+
+    event = eventToFill;
 }
 
 QString QueryResult::buildContactName(const QString &names)

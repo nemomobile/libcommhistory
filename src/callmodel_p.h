@@ -42,6 +42,8 @@ class CallModelPrivate : public EventModelPrivate
 public:
     CallModelPrivate( EventModel *model );
 
+    void executeGroupedQuery(const QString &query);
+
     bool acceptsEvent( const Event &event ) const;
 
     int calculateEventCount( EventTreeItem *item );

@@ -155,6 +155,29 @@ void QueryRunner::runGroupQuery(const QString &query)
 
 }
 
+void QueryRunner::runGroupedCallQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QMutexLocker locker(&m_mutex);
+
+    QueryResult result;
+    result.query = query;
+    result.queryType = GroupedCallQuery;
+
+    m_queries.append(result);
+
+#ifdef DEBUG
+    m_timer.start();
+#endif
+
+    if (!m_enableQueue)
+        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
+
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+
+}
+
 void QueryRunner::runMessagePartQuery(const QString &query)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
@@ -328,6 +351,23 @@ void QueryRunner::readData()
         if (added) {
             checkCanFetchMoreChange();
             emit messagePartsReceived(m_activeQuery.eventId, parts);
+        }
+    } else if (m_activeQuery.queryType == GroupedCallQuery) {
+        QList<Event> events;
+
+        while (m_activeQuery.result->next()) {
+            Event event;
+            m_activeQuery.fillCallGroupFromModel(event);
+            events.append(event);
+            ++added;
+            lastReadPos = m_activeQuery.result->pos();
+            if (!reallyFetchMore(lastReadPos))
+                break;
+        }
+
+        if (added) {
+            checkCanFetchMoreChange();
+            emit eventsReceived(start, start + added - 1, events);
         }
     }
 

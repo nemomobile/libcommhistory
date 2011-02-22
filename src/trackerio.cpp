@@ -43,6 +43,7 @@
 #include "committingtransaction.h"
 #include "committingtransaction_p.h"
 #include "eventsquery.h"
+#include "preparedqueries.h"
 
 #include "trackerio_p.h"
 #include "trackerio.h"
@@ -56,60 +57,6 @@ using namespace SopranoLive;
 #define QSPARQL_DATA_READY_INTERVAL 25
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
-
-// NOTE projections in the query should have same order as Group::Property
-#define GROUP_QUERY LAT( \
-"SELECT ?channel " \
-"?subject " \
-"nie:generator(?channel) " \
-"nie:identifier(?channel) " \
-"nie:title(?channel) " \
-"?lastDate " \
-"(SELECT COUNT(?total) {?total nmo:communicationChannel ?channel; " \
-                              "nmo:isDeleted false}) " \
-"(SELECT COUNT(?unread) {?unread nmo:communicationChannel ?channel; " \
-                                "nmo:isRead false; nmo:isDeleted false}) " \
-"(SELECT COUNT(?sent) {?sent nmo:communicationChannel ?channel; " \
-                            "nmo:isSent true; nmo:isDeleted false}) " \
-"?lastMessage " \
-"tracker:id(?contact) " \
-"fn:concat(tracker:coalesce(nco:nameGiven(?contact), \'\'), \'\\u001e\'," \
-"          tracker:coalesce(nco:nameFamily(?contact), \'\'), \'\\u001e\'," \
-"          tracker:coalesce(nco:imNickname(?imAddress), \'\')) " \
-"tracker:coalesce(nmo:messageSubject(?lastMessage), " \
-"                 nie:plainTextContent(?lastMessage)) " \
-"nfo:fileName(nmo:fromVCard(?lastMessage)) " \
-"rdfs:label(nmo:fromVCard(?lastMessage)) " \
-"rdf:type(?lastMessage) " \
-"nmo:deliveryStatus(?lastMessage) " \
-"nie:contentLastModified(?channel) " \
-"WHERE {" \
-  "{SELECT ?channel " \
-      "?subject " \
-      "?lastDate " \
-      "(SELECT ?message {?message nmo:communicationChannel ?channel; nmo:isDeleted false} " \
-      " ORDER BY DESC(nmo:receivedDate(?message)) DESC(tracker:id(?message)) " \
-      " LIMIT 1) " \
-      "AS ?lastMessage " \
-      "(SELECT ?_c { " \
-      " ?_c rdf:type nco:PersonContact " \
-      " { " \
-          "?channel nmo:hasParticipant [nco:hasIMAddress ?imAddress] . " \
-          "?_c nco:hasAffiliation [nco:hasIMAddress ?imAddress] " \
-       "} UNION { " \
-          "?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?phoneNumber]] . " \
-          "?_c nco:hasAffiliation [nco:hasPhoneNumber [maemo:localPhoneNumber ?phoneNumber]]" \
-       "}}) AS ?contact " \
-   "WHERE { " \
-      "?channel rdf:type nmo:CommunicationChannel; " \
-               "nie:subject ?subject; " \
-               "nmo:lastMessageDate ?lastDate . " \
-      " %1 " \
-   "}" \
-  "}" \
-"}" \
-"ORDER BY DESC(?lastDate)" \
-)
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
 
@@ -524,6 +471,12 @@ QString TrackerIO::prepareGroupQuery(const QString &localUid,
         constrains << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
 
     return queryFormat.arg(constrains.join(LAT(" ")));
+}
+
+QString TrackerIO::prepareGroupedCallQuery()
+{
+    QString queryFormat(GROUPED_CALL_QUERY);
+    return queryFormat;
 }
 
 QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &remoteUid)
@@ -1136,12 +1089,10 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
     query.insertionSilent(
         QString(LAT("GRAPH <%1> { "
                     "<%2> a nmo:CommunicationChannel ;"
-                    " nmo:hasParticipant <%3> ;"
                     " nmo:hasParticipant %4 ."
                     "}"))
         .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
         .arg(channelUri.toString())
-        .arg(localUri)
         .arg(remoteContact));
 
     query.deletion(channelUri, "nmo:lastMessageDate");

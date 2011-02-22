@@ -35,7 +35,7 @@ class Group;
 class MessagePart;
 
 typedef enum {
-    EventQuery, GroupQuery, MessagePartQuery
+    EventQuery, GroupQuery, MessagePartQuery, GroupedCallQuery
 } QueryType;
 
 struct QueryResult {
@@ -53,6 +53,7 @@ struct QueryResult {
     void fillEventFromModel2(Event &event);
     void fillGroupFromModel(Group &group);
     void fillMessagePartFromModel(MessagePart &part);
+    void fillCallGroupFromModel(Event &event);
 
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,

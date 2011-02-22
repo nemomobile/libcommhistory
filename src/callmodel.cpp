@@ -21,9 +21,7 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
-#include <QtTracker/ontologies/nmo.h>
 
 #include "trackerio.h"
 #include "eventmodel.h"
@@ -34,8 +32,29 @@
 #include "commonutils.h"
 #include "contactlistener.h"
 #include "eventsquery.h"
+#include "queryrunner.h"
 
 using namespace SopranoLive;
+
+namespace {
+    static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
+        << CommHistory::Event::IsDraft
+        << CommHistory::Event::FreeText
+        << CommHistory::Event::MessageToken
+        << CommHistory::Event::ReportDelivery
+        << CommHistory::Event::ValidityPeriod
+        << CommHistory::Event::ContentLocation
+        << CommHistory::Event::FromVCardFileName
+        << CommHistory::Event::FromVCardLabel
+        << CommHistory::Event::MessageParts
+        << CommHistory::Event::Cc
+        << CommHistory::Event::Bcc
+        << CommHistory::Event::ReadStatus
+        << CommHistory::Event::ReportRead
+        << CommHistory::Event::ReportReadRequested
+        << CommHistory::Event::MmsId
+        << CommHistory::Event::To;
+}
 
 namespace CommHistory
 {
@@ -54,8 +73,31 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
         , hasBeenFetched( false )
 {
     contactChangesEnabled = true;
+    propertyMask -= unusedProperties;
     connect(this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SLOT(slotEventsCommitted(const QList<CommHistory::Event>&,bool)));
+}
+
+void CallModelPrivate::executeGroupedQuery(const QString &query)
+{
+    qDebug() << __PRETTY_FUNCTION__;
+
+    isReady = false;
+    if (queryMode == EventModel::StreamedAsyncQuery) {
+        queryRunner->setStreamedMode(true);
+        queryRunner->setChunkSize(chunkSize);
+        queryRunner->setFirstChunkSize(firstChunkSize);
+    } else {
+        //if (queryLimit) query.limit(queryLimit);
+        //if (queryOffset) query.offset(queryOffset);
+    }
+    queryRunner->runGroupedCallQuery(query);
+    if (queryMode == EventModel::SyncQuery) {
+        QEventLoop loop;
+        while (!isReady || !messagePartsReady) {
+            loop.processEvents(QEventLoop::WaitForMoreEvents);
+        }
+    }
 }
 
 bool CallModelPrivate::acceptsEvent( const Event &event ) const
@@ -560,8 +602,8 @@ void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &even
 CallModel::CallModel(QObject *parent)
         : EventModel(*new CallModelPrivate(this), parent)
 {
-    Q_D(CallModel);
-    d->isInTreeMode = true;
+//    Q_D(CallModel);
+//    d->isInTreeMode = true;
 }
 
 CallModel::CallModel(CallModel::Sorting sorting, QObject* parent = 0)
@@ -616,39 +658,9 @@ bool CallModel::getEvents()
     endResetModel();
 
     if (d->sortBy == SortByContact) {
-        RDFSelect query;
-        RDFVariable call = RDFVariable::fromType<nmo::Call>();
-
-        if(!d->referenceTime.isNull())
-        {
-            RDFVariable date = call.property<nmo::receivedDate>();
-            date.greaterOrEqual(LiteralValue(d->referenceTime));
-        }
-
-        if(d->eventType != CallEvent::UnknownCallType)
-        {
-            if(d->eventType == CallEvent::ReceivedCallType ||
-               d->eventType == CallEvent::MissedCallType)
-            {
-                call.property<nmo::isSent>(LiteralValue(false));
-
-                if(d->eventType == CallEvent::MissedCallType)
-                {
-                    call.property<nmo::isAnswered>(LiteralValue(false));
-                }
-                else
-                {
-                    call.property<nmo::isAnswered>(LiteralValue(true));
-                }
-            } //event type == CallEvent::DialedCallType
-            else
-            {
-                call.property<nmo::isSent>(LiteralValue(true));
-            }
-        }
-
-        d->tracker()->prepareCallQuery( query, call, d->propertyMask );
-        return d->executeQuery(query);
+        QString query = d->tracker()->prepareGroupedCallQuery();
+        d->executeGroupedQuery(query);
+        return true;
     }
 
     EventsQuery query(d->propertyMask);
@@ -676,7 +688,7 @@ bool CallModel::getEvents()
     }
 
     query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
-                     .variable(Event::EndTime)
+                     .variable(Event::StartTime)
                      .variable(Event::Id);
 
     return d->executeQuery(query);
