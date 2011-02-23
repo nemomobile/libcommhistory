@@ -261,30 +261,33 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
              */
             case CallModel::SortByContact :
             {
-                // loop through the result set
-                for ( int i = 1; i < events.count(); i++ )
-                {
-                    bool inserted = false;
-                    // check if event is groupable with any already existing group
-                    foreach ( EventTreeItem *item, topLevelItems )
-                    {
-                        // if proper group found, then append it to the end
-                        if ( belongToSameGroup( events.at( i ), item->event() ) )
-                        {
-                            item->appendChild( new EventTreeItem( events.at( i ), item ) );
-                            inserted = true;
-                            break;
-                        }
+                QList<CommHistory::Event> newEvents;
+                foreach (Event event, events) {
+                    if (event.contactId() > 0) {
+                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
+                                            qMakePair(event.contactId(), event.contactName()));
                     }
-                    // if event was not yet grouped, then create a new group
-                    if ( !inserted )
-                    {
-                        topLevelItems.append( new EventTreeItem( events.at( i ) ) );
-                        topLevelItems.last()->appendChild(new EventTreeItem( events.at( i ),
-                                                                             topLevelItems.last() ) );
+
+                    if (eventRootItem->childCount()) {
+                        bool found = false;
+                        for (int i = 0; i < eventRootItem->childCount() && !found; i++) {
+                            // ignore matching events because the already existing
+                            // entry has to be more recent
+                            if (belongToSameGroup(eventRootItem->child(i)->event(), event))
+                                found = true;
+                        }
+                        if (!found)
+                            newEvents.append(event);
+                    } else {
+                        newEvents.append(event);
                     }
                 }
-                break;
+
+                q->beginInsertRows(QModelIndex(), eventRootItem->childCount(),
+                                   eventRootItem->childCount() + newEvents.count() - 1);
+                foreach (Event event, newEvents)
+                    eventRootItem->appendChild(new EventTreeItem(event));
+                q->endInsertRows();
             }
             /*
              * if sorted by time,
@@ -602,8 +605,8 @@ void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &even
 CallModel::CallModel(QObject *parent)
         : EventModel(*new CallModelPrivate(this), parent)
 {
-//    Q_D(CallModel);
-//    d->isInTreeMode = true;
+    Q_D(CallModel);
+    d->isInTreeMode = true;
 }
 
 CallModel::CallModel(CallModel::Sorting sorting, QObject* parent = 0)
@@ -744,20 +747,15 @@ bool CallModel::deleteEvent( int id )
         return EventModel::deleteEvent(id);
     }
 
+    QModelIndex index = d->findEvent(id);
+    if (!index.isValid())
+        return false;
+
     switch ( d->sortBy )
     {
         case SortByContact :
         case SortByTime :
         {
-            // TODO : handle possibility of failure
-            QModelIndex index = d->findEvent( id );
-
-            // if id was not found, there is nothing to delete
-            if ( !index.isValid() )
-            {
-                return false;
-            }
-
             EventTreeItem *item = d->eventRootItem->child( index.row() );
 
             d->tracker()->transaction( d->syncOnCommit );

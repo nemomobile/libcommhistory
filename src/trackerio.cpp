@@ -1752,9 +1752,8 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
 {
     qDebug() << __FUNCTION__ << eventType;
 
-    QSparqlQuery query(LAT("DELETE {?e a rdfs:Resource}"
-                           "WHERE {?e rdf:type ?:eventType}"),
-                       QSparqlQuery::DeleteStatement);
+    QString query("DELETE {?e a rdfs:Resource}"
+                  "WHERE {?e rdf:type ?:eventType}");
 
     QUrl eventTypeUrl;
 
@@ -1767,6 +1766,11 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         break;
     case Event::CallEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "Call"));
+        query += QString(LAT("DELETE { ?chan a rdfs:Resource } WHERE { "
+                             "GRAPH ?:graph { "
+                             "?chan a nmo:CommunicationChannel . "
+                             "}"))
+            .arg(COMMHISTORY_GRAPH_CALL_CHANNEL);
         break;
     case Event::MMSEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
@@ -1776,9 +1780,10 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         return false;
     }
 
-    query.bindValue(LAT("eventType"), eventTypeUrl);
+    QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
+    deleteQuery.bindValue(LAT("eventType"), eventTypeUrl);
 
-    return d->handleQuery(query);
+    return d->handleQuery(deleteQuery);
 }
 
 void TrackerIOPrivate::calculateParentId(Event& event)
