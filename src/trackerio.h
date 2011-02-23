@@ -42,6 +42,7 @@ class TrackerIOPrivate;
 class Group;
 class UpdateQuery;
 class CommittingTransaction;
+class QueryHelper;
 
 /**
  * \class TrackerIO
@@ -67,6 +68,11 @@ public:
      * Returns and increases the next available group id.
      */
     int nextGroupId();
+
+    /*!
+     * Returns a query helper for running generic sparql queries.
+     */
+    QueryHelper *createQueryHelper();
 
     /*!
      * Adds required message properties to the query.
@@ -300,6 +306,7 @@ public:
 private:
     friend class TrackerIOPrivate;
     friend class QueryRunner;
+    friend class QueryHelper;
     TrackerIOPrivate * const d;
 };
 

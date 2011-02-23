@@ -29,6 +29,8 @@
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 
+class QSparqlResult;
+
 namespace CommHistory
 {
 
@@ -62,6 +64,8 @@ public:
 
     void deleteFromModel( int id );
 
+    void deleteCallGroup( const Event &event );
+
     /*!
      * Find real contact based on phone number or IM id.
      *
@@ -76,6 +80,7 @@ public:
 
 public Q_SLOTS:
     void slotEventsCommitted(const QList<CommHistory::Event> &events, bool success);
+    void deleteCallGroup2(QSparqlResult *result);
 
 public:
     CallModel::Sorting sortBy;
