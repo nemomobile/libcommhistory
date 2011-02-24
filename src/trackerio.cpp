@@ -1272,7 +1272,6 @@ bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
     QSparqlResultRow row = events->current();
 
     result.fillEventFromModel2(event);
-    qDebug() << Q_FUNC_INFO << event.toString();
 
     if (event.type() == Event::MMSEvent) {
         QString partQuery = q->prepareMessagePartQuery(event.url().toString());

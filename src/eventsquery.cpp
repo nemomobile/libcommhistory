@@ -217,8 +217,6 @@ QString functionForProperty(Event::Property p)
              << ontologyProperty(p)
              << ")";
         break;
-    case Event::RemoteUid:
-        break;//pattern only
     case Event::ContactId:
         // join all contact matches
         func << QLatin1String(
@@ -352,11 +350,6 @@ QString patternForProperty(Event::Property p)
     return pattern.join(" ");
 }
 
-bool isPropertyObject(Event::Property p)
-{
-    return (p == Event::Id);
-}
-
 class EventsQueryPrivate {
 public:
     EventsQueryPrivate(EventsQuery *parent,
@@ -396,17 +389,6 @@ public:
         if (!propertySet.contains(Event::FromVCardLabel)
             && propertySet.contains(Event::FromVCardFileName))
             variables.append(Event::FromVCardLabel);
-
-        if (propertySet.contains(Event::ContactId)
-            && !parts[Patterns].variables.contains(Event::LocalUid)) {
-            addToPart(Patterns, patternForProperty(Event::LocalUid));
-            parts[Patterns].variables.insert(Event::LocalUid);
-        }
-        if (propertySet.contains(Event::ContactId)
-            && !parts[Patterns].variables.contains(Event::RemoteUid)) {
-            addToPart(Patterns, patternForProperty(Event::RemoteUid));
-            parts[Patterns].variables.insert(Event::RemoteUid);
-        }
 
         // direction is needed to set the following properties correctly
         if (!propertySet.contains(Event::Direction)
