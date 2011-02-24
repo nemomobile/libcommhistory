@@ -49,8 +49,8 @@ public:
     int unreadMessages;
     int sentMessages;
     int lastEventId;
-    int contactId;
-    QString contactName;
+    QList<int> contactIds;
+    QStringList contactNames;
     QString lastMessageText;
     QString lastVCardFileName;
     QString lastVCardLabel;
@@ -69,7 +69,6 @@ GroupPrivate::GroupPrivate()
         , unreadMessages(0)
         , sentMessages(0)
         , lastEventId(-1)
-        , contactId(0)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
 {
@@ -88,8 +87,8 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , unreadMessages(other.unreadMessages)
         , sentMessages(other.sentMessages)
         , lastEventId(other.lastEventId)
-        , contactId(other.contactId)
-        , contactName(other.contactName)
+        , contactIds(other.contactIds)
+        , contactNames(other.contactNames)
         , lastMessageText(other.lastMessageText)
         , lastVCardFileName(other.lastVCardFileName)
         , lastVCardLabel(other.lastVCardLabel)
@@ -241,12 +240,22 @@ int Group::lastEventId() const
 
 int Group::contactId() const
 {
-    return d->contactId;
+    return (d->contactIds.size() ? d->contactIds.first() : 0);
 }
 
 QString Group::contactName() const
 {
-    return d->contactName;
+    return (d->contactNames.size() ? d->contactNames.first() : 0);
+}
+
+QList<int> Group::contactIds() const
+{
+    return d->contactIds;
+}
+
+QStringList Group::contactNames() const
+{
+    return d->contactNames;
 }
 
 QString Group::lastMessageText() const
@@ -351,13 +360,25 @@ void Group::setLastEventId(int id)
 
 void Group::setContactId(int id)
 {
-    d->contactId = id;
+    d->contactIds = QList<int>() << id;
     d->propertyChanged(Group::ContactId);
 }
 
 void Group::setContactName(const QString &name)
 {
-    d->contactName = name;
+    d->contactNames = QStringList() << name;
+    d->propertyChanged(Group::ContactName);
+}
+
+void Group::setContactIds(const QList<int> &ids)
+{
+    d->contactIds = ids;
+    d->propertyChanged(Group::ContactId);
+}
+
+void Group::setContactNames(const QStringList &names)
+{
+    d->contactNames = names;
     d->propertyChanged(Group::ContactName);
 }
 
@@ -404,7 +425,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.chatType() << group.chatName()
              << group.endTime() << group.totalMessages()
              << group.unreadMessages() << group.sentMessages()
-             << group.lastEventId() << group.contactId() << group.contactName()
+             << group.lastEventId() << group.contactIds() << group.contactNames()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
              << group.lastEventStatus() << group.lastModified();
@@ -430,7 +451,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     argument >> p.id >> p.localUid >> p.remoteUids >> chatType
              >> p.chatName >> p.endTime
              >> p.totalMessages >> p.unreadMessages >> p.sentMessages
-             >> p.lastEventId >> p.contactId >> p.contactName
+             >> p.lastEventId >> p.contactIds >> p.contactNames
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
              >> type >> status >> p.lastModified;
 
@@ -466,9 +487,9 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     if (p.validProperties.contains(Group::LastEventId))
         group.setLastEventId(p.lastEventId);
     if (p.validProperties.contains(Group::ContactId))
-        group.setContactId(p.contactId);
+        group.setContactIds(p.contactIds);
     if (p.validProperties.contains(Group::ContactName))
-        group.setContactName(p.contactName);
+        group.setContactNames(p.contactNames);
     if (p.validProperties.contains(Group::LastMessageText))
         group.setLastMessageText(p.lastMessageText);
     if (p.validProperties.contains(Group::LastVCardFileName))

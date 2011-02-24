@@ -436,10 +436,14 @@ void QueryResult::fillGroupFromModel(Group &group)
 
     groupToFill.setRemoteUids(QStringList() << result->value(Group::RemoteUids).toString());
     groupToFill.setLocalUid(result->value(Group::LocalUid).toString());
-    groupToFill.setContactId(result->value(Group::ContactId).toInt());
 
-    QString name = buildContactName(result->value(Group::ContactName).toString());
-    groupToFill.setContactName(name);
+    QList<int> contactIds;
+    QStringList contactNames;
+    parseContacts(result->value(Group::ContactId).toString(),
+                  result->value(Group::ContactName).toString(),
+                  contactIds, contactNames);
+    groupToFill.setContactIds(contactIds);
+    groupToFill.setContactNames(contactNames);
 
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
     groupToFill.setUnreadMessages(result->value(Group::UnreadMessages).toInt());

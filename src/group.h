@@ -198,6 +198,20 @@ public:
     QString contactName() const;
 
     /*!
+     * Ids of the remote contacts in this conversation.
+     * This property is not stored in the database. It is filled in by
+     * the model at runtime, if possible.
+     */
+    QList<int> contactIds() const;
+
+    /*!
+     * Names of the remote contacts in this conversation.
+     * This property is not stored in the database. It is filled in by
+     * the model at runtime, if possible.
+     */
+    QStringList contactNames() const;
+
+    /*!
      * Text of the last message.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
@@ -243,6 +257,8 @@ public:
     void setLastEventId(int id);
     void setContactId(int id);
     void setContactName(const QString &name);
+    void setContactIds(const QList<int> &ids);
+    void setContactNames(const QStringList &names);
     void setLastMessageText(const QString &text);
     void setLastVCardFileName(const QString &filename);
     void setLastVCardLabel(const QString &label);

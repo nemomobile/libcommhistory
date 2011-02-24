@@ -26,90 +26,72 @@
 // NOTE projections in the query should have same order as Group::Property
 #define GROUP_QUERY QLatin1String( \
 "SELECT ?_channel" \
-"        ?_subject" \
-"     nie:generator(?_channel)" \
-"     nie:identifier(?_channel)" \
-"     nie:title(?_channel)" \
-"  ?_lastDate" \
-"(SELECT COUNT(?_total_messages)" \
-" WHERE {" \
-"  ?_total_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isDeleted \"false\" ." \
-" }" \
-")" \
-"(SELECT COUNT(?_total_unread_messages)" \
-" WHERE {" \
-"  ?_total_unread_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isRead \"false\";" \
-"                   nmo:isDeleted \"false\"" \
-" }" \
-")" \
-"(SELECT COUNT(?_total_sent_messages)" \
-" WHERE {" \
-"  ?_total_sent_messages nmo:communicationChannel ?_channel;" \
-"                   nmo:isSent \"true\";" \
-"                   nmo:isDeleted \"false\"" \
-" }" \
-")" \
-"  ?_lastMessage" \
-"  tracker:id(?_contact_1)" \
-"  fn:concat(tracker:coalesce(nco:nameGiven(?_contact_1), \'\'), \'\\u001e\'," \
-"            tracker:coalesce(nco:nameFamily(?_contact_1), \'\'), \'\\u001e\'," \
-"            tracker:coalesce(?_imNickname, \'\'))" \
-"   tracker:coalesce(nmo:messageSubject(?_lastMessage)," \
-"                    nie:plainTextContent(?_lastMessage))" \
-"     nfo:fileName(nmo:fromVCard(?_lastMessage))" \
-"     rdfs:label(nmo:fromVCard(?_lastMessage))" \
-"     rdf:type(?_lastMessage)" \
-"     nmo:deliveryStatus(?_lastMessage)" \
+"  nie:subject(?_channel)" \
+"  nie:generator(?_channel)" \
+"  nie:identifier(?_channel)" \
+"  nie:title(?_channel)" \
+"  ?_lastDate " \
+"  ( SELECT COUNT(?_total_messages_1)" \
+"    WHERE {" \
+"      ?_total_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_messages_1 nmo:isDeleted false ." \
+"  })" \
+"  ( SELECT COUNT(?_total_unread_messages_1)" \
+"    WHERE {" \
+"      ?_total_unread_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_unread_messages_1 nmo:isRead false ." \
+"      ?_total_unread_messages_1 nmo:isDeleted false ." \
+"  })" \
+"  ( SELECT COUNT(?_total_sent_messages_1)" \
+"    WHERE {" \
+"      ?_total_sent_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_sent_messages_1 nmo:isSent true ." \
+"      ?_total_sent_messages_1 nmo:isDeleted false ." \
+"  })" \
+"  ?_lastMessage " \
+"  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), \"\\u001f\"), \"\\u001e\")" \
+"  WHERE {" \
+"    {" \
+"      ?part nco:hasIMAddress ?address ." \
+"      ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] ." \
+"    }" \
+"    UNION" \
+"    {" \
+"      ?part nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ." \
+"      ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] ." \
+"    }" \
+"  }) AS ?contacts" \
+"  (SELECT ?nickname { ?part nco:hasIMAddress [ nco:imNickname ?nickname ] })" \
+"  tracker:coalesce(nmo:messageSubject(?_lastMessage)," \
+"                   nie:plainTextContent(?_lastMessage))" \
+"  nfo:fileName(nmo:fromVCard(?_lastMessage))" \
+"  rdfs:label(nmo:fromVCard(?_lastMessage))" \
+"  rdf:type(?_lastMessage) AS ?_type " \
+"  nmo:deliveryStatus(?_lastMessage) AS ?_deliveryStatus " \
 "  ?_lastModified " \
-"WHERE" \
+"WHERE " \
 "{" \
 "  {" \
-"    SELECT ?_channel ?_subject ?_lastDate ?_lastModified" \
-"         ( SELECT ?_message" \
-"  WHERE {" \
-"    ?_message nmo:communicationChannel ?_channel ;" \
-"              nmo:isDeleted \"false\" ." \
-"  }" \
-"    ORDER BY DESC(nmo:receivedDate(?_message)) DESC(tracker:id(?_message)) " \
-"    LIMIT 1)" \
-"      AS ?_lastMessage" \
-"         ( SELECT ?_contact" \
-"  WHERE {" \
-"        ?_contact rdf:type nco:PersonContact ." \
-"      {" \
-"        ?_channel nmo:hasParticipant [nco:hasIMAddress ?_12 ] ." \
-"        ?_contact nco:hasAffiliation [nco:hasIMAddress ?_12 ]" \
-"      }" \
-"      UNION" \
-"      {" \
-"        ?_channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]] ." \
-"        ?_contact nco:hasAffiliation [nco:hasPhoneNumber [maemo:localPhoneNumber ?_16 ]]" \
-"      }" \
-"  })" \
+"    SELECT ?_channel ?_lastDate ?_lastModified ?part" \
+"      ( SELECT ?_message WHERE {" \
+"        ?_message nmo:communicationChannel ?_channel ." \
+"        ?_message nmo:isDeleted false ." \
+"        ?_message nmo:sentDate ?messageSentDate ." \
+"      } ORDER BY DESC(?messageSentDate)" \
+"    LIMIT 1) AS ?_lastMessage " \
 "" \
-"      AS ?_contact_1" \
-"         ( SELECT ?_13" \
-"  WHERE {" \
-"" \
-"    ?_channel nmo:hasParticipant [nco:hasIMAddress [nco:imNickname ?_13 ]]" \
-"  })" \
-"" \
-"      AS ?_imNickname" \
 "    WHERE" \
 "    {" \
 "      GRAPH <commhistory:message-channels> {" \
-"        ?_channel rdf:type nmo:CommunicationChannel . " \
+"        ?_channel a nmo:CommunicationChannel ." \
 "      }" \
-"      ?_channel nie:subject ?_subject ; " \
-"      nmo:lastMessageDate ?_lastDate ; " \
-"      nie:contentLastModified ?_lastModified ." \
-"      %1"\
+"      ?_channel nmo:lastMessageDate ?_lastDate ." \
+"      ?_channel nie:contentLastModified ?_lastModified ." \
+"      ?_channel nmo:hasParticipant ?part ." \
 "    }" \
 "  }" \
 "}" \
-"  ORDER BY DESC(?_lastDate)" \
+"ORDER BY DESC(?_lastDate)" \
 )
 
 #define GROUPED_CALL_QUERY QLatin1String( \

@@ -550,16 +550,21 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     EventModel eventModel;
     for (int i = 0; i < model.rowCount(); i++) {
         Group g = model.group(model.index(i, 0));
+
+        QStringList contactIds;
+        foreach (int id, g.contactIds())
+            contactIds << QString::number(id);
+
         QString line =
             QString("Group %1 (%2 messages, %3 unread, %4 sent) %5 %6 %7 %8")
-                .arg(g.id())
-                .arg(g.totalMessages())
-                .arg(g.unreadMessages())
-                .arg(g.sentMessages())
-                .arg(g.chatName())
-                .arg(g.remoteUids().join("|"))
-                .arg(g.contactId())
-                .arg(g.contactName());
+            .arg(g.id())
+            .arg(g.totalMessages())
+            .arg(g.unreadMessages())
+            .arg(g.sentMessages())
+            .arg(g.chatName())
+            .arg(g.remoteUids().join("|"))
+            .arg(contactIds.join(","))
+            .arg(g.contactNames().join(","));
         std::cout << qPrintable(line) << std::endl;
         Event e;
         if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
