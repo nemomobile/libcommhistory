@@ -391,20 +391,13 @@ void QueryResult::fillEventFromModel2(Event &event)
     }
 
     if (properties.contains(Event::ContactId)) {
-        QStringList contactsList = RESULT_INDEX2(Event::ContactId).toString().split('\x1e');
-        if (!contactsList.isEmpty()) {
-            QString imNickname = RESULT_INDEX2(Event::ContactName).toString();
-
-            // TODO: fill list when Event supports multiple contacts
-            QStringList contact = contactsList[0].split('\x1f');
-            QString firstName, lastName;
-            if (contact.size() >= 2)
-                firstName = contact[1];
-            if (contact.size() >= 3)
-                lastName = contact[2];
-            eventToFill.setContactId(contact[0].toInt());
-            eventToFill.setContactName(buildContactName(firstName, lastName, imNickname));
-        }
+        QList<int> contactIds;
+        QStringList contactNames;
+        parseContacts(RESULT_INDEX2(Event::ContactId).toString(),
+                      RESULT_INDEX2(Event::ContactName).toString(),
+                      contactIds, contactNames);
+        eventToFill.setContactIds(contactIds);
+        eventToFill.setContactNames(contactNames);
     }
 
     // save data and give back as parameter
@@ -522,24 +515,32 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     eventToFill.setIsRead(result->value(9).toBool());
     eventToFill.setLastModified(result->value(10).toDateTime().toLocalTime());
 
-    QStringList contactsList = result->value(11).toString().split('\x1e');
-    if (!contactsList.isEmpty()) {
-        QString imNickname = result->value(12).toString();
-
-        // TODO: fill list when Event supports multiple contacts
-        QStringList contact = contactsList[0].split('\x1f');
-        QString firstName, lastName;
-        if (contact.size() >= 2)
-            firstName = contact[1];
-        if (contact.size() >= 3)
-            lastName = contact[2];
-        eventToFill.setContactId(contact[0].toInt());
-        eventToFill.setContactName(buildContactName(firstName, lastName, imNickname));
-    }
+    QList<int> contactIds;
+    QStringList contactNames;
+    parseContacts(result->value(11).toString(),
+                  result->value(12).toString(),
+                  contactIds, contactNames);
+    eventToFill.setContactIds(contactIds);
+    eventToFill.setContactNames(contactNames);
 
     eventToFill.setEventCount(result->value(13).toInt());
 
     event = eventToFill;
+}
+
+void QueryResult::parseContacts(const QString &result, const QString &imNickname,
+                                QList<int> &contactIds, QStringList &contactNames)
+{
+    foreach (QString contact, result.split('\x1e')) {
+        QStringList contactInfo = contact.split('\x1f');
+        QString firstName, lastName;
+        if (contactInfo.size() >= 2)
+            firstName = contactInfo[1];
+        if (contactInfo.size() >= 3)
+            lastName = contactInfo[2];
+        contactIds << contactInfo[0].toInt();
+        contactNames << buildContactName(firstName, lastName, imNickname);
+    }
 }
 
 QString QueryResult::buildContactName(const QString &names)

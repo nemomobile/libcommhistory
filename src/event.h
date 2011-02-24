@@ -258,6 +258,10 @@ public:
 
     QString contactName() const;
 
+    QList<int> contactIds() const;
+
+    QStringList contactNames() const;
+
     int parentId() const; // SMS parent folder id
 
     QString subject() const;
@@ -349,6 +353,10 @@ public:
     void setContactId(int id);
 
     void setContactName(const QString &name);
+
+    void setContactIds(const QList<int> &ids);
+
+    void setContactNames(const QStringList &names);
 
     void setParentId(int id);
 

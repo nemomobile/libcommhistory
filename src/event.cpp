@@ -57,8 +57,8 @@ public:
 
     QString localUid;  /* telepathy account */
     QString remoteUid;
-    int contactId;
-    QString contactName;
+    QList<int> contactIds;
+    QList<QString> contactNames;
     int parentId;
 
     QString freeText;
@@ -106,7 +106,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
              << event.bytesReceived() << event.localUid()
-             << event.remoteUid() << event.contactId() << event.contactName()
+             << event.remoteUid() << event.contactIds() << event.contactNames()
              << event.parentId() << event.freeText() << event.groupId()
              << event.messageToken() << event.mmsId() << event.lastModified()
              << event.eventCount()
@@ -129,7 +129,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     argument >> p.id >> type >> p.startTime >> p.endTime
              >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
              >> status >> p.bytesReceived >> p.localUid >> p.remoteUid
-             >> p.contactId >> p.contactName >> p.parentId >> p.freeText >> p.groupId
+             >> p.contactIds >> p.contactNames
+             >> p.parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
              >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
@@ -151,8 +152,12 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
     event.setRemoteUid(p.remoteUid);
-    event.setContactId(p.contactId);
-    event.setContactName(p.contactName);
+    if (p.contactIds.size())
+        event.setContactId(p.contactIds.first());
+    if (p.contactNames.size())
+        event.setContactName(p.contactNames.first());
+    event.setContactIds(p.contactIds);
+    event.setContactNames(p.contactNames);
     event.setParentId(p.parentId);
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
@@ -192,7 +197,6 @@ EventPrivate::EventPrivate()
         , isEmergencyCall( false )
         , status(Event::UnknownStatus)
         , bytesReceived(0)
-        , contactId(0)
         , parentId(-1)
         , groupId(-1)
         , eventCount(0)
@@ -221,8 +225,8 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
         , remoteUid(other.remoteUid)
-        , contactId(other.contactId)
-        , contactName(other.contactName)
+        , contactIds(other.contactIds)
+        , contactNames(other.contactNames)
         , parentId(other.parentId)
         , freeText(other.freeText)
         , groupId(other.groupId)
@@ -313,8 +317,7 @@ Event::PropertySet Event::modifiedProperties() const
 
 bool Event::operator==(const Event &other) const
 {
-    return (this->d->contactId         == other.contactId()         &&
-            this->d->remoteUid         == other.remoteUid()         &&
+    return (this->d->remoteUid         == other.remoteUid()         &&
             this->d->localUid          == other.localUid()          &&
             this->d->startTime         == other.startTime()         &&
             this->d->endTime           == other.endTime()           &&
@@ -416,12 +419,22 @@ QString Event::remoteUid() const
 
 int Event::contactId() const
 {
-    return d->contactId;
+    return (d->contactIds.size() ? d->contactIds.first() : 0);
 }
 
 QString Event::contactName() const
 {
-    return d->contactName;
+    return (d->contactNames.size() ? d->contactNames.first() : 0);
+}
+
+QList<int> Event::contactIds() const
+{
+    return d->contactIds;
+}
+
+QStringList Event::contactNames() const
+{
+    return d->contactNames;
 }
 
 QString Event::subject() const
@@ -640,13 +653,25 @@ void Event::setRemoteUid(const QString &uid)
 
 void Event::setContactId(int id)
 {
-    d->contactId = id;
+    d->contactIds = QList<int>() << id;
     d->propertyChanged(Event::ContactId);
 }
 
 void Event::setContactName(const QString &name)
 {
-    d->contactName = name;
+    d->contactNames = QStringList() << name;
+    d->propertyChanged(Event::ContactName);
+}
+
+void Event::setContactIds(const QList<int> &ids)
+{
+    d->contactIds = ids;
+    d->propertyChanged(Event::ContactId);
+}
+
+void Event::setContactNames(const QStringList &names)
+{
+    d->contactNames = names;
     d->propertyChanged(Event::ContactName);
 }
 
@@ -792,6 +817,10 @@ void Event::setReportRead(bool reportRequested)
 
 QString Event::toString() const
 {
+    QStringList contactIds;
+    foreach (int id, d->contactIds)
+        contactIds << QString::number(id);
+
     return QString(QString::number(id())              % QChar('|') %
                    (isEmergencyCall() ? QLatin1String("!!!") :
                     QString::number(type()))          % QChar('|') %
@@ -804,8 +833,8 @@ QString Event::toString() const
                    QString::number(bytesReceived())   % QChar('|') %
                    localUid()                         % QChar('|') %
                    remoteUid()                        % QChar('|') %
-                   QString::number(contactId())       % QChar('|') %
-                   contactName()                      % QChar('|') %
+                   contactIds.join(QChar(','))        % QChar('|') %
+                   contactNames().join(QChar(','))    % QChar('|') %
                    freeText()                         % QChar('|') %
                    fromVCardFileName()                % QChar('|') %
                    fromVCardLabel()                   % QChar('|') %
