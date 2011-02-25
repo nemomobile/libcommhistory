@@ -25,26 +25,26 @@
 
 // NOTE projections in the query should have same order as Group::Property
 #define GROUP_QUERY QLatin1String( \
-"SELECT ?_channel" \
-"  nie:subject(?_channel)" \
-"  nie:generator(?_channel)" \
-"  nie:identifier(?_channel)" \
-"  nie:title(?_channel)" \
+"SELECT ?channel" \
+"  nie:subject(?channel)" \
+"  nie:generator(?channel)" \
+"  nie:identifier(?channel)" \
+"  nie:title(?channel)" \
 "  ?_lastDate " \
 "  ( SELECT COUNT(?_total_messages_1)" \
 "    WHERE {" \
-"      ?_total_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_messages_1 nmo:communicationChannel ?channel ." \
 "      ?_total_messages_1 nmo:isDeleted false ." \
 "  })" \
 "  ( SELECT COUNT(?_total_unread_messages_1)" \
 "    WHERE {" \
-"      ?_total_unread_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_unread_messages_1 nmo:communicationChannel ?channel ." \
 "      ?_total_unread_messages_1 nmo:isRead false ." \
 "      ?_total_unread_messages_1 nmo:isDeleted false ." \
 "  })" \
 "  ( SELECT COUNT(?_total_sent_messages_1)" \
 "    WHERE {" \
-"      ?_total_sent_messages_1 nmo:communicationChannel ?_channel ." \
+"      ?_total_sent_messages_1 nmo:communicationChannel ?channel ." \
 "      ?_total_sent_messages_1 nmo:isSent true ." \
 "      ?_total_sent_messages_1 nmo:isDeleted false ." \
 "  })" \
@@ -72,22 +72,23 @@
 "WHERE " \
 "{" \
 "  {" \
-"    SELECT ?_channel ?_lastDate ?_lastModified ?part" \
+"    SELECT ?channel ?_lastDate ?_lastModified ?part" \
 "      ( SELECT ?_message WHERE {" \
-"        ?_message nmo:communicationChannel ?_channel ." \
+"        ?_message nmo:communicationChannel ?channel ." \
 "        ?_message nmo:isDeleted false ." \
 "        ?_message nmo:sentDate ?messageSentDate ." \
-"      } ORDER BY DESC(?messageSentDate)" \
+"      } ORDER BY DESC(?messageSentDate) DESC(tracker:id(?_message))" \
 "    LIMIT 1) AS ?_lastMessage " \
 "" \
 "    WHERE" \
 "    {" \
 "      GRAPH <commhistory:message-channels> {" \
-"        ?_channel a nmo:CommunicationChannel ." \
+"        ?channel a nmo:CommunicationChannel ." \
 "      }" \
-"      ?_channel nmo:lastMessageDate ?_lastDate ." \
-"      ?_channel nie:contentLastModified ?_lastModified ." \
-"      ?_channel nmo:hasParticipant ?part ." \
+"      ?channel nmo:lastMessageDate ?_lastDate ." \
+"      ?channel nie:contentLastModified ?_lastModified ." \
+"      ?channel nmo:hasParticipant ?part ." \
+"      %1 " \
 "    }" \
 "  }" \
 "}" \

@@ -142,7 +142,10 @@ Group::~Group()
 
 int Group::urlToId(const QString &url)
 {
-    return url.mid(QString(QLatin1String("conversation:")).length()).toInt();
+    if (url.startsWith(QLatin1String("conversation:")))
+        return url.mid(QString(QLatin1String("conversation:")).length()).toInt();
+
+    return -1;
 }
 
 QUrl Group::idToUrl(int id)

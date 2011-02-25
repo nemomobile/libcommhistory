@@ -37,8 +37,6 @@
 #include "updatequery.h"
 #include "committingtransaction.h"
 
-using namespace SopranoLive;
-
 namespace {
     static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
         << CommHistory::Event::IsDraft

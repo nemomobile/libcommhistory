@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
 
 #include "trackerio.h"
@@ -36,8 +35,6 @@
 #include "contactlistener.h"
 #include "committingtransaction.h"
 #include "eventsquery.h"
-
-using namespace SopranoLive;
 
 using namespace CommHistory;
 
@@ -166,30 +163,6 @@ QModelIndex EventModelPrivate::findParent(const Event &event)
 {
     Q_UNUSED(event);
     return QModelIndex();
-}
-
-bool EventModelPrivate::executeQuery(RDFSelect &query)
-{
-    qDebug() << __PRETTY_FUNCTION__;
-
-    isReady = false;
-    if (queryMode == EventModel::StreamedAsyncQuery) {
-        queryRunner->setStreamedMode(true);
-        queryRunner->setChunkSize(chunkSize);
-        queryRunner->setFirstChunkSize(firstChunkSize);
-    } else {
-        if (queryLimit) query.limit(queryLimit);
-        if (queryOffset) query.offset(queryOffset);
-    }
-    queryRunner->runQuery(query, EventQuery, propertyMask);
-    if (queryMode == EventModel::SyncQuery) {
-        QEventLoop loop;
-        while (!isReady || !messagePartsReady) {
-            loop.processEvents(QEventLoop::WaitForMoreEvents);
-        }
-    }
-
-    return true;
 }
 
 bool EventModelPrivate::executeQuery(EventsQuery &query)

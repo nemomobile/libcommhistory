@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QtDebug>
 #include <QUrl>
 
@@ -33,8 +32,6 @@
 #include "eventtreeitem.h"
 #include "queryrunner.h"
 #include "committingtransaction.h"
-
-using namespace SopranoLive;
 
 using namespace CommHistory;
 

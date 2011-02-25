@@ -29,11 +29,6 @@
 #include "event.h"
 #include "libcommhistoryexport.h"
 
-namespace SopranoLive {
-    class RDFSelect;
-    class RDFVariable;
-}
-
 class QSparqlResult;
 
 namespace CommHistory {
@@ -75,31 +70,6 @@ public:
     QueryHelper *createQueryHelper();
 
     /*!
-     * Adds required message properties to the query.
-     * The optional communicationChannel will optimize the query for the
-     * specified channel.
-     */
-    static void prepareMessageQuery(SopranoLive::RDFSelect &query,
-                                    SopranoLive::RDFVariable &message,
-                                    const Event::PropertySet &propertyMask,
-                                    QUrl communicationChannel = QUrl());
-
-    /*!
-     * Adds required message properties to a multiuser chat query.
-     */
-    static void prepareMUCQuery(SopranoLive::RDFSelect &query,
-                                SopranoLive::RDFVariable &message,
-                                const Event::PropertySet &propertyMask,
-                                QUrl communicationChannel);
-
-    /*!
-     * Adds required call properties to the query.
-     */
-    static void prepareCallQuery(SopranoLive::RDFSelect &query,
-                                 SopranoLive::RDFVariable &call,
-                                 const Event::PropertySet &propertyMask);
-
-    /*!
      * Adds required message part properties to the query.
      */
     static QString prepareMessagePartQuery(const QString &messageUri);
@@ -115,13 +85,6 @@ public:
      * Create query for calls grouped by contacts.
      */
     static QString prepareGroupedCallQuery();
-
-    /*!
-     * Helper for prepare*Query() methods.
-     */
-    static void addMessagePropertiesToQuery(SopranoLive::RDFSelect &query,
-                                            const Event::PropertySet &propertyMask,
-                                            SopranoLive::RDFVariable &message);
 
     /*!
      * Add a new event into the database. The id field of the event is

@@ -111,7 +111,6 @@ public:
 
 
     // Helper for getEvent*().
-    //bool querySingleEvent(SopranoLive::RDFSelect query, Event &event);
     bool querySingleEvent(EventsQuery &query, Event &event);
 
     static void calculateParentId(Event& event);
@@ -138,8 +137,6 @@ public:
     QThreadStorage<QSparqlConnection*> m_pConnection;
     CommittingTransaction *m_pTransaction;
     QQueue<CommittingTransaction*> m_pendingTransactions;
-
-    SopranoLive::RDFServicePtr m_service;
 
     // Temporary contact cache, valid during a transaction
     QHash<QUrl, QString> m_contactCache;

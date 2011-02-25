@@ -24,7 +24,6 @@
 #define COMMHISTORY_QUERYTHREAD_H
 
 #include <QMutex>
-#include <QtTracker/Tracker>
 
 #include "event.h"
 #include "group.h"
@@ -64,11 +63,7 @@ public:
     // fetched.
     void enableQueue(bool enable = true);
 
-    void runQuery(SopranoLive::RDFSelect &query, QueryType queryType,
-                  const Event::PropertySet &propertyMask = Event::allProperties());
-
     void runEventsQuery(const QString &query, const QList<Event::Property> &properties);
-
     void runGroupQuery(const QString &query);
     void runGroupedCallQuery(const QString &query);
     void runMessagePartQuery(const QString &query);

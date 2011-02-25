@@ -20,6 +20,8 @@
 **
 ******************************************************************************/
 
+#include <QDebug>
+
 #include "eventmodel_p.h"
 #include "trackerio.h"
 #include "eventsquery.h"

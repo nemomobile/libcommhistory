@@ -20,13 +20,6 @@
 **
 ******************************************************************************/
 
-#include <QtTracker/Tracker>
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nmo.h>
-#include <QtTracker/ontologies/nie.h>
-#include <QtTracker/ontologies/nfo.h>
-#include <QtTracker/ontologies/rdfs.h>
-
 #include <QSparqlConnectionOptions>
 #include <QSparqlConnection>
 #include <QSparqlResult>
@@ -64,7 +57,6 @@ Q_GLOBAL_STATIC(TrackerIO, trackerIO)
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
     m_pTransaction(0),
-    m_service(::tracker()),
     m_MmsContentDeleter(0),
     m_bgThread(0)
 {
@@ -111,329 +103,6 @@ QueryHelper *TrackerIO::createQueryHelper()
     return new QueryHelper(this, true);
 }
 
-void TrackerIO::addMessagePropertiesToQuery(SopranoLive::RDFSelect &query,
-                                            const Event::PropertySet &propertyMask,
-                                            SopranoLive::RDFVariable &message)
-{
-    if (propertyMask.contains(Event::GroupId))
-        query.addColumn(LAT("channel"), message.function<nmo::communicationChannel>());
-
-    if (propertyMask.contains(Event::Direction)
-        || propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)
-        || propertyMask.contains(Event::Status))
-        query.addColumn(LAT("isSent"), message.function<nmo::isSent>());
-
-    if (propertyMask.contains(Event::IsDraft))
-        query.addColumn(LAT("isDraft"), message.function<nmo::isDraft>());
-
-    if (propertyMask.contains(Event::IsRead))
-        query.addColumn(LAT("isRead"), message.function<nmo::isRead>());
-
-    if (propertyMask.contains(Event::IsMissedCall))
-        query.addColumn(LAT("isAnswered"), message.function<nmo::isAnswered>());
-
-    if (propertyMask.contains(Event::IsEmergencyCall))
-        query.addColumn(LAT("isEmergency"), message.function<nmo::isEmergency>());
-
-    if (propertyMask.contains(Event::IsDeleted))
-        query.addColumn(LAT("isDeleted"), message.function<nmo::isDeleted>());
-
-    if (propertyMask.contains(Event::MessageToken))
-        query.addColumn(LAT("messageId"), message.function<nmo::messageId>());
-
-    if (propertyMask.contains(Event::MmsId))
-        query.addColumn(LAT("mmsId"), message.function<nmo::mmsId>());
-
-    if (propertyMask.contains(Event::ParentId))
-        // TODO: smsId is being used as parentId, fix naming
-        query.addColumn(LAT("smsId"), message.function<nmo::phoneMessageId>());
-
-    if (propertyMask.contains(Event::StartTime))
-        query.addColumn(LAT("sentDate"), message.function<nmo::sentDate>());
-
-    if (propertyMask.contains(Event::EndTime))
-        query.addColumn(LAT("receivedDate"), message.function<nmo::receivedDate>());
-
-    if (propertyMask.contains(Event::LastModified))
-        query.addColumn(LAT("lastModified"), message.function<nie::contentLastModified>());
-
-    if (propertyMask.contains(Event::Subject))
-        query.addColumn(LAT("messageSubject"), message.function<nmo::messageSubject>());
-
-    if (propertyMask.contains(Event::FreeText))
-        query.addColumn(LAT("textContent"), message.function<nie::plainTextContent>());
-
-    if (propertyMask.contains(Event::Status))
-        query.addColumn(LAT("deliveryStatus"), message.function<nmo::deliveryStatus>());
-
-    if (propertyMask.contains(Event::ReportDelivery))
-        query.addColumn(LAT("reportDelivery"), message.function<nmo::reportDelivery>());
-
-    if (propertyMask.contains(Event::ReportRead))
-        query.addColumn(LAT("sentWithReportRead"), message.function<nmo::sentWithReportRead>());
-
-    if (propertyMask.contains(Event::ReportReadRequested))
-        query.addColumn(LAT("mustAnswerReportRead"), message.function<nmo::mustAnswerReportRead>());
-    if (propertyMask.contains(Event::ReadStatus))
-        query.addColumn(LAT("reportReadStatus"), message.function<nmo::reportReadStatus>());
-
-    if (propertyMask.contains(Event::ValidityPeriod))
-        query.addColumn("validityPeriod", message.function<nmo::validityPeriod>());
-
-    if (propertyMask.contains(Event::BytesReceived))
-        query.addColumn(LAT("contentSize"), message.function<nie::contentSize>());
-
-    // TODO: nie:url doesn't work anymore because nmo:PhoneMessage is
-    // not a subclass of nie:DataObject. nie:generator is a harmless
-    // workaround, but should we use something like a dummy nie:links
-    // dataobject (preferably with anon blank nodes)?
-    if (propertyMask.contains(Event::ContentLocation))
-        query.addColumn(LAT("contentLocation"), message.function<nie::generator>());
-
-    //additional parameters for sms
-    if (propertyMask.contains(Event::FromVCardFileName)
-        || propertyMask.contains(Event::FromVCardLabel)) {
-        RDFVariable fromVCard = message.function<nmo::fromVCard>();
-        query.addColumn(LAT("fromVCardName"), fromVCard.function<nfo::fileName>());
-        query.addColumn(LAT("fromVCardLabel"), fromVCard.function<rdfs::label>());
-    }
-
-    if (propertyMask.contains(Event::Encoding))
-        query.addColumn(LAT("encoding"), message.function<nmo::encoding>());
-
-    if (propertyMask.contains(Event::CharacterSet))
-        query.addColumn(LAT("characterSet"), message.function<nie::characterSet>());
-
-    if (propertyMask.contains(Event::Language))
-        query.addColumn(LAT("language"), message.function<nie::language>());
-}
-
-void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &message,
-                                    const Event::PropertySet &propertyMask,
-                                    QUrl communicationChannel)
-{
-    RDFSelect query;
-
-    RDFVariable contact;
-    RDFVariable outerImAddress;
-
-    RDFVariable outerMessage = query.newColumn(LAT("message"));
-    RDFVariable date = query.newColumn(LAT("date"));
-
-    RDFSubSelect subSelect;
-    RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
-    subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::receivedDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    query.addColumn(LAT("type"), outerMessage.function<rdf::type>());
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        query.addColumn(LAT("contact"), contact);
-        query.addColumn(LAT("imAddress"), outerImAddress);
-    }
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-        RDFVariable from = query.newColumn(LAT("from"));
-        RDFVariable to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subMessage.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subMessage.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (!communicationChannel.isEmpty()) {
-        // optimized query for one p2p conversation - tie all messages to the channel
-        subMessage.property<nmo::communicationChannel>(communicationChannel);
-    }
-
-    addMessagePropertiesToQuery(query, propertyMask, outerMessage);
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-
-        RDFVariable channel = contactSelect.variable(LAT("channel"));
-        RDFVariableList contacts = subContact.unionChildren(2);
-
-        // by IM address...
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable imChannel = contacts[0].variable(channel);
-        RDFVariable imParticipant;
-        RDFVariable imAddress;
-        if (communicationChannel.isEmpty()) {
-            imChannel = subMessage.property<nmo::communicationChannel>();
-            imParticipant = imChannel.property<nmo::hasParticipant>();
-            imAddress = imParticipant.property<nco::hasIMAddress>();
-        } else {
-            imChannel = communicationChannel;
-            imParticipant = imChannel.property<nmo::hasParticipant>();
-            imAddress = imParticipant.property<nco::hasIMAddress>();
-        }
-        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
-        imAffiliation.property<nco::hasIMAddress>() = imAddress;
-
-        // affiliation (work number)
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable affChannel = contacts[1].variable(channel);
-        RDFVariable affParticipant;
-        if (communicationChannel.isEmpty()) {
-            affChannel = subMessage.property<nmo::communicationChannel>();
-            affParticipant = affChannel.property<nmo::hasParticipant>();
-        } else {
-            affChannel = communicationChannel;
-            affParticipant = affChannel.property<nmo::hasParticipant>();
-        }
-        RDFVariable affPhoneNumber = affParticipant.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-        contacts[1].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>() = affPhoneNumber;
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFSubSelect imNicknameSubSelect;
-        RDFVariable messageChannel = imNicknameSubSelect.variable(LAT("messageChannel"));
-        if (communicationChannel.isEmpty()) {
-            messageChannel = imNicknameSubSelect.variable(subMessage)
-                .property<nmo::communicationChannel>();
-        } else {
-            messageChannel = communicationChannel;
-        }
-        RDFVariable imNickAddress = messageChannel.property<nmo::hasParticipant>()
-            .property<nco::hasIMAddress>();
-        imNicknameSubSelect.addColumn(LAT("imNickname"), imNickAddress);
-        subSelect.addColumnAs(imNicknameSubSelect.asExpression(), outerImAddress);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), outerImAddress.function<nco::imNickname>());
-    }
-
-    query.orderBy(date, false);
-    // enforce secondary sorting in the order of message saving
-    // tracker::id() used instead of plain message uri for performance reason
-    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
-    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
-    query.addColumn(msgTrackerId);
-    query.orderBy(msgTrackerId, false);
-
-    messageQuery = query;
-}
-
-void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
-                                 const Event::PropertySet &propertyMask)
-{
-    RDFSelect query;
-
-    RDFVariable contact;
-    RDFVariable outerCall = query.newColumn(LAT("call"));
-    RDFVariable date = query.newColumn(LAT("date"));
-    RDFVariable from;
-    RDFVariable to;
-
-    RDFSubSelect subSelect;
-    RDFVariable subCall = subSelect.newColumnAs(outerCall);
-    subCall = call; // copy constraints
-    date = subCall.property<nmo::sentDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    query.addColumn(LAT("type"), outerCall.function<rdf::type>());
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)
-        || propertyMask.contains(Event::Direction)) {
-        from = query.newColumn(LAT("from"));
-        to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subCall.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subCall.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-        RDFVariableList contacts = subContact.unionChildren(2);
-
-        /*
-          (contact -> nco:hasAffiliation -> nco:hasIMAddress) ==
-          (call nmo:from|nmo:to -> nco:hasIMAddress)
-        */
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable affCall = contacts[0].variable(subCall);
-        RDFVariable affAddress = contacts[0].variable(LAT("imAddress"));
-//        RDFVariable affIMAddress = contacts[0].property<nco::hasIMAddress>();
-        RDFVariable affiliation;
-        contacts[0].property<nco::hasAffiliation>(affiliation);
-        affiliation.property<nco::hasIMAddress>(affAddress);
-
-        RDFPattern affFrom = contacts[0].pattern().child();
-        RDFPattern affTo = contacts[0].pattern().child();
-        affFrom.union_(affTo);
-
-        RDFVariable callFrom = affFrom.variable(subCall).property<nmo::from>();
-        RDFVariable callFromAddress = callFrom.property<nco::hasIMAddress>(affAddress);
-
-        RDFVariable callTo = affTo.variable(subCall).property<nmo::to>();
-        RDFVariable callToAddress = callTo.property<nco::hasIMAddress>(affAddress);
-
-//        affAddress.property<nco::hasIMAddress>(affIMAddress);
-
-        /*
-          (contact -> nco:hasAffiliation -> nco:hasPhoneNumber -> maemo:localPhoneNumber) ==
-          (call nmo:from|nmo:to -> nco:hasPhoneNumber -> maemo:localPhoneNumber)
-        */
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable affPhoneNumber = contacts[1].variable(LAT("phoneNumber"));
-        RDFVariable affContactPhoneNumber = contacts[1].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>();
-
-        RDFPattern affPhoneFrom = contacts[1].pattern().child();
-        RDFPattern affPhoneTo = contacts[1].pattern().child();
-        affPhoneFrom.union_(affPhoneTo);
-        affPhoneFrom.variable(subCall).property<nmo::from>(affPhoneNumber);
-        affPhoneTo.variable(subCall).property<nmo::to>(affPhoneNumber);
-
-        affPhoneNumber.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>(affContactPhoneNumber);
-
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), affAddress.function<nco::imNickname>());
-    }
-
-    if (propertyMask.contains(Event::Direction))
-        query.addColumn(LAT("isSent"), outerCall.function<nmo::isSent>());
-    if (propertyMask.contains(Event::IsMissedCall))
-        query.addColumn(LAT("isAnswered"), outerCall.function<nmo::isAnswered>());
-    if (propertyMask.contains(Event::IsEmergencyCall))
-        query.addColumn(LAT("isEmergency"), outerCall.function<nmo::isEmergency>());
-    if (propertyMask.contains(Event::IsRead))
-        query.addColumn(LAT("isRead"), outerCall.function<nmo::isRead>());
-    if (propertyMask.contains(Event::StartTime))
-        query.addColumn(LAT("sentDate"), outerCall.function<nmo::sentDate>());
-    if (propertyMask.contains(Event::EndTime))
-        query.addColumn(LAT("receivedDate"), outerCall.function<nmo::receivedDate>());
-    if (propertyMask.contains(Event::LastModified))
-        query.addColumn(LAT("lastModified"), outerCall.function<nie::contentLastModified>());
-
-    query.orderBy(date, false);
-
-    callQuery = query;
-}
-
 QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
 {
     QString query(LAT(
@@ -459,24 +128,24 @@ QString TrackerIO::prepareGroupQuery(const QString &localUid,
                                      int groupId)
 {
     QString queryFormat(GROUP_QUERY);
-    QStringList constrains;
+    QStringList constraints;
     if (!remoteUid.isEmpty()) {
         QString number = normalizePhoneNumber(remoteUid);
         if (number.isEmpty()) {
-            constrains << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
+            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
                           .arg(remoteUid);
         } else {
-            constrains << QString(LAT("?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
+            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
                           .arg(number.right(CommHistory::phoneNumberMatchLength()));
         }
     }
     if (!localUid.isEmpty()) {
-        constrains << QString(LAT("FILTER(?subject = \"%1\") ")).arg(localUid);
+        constraints << QString(LAT("FILTER(nie:subject(?channel) = \"%1\") ")).arg(localUid);
     }
     if (groupId != -1)
-        constrains << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
+        constraints << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
 
-    return queryFormat.arg(constrains.join(LAT(" ")));
+    return queryFormat.arg(constraints.join(LAT(" ")));
 }
 
 QString TrackerIO::prepareGroupedCallQuery()
@@ -946,9 +615,10 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         query.insertion(part,
                         "nie:contentSize",
                         messagePart.contentSize());
-        query.insertion(part,
-                        "nie:url",
-                        messagePart.contentLocation());
+        if (!messagePart.contentLocation().isEmpty())
+            query.insertion(part,
+                            "nie:url",
+                            messagePart.contentLocation());
         query.insertion(part,
                         "nfo:fileName",
                         QFileInfo(messagePart.contentLocation()).fileName());

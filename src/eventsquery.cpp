@@ -67,7 +67,7 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "reportRead",
                                  "reportReadRequested",
                                  "mmsId",
-                                 "to"};
+                                 "mmsTo"};
 
 const int VARIABLE_NAMES_SIZE = sizeof(VARIABLE_NAMES)/sizeof(VARIABLE_NAMES[0]);
 

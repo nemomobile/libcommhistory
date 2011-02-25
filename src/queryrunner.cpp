@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QMutex>
-#include <QtTracker/Tracker>
 #include <QDebug>
 
 #include <QSparqlResultRow>
@@ -76,36 +75,6 @@ void QueryRunner::setFirstChunkSize(int size)
 void QueryRunner::enableQueue(bool enable)
 {
     m_enableQueue = enable;
-}
-
-void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
-                           const Event::PropertySet &propertyMask)
-{
-    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
-
-    QMutexLocker locker(&m_mutex);
-
-    QueryResult result;
-    result.query = query.getQuery();
-    result.queryType = queryType;
-    result.propertyMask = propertyMask;
-    result.eventId = 0;
-
-    int i = 0;
-    foreach(SopranoLive::RDFSelectColumn col, query.columns()) {
-        result.columns.insert(col.name(), i++);
-    }
-
-    m_queries.append(result);
-
-#ifdef DEBUG
-    m_timer.start();
-#endif
-
-    if (!m_enableQueue)
-        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
-
-    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
 }
 
 void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Property> &properties)

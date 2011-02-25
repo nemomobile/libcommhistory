@@ -26,8 +26,6 @@
 #include <QList>
 #include <QGenericArgument>
 
-#include <QtTracker/Tracker>
-
 #include "eventmodel.h"
 #include "event.h"
 #include "messagepart.h"
@@ -98,8 +96,6 @@ public:
      * are received, and modelReady() is emitted when the query is
      * finished.
      */
-    bool executeQuery(SopranoLive::RDFSelect &query);
-
     bool executeQuery(EventsQuery &query);
 
     /*!
@@ -179,7 +175,6 @@ public:
 
     QueryRunner *queryRunner;
     QueryRunner *partQueryRunner;
-    SopranoLive::LiveNodes queryResult;
 
     static uint modelSerial;
 

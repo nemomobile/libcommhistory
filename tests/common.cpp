@@ -236,6 +236,8 @@ void deleteAll()
     QSparqlQuery query(QLatin1String(
             "DELETE {?n a rdfs:Resource}"
             "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                "nmo:Attachment,"
+                                                "nmo:Multipart,"
                                                 "nmo:CommunicationChannel,"
                                                 "nco:IMAddress,"
                                                 "nco:PhoneNumber))}"),
