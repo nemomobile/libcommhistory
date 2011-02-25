@@ -1191,9 +1191,15 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         query.insertion(part,
                         nie::contentSize::iri(),
                         LiteralValue(messagePart.contentSize()));
-        query.insertion(part,
-                        nie::url::iri(),
-                        LiteralValue(messagePart.contentLocation()));
+
+        /* nie::url is an inverse functional property (i.e. unique), so if we have several message parts with
+           empty content location then it causes problems in tracker because of this */
+        if (!messagePart.contentLocation().isEmpty()) {
+            query.insertion(part,
+                            nie::url::iri(),
+                            LiteralValue(messagePart.contentLocation()));
+        }
+
         query.insertion(part,
                         nfo::fileName::iri(),
                         LiteralValue(QFileInfo(messagePart.contentLocation()).fileName()));
