@@ -217,6 +217,15 @@ void deleteAll()
     ::tracker()->executeQuery(messageDeleter);
     transaction->commitAndReinitiate(true);
 
+    qDebug() << __FUNCTION__ << "- Deleting all attachments";
+    RDFUpdate attachmentDeleter;
+    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Attachment>(),
+                               rdf::type::iri(), rdfs::Resource::iri());
+    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Multipart>(),
+                               rdf::type::iri(), rdfs::Resource::iri());
+    ::tracker()->executeQuery(attachmentDeleter);
+    transaction->commitAndReinitiate(true);
+
     qDebug() << __FUNCTION__ << "- Deleting all calls";
     RDFUpdate callDeleter;
     callDeleter.addDeletion(RDFVariable::fromType<nmo::Call>(),

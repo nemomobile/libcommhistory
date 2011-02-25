@@ -705,6 +705,8 @@ void EventModelTest::testMessagePartsQuery_data()
 void EventModelTest::testMessagePartsQuery()
 {
     QFETCH(bool, useThread);
+    QString threadPrefix;
+    if (useThread) threadPrefix = "thread_";
 
     EventModel model;
     watcher.setModel(&model);
@@ -741,7 +743,8 @@ void EventModelTest::testMessagePartsQuery()
     part3.setContentId("catphoto");
     part3.setContentType("image/jpeg");
     part3.setContentSize(101000);
-    part3.setContentLocation(ATT_PATH + "catphoto.jpg");
+    QString fileName = threadPrefix + "catphoto2.jpg";
+    part3.setContentLocation(ATT_PATH + fileName);
 
 #define CREATE_FILE(messageToken, filename) {\
         QString mmsPath = QString("%1/.mms/msg/%2").arg(QDir::homePath()).arg(messageToken); \
@@ -754,7 +757,7 @@ void EventModelTest::testMessagePartsQuery()
         photo.close(); \
         QVERIFY(QFile::exists(photo.fileName()));}
 
-    CREATE_FILE("MSGTOKEN1", "catphoto.jpg")
+    CREATE_FILE("MSGTOKEN1", fileName)
 
     QList<MessagePart> parts1;
     parts1 << part1 << part2 << part3;
@@ -772,12 +775,13 @@ void EventModelTest::testMessagePartsQuery()
     part4.setContentType("text/plain");
     part4.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
     MessagePart part5;
-    part5.setContentId("dogphoto");
+    part5.setContentId("dogphoto2");
     part5.setContentType("image/jpeg");
     part5.setContentSize(202000);
-    part5.setContentLocation(ATT_PATH + "dogphoto.jpg");
+    fileName = threadPrefix + "dogphoto2.jpg";
+    part5.setContentLocation(ATT_PATH + fileName);
 
-    CREATE_FILE("MSGTOKEN2", "dogphoto.jpg")
+    CREATE_FILE("MSGTOKEN2", fileName);
 
     QList<MessagePart> parts2;
     parts2 << part4 << part5;
@@ -792,12 +796,13 @@ void EventModelTest::testMessagePartsQuery()
     event.setId(-1);
     event.setFreeText("mms3");
     MessagePart part6;
-    part6.setContentId("dogphoto2");
+    part6.setContentId("dogphoto3");
     part6.setContentType("image/jpeg");
     part6.setContentSize(203000);
-    part6.setContentLocation(ATT_PATH + "dogphoto2.jpg");
+    fileName = threadPrefix + "dogphoto3.jpg";
+    part6.setContentLocation(ATT_PATH + fileName);
 
-    CREATE_FILE("MSGTOKEN3", "dogphoto2.jpg")
+    CREATE_FILE("MSGTOKEN3", fileName)
 
     QList<MessagePart> parts3;
     parts3 << part6;
@@ -1182,6 +1187,8 @@ void EventModelTest::testModifyInGroup()
     EventModel model;
     watcher.setModel(&model);
 
+    // workaround - added DESC(tracker:id) in qsparql branch
+    sleep(1);
     Event event;
     event.setType(Event::SMSEvent);
     event.setGroupId(group1.id());
@@ -1266,12 +1273,13 @@ void EventModelTest::testModifyInGroup()
     // test unread count updating
     int unread = group.unreadMessages();
 
+    sleep(1);
     Event newEvent;
     newEvent.setGroupId(group1.id());
     newEvent.setType(Event::IMEvent);
     newEvent.setDirection(Event::Inbound);
-    newEvent.setStartTime(QDateTime::currentDateTime());
-    newEvent.setEndTime(QDateTime::currentDateTime());
+    newEvent.setStartTime(QDateTime::currentDateTime().addSecs(5));
+    newEvent.setEndTime(QDateTime::currentDateTime().addSecs(5));
     newEvent.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     newEvent.setRemoteUid("td@localhost");
     newEvent.setFreeText("addEvents 2");
