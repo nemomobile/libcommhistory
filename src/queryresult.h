@@ -26,6 +26,7 @@
 #include <QHash>
 #include <QString>
 #include <QPointer>
+#include <QSparqlQuery>
 #include <QSparqlResult>
 
 namespace CommHistory {
@@ -35,11 +36,11 @@ class Group;
 class MessagePart;
 
 typedef enum {
-    EventQuery, GroupQuery, MessagePartQuery, GroupedCallQuery
+    EventQuery, GroupQuery, MessagePartQuery, GroupedCallQuery, GenericQuery
 } QueryType;
 
 struct QueryResult {
-    QString query;
+    QSparqlQuery query;
     QueryType queryType;
     Event::PropertySet propertyMask;
     QPointer<QSparqlResult> result;

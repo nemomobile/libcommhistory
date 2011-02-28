@@ -492,6 +492,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 {
     Event eventToFill;
 
+    eventToFill.setType(Event::CallEvent);
     eventToFill.setId(Event::urlToId(result->value(1).toString()));
     eventToFill.setStartTime(result->value(2).toDateTime().toLocalTime());
     eventToFill.setEndTime(result->value(3).toDateTime().toLocalTime());
@@ -499,6 +500,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     QString toId = result->value(5).toString();
 
     if (result->value(6).toBool()) {
+        eventToFill.setDirection(Event::Outbound);
         eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
         if (toId.startsWith(LAT("tel:"))) {
             eventToFill.setRemoteUid(toId.section(QLatin1Char(':'), 1));
@@ -506,6 +508,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
             eventToFill.setRemoteUid(toId.section(IM_ADDRESS_SEPARATOR, -1));
         }
     } else {
+        eventToFill.setDirection(Event::Inbound);
         eventToFill.setLocalUid(toId.mid(TELEPATHY_URI_PREFIX_LEN));
         if (fromId.startsWith(LAT("tel:"))) {
             eventToFill.setRemoteUid(fromId.section(QLatin1Char(':'), 1));

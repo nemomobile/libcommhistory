@@ -77,7 +77,9 @@ void QueryRunner::enableQueue(bool enable)
     m_enableQueue = enable;
 }
 
-void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Property> &properties)
+void QueryRunner::addQueryToQueue(QueryType type,
+                                  const QSparqlQuery &query,
+                                  const QList<Event::Property> &properties)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
@@ -85,7 +87,7 @@ void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Proper
 
     QueryResult result;
     result.query = query;
-    result.queryType = EventQuery;
+    result.queryType = type;
     result.properties = properties;
     result.eventId = 0;
 
@@ -101,74 +103,43 @@ void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Proper
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
 }
 
+void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Property> &properties)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(EventQuery, sparqlQuery, properties);
+}
+
 void QueryRunner::runGroupQuery(const QString &query)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
-    QMutexLocker locker(&m_mutex);
-
-    QueryResult result;
-    result.query = query;
-    result.queryType = GroupQuery;
-
-    m_queries.append(result);
-
-#ifdef DEBUG
-    m_timer.start();
-#endif
-
-    if (!m_enableQueue)
-        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
-
-    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
-
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(GroupQuery, sparqlQuery);
 }
 
 void QueryRunner::runGroupedCallQuery(const QString &query)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
-    QMutexLocker locker(&m_mutex);
-
-    QueryResult result;
-    result.query = query;
-    result.queryType = GroupedCallQuery;
-
-    m_queries.append(result);
-
-#ifdef DEBUG
-    m_timer.start();
-#endif
-
-    if (!m_enableQueue)
-        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
-
-    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
-
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(GroupedCallQuery, sparqlQuery);
 }
 
 void QueryRunner::runMessagePartQuery(const QString &query)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
-    QMutexLocker locker(&m_mutex);
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(MessagePartQuery, sparqlQuery);
+}
 
-    QueryResult result;
-    result.query = query;
-    result.queryType = MessagePartQuery;
-    result.eventId = 0;
+void QueryRunner::runQuery(const QSparqlQuery &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
-    m_queries.append(result);
-
-#ifdef DEBUG
-    m_timer.start();
-#endif
-
-    if (!m_enableQueue)
-        QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
-
-    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
-
+    addQueryToQueue(GenericQuery, query);
 }
 
 void QueryRunner::startQueue()
@@ -197,7 +168,7 @@ void QueryRunner::startNextQueryIfReady()
 
         qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
         // try to put query execution to trackerIOPrivate
-        m_activeQuery.result = m_pTracker->d->connection().exec(QSparqlQuery(m_activeQuery.query));
+        m_activeQuery.result = m_pTracker->d->connection().exec(m_activeQuery.query);
         lastReadPos = QSparql::BeforeFirstRow;
 
         connect(m_activeQuery.result.data(),
@@ -363,30 +334,38 @@ void QueryRunner::finished()
 {
     qDebug() << Q_FUNC_INFO;
 
-    // ignore if there is no query or not all data were sent yet
-    if (m_activeQuery.result.isNull()
-        || (!m_activeQuery.result->isFinished()
-            || lastReadPos < m_activeQuery.result->size() - 1))
-        return;
-
     bool continueNext = false;
-    bool abort = m_activeQuery.result->hasError();
-    if (abort) {
-        qWarning() << m_activeQuery.result->lastError().message();
+
+    if (m_activeQuery.queryType == GenericQuery) {
+        emit resultsReceived(m_activeQuery.result);
+        continueNext = m_enableQueue && !m_queries.isEmpty();
     } else {
-        checkCanFetchMoreChange();
-        {
-            QMutexLocker locker(&m_mutex);
-            continueNext = m_enableQueue && !m_queries.isEmpty();
+        // ignore if there is no query or not all data were sent yet
+        if (m_activeQuery.result.isNull()
+            || (!m_activeQuery.result->isFinished()
+                || lastReadPos < m_activeQuery.result->size() - 1))
+            return;
+
+        bool abort = m_activeQuery.result->hasError();
+        if (abort) {
+            qWarning() << m_activeQuery.result->lastError().message();
+        } else {
+            checkCanFetchMoreChange();
+            {
+                QMutexLocker locker(&m_mutex);
+                continueNext = m_enableQueue && !m_queries.isEmpty();
+            }
         }
+
+        if (!continueNext)
+            emit modelUpdated(!abort);
     }
+
     endActiveQuery();
 
     if (continueNext) {
         // start next query from queue
         nextSlot();
-    } else {
-        emit modelUpdated(!abort);
     }
 }
 
@@ -394,7 +373,9 @@ void QueryRunner::endActiveQuery()
 {
     if (m_activeQuery.result) {
         m_activeQuery.result->disconnect(this);
-        m_activeQuery.result->deleteLater();
-        m_activeQuery.result = 0;
+        if (m_activeQuery.queryType != GenericQuery) {
+            m_activeQuery.result->deleteLater();
+            m_activeQuery.result = 0;
+        }
     }
 }

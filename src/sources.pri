@@ -32,8 +32,7 @@ HEADERS += trackerio.h \
            committingtransaction.h \
            committingtransaction_p.h \
            eventsquery.h \
-           preparedqueries.h \
-           queryhelper.h
+           preparedqueries.h
 
 SOURCES += trackerio.cpp \
            commonutils.cpp \
@@ -61,5 +60,4 @@ SOURCES += trackerio.cpp \
            singleeventmodel.cpp \
            committingtransaction.cpp \
            eventsquery.cpp \
-           updatequery.cpp \
-           queryhelper.cpp
+           updatequery.cpp

@@ -33,7 +33,6 @@
 #include "contactlistener.h"
 #include "eventsquery.h"
 #include "queryrunner.h"
-#include "queryhelper.h"
 #include "updatequery.h"
 #include "committingtransaction.h"
 
@@ -588,10 +587,9 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
                     .arg(event.localUid()).arg(callGroupRemoteId));
     query.bindValue(QLatin1String("channel"), channelUri);
 
-    QueryHelper *helper = tracker()->createQueryHelper();
-    connect(helper, SIGNAL(finished(QSparqlResult *)),
+    connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
             this, SLOT(deleteCallGroup2(QSparqlResult *)));
-    helper->runQuery(query, bgThread);
+    partQueryRunner->runQuery(query);
 }
 
 void CallModelPrivate::deleteCallGroup2(QSparqlResult *result)
@@ -619,6 +617,8 @@ void CallModelPrivate::deleteCallGroup2(QSparqlResult *result)
                          Q_ARG(int, id));
         }
     }
+
+    result->deleteLater();
 }
 
 void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &events, bool success)
@@ -704,6 +704,7 @@ bool CallModel::getEvents()
     }
 
     EventsQuery query(d->propertyMask);
+    query.addPattern(QLatin1String("%1 a nmo:Call .")).variable(Event::Id);
 
     if (d->eventType != CallEvent::UnknownCallType) {
         if (d->eventType == CallEvent::ReceivedCallType

@@ -63,10 +63,16 @@ public:
     // fetched.
     void enableQueue(bool enable = true);
 
+    void addQueryToQueue(QueryType type,
+                         const QSparqlQuery &query,
+                         const QList<Event::Property> &properties = Event::allProperties().toList());
+
     void runEventsQuery(const QString &query, const QList<Event::Property> &properties);
     void runGroupQuery(const QString &query);
     void runGroupedCallQuery(const QString &query);
     void runMessagePartQuery(const QString &query);
+    // Run generic sparql query. Caller is responsible for deleting the result.
+    void runQuery(const QSparqlQuery &query);
 
     void startQueue();
 
@@ -76,6 +82,7 @@ Q_SIGNALS:
     void eventsReceived(int start, int end, QList<CommHistory::Event> events);
     void groupsReceived(int start, int end, QList<CommHistory::Group> groups);
     void messagePartsReceived(int eventId, QList<CommHistory::MessagePart> parts);
+    void resultsReceived(QSparqlResult *result);
     void canFetchMoreChanged(bool canFetch);
     void modelUpdated(bool successful);
 

@@ -37,7 +37,6 @@
 #include "committingtransaction_p.h"
 #include "eventsquery.h"
 #include "preparedqueries.h"
-#include "queryhelper.h"
 
 #include "trackerio_p.h"
 #include "trackerio.h"
@@ -96,11 +95,6 @@ int TrackerIO::nextEventId()
 int TrackerIO::nextGroupId()
 {
     return d->m_IdSource.nextGroupId();
-}
-
-QueryHelper *TrackerIO::createQueryHelper()
-{
-    return new QueryHelper(this, true);
 }
 
 QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
