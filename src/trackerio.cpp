@@ -212,11 +212,7 @@ QString TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
     QUrl phoneNumberURI;
 
     QString phoneNumber = normalizePhoneNumber(remoteId);
-    if (phoneNumber.isEmpty()) {
-        phoneNumberURI = QString(LAT("tel:%1")).arg(remoteId);
-    } else {
-        phoneNumberURI = QString(LAT("tel:%1")).arg(phoneNumber);
-    }
+    phoneNumberURI = QString(LAT("tel:%1")).arg(remoteId);
 
     if (m_contactCache.contains(phoneNumberURI)) {
         contact = m_contactCache[phoneNumberURI];
@@ -227,7 +223,7 @@ QString TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
         query.insertionSilent(QString(LAT(
                 "<%1> rdf:type nco:PhoneNumber; nco:phoneNumber \"%2\"; maemo:localPhoneNumber \"%3\" . "))
                         .arg(phoneNumberURI.toString())
-                        .arg(phoneNumber)
+                        .arg(remoteId)
                         .arg(phoneNumber.right(CommHistory::phoneNumberMatchLength())));
 
         m_contactCache.insert(phoneNumberURI, contact);
