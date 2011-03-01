@@ -258,22 +258,24 @@ void TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
                                              Event &event,
                                              bool modifyMode)
 {
-    // make sure isDeleted and isDraft get set, we need them for queries
-    if (event.type() != Event::CallEvent) {
-        if (!event.validProperties().contains(Event::IsDeleted))
-            event.setDeleted(false);
-        if (!event.validProperties().contains(Event::IsDraft))
-            event.setIsDraft(false);
+    if (!modifyMode) { // ensure fields only when adding new events
+        // make sure isDeleted and isDraft get set, we need them for queries
+        if (event.type() != Event::CallEvent) {
+            if (!event.validProperties().contains(Event::IsDeleted))
+                event.setDeleted(false);
+            if (!event.validProperties().contains(Event::IsDraft))
+                event.setIsDraft(false);
+        }
+
+        // nmo:sentDate is used for indexing, make sure it's valid
+        if (!event.validProperties().contains(Event::StartTime))
+            event.setStartTime(QDateTime::fromTime_t(0));
+
+        // also ensure valid nmo:isRead, filtering fails with libqttracker
+        // (see bug #174248)
+        if (!event.validProperties().contains(Event::IsRead))
+            event.setIsRead(false);
     }
-
-    // nmo:sentDate is used for indexing, make sure it's valid
-    if (!event.validProperties().contains(Event::StartTime))
-        event.setStartTime(QDateTime::fromTime_t(0));
-
-    // also ensure valid nmo:isRead, filtering fails with libqttracker
-    // (see bug #174248)
-    if (!event.validProperties().contains(Event::IsRead))
-        event.setIsRead(false);
 
     Event::PropertySet propertySet = modifyMode ? event.modifiedProperties() : event.validProperties();
     foreach (Event::Property property, propertySet) {
