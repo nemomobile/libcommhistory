@@ -575,21 +575,14 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
                       "?call nmo:communicationChannel ?:channel . "
                       "}"));
 
-    QString callGroupRemoteId;
-    QString number = normalizePhoneNumber(event.remoteUid());
-    if (number.isEmpty()) {
-        callGroupRemoteId = event.remoteUid();
-    } else {
-        callGroupRemoteId = number.right(phoneNumberMatchLength());
-    }
+    QUrl channelUri(tracker()->makeCallGroupURI(event));
 
-    QUrl channelUri(QString(QLatin1String("callgroup:%1!%2"))
-                    .arg(event.localUid()).arg(callGroupRemoteId));
     query.bindValue(QLatin1String("channel"), channelUri);
 
     connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
             this, SLOT(deleteCallGroup2(QSparqlResult *)));
     partQueryRunner->runQuery(query);
+    partQueryRunner->startQueue();
 }
 
 void CallModelPrivate::deleteCallGroup2(QSparqlResult *result)
@@ -609,13 +602,17 @@ void CallModelPrivate::deleteCallGroup2(QSparqlResult *result)
         eventIds << id;
     }
 
-    CommittingTransaction *t = tracker()->commit();
-    if (t) {
-        foreach (int id, eventIds) {
-            t->addSignal(false, this,
-                         "eventDeleted",
-                         Q_ARG(int, id));
+    if (eventIds.size()) {
+        CommittingTransaction *t = tracker()->commit();
+        if (t) {
+            foreach (int id, eventIds) {
+                t->addSignal(false, this,
+                             "eventDeleted",
+                             Q_ARG(int, id));
+            }
         }
+    } else {
+        tracker()->rollback();
     }
 
     result->deleteLater();
@@ -707,23 +704,22 @@ bool CallModel::getEvents()
     query.addPattern(QLatin1String("%1 a nmo:Call .")).variable(Event::Id);
 
     if (d->eventType != CallEvent::UnknownCallType) {
-        if (d->eventType == CallEvent::ReceivedCallType
-            || d->eventType == CallEvent::MissedCallType) {
-            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
+        if (d->eventType == CallEvent::ReceivedCallType) {
+            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
+                                           "%1 nmo:isAnswered \"true\". "))
                 .variable(Event::Id);
-
-            if (d->eventType == CallEvent::MissedCallType) {
-                query.addPattern(QLatin1String("%1 nmo:isAnswered \"false\" ."))
-                    .variable(Event::Id);
-            }
+        } else if (d->eventType == CallEvent::MissedCallType) {
+            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
+                                           "%1 nmo:isAnswered \"false\". "))
+                .variable(Event::Id);
         } else {
             query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
                 .variable(Event::Id);
         }
 
         if (!d->referenceTime.isNull()) {
-            query.addPattern(QString(QLatin1String("FILTER (nmo:receivedDate(%2) >= %1)"))
-                             .arg(d->referenceTime.toString()))
+            query.addPattern(QString(QLatin1String("FILTER (nmo:sentDate(%2) >= \"%1Z\"^^xsd:dateTime)"))
+                             .arg(d->referenceTime.toUTC().toString(Qt::ISODate)))
                 .variable(Event::Id);
         }
     }

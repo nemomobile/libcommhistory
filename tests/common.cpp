@@ -45,8 +45,11 @@
 
 QTM_USE_NAMESPACE
 
+namespace {
+static int contactNumber = 0;
+};
+
 using namespace CommHistory;
-using namespace SopranoLive;
 
 const int numWords = 23;
 const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
@@ -117,32 +120,79 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
 {
-    QContactManager cm;
-    QContact contact;
+    QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
+    QString addAddress("INSERT { <%1> a %2 }");
+    QString addContact(
+"INSERT { "
+" %1 "
+" %2 a nco:PersonContact ; "
+" nco:hasAffiliation _:foo ; "
+" nco:nameFamily \"%3\" . }");
 
-    QContactName cName;
-    cName.setLastName(name);
-    contact.saveDetail(&cName);
+    QString addAffiliation("_:foo a nco:Affiliation; ");
 
-    QString normal = normalizePhoneNumber(remoteUid);
+    QString addressQuery;
+    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
     if (normal.isEmpty()) {
-        QContactOnlineAccount online;
-        online.setAccountUri(remoteUid);
-        online.setValue(QLatin1String("AccountPath"), localUid);
-        contact.saveDetail(&online);
+        QString uri = QString("telepathy:%1!%2").arg(localUid).arg(remoteUid);
+        addressQuery = QString(addAddress).arg(uri).arg("nco:IMAddress");
+        addAffiliation += QString("nco:hasIMAddress <%1>").arg(uri);
     } else {
-        QContactPhoneNumber number;
-        number.setNumber(remoteUid);
-        contact.saveDetail(&number);
+        QString uri = QString("tel:%1").arg(remoteUid);
+        addressQuery = QString(addAddress).arg(uri).arg("nco:PhoneNumber");
+        addAffiliation += QString("nco:hasPhoneNumber <%1>").arg(uri);
+    }
+    addAffiliation += " . ";
+
+    QSparqlQuery insertQuery(addressQuery, QSparqlQuery::InsertStatement);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(insertQuery));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error inserting address:" << result->lastError().message();
+        return -1;
     }
 
-    cm.saveContact(&contact);
+    QString query = QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
+    insertQuery = QSparqlQuery(query, QSparqlQuery::InsertStatement);
+    result.reset(conn->exec(insertQuery));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error inserting contact:" << result->lastError().message();
+        return -1;
+    }
 
-    return (int)contact.localId();
+    query = QString("SELECT tracker:id(?c) WHERE { ?c a nco:PersonContact. FILTER(?c = %1) }")
+        .arg(contactUri);
+    result.reset(conn->exec(QSparqlQuery(query)));
+    result->waitForFinished();
+    if (result->hasError() || !result->first()) {
+        qWarning() << "error getting id of inserted contact:" << result->lastError().message();
+        return -1;
+    }
+
+    qDebug() << "********** contact id" << result->value(0).toInt();
+
+    return result->value(0).toInt();
 }
 
 void modifyTestContact(int id, const QString &name)
 {
+    qDebug() << Q_FUNC_INFO << id << name;
+
+    // FIXME: Mixing custom-made contacts and QContactManager may not be reliable.
+    QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
+                  "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
+                  "FILTER(tracker:id(?contact) = %1) }");
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
+                                                                 QSparqlQuery::DeleteStatement)));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error modifying contact:" << result->lastError().message();
+        return;
+    }
+
     QContactManager cm;
     QContact contact= cm.contact(id);
 

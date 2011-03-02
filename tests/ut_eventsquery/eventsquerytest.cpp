@@ -32,7 +32,7 @@ void EventsQueryTest::empty()
 
     QVERIFY(q.eventProperties().contains(Event::Id));
 
-    QCOMPARE(QRegExp("^SELECT\\s+\\?message\\b\\s+WHERE\\s*\\{\\s*\\?message\\s+a\\s+nmo:Message\\s*\\.?\\s*\\}\\s*$").indexIn(query), 0);
+    QCOMPARE(QRegExp("^SELECT\\s+\\?message\\b\\s+WHERE\\s*\\{\\s*.*\\?message\\s+a\\s+nmo:Message\\s*\\.?\\s*\\}\\s*\\}$").indexIn(query), 0);
 
     QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query)));
     result->waitForFinished();

@@ -64,6 +64,11 @@ public:
     int nextGroupId();
 
     /*!
+     * Builds a tracker callgroup URI for the event.
+     */
+    QString makeCallGroupURI(const CommHistory::Event &event);
+
+    /*!
      * Adds required message part properties to the query.
      */
     static QString prepareMessagePartQuery(const QString &messageUri);

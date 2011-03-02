@@ -132,6 +132,11 @@ public:
 
 public Q_SLOTS:
     void runNextTransaction();
+    /*!
+     * Update nmo:lastMessageDate and nmo:lastSuccessfulMessageDate for
+     * channel and delete empty call groups.
+     */
+    void updateGroupTimestamps(CommHistory::Event event);
 
 public:
     QThreadStorage<QSparqlConnection*> m_pConnection;

@@ -39,7 +39,7 @@ public:
     void setLoop(QEventLoop *loop);
     void setModel(CommHistory::EventModel *model);
     // -1 for minCommitted = don't care (for example status messages)
-    void waitForSignals(int minCommitted = 0, int minAdded = 0);
+    void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
     bool waitForModelReady(int msec);
 
     int addedCount() { return m_addedCount; }
@@ -65,6 +65,7 @@ public:
     int m_minCommitCount;
     int m_minAddCount;
     int m_committedCount;
+    int m_minDeleteCount;
     int m_addedCount;
     int m_updatedCount;
     int m_deletedCount;

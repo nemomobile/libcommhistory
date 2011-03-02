@@ -97,6 +97,22 @@ int TrackerIO::nextGroupId()
     return d->m_IdSource.nextGroupId();
 }
 
+QString TrackerIO::makeCallGroupURI(const CommHistory::Event &event)
+{
+    if (event.localUid().isEmpty() || event.remoteUid().isEmpty())
+        return QString();
+
+    QString callGroupRemoteId;
+    QString number = normalizePhoneNumber(event.remoteUid());
+    if (number.isEmpty()) {
+        callGroupRemoteId = event.remoteUid();
+    } else {
+        callGroupRemoteId = number.right(phoneNumberMatchLength());
+    }
+
+    return QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId);
+}
+
 QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
 {
     QString query(LAT(
@@ -347,7 +363,7 @@ void TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
         case Event::FreeText:
             query.insertion(event.url(),
                             "nie:plainTextContent",
-                            event.freeText(),
+                            event.freeText().replace("\"", "\\\""),
                             modifyMode);
             break;
         case Event::MessageToken:
@@ -616,7 +632,7 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         // set nie:InformationElement properties
         query.insertion(part,
                         "nie:plainTextContent",
-                        messagePart.plainTextContent());
+                        messagePart.plainTextContent().replace("\"", "\\\""));
         query.insertion(part,
                         "nie:mimeType",
                         messagePart.contentType());
@@ -741,15 +757,7 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
 
     writeCallProperties(query, event, false);
 
-    QString callGroupRemoteId;
-    QString number = normalizePhoneNumber(event.remoteUid());
-    if (number.isEmpty()) {
-        callGroupRemoteId = event.remoteUid();
-    } else {
-        callGroupRemoteId = number.right(phoneNumberMatchLength());
-    }
-
-    QUrl channelUri(QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId));
+    QUrl channelUri = q->makeCallGroupURI(event);
     QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
     QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
     query.insertionSilent(
@@ -776,6 +784,11 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
                         .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
                         .arg(channelUri.toString())
                         .arg(eventDate));
+    } else {
+        // ensure existence of nmo:lastSuccessfulMessageDate
+        query.insertionSilent(QString(LAT("GRAPH <%1> { <%2> nmo:lastSuccessfulMessageDate \"1970-01-01T00:00:00Z\"^^xsd:dateTime }"))
+                        .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
+                        .arg(channelUri.toString()));
     }
 
     query.insertion(eventSubject, "nmo:communicationChannel", channelUri);
@@ -797,6 +810,83 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
                     "nmo:communicationChannel",
                     channelUrl,
                     modify);
+}
+
+void TrackerIOPrivate::updateGroupTimestamps(CommHistory::Event event)
+{
+    qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
+
+    if (event.type() != Event::CallEvent && event.groupId() == -1) return;
+
+    QDateTime lastMessageDate;
+    QDateTime lastSuccessfulMessageDate;
+    QString groupUri;
+    QString timeProperty;
+    if (event.type() == Event::CallEvent) {
+        groupUri = q->makeCallGroupURI(event);
+        timeProperty = QLatin1String("nmo:sentDate");
+    } else {
+        groupUri = Group::idToUrl(event.groupId()).toString();
+        timeProperty = QLatin1String("nmo:receivedDate");
+    }
+
+    if (groupUri.isEmpty()) return;
+
+    // get last message time
+    QString query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> ; "
+                                "%2 ?date . } "
+                                " ORDER BY DESC(?date) LIMIT 1"))
+        .arg(groupUri)
+        .arg(timeProperty);
+
+    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(query)));
+    if (runBlockedQuery(result.data())) {
+        if (result->first()) {
+            lastMessageDate = result->value(0).toDateTime();
+            qDebug() << "lastMessageDate" << lastMessageDate;
+        } else {
+            // delete empty call group
+            query = QString(LAT("DELETE { <%1> a rdfs:Resource }")).arg(groupUri);
+            result.reset(connection().exec(QSparqlQuery(query, QSparqlQuery::DeleteStatement)));
+            runBlockedQuery(result.data());
+            return;
+        }
+    } else {
+        qWarning() << Q_FUNC_INFO << "error getting last message date of group:"
+                   << result->lastError().message();
+    }
+
+    // get last successful message time
+    query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> . "
+                        "?lastMessage %2 ?date . "
+                        "FILTER(nmo:isSent(?lastMessage) = true || "
+                        "nmo:isAnswered(?lastMessage) = true) "
+                        "} ORDER BY DESC(?date) LIMIT 1"))
+        .arg(groupUri)
+        .arg(timeProperty);
+
+    result.reset(connection().exec(QSparqlQuery(query)));
+    if (runBlockedQuery(result.data()) && result->first()) {
+        lastSuccessfulMessageDate = result->value(0).toDateTime();
+        qDebug() << "lastSuccessfulMessageDate" << lastSuccessfulMessageDate;
+    }
+
+    UpdateQuery update;
+    if (lastMessageDate.isValid()) {
+        update.insertion(groupUri,
+                         "nmo:lastMessageDate",
+                         lastMessageDate,
+                         true);
+    }
+
+    if (lastSuccessfulMessageDate.isValid()) {
+        update.insertion(groupUri,
+                         "nmo:lastSuccessfulMessageDate",
+                         lastSuccessfulMessageDate,
+                         true);
+    }
+
+    handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::addEvent(Event &event)
@@ -1128,7 +1218,7 @@ bool TrackerIO::moveEvent(Event &event, int groupId)
 
 bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 {
-    qDebug() << Q_FUNC_INFO << event.id() << backgroundThread;
+    qDebug() << Q_FUNC_INFO << event.id() << event.localUid() << event.remoteUid() << backgroundThread;
 
     if (event.type() == Event::MMSEvent) {
         if (d->isLastMmsEvent(event.messageToken())) {
@@ -1155,10 +1245,23 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 
     QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
     deleteQuery.bindValue(LAT("uri"), event.url());
+
     if (event.type() == Event::CallEvent)
         deleteQuery.bindValue(LAT("graph"), COMMHISTORY_GRAPH_CALL_CHANNEL);
 
-    return d->handleQuery(deleteQuery);
+    if (d->m_pTransaction) {
+        qDebug() << Q_FUNC_INFO << "addSignal";
+        d->m_pTransaction->addSignal(false, d, "updateGroupTimestamps",
+                                     Q_ARG(CommHistory::Event, event));
+        return d->handleQuery(deleteQuery);
+    }
+
+    if (d->handleQuery(deleteQuery)) {
+        d->updateGroupTimestamps(event);
+        return true;
+    }
+
+    return false;
 }
 
 bool TrackerIO::getGroup(int id, Group &group)
@@ -1434,8 +1537,7 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         query += QString(LAT("DELETE { ?chan a rdfs:Resource } WHERE { "
                              "GRAPH ?:graph { "
                              "?chan a nmo:CommunicationChannel . "
-                             "}"))
-            .arg(COMMHISTORY_GRAPH_CALL_CHANNEL);
+                             "} }"));
         break;
     case Event::MMSEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
@@ -1447,6 +1549,8 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
 
     QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
     deleteQuery.bindValue(LAT("eventType"), eventTypeUrl);
+    if (eventType == Event::CallEvent)
+        deleteQuery.bindValue(LAT("graph"), COMMHISTORY_GRAPH_CALL_CHANNEL);
 
     return d->handleQuery(deleteQuery);
 }

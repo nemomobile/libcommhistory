@@ -307,8 +307,8 @@ void GroupModelTest::getGroups()
     group.setRemoteUids(QStringList() << "td@localhost");
     group.setId(-1);
     QVERIFY(model.addGroup(group));
-    loop->exec();
     groupsCommitted.clear();
+    loop->exec();
     QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);
@@ -319,8 +319,8 @@ void GroupModelTest::getGroups()
     group.setRemoteUids(QStringList() << "55566601234567");
     group.setId(-1);
     QVERIFY(model.addGroup(group));
-    loop->exec();
     groupsCommitted.clear();
+    loop->exec();
     QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 3);
@@ -349,8 +349,8 @@ void GroupModelTest::getGroups()
     group.setRemoteUids(QStringList() << "no@match");
     group.setId(-1);
     QVERIFY(model.addGroup(group));
-    loop->exec();
     groupsCommitted.clear();
+    loop->exec();
     QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);
@@ -369,8 +369,8 @@ void GroupModelTest::getGroups()
     group.setRemoteUids(QStringList() << "+99966601234567");
     group.setId(-1);
     QVERIFY(model.addGroup(group));
-    loop->exec();
     groupsCommitted.clear();
+    loop->exec();
     QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);
@@ -380,8 +380,8 @@ void GroupModelTest::getGroups()
     group.setRemoteUids(QStringList() << "+99966607654321");
     group.setId(-1);
     QVERIFY(model.addGroup(group));
-    loop->exec();
     groupsCommitted.clear();
+    loop->exec();
     QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);

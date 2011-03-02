@@ -79,7 +79,7 @@ void ModelWatcher::setModel(CommHistory::EventModel *model)
     connect(m_model, SIGNAL(modelReady(bool)), this, SLOT(modelReadySlot(bool)));
 }
 
-void ModelWatcher::waitForSignals(int minCommitted, int minAdded)
+void ModelWatcher::waitForSignals(int minCommitted, int minAdded, int minDeleted)
 {
     m_addedCount = 0;
     m_updatedCount = 0;
@@ -88,6 +88,7 @@ void ModelWatcher::waitForSignals(int minCommitted, int minAdded)
 
     m_minCommitCount = minCommitted;
     m_minAddCount = minAdded;
+    m_minDeleteCount = minDeleted;
 
     m_eventsCommitted = (m_minCommitCount == -1 ? true : false);
     m_dbusSignalReceived = false;
@@ -161,10 +162,13 @@ void ModelWatcher::eventDeletedSlot(int id)
     m_deletedCount++;
     m_lastDeleted = id;
 
-    if (m_eventsCommitted)
-        m_loop->exit(0);
-    else
-        m_dbusSignalReceived = true;
+    if (!m_minDeleteCount
+        || (m_minDeleteCount && m_deletedCount >= m_minDeleteCount)) {
+        if (m_eventsCommitted)
+            m_loop->exit(0);
+        else
+            m_dbusSignalReceived = true;
+    }
 }
 
 void ModelWatcher::modelReadySlot(bool success)
