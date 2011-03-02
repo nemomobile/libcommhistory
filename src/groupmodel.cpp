@@ -323,17 +323,22 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
         }
         if (!g.isValid()) continue;
 
-        qDebug() << __PRETTY_FUNCTION__ << ": updating group" << g.id();
-        g.setLastEventId(event.id());
-        if(event.type() == Event::MMSEvent) {
-            g.setLastMessageText(event.subject().isEmpty() ? event.freeText() : event.subject());
-        } else {
-            g.setLastMessageText(event.freeText());
+        if (event.endTime() >= g.endTime()) {
+            qDebug() << __PRETTY_FUNCTION__ << ": updating group" << g.id();
+            g.setLastEventId(event.id());
+            if(event.type() == Event::MMSEvent) {
+                g.setLastMessageText(event.subject().isEmpty() ? event.freeText() : event.subject());
+            } else {
+                g.setLastMessageText(event.freeText());
+            }
+            g.setLastVCardFileName(event.fromVCardFileName());
+            g.setLastVCardLabel(event.fromVCardLabel());
+            g.setLastEventStatus(event.status());
+            g.setLastEventType(event.type());
+            g.setEndTime(event.endTime());
+
+            sortNeeded = sortNeeded || row != 0;
         }
-        g.setLastVCardFileName(event.fromVCardFileName());
-        g.setLastVCardLabel(event.fromVCardLabel());
-        g.setLastEventStatus(event.status());
-        g.setLastEventType(event.type());
 
         bool found = false;
         QString phoneNumber = normalizePhoneNumber(event.remoteUid());
@@ -356,7 +361,6 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
             g.setRemoteUids(uids);
         }
 
-        g.setEndTime(event.endTime());
         g.setTotalMessages(g.totalMessages() + 1);
         if (!event.isRead()) {
             g.setUnreadMessages(g.unreadMessages() + 1);
@@ -366,10 +370,6 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
         }
         groups.replace(row, g);
         changedRows.append(row);
-
-        if (row != 0) {
-            sortNeeded = true;
-        }
     }
 
     foreach (int row, changedRows) {
