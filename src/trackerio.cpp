@@ -599,7 +599,8 @@ void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
         message.property<nmo::communicationChannel>(innerChannel);
         message.property<nmo::isDeleted>(LiteralValue(false));
         lastMsgSubsel
-            .orderBy(message.property<nmo::sentDate>(), RDFSelect::Descending)
+            .orderBy(message.property<nmo::receivedDate>(), RDFSelect::Descending)
+            .orderBy(message.filter(LAT("tracker:id")), RDFSelect::Descending)
             .limit(1);
 
         innerSubsel.addColumnAs(lastMsgSubsel.asExpression(), lastMessage);
