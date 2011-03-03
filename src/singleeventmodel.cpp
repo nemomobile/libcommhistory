@@ -88,7 +88,7 @@ bool SingleEventModel::getEventByTokens(const QString &token,
         pattern << QString(QLatin1String("{ %2 nmo:messageId \"%1\" }")).arg(token);
     }
     if (!mmsId.isEmpty()) {
-        pattern << QString(QLatin1String("{ %2 nmo:mmsId \"%1\" }")).arg(mmsId);
+        pattern << QString(QLatin1String("{ %2 nmo:mmsId \"%1\"; nmo:isSent true }")).arg(mmsId);
     }
 
     query.addPattern(pattern.join(QLatin1String("UNION"))).variable(Event::Id);
