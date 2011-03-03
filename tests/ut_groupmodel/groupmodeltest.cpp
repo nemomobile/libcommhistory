@@ -400,17 +400,32 @@ void GroupModelTest::updateGroups()
     EventModel model;
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
 
-    addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
+    int eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                  groupModel.group(groupModel.index(0, 0)).id(), "added to group");
     QVERIFY(waitSignal(eventsCommitted, 5000));
     eventsCommitted.clear();
     Group group = groupModel.group(groupModel.index(0, 0));
     Event event;
     QVERIFY(group.lastEventId() != -1);
-    QVERIFY(model.trackerIO().getEvent(group.lastEventId(), event));
-    QCOMPARE(group.lastEventId(), event.id());
+    QVERIFY(model.trackerIO().getEvent(eventId, event));
+    QCOMPARE(group.lastEventId(), eventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
     QCOMPARE(group.endTime().toTime_t(), event.endTime().toTime_t());
+
+    // add older event
+    int lastEventId = eventId;
+    uint lastEndTime = group.endTime().toTime_t();
+    eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
+                 groupModel.group(groupModel.index(0, 0)).id(), "older added to group",
+                 false, false, QDateTime::currentDateTime().addMonths(-1));
+    QVERIFY(waitSignal(eventsCommitted, 5000));
+    eventsCommitted.clear();
+    group = groupModel.group(groupModel.index(0, 0));
+    QVERIFY(group.lastEventId() != eventId);
+    QVERIFY(model.trackerIO().getEvent(eventId, event));
+    QCOMPARE(group.lastEventId(), lastEventId);
+    QCOMPARE(group.lastMessageText(), QString("added to group"));
+    QCOMPARE(group.endTime().toTime_t(), lastEndTime);
 
     // add new SMS event for second group, check for resorted list, correct contents and date
     sleep(1);
