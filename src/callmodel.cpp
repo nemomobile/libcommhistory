@@ -376,6 +376,8 @@ void CallModelPrivate::addToModel( Event &event )
                 EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
                 // replace with new event
                 int eventCount = matchingItem->event().eventCount();
+                if (eventCount < 1)
+                    eventCount = 1;
                 matchingItem->setEvent(event);
                 matchingItem->event().setEventCount(eventCount + 1);
 

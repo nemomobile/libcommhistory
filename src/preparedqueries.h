@@ -128,8 +128,8 @@
 "      WHERE {" \
 "        ?lastCall a nmo:Call ." \
 "        ?lastCall nmo:communicationChannel ?channel ." \
-"        ?lastCall nmo:sentDate ?lastDate ." \
-"      }" \
+"        ?lastCall nmo:sentDate ?lastCallDate ." \
+"      } ORDER BY DESC(?lastCallDate) DESC(tracker:id(?lastCall))" \
 "    ) AS ?lastCall" \
 "    ( SELECT COUNT(?missed)" \
 "      WHERE {" \
