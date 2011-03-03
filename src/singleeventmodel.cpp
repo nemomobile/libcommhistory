@@ -94,6 +94,7 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     if (!mmsId.isEmpty()) {
         pattern = pattern.union_();
         pattern.variable(message).property<nmo::mmsId>() = LiteralValue(mmsId);
+        message.property<nmo::isSent>(LiteralValue(true));
     }
 
     if (groupId > -1)
