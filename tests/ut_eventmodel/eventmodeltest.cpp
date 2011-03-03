@@ -705,8 +705,6 @@ void EventModelTest::testMessagePartsQuery_data()
 void EventModelTest::testMessagePartsQuery()
 {
     QFETCH(bool, useThread);
-    QString threadPrefix;
-    if (useThread) threadPrefix = "thread_";
 
     EventModel model;
     watcher.setModel(&model);
@@ -743,7 +741,7 @@ void EventModelTest::testMessagePartsQuery()
     part3.setContentId("catphoto");
     part3.setContentType("image/jpeg");
     part3.setContentSize(101000);
-    QString fileName = threadPrefix + "catphoto2.jpg";
+    QString fileName = "catphoto2.jpg";
     part3.setContentLocation(ATT_PATH + fileName);
 
 #define CREATE_FILE(messageToken, filename) {\
@@ -778,7 +776,7 @@ void EventModelTest::testMessagePartsQuery()
     part5.setContentId("dogphoto2");
     part5.setContentType("image/jpeg");
     part5.setContentSize(202000);
-    fileName = threadPrefix + "dogphoto2.jpg";
+    fileName = "dogphoto2.jpg";
     part5.setContentLocation(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN2", fileName);
@@ -799,7 +797,7 @@ void EventModelTest::testMessagePartsQuery()
     part6.setContentId("dogphoto3");
     part6.setContentType("image/jpeg");
     part6.setContentSize(203000);
-    fileName = threadPrefix + "dogphoto3.jpg";
+    fileName = "dogphoto3.jpg";
     part6.setContentLocation(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN3", fileName)

@@ -501,7 +501,7 @@ void TrackerIO::prepareMessagePartQuery(RDFSelect &query, RDFVariable &message)
     query.addColumn(LAT("contentType"), part.function<nie::mimeType>());
     query.addColumn(LAT("characterSet"), part.function<nie::characterSet>());
     query.addColumn(LAT("contentSize"), part.function<nie::contentSize>());
-    query.addColumn(LAT("contentLocation"), part.function<nie::url>());
+    query.addColumn(LAT("contentLocation"), part.function<nfo::fileName>());
     query.orderBy(part.function<nmo::contentId>(), RDFSelect::Ascending);
 }
 
@@ -1190,17 +1190,9 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
                         nie::contentSize::iri(),
                         LiteralValue(messagePart.contentSize()));
 
-        /* nie::url is an inverse functional property (i.e. unique), so if we have several message parts with
-           empty content location then it causes problems in tracker because of this */
-        if (!messagePart.contentLocation().isEmpty()) {
-            query.insertion(part,
-                            nie::url::iri(),
-                            LiteralValue(messagePart.contentLocation()));
-        }
-
         query.insertion(part,
                         nfo::fileName::iri(),
-                        LiteralValue(QFileInfo(messagePart.contentLocation()).fileName()));
+                        LiteralValue(messagePart.contentLocation()));
 
         // TODO: how exactly should we handle these?
         if (messagePart.contentType().startsWith(LAT("image/"))) {
