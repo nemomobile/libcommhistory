@@ -40,7 +40,6 @@
 #include "catcher.h"
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 const char *remoteUids[] = {
     "user@remotehost",
