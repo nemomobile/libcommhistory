@@ -675,9 +675,6 @@ QUrl TrackerIOPrivate::findLocalContact(UpdateQuery &query,
         contact = m_imContactCache[uri];
     } else {
         contact = m_service->createUniqueIri(LAT("contactLocal"));
-        query.insertion(uri,
-                        rdf::type::iri(),
-                        nco::IMAddress::iri());
         query.insertion(contact,
                         rdf::type::iri(),
                         nco::Contact::iri());
