@@ -172,6 +172,8 @@ QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &re
 QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
                                            const QString &accountPath)
 {
+    Q_UNUSED(query);
+
     QString contact;
     QUrl uri = QString(LAT("telepathy:%1")).arg(accountPath);
     if (m_contactCache.contains(uri)) {
@@ -179,9 +181,6 @@ QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
     } else {
         contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
                   .arg(uri.toString());
-        query.insertionRaw(uri,
-                           "rdf:type",
-                           LAT("nco:IMAddress"));
 
         m_contactCache.insert(uri, contact);
     }
