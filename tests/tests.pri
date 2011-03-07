@@ -23,7 +23,7 @@
 QT          += testlib dbus
 TEMPLATE     = app
 INCLUDEPATH += . ../../src ..
-LIBS += ../../src/libcommhistory.a -lqttracker
+LIBS += ../../src/libcommhistory.a
 DEPENDPATH  += $${INCLUDEPATH}
 
 CONFIG += qtsparql
