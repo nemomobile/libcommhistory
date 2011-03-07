@@ -376,10 +376,10 @@ void CallModelPrivate::addToModel( Event &event )
                 EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
                 // replace with new event
                 int eventCount = matchingItem->event().eventCount();
-                if (eventCount < 1)
-                    eventCount = 1;
+                if (eventCount < 0)
+                    eventCount = 0;
+                event.setEventCount(event.isMissedCall() ? eventCount + 1 : 0);
                 matchingItem->setEvent(event);
-                matchingItem->event().setEventCount(eventCount + 1);
 
                 // move to top if not there already
                 if (matchingRow != 0) {
