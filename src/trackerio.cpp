@@ -26,6 +26,8 @@
 #include <QSparqlResultRow>
 #include <QSparqlError>
 
+#include <QFileInfo>
+
 #include "commonutils.h"
 #include "event.h"
 #include "group.h"
@@ -42,7 +44,6 @@
 #include "trackerio.h"
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 #define LAT(STR) QLatin1String(STR)
 

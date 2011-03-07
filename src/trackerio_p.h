@@ -28,6 +28,9 @@
 #include <QHash>
 #include <QThreadStorage>
 #include <QSparqlQuery>
+#include <QQueue>
+#include <QThread>
+#include <QThreadStorage>
 
 #include "idsource.h"
 #include "event.h"

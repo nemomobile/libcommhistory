@@ -34,8 +34,6 @@
 #include "trackerio.h"
 #include "trackerio_p.h"
 
-using namespace SopranoLive;
-
 using namespace CommHistory;
 
 QueryRunner::QueryRunner(TrackerIO *trackerIO, QObject *parent)
