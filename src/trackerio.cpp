@@ -26,8 +26,6 @@
 #include <QSparqlResultRow>
 #include <QSparqlError>
 
-#include <QFileInfo>
-
 #include "commonutils.h"
 #include "event.h"
 #include "group.h"
@@ -124,7 +122,7 @@ QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
               "nie:mimeType(?part) "
               "nie:characterSet(?part) "
               "nie:contentSize(?part) "
-              "nie:url(?part) "
+              "nfo:fileName(?part) "
             "WHERE { "
               "?message  nmo:mmsHasContent [nie:hasPart ?part] . "
               "?part nmo:contentId ?contentId "
@@ -623,13 +621,10 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         query.insertion(part,
                         "nie:contentSize",
                         messagePart.contentSize());
-        if (!messagePart.contentLocation().isEmpty())
-            query.insertion(part,
-                            "nie:url",
-                            messagePart.contentLocation());
+
         query.insertion(part,
                         "nfo:fileName",
-                        QFileInfo(messagePart.contentLocation()).fileName());
+                        messagePart.contentLocation());
 
         // set nie:InformationElement properties
         query.insertion(part,
