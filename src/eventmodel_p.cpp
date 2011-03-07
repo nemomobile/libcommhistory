@@ -251,14 +251,16 @@ void EventModelPrivate::modifyInModel(Event &event)
     Q_Q(EventModel);
     qDebug() << __PRETTY_FUNCTION__ << event.id();
 
-    if (event.contactId() <= 0) {
+    if (!event.validProperties().contains(Event::ContactId)) {
         setContactFromCache(event);
     }
 
     QModelIndex index = findEvent(event.id());
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-        item->setEvent(event);
+        Event oldEvent = item->event();
+        oldEvent.copyValidProperties(event);
+        item->setEvent(oldEvent);
         QModelIndex bottom = q->createIndex(index.row(),
                                             EventModel::NumberOfColumns - 1,
                                             index.internalPointer());

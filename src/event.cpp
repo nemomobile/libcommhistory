@@ -117,6 +117,13 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.messageParts() << event.toList() << event.ccList() << event.bccList()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
              << event.validityPeriod();
+
+    // pass valid properties
+    argument.beginArray(qMetaTypeId<int>());
+    foreach (int e, event.validProperties())
+        argument << e;
+    argument.endArray();
+
     argument.endStructure();
     return argument;
 }
@@ -137,6 +144,15 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
              >> p.messageParts >> p.toList >> p.ccList >> p.bccList
              >> rstatus >> p.reportRead >> p.reportReadRequested
              >> p.validityPeriod;
+
+    //read valid properties
+    argument.beginArray();
+    while (!argument.atEnd()) {
+        int vp;
+        argument >> vp;
+        p.validProperties.insert((Event::Property)vp);
+    }
+    argument.endArray();
     argument.endStructure();
 
     event.setId(p.id);
@@ -182,6 +198,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
 
+    event.setValidProperties(p.validProperties);
     event.resetModifiedProperties();
 
     return argument;
@@ -845,4 +862,129 @@ QString Event::toString() const
                    QString::number(status())          % QChar('|') %
                    QString::number(reportDelivery())  % QChar('|') %
                    QString::number(messageParts().count()));
+}
+
+void Event::copyValidProperties(const Event &other)
+{
+    foreach(Property p, other.validProperties()) {
+        switch (p) {
+        case Id:
+            setId(other.id());
+            break;
+        case Type:
+            setType(other.type());
+        case StartTime:
+            setStartTime(other.startTime());
+            break;
+        case EndTime:
+            setEndTime(other.endTime());
+            break;
+        case Direction:
+            setDirection(other.direction());
+            break;
+        case IsDraft:
+            setIsDraft(other.isDraft());
+            break;
+        case IsRead:
+            setIsRead(other.isRead());
+            break;
+        case IsMissedCall:
+            setIsMissedCall(other.isMissedCall());
+            break;
+        case IsEmergencyCall:
+            setIsEmergencyCall(other.isEmergencyCall());
+            break;
+        case Status:
+            setStatus(other.status());
+            break;
+        case BytesReceived:
+            setBytesReceived(other.bytesReceived());
+            break;
+        case LocalUid:
+            setLocalUid(other.localUid());
+            break;
+        case RemoteUid:
+            setRemoteUid(other.remoteUid());
+            break;
+        case ContactId:
+            setContactId(other.contactId());
+            break;
+        case ContactName:
+            setContactName(other.contactName());
+            break;
+        case ParentId:
+            setParentId(other.parentId());
+            break;
+        case Subject:
+            setSubject(other.subject());
+            break;
+        case FreeText:
+            setFreeText(other.freeText());
+            break;
+        case GroupId:
+            setGroupId(other.groupId());
+            break;
+        case MessageToken:
+            setMessageToken(other.messageToken());
+            break;
+        case LastModified:
+            setLastModified(other.lastModified());
+            break;
+        case EventCount:
+            setEventCount(other.eventCount());
+            break;
+        case FromVCardFileName:
+        case FromVCardLabel:
+            setFromVCard(other.fromVCardFileName(), other.fromVCardLabel());
+            break;
+        case Encoding:
+            setEncoding(other.encoding());
+            break;
+        case CharacterSet:
+            setCharacterSet(other.characterSet());
+            break;
+        case Language:
+            setLanguage(other.language());
+            break;
+        case IsDeleted:
+            // ignore, not in use
+            break;
+        case ReportDelivery:
+            setReportDelivery(other.reportDelivery());
+            break;
+        case ValidityPeriod:
+            setValidityPeriod(other.validityPeriod());
+            break;
+        case ContentLocation:
+            setContentLocation(other.contentLocation());
+            break;
+        case MessageParts:
+            setMessageParts(other.messageParts());
+            break;
+        case Cc:
+            setCcList(other.ccList());
+            break;
+        case Bcc:
+            setBccList(other.bccList());
+            break;
+        case ReadStatus:
+            setReadStatus(other.readStatus());
+            break;
+        case ReportRead:
+            setReportRead(other.reportRead());
+            break;
+        case ReportReadRequested:
+            setReportReadRequested(other.reportReadRequested());
+            break;
+        case MmsId:
+            setMmsId(other.mmsId());
+            break;
+        case To:
+            setToList(other.toList());
+            break;
+        default:
+            qCritical() << "Unknown event property";
+            Q_ASSERT(false);
+        }
+    }
 }

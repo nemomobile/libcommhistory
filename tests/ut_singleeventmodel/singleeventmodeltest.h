@@ -13,6 +13,7 @@ private slots:
     void getEventByTokens();
     void contactMatching_data();
     void contactMatching();
+    void updateStatus();
     void cleanupTestCase();
 };
 

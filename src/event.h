@@ -418,6 +418,13 @@ public:
 
     bool resetModifiedProperty(Event::Property property);
 
+    /*!
+     * \brief Copy all valid properties from other event
+     *
+     * \param another event
+     */
+    void copyValidProperties(const Event &other);
+
 private:
     QSharedDataPointer<EventPrivate> d;
 };

@@ -237,6 +237,80 @@ void SingleEventModelTest::contactMatching()
     deleteTestContact(contactId);
 }
 
+void SingleEventModelTest::updateStatus()
+{
+    SingleEventModel model;
+    watcher.setModel(&model);
+
+    SingleEventModel observer;
+    ModelWatcher watcherObserver;
+    watcherObserver.setModel(&observer);
+
+    Event event;
+    event.setType(Event::SMSEvent);
+    event.setDirection(Event::Outbound);
+    event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
+    event.setGroupId(group1.id());
+    event.setFreeText("freeText");
+    event.setStartTime(QDateTime::currentDateTime());
+    event.setEndTime(QDateTime::currentDateTime());
+    event.setRemoteUid("123456");
+    event.setMessageToken("messageTokenB");
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QVERIFY(event.id() != -1);
+
+    CommHistory::Event::PropertySet props = CommHistory::Event::PropertySet()
+                                                      << CommHistory::Event::Id
+                                                      << CommHistory::Event::Direction
+                                                      << CommHistory::Event::Status
+                                                      << CommHistory::Event::GroupId
+                                                      << CommHistory::Event::MessageToken
+                                                      << CommHistory::Event::ReportDelivery
+                                                      << CommHistory::Event::MmsId;
+    model.setPropertyMask(props);
+    QVERIFY(model.getEventByUri(event.url()));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    QCOMPARE(model.rowCount(), 1);
+
+    Event modelEvent = model.event(model.index(0, 0));
+
+    QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::Status));
+    QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::MessageToken));
+    QVERIFY(!modelEvent.validProperties().contains(CommHistory::Event::FreeText));
+    QVERIFY(!modelEvent.validProperties().contains(CommHistory::Event::ContactId));
+
+    QCOMPARE(event.status(), modelEvent.status());
+    QCOMPARE(event.messageToken(), modelEvent.messageToken());
+
+
+    // init observer model with the same event and all properties
+    QVERIFY(observer.getEventByUri(event.url()));
+    QVERIFY(watcherObserver.waitForModelReady(5000));
+
+    QCOMPARE(observer.rowCount(), 1);
+
+    Event observedEvent = observer.event(observer.index(0, 0));
+
+    QVERIFY(compareEvents(event, observedEvent));
+
+    // modify event with new status only
+    modelEvent.setStatus(Event::SentStatus);
+    QVERIFY(model.modifyEvent(modelEvent));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.updatedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+
+    //check observer model
+    QTest::qWait(100);
+    observedEvent = observer.event(observer.index(0, 0));
+
+    QCOMPARE(observedEvent.freeText(), event.freeText());
+    QCOMPARE(observedEvent.status(), Event::SentStatus);
+}
+
 void SingleEventModelTest::cleanupTestCase()
 {
 }

@@ -287,6 +287,8 @@ QString patternForProperty(Event::Property p)
                 << QLatin1String("a nmo:Message .");
         break;
     case Event::Type:
+    case Event::StartTime:
+    case Event::EndTime:
     case Event::Direction:
     case Event::IsDraft:
     case Event::IsRead:
@@ -314,8 +316,6 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
-    case Event::StartTime:
-    case Event::EndTime:
 /*
         pattern << eventPropertyName(Event::Id)
                 << ontologyProperty(p)
@@ -359,47 +359,46 @@ public:
     EventsQueryPrivate(EventsQuery *parent,
                        const Event::PropertySet &propertySet) :
             q(parent),
-            distinct(false),
-            variables(propertySet.toList())
+            distinct(false)
     {
-        if (!propertySet.contains(Event::Id))
-            variables.prepend(Event::Id);
-        // localUid/remoteUid should be togeather forever
-        if (!propertySet.contains(Event::LocalUid)
-            && propertySet.contains(Event::RemoteUid))
-            variables.append(Event::LocalUid);
-        if (!propertySet.contains(Event::RemoteUid)
-            && propertySet.contains(Event::LocalUid))
-            variables.append(Event::RemoteUid);
+        Event::PropertySet finalProperties(propertySet);
+
+        if (!finalProperties.contains(Event::Id))
+            finalProperties.insert(Event::Id);
         // no contactName without contactId
-        if (!propertySet.contains(Event::ContactId)
-            && propertySet.contains(Event::ContactName))
-            variables.append(Event::ContactId);
-        // no contactId without contactName
-        if (!propertySet.contains(Event::ContactName)
-            && propertySet.contains(Event::ContactId))
-            variables.append(Event::ContactName);
-        // no contactId withouth localUid/remoteUid
-        if (!propertySet.contains(Event::LocalUid)
-            && propertySet.contains(Event::ContactId))
-            variables.append(Event::LocalUid);
-        if (!propertySet.contains(Event::RemoteUid)
-            && propertySet.contains(Event::ContactId))
-            variables.append(Event::RemoteUid);
+        if (finalProperties.contains(Event::ContactId) !=
+            finalProperties.contains(Event::ContactName)) {
+            finalProperties.insert(Event::ContactId);
+            finalProperties.insert(Event::ContactName);
+        }
+        // localUid/remoteUid should be togeather forever
+        if (finalProperties.contains(Event::LocalUid) !=
+            finalProperties.contains(Event::RemoteUid)
+            // no contactId withouth localUid/remoteUid
+            || finalProperties.contains(Event::ContactId)) {
+            finalProperties.insert(Event::LocalUid);
+            finalProperties.insert(Event::RemoteUid);
+        }
+
         // vcardFilename and label should be togeather
-        if (!propertySet.contains(Event::FromVCardFileName)
-            && propertySet.contains(Event::FromVCardLabel))
-            variables.append(Event::FromVCardFileName);
-        if (!propertySet.contains(Event::FromVCardLabel)
-            && propertySet.contains(Event::FromVCardFileName))
-            variables.append(Event::FromVCardLabel);
+        if (finalProperties.contains(Event::FromVCardFileName) !=
+            finalProperties.contains(Event::FromVCardLabel)) {
+            finalProperties.insert(Event::FromVCardFileName);
+            finalProperties.insert(Event::FromVCardLabel);
+        }
 
         // direction is needed to set the following properties correctly
-        if (!propertySet.contains(Event::Direction)
-            && (propertySet.contains(Event::LocalUid)
-                || propertySet.contains(Event::RemoteUid)
-                || propertySet.contains(Event::Status)))
-            variables.append(Event::Direction);
+        if (!finalProperties.contains(Event::Direction)
+            && (finalProperties.contains(Event::LocalUid)
+                || finalProperties.contains(Event::RemoteUid)
+                || finalProperties.contains(Event::Status)))
+            finalProperties.insert(Event::Direction);
+
+        // to handle missing status, type is needed as well
+        if (finalProperties.contains(Event::Status))
+            finalProperties.insert(Event::Type);
+
+        variables = finalProperties.toList();
     }
 
     EventsQuery *q;
@@ -531,17 +530,12 @@ QString EventsQuery::query() const
     query << QLatin1String("WHERE {");
 
     /* handle a few properties separately for query purposes -
-     * take both start and end times as columns because messages are
-     * indexed by endTime (receivedDate) and calls by startTime
-     * (sentDate).
      */
     query << QLatin1String(
-        "SELECT ?message ?startTime ?endTime ?fromMedium ?toMedium "
+        "SELECT ?message ?fromMedium ?toMedium "
         "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
         "WHERE {"
-        "?message nmo:from ?from ; nmo:to ?to ; "
-        "nmo:receivedDate ?endTime ; "
-        "nmo:sentDate ?startTime . "
+        "?message nmo:from ?from ; nmo:to ?to . "
         "?from nco:hasContactMedium ?fromMedium . "
         "?to nco:hasContactMedium ?toMedium . ");
 
