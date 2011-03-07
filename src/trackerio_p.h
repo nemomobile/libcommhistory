@@ -25,7 +25,6 @@
 
 #include <QObject>
 #include <QUrl>
-#include <QtTracker/Tracker>
 #include <QHash>
 #include <QThreadStorage>
 #include <QSparqlQuery>
