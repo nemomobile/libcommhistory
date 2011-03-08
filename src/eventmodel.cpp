@@ -873,7 +873,7 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             }
             if (event.modifiedProperties().contains(Event::IsRead)
                 && event.isRead()) {
-                group.setUnreadMessages(group.unreadMessages() - 1);
+                group.setUnreadMessages(qMax(group.unreadMessages() - 1, 0));
             }
             if (event.modifiedProperties().contains(Event::FromVCardFileName)
                 || event.modifiedProperties().contains(Event::FromVCardLabel)) {
