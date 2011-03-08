@@ -487,6 +487,7 @@ QString EventsQuery::query() const
 
     // generate variable names
     QStringList projections;
+    QStringList subselectProjections;
     foreach(Event::Property p, d->variables) {
 
         if (p == Event::EventCount) { // runtime
@@ -498,11 +499,13 @@ QString EventsQuery::query() const
             // variable referenced in modifiers, use pattern instead of function
             QString varName = eventPropertyName(p);
             projections.append(varName);
+            subselectProjections.append(varName);
             d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
         } else if (d->parts[EventsQueryPrivate::Patterns].variables.contains(p)) {
             // TODO: varable referenced in used defined pattern and should be defined there
             QString varName = eventPropertyName(p);
             projections.append(varName);
+            subselectProjections.append(varName);
             //d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
         } else {
             QString func = functionForProperty(p);
@@ -514,6 +517,7 @@ QString EventsQuery::query() const
                 QString patterns = patternForProperty(p);
                 if (!patterns.isEmpty()) {
                     projections.append(eventPropertyName(p));
+                    subselectProjections.append(eventPropertyName(p));
                     d->parts[EventsQueryPrivate::Patterns].patterns.append(patternForProperty(p));
                 } else {
                     qDebug() << "Ignored prop" << p;
@@ -531,13 +535,13 @@ QString EventsQuery::query() const
 
     /* handle a few properties separately for query purposes -
      */
-    query << QLatin1String(
-        "SELECT ?message ?fromMedium ?toMedium "
-        "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
-        "WHERE {"
-        "?message nmo:from ?from ; nmo:to ?to . "
-        "?from nco:hasContactMedium ?fromMedium . "
-        "?to nco:hasContactMedium ?toMedium . ");
+    query << QLatin1String("SELECT ?message ?fromMedium ?toMedium ")
+          << QLatin1String("IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target ")
+          << subselectProjections.join(" ")
+          << QLatin1String("WHERE {"
+                           "?message nmo:from ?from ; nmo:to ?to . "
+                           "?from nco:hasContactMedium ?fromMedium . "
+                           "?to nco:hasContactMedium ?toMedium . ");
 
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
     query << QLatin1String("} }");
