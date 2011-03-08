@@ -243,10 +243,8 @@ void QueryRunner::readData()
 
         while (m_activeQuery.result->next()) {
             Event event;
-            if (m_activeQuery.columns.isEmpty())
-                m_activeQuery.fillEventFromModel2(event);
-            else
-                QueryResult::fillEventFromModel(m_activeQuery, event);
+
+            m_activeQuery.fillEventFromModel(event);
             events.append(event);
             ++added;
             lastReadPos = m_activeQuery.result->pos();

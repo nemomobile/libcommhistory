@@ -23,7 +23,6 @@
 #ifndef COMMHISTORY_QUERY_RESULT_H
 #define COMMHISTORY_QUERY_RESULT_H
 
-#include <QHash>
 #include <QString>
 #include <QPointer>
 #include <QSparqlQuery>
@@ -44,14 +43,11 @@ struct QueryResult {
     QueryType queryType;
     Event::PropertySet propertyMask;
     QPointer<QSparqlResult> result;
-    // Column mapping by header
-    QHash<QString, int> columns;
     // for message part queries
     int eventId;
     QList<Event::Property> properties;
 
-    static void fillEventFromModel(QueryResult &result, Event &event);
-    void fillEventFromModel2(Event &event);
+    void fillEventFromModel(Event &event);
     void fillGroupFromModel(Group &group);
     void fillMessagePartFromModel(MessagePart &part);
     void fillCallGroupFromModel(Event &event);
