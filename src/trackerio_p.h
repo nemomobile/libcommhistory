@@ -34,6 +34,7 @@
 
 #include "idsource.h"
 #include "event.h"
+#include "commonutils.h"
 
 class MmsContentDeleter;
 class QSparqlConnection;
@@ -78,7 +79,9 @@ public:
                              const QString &remoteId);
     QString findRemoteContact(UpdateQuery &query,
                               const QString &localUid,
-                              const QString &remoteUid);
+                              const QString &remoteUid,
+                              PhoneNumberNormalizeFlags normalizeFlags
+                              = NormalizeFlagRemovePunctuation);
 
     /*!
      * Helper for inserting and modifying common parts of nmo:Messages.

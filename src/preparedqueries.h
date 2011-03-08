@@ -100,8 +100,14 @@
 "  ?lastCall" \
 "  ?lastDate" \
 "  nmo:receivedDate(?lastCall)" \
-"  nco:hasContactMedium(nmo:from(?lastCall))" \
-"  (SELECT nco:hasContactMedium(?lastTo) WHERE { ?lastCall nmo:to ?lastTo.})" \
+"  (SELECT tracker:coalesce(nco:imID(?from),nco:phoneNumber(?from),?from)" \
+"   WHERE {" \
+"     ?lastCall nmo:from [ nco:hasContactMedium ?from ] ." \
+"   })" \
+"  (SELECT tracker:coalesce(nco:imID(?to),nco:phoneNumber(?to),?to)" \
+"   WHERE {" \
+"     ?lastCall nmo:to [ nco:hasContactMedium ?to ] ." \
+"   })" \
 "  nmo:isSent(?lastCall)" \
 "  nmo:isAnswered(?lastCall)" \
 "  nmo:isEmergency(?lastCall)" \

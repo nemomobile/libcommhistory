@@ -110,9 +110,9 @@ QLatin1String ontologyProperty(Event::Property p)
     // the properties are always requested togeather,
     // NOTE: the mapping should be same in queryresult.cpp !!!
     case Event::LocalUid:
-        return QLatin1String("?from");
+        return QLatin1String("?fromMedium");
     case Event::RemoteUid:
-        return QLatin1String("?to");
+        return QLatin1String("?toMedium");
 //    case Event::ContactId:
 //        return QLatin1String("nmo:");
 //    case Event::ContactName:
@@ -213,9 +213,13 @@ QString functionForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
-        func << QLatin1String("nco:hasContactMedium(")
+        func << QLatin1String("tracker:coalesce(nco:imID(")
              << ontologyProperty(p)
-             << ")";
+             << QLatin1String("),nco:phoneNumber(")
+             << ontologyProperty(p)
+             << QLatin1String("),")
+             << ontologyProperty(p)
+             << QLatin1String(")");
         break;
     case Event::ContactId:
         // join all contact matches
@@ -532,12 +536,14 @@ QString EventsQuery::query() const
      * (sentDate).
      */
     query << QLatin1String(
-        "SELECT ?message ?startTime ?endTime ?from ?to "
+        "SELECT ?message ?startTime ?endTime ?fromMedium ?toMedium "
         "IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target "
         "WHERE {"
         "?message nmo:from ?from ; nmo:to ?to ; "
         "nmo:receivedDate ?endTime ; "
-        "nmo:sentDate ?startTime . ");
+        "nmo:sentDate ?startTime . "
+        "?from nco:hasContactMedium ?fromMedium . "
+        "?to nco:hasContactMedium ?toMedium . ");
 
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
     query << QLatin1String("} }");

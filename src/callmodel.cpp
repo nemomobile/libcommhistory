@@ -135,13 +135,13 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
 {
     if (sortBy == CallModel::SortByContact
-        && remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
+        && remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
         && e1.localUid() == e2.localUid())
     {
         return true;
     }
     else if (sortBy == CallModel::SortByTime
-             && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
+             && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
                  && e1.localUid() == e2.localUid()
                  && e1.direction() == e2.direction()
                  && e1.isMissedCall() == e2.isMissedCall()))

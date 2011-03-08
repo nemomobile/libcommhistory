@@ -106,7 +106,17 @@ QString TrackerIO::makeCallGroupURI(const CommHistory::Event &event)
     if (number.isEmpty()) {
         callGroupRemoteId = event.remoteUid();
     } else {
-        callGroupRemoteId = number.right(phoneNumberMatchLength());
+        // keep dial string in group uris for separate history entries
+        QString numberWithStrings = normalizePhoneNumber(event.remoteUid(),
+                                                         NormalizeFlagRemovePunctuation
+                                                         | NormalizeFlagKeepDialString);
+        if (number != numberWithStrings) {
+            QString dialString = numberWithStrings.mid(number.length());
+
+            callGroupRemoteId = number.right(phoneNumberMatchLength()) + dialString;
+        } else {
+            callGroupRemoteId = number.right(phoneNumberMatchLength());
+        }
     }
 
     return QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId);
@@ -217,20 +227,21 @@ QString TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
                                            const QString &remoteId)
 {
     QString contact;
-    QUrl phoneNumberURI;
+    QString phoneNumberURI;
 
-    QString phoneNumber = normalizePhoneNumber(remoteId);
-    phoneNumberURI = QString(LAT("tel:%1")).arg(remoteId);
+    QByteArray encoded = QUrl::toPercentEncoding(remoteId.trimmed(), "+", " ");
+    phoneNumberURI = QString(LAT("tel:%1")).arg(encoded.constData());
 
     if (m_contactCache.contains(phoneNumberURI)) {
         contact = m_contactCache[phoneNumberURI];
     } else {
         contact = QString(LAT("[rdf:type nco:Contact; nco:hasPhoneNumber <%2>]"))
-                  .arg(phoneNumberURI.toString());
+                  .arg(phoneNumberURI);
 
+        QString phoneNumber = normalizePhoneNumber(remoteId);
         query.insertionSilent(QString(LAT(
                 "<%1> rdf:type nco:PhoneNumber; nco:phoneNumber \"%2\"; maemo:localPhoneNumber \"%3\" . "))
-                        .arg(phoneNumberURI.toString())
+                        .arg(phoneNumberURI)
                         .arg(remoteId)
                         .arg(phoneNumber.right(CommHistory::phoneNumberMatchLength())));
 
@@ -242,9 +253,10 @@ QString TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
 
 QString TrackerIOPrivate::findRemoteContact(UpdateQuery &query,
                                             const QString &localUid,
-                                            const QString &remoteUid)
+                                            const QString &remoteUid,
+                                            PhoneNumberNormalizeFlags normalizeFlags)
 {
-    QString phoneNumber = normalizePhoneNumber(remoteUid);
+    QString phoneNumber = normalizePhoneNumber(remoteUid, normalizeFlags);
     if (phoneNumber.isEmpty()) {
         return findIMContact(query, localUid, remoteUid);
     } else {
@@ -702,7 +714,8 @@ void TrackerIOPrivate::addSMSEvent(UpdateQuery &query, Event &event)
     if (event.type() == Event::MMSEvent)
         writeMMSProperties(query, event, false);
 
-    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
+    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid(),
+                                              NormalizeFlagKeepDialString);
     QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
@@ -731,7 +744,8 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
                        "rdf:type",
                        LAT("nmo:Call"));
 
-    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
+    QString remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid(),
+                                              NormalizeFlagKeepDialString);
     QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
@@ -757,22 +771,22 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
     QUrl channelUri = q->makeCallGroupURI(event);
     QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
     QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
-    query.insertionSilent(
-        QString(LAT("GRAPH <%1> { "
-                    "<%2> a nmo:CommunicationChannel ;"
-                    " nmo:hasParticipant %4 ."
-                    "}"))
-        .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
-        .arg(channelUri.toString())
-        .arg(remoteContact));
 
+    query.insertionSilent(
+        QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
+        .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
+        .arg(channelUri.toString()));
+
+    query.deletion(channelUri, "nmo:hasParticipant");
     query.deletion(channelUri, "nmo:lastMessageDate");
     query.deletion(channelUri, "nie:contentLastModified");
     query.insertion(QString(LAT("GRAPH <%1> { "
-                                "<%2> nmo:lastMessageDate \"%3Z\"^^xsd:dateTime ;"
-                                " nie:contentLastModified \"%3Z\"^^xsd:dateTime . }"))
+                                "<%2> nmo:hasParticipant %3 ;"
+                                " nmo:lastMessageDate \"%4Z\"^^xsd:dateTime ;"
+                                " nie:contentLastModified \"%4Z\"^^xsd:dateTime . }"))
                     .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
                     .arg(channelUri.toString())
+                    .arg(remoteContact)
                     .arg(eventDate));
 
     if (!event.isMissedCall()) {
@@ -984,7 +998,7 @@ bool TrackerIO::addGroup(Group &group)
                            participant);
         query.insertion(channelSubject,
                         "nie:generator",
-                        phoneNumber);
+                        remoteUid);
     }
 
     query.insertion(channelSubject,
@@ -1112,7 +1126,8 @@ bool TrackerIO::modifyEvent(Event &event)
             || event.validProperties().contains(Event::RemoteUid))) {
         // TODO: allow multiple remote uids
         QString localContact = d->findLocalContact(query, event.localUid());
-        QString remoteContact = d->findRemoteContact(query, event.localUid(), event.remoteUid());
+        QString remoteContact = d->findRemoteContact(query, event.localUid(), event.remoteUid(),
+                                                     NormalizeFlagKeepDialString);
 
         if (event.direction() == Event::Outbound) {
             query.insertionRaw(event.url(),
@@ -1202,7 +1217,8 @@ bool TrackerIO::moveEvent(Event &event, int groupId)
     d->setChannel(query, event, groupId, true); // true means modify
 
     if (event.direction() == Event::Inbound) {
-        QString remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
+        QString remoteContact = d->findRemoteContact(query, QString(), event.remoteUid(),
+                                                     NormalizeFlagKeepDialString);
         query.insertionRaw(event.url(),
                            "nmo:from",
                            remoteContact,
