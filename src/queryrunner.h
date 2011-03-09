@@ -114,6 +114,8 @@ private:
 
     TrackerIO *m_pTracker;
 
+    bool m_syncMode;
+
 #ifdef DEBUG
     QTime m_timer;
 #endif

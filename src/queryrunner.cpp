@@ -165,18 +165,29 @@ void QueryRunner::startNextQueryIfReady()
         m_activeQuery = m_queries.takeFirst();
 
         qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
-        // try to put query execution to trackerIOPrivate
-        m_activeQuery.result = m_pTracker->d->connection().exec(m_activeQuery.query);
-        lastReadPos = QSparql::BeforeFirstRow;
-
-        connect(m_activeQuery.result.data(),
-                SIGNAL(dataReady(int)),
-                this, SLOT(dataReady(int)));
-        connect(m_activeQuery.result.data(),
-                SIGNAL(finished()),
-                this, SLOT(finished()));
     }
     m_mutex.unlock();
+
+    if (!m_activeQuery.query.query().isEmpty() && m_activeQuery.result.isNull()) {
+        // TODO: try to put query execution to trackerIOPrivate
+        lastReadPos = QSparql::BeforeFirstRow;
+        m_syncMode = m_streamedMode && m_pTracker->d->connection().hasFeature(QSparqlConnection::SyncExec);
+
+        if (m_syncMode) {
+            m_activeQuery.result = m_pTracker->d->connection().syncExec(m_activeQuery.query);
+
+            readData();
+        } else {
+            m_activeQuery.result = m_pTracker->d->connection().exec(m_activeQuery.query);
+
+            connect(m_activeQuery.result.data(),
+                    SIGNAL(dataReady(int)),
+                    this, SLOT(dataReady(int)));
+            connect(m_activeQuery.result.data(),
+                    SIGNAL(finished()),
+                    this, SLOT(finished()));
+        }
+    }
 }
 
 void QueryRunner::nextSlot()
@@ -339,7 +350,7 @@ void QueryRunner::finished()
         // ignore if there is no query or not all data were sent yet
         if (m_activeQuery.result.isNull()
             || (!m_activeQuery.result->isFinished()
-                || lastReadPos < m_activeQuery.result->size() - 1))
+                || (!m_syncMode && lastReadPos < m_activeQuery.result->size() - 1)))
             return;
 
         bool abort = m_activeQuery.result->hasError();
@@ -369,9 +380,9 @@ void QueryRunner::endActiveQuery()
 {
     if (m_activeQuery.result) {
         m_activeQuery.result->disconnect(this);
-        if (m_activeQuery.queryType != GenericQuery) {
+        if (m_activeQuery.queryType != GenericQuery)
             m_activeQuery.result->deleteLater();
-            m_activeQuery.result = 0;
-        }
+        m_activeQuery.result = 0;
     }
+    m_activeQuery.query.setQuery(QString());
 }
