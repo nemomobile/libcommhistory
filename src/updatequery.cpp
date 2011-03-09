@@ -21,6 +21,7 @@
 ******************************************************************************/
 
 #include <QStringBuilder>
+#include <QSparqlBinding>
 
 #include "updatequery.h"
 
@@ -104,7 +105,9 @@ void UpdateQuery::insertion(const QUrl &subject,
                             const char *predicate,
                             const QString &object,
                             bool modify) {
-    insertionRaw(subject, predicate, LAT("\"") % object % LAT("\""), modify);
+    QSparqlBinding objectBinding;
+    objectBinding.setValue(object);
+    insertionRaw(subject, predicate, objectBinding.toString(), modify);
 }
 
 void UpdateQuery::insertion(const QUrl &subject,
@@ -123,7 +126,7 @@ void UpdateQuery::insertion(const QUrl &subject,
                             bool modify) {
     insertionRaw(subject,
                  predicate,
-                 object ? LAT("\"true\"") : LAT("\"false\""),
+                 object ? LAT("true") : LAT("false"),
                  modify);
 }
 

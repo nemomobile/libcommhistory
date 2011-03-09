@@ -143,7 +143,7 @@ void EventModelTest::testAddEvent()
     sms.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     sms.setRemoteUid("123456");
-    sms.setFreeText("smstest");
+    sms.setFreeText("smstest awefawef\nawefawefaw fawefawef \tawefawefawef awefawefawef awefawef");
     QVERIFY(model.addEvent(sms));
     watcher.waitForSignals();
     QCOMPARE(watcher.committedCount(), 1);
