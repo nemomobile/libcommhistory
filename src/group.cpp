@@ -243,12 +243,12 @@ int Group::lastEventId() const
 
 int Group::contactId() const
 {
-    return (d->contactIds.size() ? d->contactIds.first() : 0);
+    return (!d->contactIds.isEmpty() ? d->contactIds.first() : 0);
 }
 
 QString Group::contactName() const
 {
-    return (d->contactNames.size() ? d->contactNames.first() : 0);
+    return (!d->contactNames.isEmpty() ? d->contactNames.first() : QString());
 }
 
 QList<int> Group::contactIds() const
