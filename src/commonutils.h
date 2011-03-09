@@ -85,7 +85,8 @@ int phoneNumberMatchLength();
  * \return Last digits of the number.
  */
 
-QString makeShortNumber(const QString &number, PhoneNumberNormalizeFlags flags);
+QString makeShortNumber(const QString &number,
+                        PhoneNumberNormalizeFlags flags = NormalizeFlagRemovePunctuation);
 
 }
 

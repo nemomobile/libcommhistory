@@ -121,7 +121,6 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
-    QString addAddress("INSERT { <%1> a %2 }");
     QString addContact(
 "INSERT { "
 " %1 "
@@ -135,14 +134,23 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     QString normal = CommHistory::normalizePhoneNumber(remoteUid);
     if (normal.isEmpty()) {
         QString uri = QString("telepathy:%1!%2").arg(localUid).arg(remoteUid);
-        addressQuery = QString(addAddress).arg(uri).arg("nco:IMAddress");
-        addAffiliation += QString("nco:hasIMAddress <%1>").arg(uri);
+        addressQuery = QString("INSERT { <%1> a nco:IMAddress }").arg(uri);
+        addAffiliation += QString("nco:hasIMAddress <%1> .").arg(uri);
     } else {
-        QString uri = QString("tel:%1").arg(remoteUid);
-        addressQuery = QString(addAddress).arg(uri).arg("nco:PhoneNumber");
-        addAffiliation += QString("nco:hasPhoneNumber <%1>").arg(uri);
+        QString shortNumber = makeShortNumber(remoteUid);
+        addressQuery =
+            QString("INSERT { _:_ a nco:PhoneNumber; nco:phoneNumber \"%1\"; "
+                    "maemo:localPhoneNumber \"%2\" . } "
+                    "WHERE { "
+                    "OPTIONAL { ?tel nco:phoneNumber \"%1\" } "
+                    "FILTER(!BOUND(?tel)) "
+                    "}")
+            .arg(remoteUid)
+            .arg(shortNumber);
+        addAffiliation += QString("nco:hasPhoneNumber ?tel .");
+        addContact += QString(" WHERE { ?tel a nco:PhoneNumber; nco:phoneNumber \"%1\" }")
+            .arg(remoteUid);
     }
-    addAffiliation += " . ";
 
     QSparqlQuery insertQuery(addressQuery, QSparqlQuery::InsertStatement);
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));

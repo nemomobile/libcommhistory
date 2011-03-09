@@ -72,16 +72,30 @@ public:
      */
     QString findLocalContact(UpdateQuery &query,
                              const QString &accountPath);
-    QString findIMContact(UpdateQuery &query,
-                          const QString &accountPath,
-                          const QString &imID);
-    QString findPhoneContact(UpdateQuery &query,
-                             const QString &remoteId);
-    QString findRemoteContact(UpdateQuery &query,
-                              const QString &localUid,
-                              const QString &remoteUid,
-                              PhoneNumberNormalizeFlags normalizeFlags
-                              = NormalizeFlagRemovePunctuation);
+
+    /*!
+     * Modify the query to take care of adding a suitable anon blank contact for
+     * the specified property and make sure that the IMAddress or phone number exists.
+     */
+    void addIMContact(UpdateQuery &query,
+                      const QUrl &subject,
+                      const char *predicate,
+                      const QString &accountPath,
+                      const QString &imID);
+
+    void addPhoneContact(UpdateQuery &query,
+                         const QUrl &subject,
+                         const char *predicate,
+                         const QString &phoneNumber,
+                         PhoneNumberNormalizeFlags normalizeFlags);
+
+    void addRemoteContact(UpdateQuery &query,
+                          const QUrl &subject,
+                          const char *predicate,
+                          const QString &localUid,
+                          const QString &remoteUid,
+                          PhoneNumberNormalizeFlags normalizeFlags
+                          = NormalizeFlagRemovePunctuation);
 
     /*!
      * Helper for inserting and modifying common parts of nmo:Messages.

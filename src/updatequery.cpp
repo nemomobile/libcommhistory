@@ -161,6 +161,11 @@ void UpdateQuery::insertionSilent(const QString &statement)
     silents << statement;
 }
 
+void UpdateQuery::appendInsertion(const QString &statement)
+{
+    postInsertions << statement;
+}
+
 QString UpdateQuery::query()
 {
     QStringList query;
@@ -186,8 +191,9 @@ QString UpdateQuery::query()
         query << LAT("}");
     }
 
-    return query.join(LAT(" "));
+    query << postInsertions;
 
+    return query.join(LAT(" "));
 }
 
 QString UpdateQuery::nextVariable()

@@ -77,6 +77,9 @@ public:
 
     void insertionSilent(const QString &statement);
 
+    // statement = raw content, not wrapped in INSERT {}
+    void appendInsertion(const QString &statement);
+
     QString query();
 
 private:
@@ -86,6 +89,7 @@ private:
     int nextVar;
     QStringList deletions;
     QMultiMap<QUrl, QString> insertions;
+    QStringList postInsertions;
     QStringList silents;
 };
 
