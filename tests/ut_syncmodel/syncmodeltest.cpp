@@ -151,12 +151,10 @@ void SyncModelTest::addModifyGetSingleSmsEvents()
     QVERIFY(addEvent(4098, group.id(), sentReceivedTime, "121", "122", "Msg A", false));
     int id_1 = itemId;
 
-    QDateTime time_2 = time_1.addSecs(60*5);
-    QDateTime time_3 = time_2.addSecs(60*5);
-    QVERIFY(modifyEvent(id_1, 4098, group.id(), time_3, "121", "122", "Msg A", false)); //modify A at time B
+    QVERIFY(modifyEvent(id_1, 4098, group.id(), QDateTime(), "121", "122", "Msg A", false)); //modify A at a later time than time_1
 
     SyncSMSModel model;
-    SyncSMSFilter filter(4098, time_2, true);
+    SyncSMSFilter filter(4098, QDateTime(), true);
     model.setSyncSmsFilter(filter);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents());
@@ -230,6 +228,7 @@ bool  SyncModelTest::addEvent( int parentId, int groupId, const QDateTime& sentR
 bool  SyncModelTest::modifyEvent( int itemId, int parentId, int groupId, const QDateTime &lastModTime,
                                   const QString& localId, const QString& remoteId, const QString& text, bool read)
 {
+    Q_UNUSED(lastModTime);
     EventModel model;
     watcher.setModel(&model);
     Event e;
@@ -243,7 +242,6 @@ bool  SyncModelTest::modifyEvent( int itemId, int parentId, int groupId, const Q
         e.setDirection(Event::Outbound);
     }
     e.setGroupId(groupId);
-    e.setLastModified(lastModTime);
     e.setLocalUid(localId);
     e.setRemoteUid(remoteId);
     e.setFreeText(text);
