@@ -22,9 +22,6 @@
 
 #include <QtTest/QtTest>
 
-#include <QContactManager>
-#include <QContactId>
-
 #include <QDBusConnection>
 #include "groupmodeltest.h"
 #include "groupmodel.h"
@@ -33,8 +30,6 @@
 #include "trackerio.h"
 
 using namespace CommHistory;
-
-QTM_USE_NAMESPACE
 
 Group group1, group2;
 QEventLoop *loop;
@@ -893,11 +888,8 @@ void GroupModelTest::resolveContact()
     QCOMPARE(group.remoteUids(), grp.remoteUids());
     QCOMPARE(group.contactName(),newName);
 
-    // DELETE CONTACT:
-    QContactManager contactManager;
-    QContactLocalId qContactId(group.contactId());
+    deleteTestContact(group.contactId());
 
-    QVERIFY(contactManager.removeContact(qContactId));
     // Waiting for dataChanged signal to indicate that contact name has been removed from the group.
     groupDataChanged.clear();
     QVERIFY(waitSignal(groupDataChanged, 5000));

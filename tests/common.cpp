@@ -30,20 +30,12 @@
 #include <QFile>
 #include <QTextStream>
 
-#include <QContactManager>
-#include <QContact>
-#include <QContactName>
-#include <QContactPhoneNumber>
-#include <QContactOnlineAccount>
-
 #include "eventmodel.h"
 #include "groupmodel.h"
 #include "event.h"
 #include "common.h"
 #include "trackerio.h"
 #include "commonutils.h"
-
-QTM_USE_NAMESPACE
 
 namespace {
 static int contactNumber = 0;
@@ -121,12 +113,11 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
-    QString addContact(
-"INSERT { "
-" %1 "
-" %2 a nco:PersonContact ; "
-" nco:hasAffiliation _:foo ; "
-" nco:nameFamily \"%3\" . }");
+    QString addContact("INSERT { "
+                       " %1 "
+                       " %2 a nco:PersonContact ; "
+                       " nco:hasAffiliation _:foo ; "
+                       " nco:nameFamily \"%3\" . }");
 
     QString addAffiliation("_:foo a nco:Affiliation; ");
 
@@ -152,21 +143,13 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             .arg(remoteUid);
     }
 
-    QSparqlQuery insertQuery(addressQuery, QSparqlQuery::InsertStatement);
+    QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
+    QSparqlQuery insertQuery(query, QSparqlQuery::InsertStatement);
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
     QScopedPointer<QSparqlResult> result(conn->exec(insertQuery));
     result->waitForFinished();
     if (result->hasError()) {
         qWarning() << "error inserting address:" << result->lastError().message();
-        return -1;
-    }
-
-    QString query = QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
-    insertQuery = QSparqlQuery(query, QSparqlQuery::InsertStatement);
-    result.reset(conn->exec(insertQuery));
-    result->waitForFinished();
-    if (result->hasError()) {
-        qWarning() << "error inserting contact:" << result->lastError().message();
         return -1;
     }
 
@@ -188,7 +171,6 @@ void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
-    // FIXME: Mixing custom-made contacts and QContactManager may not be reliable.
     QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
                   "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
                   "FILTER(tracker:id(?contact) = %1) }");
@@ -201,20 +183,34 @@ void modifyTestContact(int id, const QString &name)
         return;
     }
 
-    QContactManager cm;
-    QContact contact= cm.contact(id);
+    QString addContact("INSERT { ?c nco:nameFamily \"%2\" } "
+                       "WHERE {?c a nco:PersonContact . FILTER(tracker:id(?c) = %1) }");
+    QScopedPointer<QSparqlResult> result2(conn->exec(QSparqlQuery(addContact.arg(id).arg(name),
+                                                                  QSparqlQuery::InsertStatement)));
 
-    QContactName cName = contact.detail<QContactName>();
-    cName.setLastName(name);
-    contact.saveDetail(&cName);
-
-    cm.saveContact(&contact);
+    result2->waitForFinished();
+    if (result2->hasError()) {
+        qWarning() << "error modifying contact:" << result2->lastError().message();
+        return;
+    }
 }
 
 void deleteTestContact(int id)
 {
-    QContactManager cm;
-    cm.removeContact(id);
+    QString query("DELETE { ?aff a nco:Affiliation } WHERE"
+                  "{ ?c a nco:PersonContact; nco:hasAffiliation ?aff . "
+                  "FILTER(tracker:id(?c) = %1) } "
+                  "DELETE { ?contact a nco:PersonContact } WHERE"
+                  "{ ?contact a nco:PersonContact . "
+                  "FILTER(tracker:id(?contact) = %1) }");
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
+                                                                 QSparqlQuery::DeleteStatement)));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error deleting contact:" << result->lastError().message();
+        return;
+    }
 }
 
 bool compareEvents(Event &e1, Event &e2)
