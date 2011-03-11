@@ -336,16 +336,6 @@ bool ConversationModel::getEvents(int groupId, Group::ChatType chatType)
 
     EventsQuery query(d->propertyMask);
 
-/*
-    if (chatType == Group::ChatTypeP2P) {
-    } else if (chatType == Group::ChatTypeUnnamed
-               || chatType == Group::ChatTypeRoom) {
-    } else {
-        qWarning() << Q_FUNC_INFO << ": unsupported chat type" << chatType << "???";
-        return false;
-    }
-*/
-
     if (!d->filterAccount.isEmpty()) {
         query.addPattern(QString(QLatin1String("{%2 nmo:to [nco:hasContactMedium <telepathy:%1>]} "
                                                "UNION "

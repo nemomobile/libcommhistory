@@ -76,6 +76,8 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
     propertyMask -= unusedProperties;
     connect(this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SLOT(slotEventsCommitted(const QList<CommHistory::Event>&,bool)));
+    connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
+            this, SLOT(deleteCallGroup2(QSparqlResult *)));
 }
 
 void CallModelPrivate::executeGroupedQuery(const QString &query)
@@ -87,9 +89,6 @@ void CallModelPrivate::executeGroupedQuery(const QString &query)
         queryRunner->setStreamedMode(true);
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
-    } else {
-        //if (queryLimit) query.limit(queryLimit);
-        //if (queryOffset) query.offset(queryOffset);
     }
     queryRunner->runGroupedCallQuery(query);
     if (queryMode == EventModel::SyncQuery) {
@@ -538,7 +537,6 @@ void CallModelPrivate::deleteFromModel( int id )
         if ( !isRegroupingNeeded )
         {
             q->beginRemoveRows( index.parent(), row, row );
-            qDebug() << eventRootItem->child(row)->event().toString();
             eventRootItem->removeAt( row );
         }
         // otherwise delete the current and the following one
@@ -581,8 +579,6 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
 
     query.bindValue(QLatin1String("channel"), channelUri);
 
-    connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
-            this, SLOT(deleteCallGroup2(QSparqlResult *)));
     partQueryRunner->runQuery(query);
     partQueryRunner->startQueue();
 }

@@ -113,10 +113,6 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("?fromMedium");
     case Event::RemoteUid:
         return QLatin1String("?toMedium");
-//    case Event::ContactId:
-//        return QLatin1String("nmo:");
-//    case Event::ContactName:
-//        return QLatin1String("nmo:");
     case Event::ParentId:
         return QLatin1String("nmo:phoneMessageId");
     case Event::Subject:
@@ -147,8 +143,6 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:validityPeriod");
     case Event::ContentLocation:
         return QLatin1String("nie:generator");
-//    case Event::MessageParts:
-//        return QLatin1String("nmo:");
     case Event::Cc:
         return QLatin1String("nmo:cc");
     case Event::Bcc:
@@ -161,8 +155,6 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:mustAnswerReportRead");
     case Event::MmsId:
         return QLatin1String("nmo:mmsId");
-//    case Event::To:
-//        return QLatin1String("nmo:");
     default:
         qCritical() << Q_FUNC_INFO << "Invalid ontology property for " << p;
         Q_ASSERT(false);
@@ -316,13 +308,6 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
-/*
-        pattern << eventPropertyName(Event::Id)
-                << ontologyProperty(p)
-                << QLatin1String("[ nco:hasContactMedium")
-                << eventPropertyName(p)
-                << "] .";
-*/
         break;
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:
