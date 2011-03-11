@@ -224,7 +224,7 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
     Q_UNUSED(normalizeFlags);
 
     if (!m_contactCache.contains(phoneNumber)) {
-        QString shortNumber = makeShortNumber(phoneNumber);
+        QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
         QString phoneNumberInsert =
             QString(LAT("INSERT { _:_ a nco:PhoneNumber ; "
                         "nco:phoneNumber \"%1\" ; "
