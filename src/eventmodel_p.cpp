@@ -506,8 +506,9 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                 }
 
                 // TODO: check how this should work with multiple contacts
-                if ((quint32)event->contacts().first().first != contactId
-                    || event->contacts().first().second != contactName) {
+                if (event->contacts().isEmpty()
+                    || ((quint32)event->contacts().first().first != contactId
+                        || event->contacts().first().second != contactName)) {
                     event->setContacts(QList<Event::Contact>() << contact);
                     eventChanged = true;
                 }
