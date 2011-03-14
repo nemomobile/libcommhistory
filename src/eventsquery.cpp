@@ -67,7 +67,8 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "reportRead",
                                  "reportReadRequested",
                                  "mmsId",
-                                 "mmsTo"};
+                                 "mmsTo",
+                                 "contacts"};
 
 const int VARIABLE_NAMES_SIZE = sizeof(VARIABLE_NAMES)/sizeof(VARIABLE_NAMES[0]);
 
@@ -261,6 +262,8 @@ QString functionForProperty(Event::Property p)
     case Event::MessageParts:
         //return eventPropertyName(Event::Id);
         break;
+    case Event::Contacts:
+        break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;
         Q_ASSERT(false);
@@ -330,6 +333,8 @@ QString patternForProperty(Event::Property p)
     case Event::MmsId:
     case Event::To:
         //return eventPropertyName(Event::Id);
+        break;
+    case Event::Contacts:
         break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;

@@ -78,8 +78,7 @@ public:
         BytesReceived, // not implemented
         LocalUid,
         RemoteUid,
-        ContactId,     // read only
-        ContactName,   // read only
+        Contacts,
         FreeText,
         GroupId,
         MessageToken,

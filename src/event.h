@@ -127,8 +127,8 @@ public:
         BytesReceived,
         LocalUid,
         RemoteUid,
-        ContactId,
-        ContactName,
+        ContactId, // TODO: remove
+        ContactName, // TODO: remove
         ParentId,
         Subject,
         FreeText,
@@ -153,11 +153,14 @@ public:
         ReportReadRequested,
         MmsId,
         To,
+        Contacts,
         //
         NumProperties
     };
 
     typedef QSet<Event::Property> PropertySet;
+
+    typedef QPair<int, QString> Contact;
 
 public:
     Event();
@@ -254,13 +257,13 @@ public:
 
     QString remoteUid() const;
 
+    /* DEPRECATED - use contacts(). Returns the id of the first matching contact. */
     int contactId() const;
 
+    /* DEPRECATED - use contacts(). Returns the name of the first matching contact. */
     QString contactName() const;
 
-    QList<int> contactIds() const;
-
-    QStringList contactNames() const;
+    QList<Event::Contact> contacts() const;
 
     int parentId() const; // SMS parent folder id
 
@@ -350,13 +353,13 @@ public:
 
     void setRemoteUid(const QString &uid);
 
+    /* DEPRECATED - use setContacts() */
     void setContactId(int id);
 
+    /* DEPRECATED - use setContacts() */
     void setContactName(const QString &name);
 
-    void setContactIds(const QList<int> &ids);
-
-    void setContactNames(const QStringList &names);
+    void setContacts(const QList<Event::Contact> &contacts);
 
     void setParentId(int id);
 
@@ -434,7 +437,12 @@ private:
 LIBCOMMHISTORY_EXPORT QDBusArgument &operator<<(QDBusArgument &argument, const CommHistory::Event &event);
 LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Event &event);
 
+LIBCOMMHISTORY_EXPORT QDBusArgument &operator<<(QDBusArgument &argument, const CommHistory::Event::Contact &contact);
+LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Event::Contact &contact);
+
 Q_DECLARE_METATYPE(CommHistory::Event);
 Q_DECLARE_METATYPE(QList<CommHistory::Event>);
+Q_DECLARE_METATYPE(CommHistory::Event::Contact);
+Q_DECLARE_METATYPE(QList<CommHistory::Event::Contact>);
 
 #endif

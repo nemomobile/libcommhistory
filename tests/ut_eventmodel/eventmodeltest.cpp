@@ -1022,13 +1022,6 @@ void EventModelTest::testFindEvent()
     QString messageToken = var2.toString();
     QCOMPARE(messageToken,im.messageToken());
 
-    index2 = model.index(row,EventModel::ContactId);
-    var2 = model.data(index2);
-    header2 = model.headerData(EventModel::ContactId,Qt::Horizontal,Qt::DisplayRole);
-    QCOMPARE(header2.toString(),QString("contact_id"));
-    int contactId = var2.toInt();
-    QCOMPARE(contactId,im.contactId());
-
     index2 = model.index(row,EventModel::StartTime);
     var2 = model.data(index2);
     header2 = model.headerData(EventModel::StartTime,Qt::Horizontal,Qt::DisplayRole);

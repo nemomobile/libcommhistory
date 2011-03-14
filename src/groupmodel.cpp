@@ -208,10 +208,9 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
             }
 
             // preserve contact info if necessary
-            if (!newGroup.validProperties().contains(Group::ContactId)
-                && g.validProperties().contains(Group::ContactId)) {
-                newGroup.setContactId(g.contactId());
-                newGroup.setContactName(g.contactName());
+            if (!newGroup.validProperties().contains(Group::Contacts)
+                && g.validProperties().contains(Group::Contacts)) {
+                newGroup.setContacts(g.contacts());
             }
 
             groups.replace(row, newGroup);
@@ -471,22 +470,22 @@ void GroupModelPrivate::slotContactUpdated(quint32 localId,
         Group group = groups.at(row);
         bool updatedGroup = false;
 
+        // TODO: check how this should work with multiple contacts
         if (ContactListener::addressMatchesList(group.localUid(),
                                                 group.remoteUids().first(),
                                                 contactAddresses)) {
-                group.setContactId(localId);
-                group.setContactName(contactName);
-                updatedGroup = true;
+            Event::Contact contact(localId, contactName);
+            group.setContacts(QList<Event::Contact>() << contact);
+            updatedGroup = true;
         } else if (localId == (quint32)group.contactId()) {
-            group.setContactId(0);
-            group.setContactName(QString());
+            group.setContacts(QList<Event::Contact>());
             updatedGroup = true;
         }
 
         if (updatedGroup) {
             groups.replace(row, group);
-            emit q->dataChanged(q->index(row, GroupModel::ContactId),
-                                q->index(row, GroupModel::ContactName));
+            emit q->dataChanged(q->index(row, GroupModel::Contacts),
+                                q->index(row, GroupModel::Contacts));
         }
     }
 }
@@ -499,12 +498,11 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
         Group group = groups.at(row);
 
         if (localId == (quint32)group.contactId()) {
-            group.setContactId(0);
-            group.setContactName(QString());
+            group.setContacts(QList<Event::Contact>());
             groups.replace(row, group);
 
-            emit q->dataChanged(q->index(row, GroupModel::ContactId),
-                                q->index(row, GroupModel::ContactName));
+            emit q->dataChanged(q->index(row, GroupModel::Contacts),
+                                q->index(row, GroupModel::Contacts));
         }
     }
 }
@@ -621,11 +619,8 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         case LastEventId:
             var = QVariant::fromValue(group.lastEventId());
             break;
-        case ContactId:
-            var = QVariant::fromValue(group.contactId());
-            break;
-        case ContactName:
-            var = QVariant::fromValue(group.contactName());
+        case Contacts:
+            var = QVariant::fromValue(group.contacts());
             break;
         case LastMessageText:
             var = QVariant::fromValue(group.lastMessageText());
@@ -702,11 +697,8 @@ QVariant GroupModel::headerData(int section,
             case LastEventId:
                 name = QLatin1String("last_event_id");
                 break;
-            case ContactId:
-                name = QLatin1String("contact_id");
-                break;
-            case ContactName:
-                name = QLatin1String("contact_name");
+            case Contacts:
+                name = QLatin1String("contacts");
                 break;
             case LastMessageText:
                 name = QLatin1String("last_message_text");

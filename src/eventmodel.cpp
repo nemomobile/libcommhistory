@@ -242,11 +242,8 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case RemoteUid:
             var = QVariant::fromValue(event.remoteUid());
             break;
-        case ContactId:
-            var = QVariant::fromValue(event.contactId());
-            break;
-        case ContactName:
-            var = QVariant::fromValue(event.contactName());
+        case Contacts:
+            var = QVariant::fromValue(event.contacts());
             break;
         case FreeText:
             var = QVariant::fromValue(event.freeText());
@@ -351,11 +348,8 @@ QVariant EventModel::headerData(int section,
             case RemoteUid:
                 name = QLatin1String("remote_uid");
                 break;
-            case ContactId:
-                name = QLatin1String("contact_id");
-                break;
-            case ContactName:
-                name = QLatin1String("contact_name");
+            case Contacts:
+                name = QLatin1String("contacts");
                 break;
             case FreeText:
                 name = QLatin1String("free_text");

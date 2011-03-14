@@ -183,7 +183,7 @@ public:
     QSharedPointer<ContactListener> contactListener;
 
     // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QPair<int, QString> > contactCache;
+    QMap<QPair<QString,QString>, Event::Contact > contactCache;
 
     QThread *bgThread;
 

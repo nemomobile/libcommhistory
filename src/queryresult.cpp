@@ -225,14 +225,15 @@ void QueryResult::fillEventFromModel(Event &event)
         eventToFill.setStatus(Event::SendingStatus);
     }
 
+    // TODO: what to do with the contact id and nickname columns if
+    // Event::ContactId and Event::ContactName are replaced with
+    // Event::Contacts?
     if (properties.contains(Event::ContactId)) {
-        QList<int> contactIds;
-        QStringList contactNames;
+        QList<Event::Contact> contacts;
         parseContacts(RESULT_INDEX2(Event::ContactId).toString(),
                       RESULT_INDEX2(Event::ContactName).toString(),
-                      contactIds, contactNames);
-        eventToFill.setContactIds(contactIds);
-        eventToFill.setContactNames(contactNames);
+                      contacts);
+        eventToFill.setContacts(contacts);
     }
 
     // save data and give back as parameter
@@ -272,13 +273,11 @@ void QueryResult::fillGroupFromModel(Group &group)
     groupToFill.setRemoteUids(QStringList() << result->value(Group::RemoteUids).toString());
     groupToFill.setLocalUid(result->value(Group::LocalUid).toString());
 
-    QList<int> contactIds;
-    QStringList contactNames;
+    QList<Event::Contact> contacts;
     parseContacts(result->value(Group::ContactId).toString(),
                   result->value(Group::ContactName).toString(),
-                  contactIds, contactNames);
-    groupToFill.setContactIds(contactIds);
-    groupToFill.setContactNames(contactNames);
+                  contacts);
+    groupToFill.setContacts(contacts);
 
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
     groupToFill.setUnreadMessages(result->value(Group::UnreadMessages).toInt());
@@ -357,13 +356,11 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     eventToFill.setIsRead(result->value(9).toBool());
     eventToFill.setLastModified(result->value(10).toDateTime().toLocalTime());
 
-    QList<int> contactIds;
-    QStringList contactNames;
+    QList<Event::Contact> contacts;
     parseContacts(result->value(11).toString(),
                   result->value(12).toString(),
-                  contactIds, contactNames);
-    eventToFill.setContactIds(contactIds);
-    eventToFill.setContactNames(contactNames);
+                  contacts);
+    eventToFill.setContacts(contacts);
 
     eventToFill.setEventCount(result->value(13).toInt());
 
@@ -371,17 +368,27 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 }
 
 void QueryResult::parseContacts(const QString &result, const QString &imNickname,
-                                QList<int> &contactIds, QStringList &contactNames)
+                                QList<Event::Contact> &contacts)
 {
-    foreach (QString contact, result.split('\x1e')) {
-        QStringList contactInfo = contact.split('\x1f');
+    qDebug() << Q_FUNC_INFO << imNickname;
+    QStringList contactStringList = result.split('\x1e', QString::SkipEmptyParts);
+    if (contactStringList.isEmpty() && imNickname != QString()) {
+        Event::Contact contact(0, imNickname);
+        contacts << contact;
+        return;
+    }
+
+    foreach (QString contactString, contactStringList) {
+        QStringList contactInfo = contactString.split('\x1f');
         QString firstName, lastName;
         if (contactInfo.size() >= 2)
             firstName = contactInfo[1];
         if (contactInfo.size() >= 3)
             lastName = contactInfo[2];
-        contactIds << contactInfo[0].toInt();
-        contactNames << buildContactName(firstName, lastName, imNickname);
+        Event::Contact contact;
+        contact.first = contactInfo[0].toInt();
+        contact.second = buildContactName(firstName, lastName, imNickname);
+        contacts << contact;
     }
 }
 
@@ -398,6 +405,7 @@ QString QueryResult::buildContactName(const QString &firstName,
                                       const QString &lastName,
                                       const QString &imNickname)
 {
+    qDebug() << Q_FUNC_INFO << firstName << lastName << imNickname;
     if (firstName.isEmpty() && lastName.isEmpty())
         return imNickname;
 

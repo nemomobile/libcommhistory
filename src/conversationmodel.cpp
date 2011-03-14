@@ -59,14 +59,13 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
     qDebug() << Q_FUNC_INFO;
     if (filterDirection == Event::Outbound
         || filterGroupId == -1
-        || !propertyMask.contains(Event::ContactId))
+        || !propertyMask.contains(Event::Contacts))
         return;
 
     foreach (Group g, groups) {
         if (g.id() == filterGroupId) {
             // update in memory events for contact info
-            updateEventsRecursive(g.contactId(),
-                                  g.contactName(),
+            updateEventsRecursive(g.contacts(),
                                   g.remoteUids().first(),
                                   eventRootItem);
             break;
@@ -74,11 +73,10 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
     }
 }
 
-// update contactId and contactName for all inbound events,
+// update contacts for all inbound events,
 // should be called only for p2p chats
 // return true to abort when an event already have the same contact id/name
-bool ConversationModelPrivate::updateEventsRecursive(int contactId,
-                                                     const QString &contactName,
+bool ConversationModelPrivate::updateEventsRecursive(const QList<Event::Contact> &contacts,
                                                      const QString &remoteUid,
                                                      EventTreeItem *parent)
 {
@@ -88,27 +86,24 @@ bool ConversationModelPrivate::updateEventsRecursive(int contactId,
         Event &event = parent->eventAt(row);
 
         if (parent->child(row)->childCount()) {
-            if (updateEventsRecursive(contactId,
-                                      contactName,
+            if (updateEventsRecursive(contacts,
                                       remoteUid,
                                       parent->child(row)))
                 return true;
         } else {
-            if (event.contactId() == contactId
-                && event.contactName() == contactName) {
+            if (event.contacts() == contacts) {
                 // if we found event with same info, abort
                 return true;
             } else if (event.direction() == Event::Inbound
                        && event.remoteUid() == remoteUid) {
                 //update and continue
-                event.setContactId(contactId);
-                event.setContactName(contactName);
+                event.setContacts(contacts);
 
                 emit q->dataChanged(q->createIndex(row,
-                                                   EventModel::ContactId,
+                                                   EventModel::Contacts,
                                                    parent->child(row)),
                                     q->createIndex(row,
-                                                   EventModel::ContactName,
+                                                   EventModel::Contacts,
                                                    parent->child(row)));
             }
         }

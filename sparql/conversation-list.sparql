@@ -36,7 +36,7 @@ SELECT ?channel
       ?part nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] .
       ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] .
     }
-  }) AS ?contacts
+  })
   (SELECT ?nickname { ?part nco:hasIMAddress [ nco:imNickname ?nickname ] })
   tracker:coalesce(nmo:messageSubject(?_lastMessage),
                    nie:plainTextContent(?_lastMessage))

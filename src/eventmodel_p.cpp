@@ -227,9 +227,9 @@ void EventModelPrivate::addToModel(Event &event)
     qDebug() << __PRETTY_FUNCTION__ << event.id();
     qDebug() << __PRETTY_FUNCTION__ << event.toString();
 
-    if (event.contactId() > 0) {
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                            qMakePair(event.contactId(), event.contactName()));
+    if (!event.contacts().isEmpty()) {
+        foreach (Event::Contact contact, event.contacts())
+            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
     } else {
         setContactFromCache(event);
     }
@@ -251,7 +251,7 @@ void EventModelPrivate::modifyInModel(Event &event)
     Q_Q(EventModel);
     qDebug() << __PRETTY_FUNCTION__ << event.id();
 
-    if (!event.validProperties().contains(Event::ContactId)) {
+    if (!event.validProperties().contains(Event::Contacts)) {
         setContactFromCache(event);
     }
 
@@ -336,9 +336,9 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
             continue;
         }
 
-        if (event.contactId() > 0) {
-            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                                qMakePair(event.contactId(), event.contactName()));
+        if (!event.contacts().isEmpty()) {
+            foreach (Event::Contact contact, event.contacts())
+                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
         }
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
@@ -497,23 +497,25 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                                                     event->remoteUid(),
                                                     contactAddresses)) {
 
+                Event::Contact contact((int)contactId, contactName);
+
                 // If contact is not yet in cache, add it
                 QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
                 if (!contactCache.contains(cacheKey)) {
-                    contactCache.insert(cacheKey, qMakePair((int)contactId, contactName));
+                    contactCache.insert(cacheKey, contact);
                 }
 
-                if ((quint32)event->contactId() != contactId
-                    || event->contactName() != contactName) {
-                    event->setContactId(contactId);
-                    event->setContactName(contactName);
+                // TODO: check how this should work with multiple contacts
+                if ((quint32)event->contacts().first().first != contactId
+                    || event->contacts().first().second != contactName) {
+                    event->setContacts(QList<Event::Contact>() << contact);
                     eventChanged = true;
                 }
             } else {
+
                 if ((quint32)event->contactId() == contactId) {
                     // event doesn't match the contact anymore, reset contact info
-                    event->setContactId(0);
-                    event->setContactName(QString());
+                    event->setContacts(QList<Event::Contact>());
                     eventChanged = true;
                 }
             }
@@ -580,11 +582,10 @@ TrackerIO* EventModelPrivate::tracker()
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 {
-    QPair<int,QString> contact = contactCache.value(qMakePair(event.localUid(),
-                                                              event.remoteUid()));
+    Event::Contact contact = contactCache.value(qMakePair(event.localUid(),
+                                                          event.remoteUid()));
     if (contact.first > 0) {
-        event.setContactId(contact.first);
-        event.setContactName(contact.second);
+        event.setContacts(QList<Event::Contact>() << contact);
         return true;
     }
     return false;

@@ -67,14 +67,15 @@ public:
         UnreadMessages,
         SentMessages,
         LastEventId,
-        ContactId,
-        ContactName,
+        ContactId, // TODO: remove
+        ContactName, // TODO: remove
         LastMessageText,
         LastVCardFileName,
         LastVCardLabel,
         LastEventType,
         LastEventStatus,
         LastModified,
+        Contacts,
         NumProperties
     };
 
@@ -184,6 +185,7 @@ public:
     int lastEventId() const;
 
     /*!
+     * DEPRECATED - use contacts(). Returns the id of the first contact.
      * Id of the remote contact in this conversation.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
@@ -191,6 +193,7 @@ public:
     int contactId() const;
 
     /*!
+     * DEPRECATED - use contacts(). Returns the name of the first contact.
      * Name of the remote contact in this conversation.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
@@ -198,18 +201,11 @@ public:
     QString contactName() const;
 
     /*!
-     * Ids of the remote contacts in this conversation.
+     * Ids and names for the contacts in this conversation.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
      */
-    QList<int> contactIds() const;
-
-    /*!
-     * Names of the remote contacts in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QStringList contactNames() const;
+    QList<Event::Contact> contacts() const;
 
     /*!
      * Text of the last message.
@@ -255,10 +251,11 @@ public:
     void setUnreadMessages(int unread);
     void setSentMessages(int sent);
     void setLastEventId(int id);
+    /* DEPRECATED - use setContacts() */
     void setContactId(int id);
+    /* DEPRECATED - use setContacts() */
     void setContactName(const QString &name);
-    void setContactIds(const QList<int> &ids);
-    void setContactNames(const QStringList &names);
+    void setContacts(const QList<Event::Contact> &contacts);
     void setLastMessageText(const QString &text);
     void setLastVCardFileName(const QString &filename);
     void setLastVCardLabel(const QString &label);
