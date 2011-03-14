@@ -20,13 +20,13 @@
 **
 ******************************************************************************/
 
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/tracker.h>
-#include "eventmodel_p.h"
-#include "syncsmsmodel.h"
-#include "trackerio.h"
+#include <QDebug>
 
-#include <QtSql>
+#include "eventmodel_p.h"
+#include "trackerio.h"
+#include "eventsquery.h"
+
+#include "syncsmsmodel.h"
 
 namespace CommHistory
 {
@@ -110,26 +110,38 @@ bool SyncSMSModel::getEvents()
     reset();
     d->clearEvents();
 
-    RDFVariable message = RDFVariable::fromType<nmo::SMSMessage>();
+    EventsQuery query(d->propertyMask);
+
     if (d->parentId != ALL) {
-        message.property<nmo::phoneMessageId>(LiteralValue(d->parentId));
+        query.addPattern(QString(QLatin1String("%2 nmo:phoneMessageId \"%1\" . "))
+                         .arg(d->parentId))
+                .variable(Event::Id);
     }
 
     if (d->lastModified) {
         if (!d->dtTime.isNull()) { //get all last modified messages after time t1
-            message.property<tracker::added>().lessOrEqual(LiteralValue(d->dtTime));
-            message.property<nie::contentLastModified>().greater(LiteralValue(d->dtTime));
+            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) <= \"%1Z\"^^xsd:dateTime)"))
+                             .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
+                    .variable(Event::Id);
+            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1Z\"^^xsd:dateTime)"))
+                             .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
+                    .variable(Event::Id);
         } else {
-            message.property<nmo::contentLastModified>().greater(LiteralValue(QDateTime::fromTime_t(0)));
+            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1Z\"^^xsd:dateTime)"))
+                             .arg(QDateTime::fromTime_t(0).toUTC().toString(Qt::ISODate)))
+                    .variable(Event::Id);
         }
     } else {
         if (!d->dtTime.isNull()) { //get all messages after time t1(including modified)
-            message.property<tracker::added>().greater(LiteralValue(d->dtTime));
+            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) > \"%1Z\"^^xsd:dateTime)"))
+                             .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
+                    .variable(Event::Id);
         }
     }
 
-    RDFSelect query;
-    d->tracker()->prepareMessageQuery(query, message, d->propertyMask);
+    query.addPattern(QLatin1String("%1 rdf:type nmo:SMSMessage ."))
+            .variable(Event::Id);
+
     return d->executeQuery(query);
 }
 
@@ -139,48 +151,4 @@ void SyncSMSModel::setSyncSmsFilter(const SyncSMSFilter& filter)
     d->parentId = filter.parentId;
     d->dtTime = filter.time;
     d->lastModified = filter.lastModified;
-}
-
-QList<FolderInfo> SyncSMSModel::folderInfo() const
-{
-    return QList<FolderInfo>();
-}
-
-QSqlError SyncSMSModel::addPrivateFolders(QList<FolderInfo> listFolderInfo)
-{
-    Live<nmo::SMSFolder> myFolder = ::tracker()->strictLiveNode(nmo::iri("predefined-phone-msg-folder-myfolder"));
-    QSqlError errStatus;
-    if (!myFolder) {
-        errStatus.setType(QSqlError::TransactionError);
-        errStatus.setDatabaseText(QLatin1String("Cannot find default MyFolder"));
-        return errStatus;
-    }
-
-    foreach (FolderInfo info, listFolderInfo) {
-        QString folderId = QString(QLatin1String("0x%1")).arg(info.folderId, 0, 16);
-        QString url_folderId = QString(QLatin1String("sms-folder-myfolder-%1")).arg(folderId);;
-        QUrl folderUrl(url_folderId);
-        Live<nmo::SMSFolder> folder = ::tracker()->liveNode(folderUrl);
-        folder->setPhoneMessageFolderId(folderId);
-        folder->setTitle(info.folderName);
-        folder->setContentCreated(QDateTime::currentDateTime()); //setting created time
-        myFolder->addContainsPhoneMessageFolder(folder);
-    }
-
-    if (!listFolderInfo.isEmpty()) { //if there have been any folders added
-        myFolder->setContentLastModified(QDateTime::currentDateTime()); //MyFolder modified time
-    }
-    return errStatus;
-}
-
-bool SyncSMSModel::folderExists(int id)
-{
-    QString folderId = QString(QLatin1String("0x%1")).arg(id, 0, 16);
-    QString folderUrl = QString(QLatin1String("sms-folder-myfolder-%1")).arg(folderId);;
-    Live<nmo::SMSFolder> myFolder = ::tracker()->strictLiveNode(QUrl(folderUrl));
-    if (!myFolder) {
-        qDebug() << "Cannot find My Folder with id" <<  folderId;
-        return false;
-    }
-    return true;
 }

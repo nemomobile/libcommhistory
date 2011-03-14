@@ -25,20 +25,28 @@
 
 #include <QObject>
 #include <QUrl>
-#include <QtTracker/Tracker>
-#include <QtSql>
 #include <QHash>
+#include <QThreadStorage>
+#include <QSparqlQuery>
+#include <QQueue>
+#include <QThread>
+#include <QThreadStorage>
 
 #include "idsource.h"
 #include "event.h"
+#include "commonutils.h"
 
 class MmsContentDeleter;
+class QSparqlConnection;
+class QSparqlResult;
 
 namespace CommHistory {
 
 class Group;
 class UpdateQuery;
 class TrackerIO;
+class CommittingTransaction;
+class EventsQuery;
 
 /**
  * \class TrackerIOPrivate
@@ -57,22 +65,37 @@ public:
     static QUrl uriForIMAddress(const QString &account, const QString &remoteUid);
 
     /*!
-     * Return IMContact node that corresponds to account/target (or
+     * Return IMContact node as blank anonymous SPARQL string
+     * that corresponds to account/target (or
      * account if imID is empty), creating if necessary. Uses internal
-     * cache during a transaction (TODO: general cache for all models
-     * with refcounts).
+     * cache during a transaction
      */
-    QUrl findLocalContact(UpdateQuery &query,
-                          const QString &accountPath);
-    QUrl findIMContact(UpdateQuery &query,
-                       const QString &accountPath,
-                       const QString &imID);
-    QUrl findPhoneContact(UpdateQuery &query,
-                          const QString &accountPath,
-                          const QString &remoteId);
-    QUrl findRemoteContact(UpdateQuery &query,
-                           const QString &localUid,
-                           const QString &remoteUid);
+    QString findLocalContact(UpdateQuery &query,
+                             const QString &accountPath);
+
+    /*!
+     * Modify the query to take care of adding a suitable anon blank contact for
+     * the specified property and make sure that the IMAddress or phone number exists.
+     */
+    void addIMContact(UpdateQuery &query,
+                      const QUrl &subject,
+                      const char *predicate,
+                      const QString &accountPath,
+                      const QString &imID);
+
+    void addPhoneContact(UpdateQuery &query,
+                         const QUrl &subject,
+                         const char *predicate,
+                         const QString &phoneNumber,
+                         PhoneNumberNormalizeFlags normalizeFlags);
+
+    void addRemoteContact(UpdateQuery &query,
+                          const QUrl &subject,
+                          const char *predicate,
+                          const QString &localUid,
+                          const QString &remoteUid,
+                          PhoneNumberNormalizeFlags normalizeFlags
+                          = NormalizeFlagRemovePunctuation);
 
     /*!
      * Helper for inserting and modifying common parts of nmo:Messages.
@@ -107,38 +130,44 @@ public:
 
 
     // Helper for getEvent*().
-    bool querySingleEvent(SopranoLive::RDFSelect query, Event &event);
+    bool querySingleEvent(EventsQuery &query, Event &event);
 
     static void calculateParentId(Event& event);
     static void setFolderLastModifiedTime(UpdateQuery &query,
                                           int parentId,
                                           const QDateTime& lastModTime);
 
-    void getMmsListForDeletingByGroup(int groupId, SopranoLive::LiveNodes& model);
-    void deleteMmsContentByGroup(int group);
+    QSparqlResult* getMmsListForDeletingByGroup(int groupId);
+    bool deleteMmsContentByGroup(int group);
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
-    /*!
-     * \brief Generate query request to get cc/bcc field from tracker
-     *        for specific MMS message
-     * \param event - MMS event
-     */
-    template <class CopyOntology>
-    static QStringList queryMMSCopyAddresses(Event &event);
-
-    QStringList queryMmsToAddresses(Event &event);
     void checkAndDeletePendingMmsContent(QThread* backgroundThread);
 
-    SopranoLive::RDFTransactionPtr m_transaction;
-    SopranoLive::RDFServicePtr m_service;
+    QSparqlConnection& connection();
+    bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
+    bool handleQuery(const QSparqlQuery &query);
+    bool runBlockedQuery(QSparqlResult *result);
+
+public Q_SLOTS:
+    void runNextTransaction();
+    /*!
+     * Update nmo:lastMessageDate and nmo:lastSuccessfulMessageDate for
+     * channel and delete empty call groups.
+     */
+    void updateGroupTimestamps(CommHistory::Event event);
+
+public:
+    QThreadStorage<QSparqlConnection*> m_pConnection;
+    CommittingTransaction *m_pTransaction;
+    QQueue<CommittingTransaction*> m_pendingTransactions;
 
     // Temporary contact cache, valid during a transaction
-    //TODO: rename
-    QHash<QUrl, QUrl> m_imContactCache;
+    QHash<QUrl, QString> m_contactCache;
     MmsContentDeleter *m_MmsContentDeleter;
     typedef QHash<QString, int> MessageTokenRefCount;
     MessageTokenRefCount m_messageTokenRefCount;
+    bool syncOnCommit;
 
     IdSource m_IdSource;
 
@@ -146,8 +175,6 @@ public:
     Event::PropertySet smsOnlyPropertySet;
 
     QThread *m_bgThread;
-
-    QSqlError lastError;
 };
 
 } // namespace

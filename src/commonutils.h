@@ -30,14 +30,30 @@
 
 namespace CommHistory {
 
+enum PhoneNumberNormalizeFlag
+{
+    NormalizeFlagNone = 0,
+
+    /* Remove +() and spaces */
+    NormalizeFlagRemovePunctuation = 1,
+
+    /* Don't remove [#xwp].* */
+    NormalizeFlagKeepDialString = 2
+};
+
+Q_DECLARE_FLAGS(PhoneNumberNormalizeFlags, CommHistory::PhoneNumberNormalizeFlag);
+Q_DECLARE_OPERATORS_FOR_FLAGS(PhoneNumberNormalizeFlags);
+
 /*!
  * Validates and normalizes a phone number by removing extra characters:
  * "+358 012 (34) 567#3333" -> "+35801234567"
  *
  * \param number Phone number.
+ * \param flags See CommHistory::PhoneNumberNormalizeFlags.
  * \return normalized number, or empty string if invalid.
  */
-QString normalizePhoneNumber(const QString &number);
+QString normalizePhoneNumber(const QString &number,
+                             PhoneNumberNormalizeFlags flags = NormalizeFlagRemovePunctuation);
 
 /*!
  * Compares the two remote ids. In case of phone numbers, last digits
@@ -45,15 +61,32 @@ QString normalizePhoneNumber(const QString &number);
  *
  * \param uid First remote id.
  * \param match Second remote id.
+ * \param flags With NormalizeFlagKeepDialString, keep the dial string
+ * part (e.g. "p123"), if any, in the shortened number when comparing.
  * \return true if addresses match.
  */
-bool remoteAddressMatch(const QString &uid, const QString &match);
+bool remoteAddressMatch(const QString &uid,
+                        const QString &match,
+                        PhoneNumberNormalizeFlags flags = NormalizeFlagRemovePunctuation);
 
 /*!
  * \return how many last digits are compared when matching phone
  * numbers, obtained from system-wide settings.
  */
 int phoneNumberMatchLength();
+
+/*!
+ * Get the last digits (see phoneNumberMatchLength) of a phone number
+ * for comparison purposes.
+ *
+ * \param number Phone number.
+ * \param flags With NormalizeFlagKeepDialString, append the dial string
+ * part (e.g. "p123") to the shortened number.
+ * \return Last digits of the number.
+ */
+
+QString makeShortNumber(const QString &number,
+                        PhoneNumberNormalizeFlags flags = NormalizeFlagRemovePunctuation);
 
 }
 

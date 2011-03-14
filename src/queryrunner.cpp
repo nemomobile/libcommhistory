@@ -21,41 +21,38 @@
 ******************************************************************************/
 
 #include <QMutex>
-#include <QtTracker/Tracker>
 #include <QDebug>
+
+#include <QSparqlResultRow>
+#include <QSparqlConnection>
+#include <QSparqlError>
 
 #include "queryrunner.h"
 #include "queryresult.h"
 #include "event.h"
 #include "messagepart.h"
-
-using namespace SopranoLive;
+#include "trackerio.h"
+#include "trackerio_p.h"
 
 using namespace CommHistory;
 
-QueryRunner::QueryRunner(QObject *parent)
+QueryRunner::QueryRunner(TrackerIO *trackerIO, QObject *parent)
         : QObject(parent)
         , m_streamedMode(false)
         , m_chunkSize(0)
         , m_firstChunkSize(0)
         , m_enableQueue(false)
-        , m_ready(true)
         , m_canFetchMore(false)
+        , m_pTracker(trackerIO)
 {
     qDebug() << __PRETTY_FUNCTION__;
-
-    m_activeQuery.isValid = false;
 }
 
 QueryRunner::~QueryRunner()
 {
     qDebug() << __PRETTY_FUNCTION__ << this << this->thread();
 
-    if (m_activeQuery.isValid && m_activeQuery.model) {
-        m_activeQuery.model.model()->disconnect(this);
-        m_activeQuery.model->stopOperations();
-        m_activeQuery.model->deleteLater();
-    }
+    endActiveQuery();
 }
 
 void QueryRunner::setStreamedMode(bool mode)
@@ -78,8 +75,9 @@ void QueryRunner::enableQueue(bool enable)
     m_enableQueue = enable;
 }
 
-void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
-                           const Event::PropertySet &propertyMask)
+void QueryRunner::addQueryToQueue(QueryType type,
+                                  const QSparqlQuery &query,
+                                  const QList<Event::Property> &properties)
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
 
@@ -87,9 +85,10 @@ void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
 
     QueryResult result;
     result.query = query;
-    result.queryType = queryType;
-    result.propertyMask = propertyMask;
+    result.queryType = type;
+    result.properties = properties;
     result.eventId = 0;
+
     m_queries.append(result);
 
 #ifdef DEBUG
@@ -100,6 +99,45 @@ void QueryRunner::runQuery(RDFSelect &query, QueryType queryType,
         QMetaObject::invokeMethod(this, "nextSlot", Qt::QueuedConnection);
 
     qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "<-";
+}
+
+void QueryRunner::runEventsQuery(const QString &query, const QList<Event::Property> &properties)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(EventQuery, sparqlQuery, properties);
+}
+
+void QueryRunner::runGroupQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(GroupQuery, sparqlQuery);
+}
+
+void QueryRunner::runGroupedCallQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(GroupedCallQuery, sparqlQuery);
+}
+
+void QueryRunner::runMessagePartQuery(const QString &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    QSparqlQuery sparqlQuery(query);
+    addQueryToQueue(MessagePartQuery, sparqlQuery);
+}
+
+void QueryRunner::runQuery(const QSparqlQuery &query)
+{
+    qDebug() << Q_FUNC_INFO << QThread::currentThread()  << this << "->";
+
+    addQueryToQueue(GenericQuery, query);
 }
 
 void QueryRunner::startQueue()
@@ -116,46 +154,40 @@ void QueryRunner::fetchMore()
 
 void QueryRunner::startNextQueryIfReady()
 {
-    if (m_enableQueue && !m_ready)
+    if (m_enableQueue && m_activeQuery.result)
         return;  // ongoing query and queue mode enabled
 
-    // queue mode not enabled, stop active query
-    if (m_activeQuery.isValid && m_activeQuery.model) {
-        m_activeQuery.model.model()->disconnect(this);
-        m_activeQuery.model->stopOperations();
-        m_activeQuery.model->deleteLater();
-        m_activeQuery.isValid = false;
-    }
+    endActiveQuery();
 
     m_mutex.lock();
     if (!m_queries.isEmpty()) {
         // start new query
-        m_ready = false;
         m_activeQuery = m_queries.takeFirst();
-        m_activeQuery.isValid = true;
 
-        RDFStrategyFlags flags = RDFStrategy::DefaultStrategy;
-        if (m_streamedMode) {
-            flags = RDFStrategy::StreamingStrategy;
-            // Set query limit to be the same as the first chunk size to stop automatic streaming
-            // in Qt-Tracker after getting first chunk. We want to fetch rest of the stuff using fetchMore.
-            m_activeQuery.query.limit(m_firstChunkSize > 0 ? m_firstChunkSize : m_chunkSize);
-            ::tracker()->setServiceAttribute(QLatin1String("streaming_first_block_size"),
-                QVariant(m_firstChunkSize > 0 ? m_firstChunkSize : m_chunkSize));
-            ::tracker()->setServiceAttribute(QLatin1String("streaming_block_size"), QVariant(m_chunkSize));
-        }
-
-        m_activeQuery.model = ::tracker()->modelQuery(m_activeQuery.query, flags);
-        connect(m_activeQuery.model.model(), SIGNAL(rowsInserted(const QModelIndex &, int, int)),
-                this, SLOT(rowsInsertedSlot(const QModelIndex &, int, int)),
-                Qt::DirectConnection);
-        connect(m_activeQuery.model.model(), SIGNAL(modelUpdated()),
-                this, SLOT(modelUpdatedSlot()),
-                Qt::DirectConnection);
-
-        m_activeQuery.columns.clear();
+        qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
     }
     m_mutex.unlock();
+
+    if (!m_activeQuery.query.query().isEmpty() && m_activeQuery.result.isNull()) {
+        // TODO: try to put query execution to trackerIOPrivate
+        lastReadPos = QSparql::BeforeFirstRow;
+        m_syncMode = m_streamedMode && m_pTracker->d->connection().hasFeature(QSparqlConnection::SyncExec);
+
+        if (m_syncMode) {
+            m_activeQuery.result = m_pTracker->d->connection().syncExec(m_activeQuery.query);
+
+            readData();
+        } else {
+            m_activeQuery.result = m_pTracker->d->connection().exec(m_activeQuery.query);
+
+            connect(m_activeQuery.result.data(),
+                    SIGNAL(dataReady(int)),
+                    this, SLOT(dataReady(int)));
+            connect(m_activeQuery.result.data(),
+                    SIGNAL(finished()),
+                    this, SLOT(finished()));
+        }
+    }
 }
 
 void QueryRunner::nextSlot()
@@ -169,60 +201,126 @@ void QueryRunner::fetchMoreSlot()
 {
     qDebug() << Q_FUNC_INFO << QThread::currentThread();
 
-    if (m_activeQuery.isValid && m_activeQuery.model) {
-        // Need to reset first block size to normal block size here because of Qt-Tracker's fetchMore-behaviour:
-        // fetchMore will otherwise use the original streaming_first_block_size and then we would
-        // not get rest of the chunks as normal sized.
-        // It would not be necessary to set model attribute here for every fetchMore call, but only for the
-        // first one in the active query, but then you would have to check it from LiveNodes model every time if
-        // it is already set and set it if needed.
-        m_activeQuery.model->setModelAttribute("streaming_first_block_size", QVariant(m_chunkSize));
-        m_activeQuery.model->fetchMore(QModelIndex());
+    if (m_activeQuery.result) {
+        readData();
     }
 }
 
-void QueryRunner::rowsInsertedSlot(const QModelIndex &parent,
-                                   int start, int end)
+bool QueryRunner::reallyFetchMore(int pos)
 {
-    Q_UNUSED(parent);
+    if (m_streamedMode && m_activeQuery.result) {
+        if (pos == QSparql::BeforeFirstRow)
+            return true;
+        if (pos == QSparql::AfterLastRow)
+            return false;
 
-    qDebug() << Q_FUNC_INFO << QThread::currentThread() << this;
+        qDebug() << Q_FUNC_INFO << pos << m_firstChunkSize << m_chunkSize;
 
-    checkCanFetchMoreChange();
+        if (pos == m_firstChunkSize - 1)
+            return false;
 
-    // generate header mapping
-    if (m_activeQuery.columns.isEmpty()) {
-        for (int i = 0; i < m_activeQuery.model->columnCount(); i++) {
-            m_activeQuery.columns.insert(
-                m_activeQuery.model->headerData(i, Qt::Horizontal).toString(), i);
+        if (pos >= m_firstChunkSize) {
+            pos = (pos - m_firstChunkSize) % m_chunkSize;
+            if (pos == m_chunkSize - 1)
+                return false;
         }
     }
+    return true;
+}
+
+void QueryRunner::dataReady(int totalCount)
+{
+    qDebug() << Q_FUNC_INFO << totalCount;;
+
+    if (!m_streamedMode || reallyFetchMore(lastReadPos))
+        readData();
+}
+
+void QueryRunner::readData()
+{
+    int start = lastReadPos;
+    if (start == QSparql::BeforeFirstRow)
+        start = 0;
+    else
+        ++start;
+    int added = 0;
+
+    qDebug() << Q_FUNC_INFO << "read from:" << start;
+
+    m_activeQuery.result->setPos(lastReadPos);
 
     if (m_activeQuery.queryType == EventQuery) {
         QList<Event> events;
-        for (int row = start; row <= end; row++) {
+
+        while (m_activeQuery.result->next()) {
             Event event;
-            QueryResult::fillEventFromModel(m_activeQuery, row, event);
+
+            m_activeQuery.fillEventFromModel(event);
             events.append(event);
+            ++added;
+            lastReadPos = m_activeQuery.result->pos();
+            if (!reallyFetchMore(lastReadPos))
+                break;
         }
-        emit eventsReceived(start, end, events);
+
+        if (added) {
+            checkCanFetchMoreChange();
+            emit eventsReceived(start, start + added - 1, events);
+        }
     } else if (m_activeQuery.queryType == GroupQuery) {
         QList<Group> groups;
-        for (int row = start; row <= end; row++) {
+
+        while (m_activeQuery.result->next()) {
             Group group;
-            QueryResult::fillGroupFromModel(m_activeQuery, row, group);
+            m_activeQuery.fillGroupFromModel(group);
             groups.append(group);
+            ++added;
+            lastReadPos = m_activeQuery.result->pos();
+            if (!reallyFetchMore(lastReadPos))
+                break;
         }
-        emit groupsReceived(start, end, groups);
+
+        if (added) {
+            checkCanFetchMoreChange();
+            emit groupsReceived(start, start + added - 1, groups);
+        }
     } else if (m_activeQuery.queryType == MessagePartQuery) {
         QList<MessagePart> parts;
-        for (int row = start; row <= end; row++) {
+        while (m_activeQuery.result->next()) {
             MessagePart part;
-            QueryResult::fillMessagePartFromModel(m_activeQuery, row, part);
+            m_activeQuery.fillMessagePartFromModel(part);
             parts.append(part);
+            ++added;
+            lastReadPos = m_activeQuery.result->pos();
+            if (!reallyFetchMore(lastReadPos))
+                break;
         }
-        emit messagePartsReceived(m_activeQuery.eventId, parts);
+        if (added) {
+            checkCanFetchMoreChange();
+            emit messagePartsReceived(m_activeQuery.eventId, parts);
+        }
+    } else if (m_activeQuery.queryType == GroupedCallQuery) {
+        QList<Event> events;
+
+        while (m_activeQuery.result->next()) {
+            Event event;
+            m_activeQuery.fillCallGroupFromModel(event);
+            events.append(event);
+            ++added;
+            lastReadPos = m_activeQuery.result->pos();
+            if (!reallyFetchMore(lastReadPos))
+                break;
+        }
+
+        if (added) {
+            checkCanFetchMoreChange();
+            emit eventsReceived(start, start + added - 1, events);
+        }
     }
+
+    // really finish current query in case more date than chunk size were read
+    if (m_streamedMode && !m_canFetchMore)
+        finished();
 
 #ifdef DEBUG
     qDebug() << "*** TIMER" << m_timer.elapsed();
@@ -231,36 +329,60 @@ void QueryRunner::rowsInsertedSlot(const QModelIndex &parent,
 
 void QueryRunner::checkCanFetchMoreChange()
 {
-    bool newFetchMore = m_activeQuery.model->canFetchMore(QModelIndex());
+    bool newFetchMore = !(m_activeQuery.result->isFinished()
+                          && m_activeQuery.result->pos() == QSparql::AfterLastRow);
     if (newFetchMore != m_canFetchMore) {
         m_canFetchMore = newFetchMore;
         emit canFetchMoreChanged(m_canFetchMore);
     }
 }
 
-void QueryRunner::modelUpdatedSlot()
+void QueryRunner::finished()
 {
-    qDebug() << Q_FUNC_INFO << QThread::currentThread() << this;
+    qDebug() << Q_FUNC_INFO;
 
     bool continueNext = false;
-    {
-        QMutexLocker locker(&m_mutex);
+
+    if (m_activeQuery.queryType == GenericQuery) {
+        emit resultsReceived(m_activeQuery.result);
         continueNext = m_enableQueue && !m_queries.isEmpty();
+    } else {
+        // ignore if there is no query or not all data were sent yet
+        if (m_activeQuery.result.isNull()
+            || (!m_activeQuery.result->isFinished()
+                || (!m_syncMode && lastReadPos < m_activeQuery.result->size() - 1)))
+            return;
+
+        bool abort = m_activeQuery.result->hasError();
+        if (abort) {
+            qWarning() << m_activeQuery.result->lastError().message();
+        } else {
+            checkCanFetchMoreChange();
+            {
+                QMutexLocker locker(&m_mutex);
+                continueNext = m_enableQueue && !m_queries.isEmpty();
+            }
+        }
+
+        if (!continueNext)
+            emit modelUpdated(!abort);
     }
 
-    m_ready = true;
+    endActiveQuery();
 
     if (continueNext) {
         // start next query from queue
         nextSlot();
-    } else {
-        /* We need to check the canFetchMore status of LiveNodes model also here, in addition to the check-up
-           in event loop in run()-method, before emitting modelUpdated signal
-           because if canFetchMore is FALSE and we do not indicate it here by emitting canFetchMoreChanged signal
-           to the commhistory data model the client might get modelReady (commhistory data model emits modelReady
-           as a result of catching modelUpdated, emitted here) before the commhistory data model knows that it cannot
-           fetch more and then if the client asks canFetchMore it might still get true although it should be false. */
-        checkCanFetchMoreChange();
-        emit modelUpdated();
     }
+}
+
+void QueryRunner::endActiveQuery()
+{
+    if (m_activeQuery.result) {
+        m_activeQuery.result->disconnect(this);
+        if (m_activeQuery.queryType != GenericQuery)
+            m_activeQuery.result->deleteLater();
+        m_activeQuery.result = 0;
+    }
+    m_activeQuery.query.setQuery(QString());
 }

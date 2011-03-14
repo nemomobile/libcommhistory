@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 
 #include <time.h>
 #include "eventmodeltest.h"
@@ -34,8 +33,6 @@
 #include "trackerio.h"
 
 #include "modelwatcher.h"
-
-using namespace CommHistory;
 
 Group group1, group2;
 Event im, sms, call;
@@ -113,15 +110,12 @@ void EventModelTest::testAddEvent()
 
     /* add invalid event */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
     im.setType(Event::IMEvent);
     /* missing direction, group id */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
     im.setDirection(Event::Outbound);
     /* missing group id */
     QVERIFY(!model.addEvent(im));
-    QVERIFY(model.lastError().isValid());
 
     /* add valid IM, SMS and call */
     im.setGroupId(group1.id());
@@ -149,7 +143,7 @@ void EventModelTest::testAddEvent()
     sms.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     sms.setRemoteUid("123456");
-    sms.setFreeText("smstest");
+    sms.setFreeText("smstest awefawef\nawefawefaw fawefawef \tawefawefawef awefawefawef awefawef");
     QVERIFY(model.addEvent(sms));
     watcher.waitForSignals();
     QCOMPARE(watcher.committedCount(), 1);
@@ -260,7 +254,6 @@ void EventModelTest::testModifyEvent()
 
     Event event;
     QVERIFY(!model.modifyEvent(event));
-    QVERIFY(model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 0);
 
     im.resetModifiedProperties();
@@ -319,9 +312,10 @@ void EventModelTest::testModifyEvent()
 
     int imId = im.id();
     im.setId(imId + 999);
+    qWarning() << "****** Expect tracker warning ******";
     QVERIFY(model.modifyEvent(im));
     watcher.waitForSignals();
-    QVERIFY(model.lastError().isValid());
+    QVERIFY(!watcher.lastSuccess());
     QCOMPARE(watcher.updatedCount(), 0);
     QCOMPARE(watcher.committedCount(), 0);
     //
@@ -350,7 +344,6 @@ void EventModelTest::testDeleteEvent()
 
     Event event;
     QVERIFY(!model.deleteEvent(event));
-    QVERIFY(model.lastError().isValid());
 
     event.setType(Event::IMEvent);
     event.setDirection(Event::Inbound);
@@ -490,7 +483,6 @@ void EventModelTest::testVCard()
 
     Event event;
     QVERIFY( !model.deleteEvent( event ) );
-    QVERIFY( model.lastError().isValid() );
 
     // create test data
     event.setType( Event::SMSEvent );
@@ -705,6 +697,8 @@ void EventModelTest::testMessagePartsQuery_data()
 void EventModelTest::testMessagePartsQuery()
 {
     QFETCH(bool, useThread);
+    QString threadPrefix;
+    if (useThread) threadPrefix = "thread_";
 
     EventModel model;
     watcher.setModel(&model);
@@ -731,6 +725,7 @@ void EventModelTest::testMessagePartsQuery()
     event.setGroupId(group.id());
 
     MessagePart part1;
+    part1.setContentId("blah_42");
     part1.setContentType("application/smil");
     part1.setPlainTextContent("<smil>blah</smil>");
     MessagePart part2;
@@ -741,7 +736,7 @@ void EventModelTest::testMessagePartsQuery()
     part3.setContentId("catphoto");
     part3.setContentType("image/jpeg");
     part3.setContentSize(101000);
-    QString fileName = "catphoto2.jpg";
+    QString fileName = threadPrefix + "catphoto2.jpg";
     part3.setContentLocation(ATT_PATH + fileName);
 
 #define CREATE_FILE(messageToken, filename) {\
@@ -776,7 +771,7 @@ void EventModelTest::testMessagePartsQuery()
     part5.setContentId("dogphoto2");
     part5.setContentType("image/jpeg");
     part5.setContentSize(202000);
-    fileName = "dogphoto2.jpg";
+    fileName = threadPrefix + "dogphoto2.jpg";
     part5.setContentLocation(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN2", fileName);
@@ -797,7 +792,7 @@ void EventModelTest::testMessagePartsQuery()
     part6.setContentId("dogphoto3");
     part6.setContentType("image/jpeg");
     part6.setContentSize(203000);
-    fileName = "dogphoto3.jpg";
+    fileName = threadPrefix + "dogphoto3.jpg";
     part6.setContentLocation(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN3", fileName)
@@ -816,9 +811,10 @@ void EventModelTest::testMessagePartsQuery()
 
     ModelWatcher convWatcher(&loop);
     ConversationModel convModel;
+    convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
 
-    QSignalSpy modelReady(&convModel, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&convModel, SIGNAL(modelReady(bool)));
     QThread modelThread;
 
     if (useThread) {
@@ -868,6 +864,8 @@ void EventModelTest::testMessagePartsQuery()
     modelThread.wait(3000);
     qDebug() << "done";
 
+    QTest::qWait(1000);
+
     QString mmsPath = QString("%1/.mms/msg/").arg(QDir::homePath());
     QVERIFY(!QDir(mmsPath + "MSGTOKEN1").exists());
     QVERIFY(!QDir(mmsPath + "MSGTOKEN2").exists());
@@ -890,12 +888,16 @@ void EventModelTest::testCcBcc()
     event.setGroupId(group1.id());
 
     QStringList ccList;
-    ccList << "+12345" << "98765" << "555666";
+    ccList << "+12345" << "98765" << "cc@mms.com";
     event.setCcList(ccList);
 
     QStringList bccList;
-    bccList << "+777888" << "999888" << "333555";
+    bccList << "+777888" << "999888" << "bcc@mms.com";
     event.setBccList(bccList);
+
+    QStringList toList;
+    toList << "+10111" << "+10112" << "to@mms.com";
+    event.setToList(toList);
 
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
@@ -907,15 +909,20 @@ void EventModelTest::testCcBcc()
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
+    QCOMPARE(e.toList().toSet(), toList.toSet());
 
     event.resetModifiedProperties();
     ccList.clear();
-    ccList << "112" << "358" << "134";
+    ccList << "112" << "358" << "mcc@mms.com";
     event.setCcList(ccList);
 
     bccList.clear();
-    bccList << "314" << "15" << "16";
+    bccList << "314" << "15" << "mbcc@mms.com";
     event.setBccList(bccList);
+
+    toList.clear();
+    toList << "777" << "888" << "mto@mms.com";
+    event.setToList(toList);
 
     QVERIFY(model.modifyEvent(event));
     watcher.waitForSignals();
@@ -926,12 +933,14 @@ void EventModelTest::testCcBcc()
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
+    QCOMPARE(e.toList().toSet(), toList.toSet());
 }
 
 
 void EventModelTest::testFindEvent()
 {
     ConversationModel model;
+    model.enableContactChanges(false);
     Event event;
 
     model.setQueryMode(EventModel::SyncQuery);
@@ -1012,13 +1021,6 @@ void EventModelTest::testFindEvent()
     QCOMPARE(header2.toString(),QString("message_token"));
     QString messageToken = var2.toString();
     QCOMPARE(messageToken,im.messageToken());
-
-    index2 = model.index(row,EventModel::ContactId);
-    var2 = model.data(index2);
-    header2 = model.headerData(EventModel::ContactId,Qt::Horizontal,Qt::DisplayRole);
-    QCOMPARE(header2.toString(),QString("contact_id"));
-    int contactId = var2.toInt();
-    QCOMPARE(contactId,im.contactId());
 
     index2 = model.index(row,EventModel::StartTime);
     var2 = model.data(index2);
@@ -1114,10 +1116,12 @@ void EventModelTest::testStreaming()
     qDebug() << "total msgs: " << total;
 
     ConversationModel model;
+    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
 
     ConversationModel streamModel;
+    streamModel.enableContactChanges(false);
 
     if (useThread) {
         modelThread.start();
@@ -1131,7 +1135,7 @@ void EventModelTest::testStreaming()
     streamModel.setFirstChunkSize(firstChunkSize);
     qRegisterMetaType<QModelIndex>("QModelIndex");
     QSignalSpy rowsInserted(&streamModel, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
-    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady()));
+    QSignalSpy modelReady(&streamModel, SIGNAL(modelReady(bool)));
     QVERIFY(streamModel.getEvents(group1.id()));
 
     int count = 0;
@@ -1143,16 +1147,28 @@ void EventModelTest::testStreaming()
 
         qDebug() << "chunk size: " << chunkSize;
 
-        QVERIFY(waitSignal(rowsInserted, 5000));
-
-        QList<QVariant> args = rowsInserted.takeFirst();
         int expectedEnd = count + chunkSize > total ? total - 1: count + chunkSize - 1;
-        qDebug() << "rows start in streaming model: " << args.at(1).toInt();
-        qDebug() << "rows start should be: " << count;
-        qDebug() << "rows end in streaming model: " << args.at(2).toInt();
-        qDebug() << "rows end should be: " << expectedEnd;
-        QCOMPARE(args.at(1).toInt(), count); // start
-        QCOMPARE(args.at(2).toInt(), expectedEnd); // end
+
+        int lastInserted = -1;
+        int firstInserted = -1;
+
+        while (expectedEnd != lastInserted) {
+            QVERIFY(waitSignal(rowsInserted, 5000));
+
+            if (firstInserted == -1)
+                firstInserted = rowsInserted.first().at(1).toInt();
+            lastInserted = rowsInserted.last().at(2).toInt(); // end
+
+            qDebug() << "rows start in streaming model: " << firstInserted;
+            qDebug() << "rows start should be: " << count;
+            qDebug() << "rows end in streaming model: " << lastInserted;
+            qDebug() << "rows end should be: " << expectedEnd;
+
+            rowsInserted.clear();
+        }
+
+        QCOMPARE(firstInserted, count); // start
+
         for (int i = count; i < expectedEnd + 1; i++) {
             Event event1 = model.index(i, 0).data(Qt::UserRole).value<Event>();
             Event event2 = streamModel.index(i, 0).data(Qt::UserRole).value<Event>();
@@ -1160,7 +1176,7 @@ void EventModelTest::testStreaming()
         }
 
         // You should be able to fetch more if total number of messages is not yet reached:
-        if ( args.at(2).toInt() < total-1 )
+        if ( lastInserted < total-1 )
         {
             QVERIFY(streamModel.canFetchMore(QModelIndex()));
             QVERIFY(modelReady.isEmpty());
@@ -1172,9 +1188,7 @@ void EventModelTest::testStreaming()
         count += chunkSize;
     }
     QVERIFY(waitSignal(modelReady, 5000));
-    QVERIFY(rowsInserted.isEmpty());
-    // TODO: NB#208137
-    // QVERIFY(!streamModel.canFetchMore(QModelIndex()));
+    QVERIFY(!streamModel.canFetchMore(QModelIndex()));
 
     modelThread.quit();
     modelThread.wait(3000);
@@ -1217,7 +1231,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1237,7 +1250,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1256,7 +1268,6 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
@@ -1298,13 +1309,65 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << newEvent, group));
     watcher.waitForSignals();
 
-    QVERIFY(!model.lastError().isValid());
     QCOMPARE(watcher.updatedCount(), 1);
     QCOMPARE(watcher.committedCount(), 1);
 
     QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), newEvent.id());
     QCOMPARE(group.unreadMessages(), unread);
+}
+
+void EventModelTest::testContactMatching_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+    QTest::addColumn<int>("eventType");
+
+    QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bad@localhost"
+            << (int)Event::IMEvent;
+    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+            << "+42382394"
+            << (int)Event::SMSEvent;
+}
+
+void EventModelTest::testContactMatching()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+    QFETCH(int, eventType);
+
+    EventModel model;
+    watcher.setModel(&model);
+
+
+    int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
+                 "text", false, false, QDateTime::currentDateTime(), remoteId);
+    watcher.waitForSignals();
+    QVERIFY(eventId != -1);
+
+    Event event;
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), 0);
+
+    QString noMatch = remoteId;
+    noMatch += remoteId[1];
+
+    int contactId1 = addTestContact("Really Bad",
+                   noMatch,
+                   localId);
+
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), 0);
+
+    int contactId = addTestContact("Really Bad", remoteId, localId);
+
+    model.trackerIO().getEvent(eventId, event);
+    QCOMPARE(event.contactId(), contactId);
+    QCOMPARE(event.contactName(), QString("Really Bad"));
+
+    deleteTestContact(contactId1);
+    deleteTestContact(contactId);
 }
 
 void EventModelTest::cleanupTestCase()

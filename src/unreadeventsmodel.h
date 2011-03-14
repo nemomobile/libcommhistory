@@ -24,9 +24,6 @@
 #define COMMHISTORY_UNREADEVENTSMODEL_H
 
 #include "eventmodel.h"
-#include "event.h"
-#include "callevent.h"
-#include "group.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
@@ -63,7 +60,7 @@ public:
     /*!
      * Reset model and fetch unread events.
      * \param bool, by default, only incoming events are fetched
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvents(bool includeSentEvents = false);
 

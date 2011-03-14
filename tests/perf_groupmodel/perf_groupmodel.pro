@@ -26,7 +26,6 @@ include( ../performance_tests.pri )
 
 TARGET = perf_groupmodel
 DESTDIR = ../perf_bin
-QT += sql
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += groupmodelperftest.cpp

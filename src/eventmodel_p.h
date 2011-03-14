@@ -24,10 +24,7 @@
 #define COMMHISTORY_EVENTMODEL_P_H
 
 #include <QList>
-#include <QSqlError>
 #include <QGenericArgument>
-
-#include <QtTracker/Tracker>
 
 #include "eventmodel.h"
 #include "event.h"
@@ -35,12 +32,13 @@
 #include "eventtreeitem.h"
 #include "trackerio.h"
 #include "libcommhistoryexport.h"
-#include "committingtransaction.h"
 
 namespace CommHistory {
 
 class QueryRunner;
 class ContactListener;
+class CommittingTransaction;
+class EventsQuery;
 
 /*!
  * \class EventModelPrivate
@@ -98,7 +96,7 @@ public:
      * are received, and modelReady() is emitted when the query is
      * finished.
      */
-    virtual bool executeQuery(SopranoLive::RDFSelect &query);
+    bool executeQuery(EventsQuery &query);
 
     /*!
      * Add new events from the query results to the internal event
@@ -130,7 +128,7 @@ public:
     QString newObjectPath();
     QModelIndex findEventRecursive(int id, EventTreeItem *parent) const;
 
-    CommittingTransaction& commitTransaction(const QList<Event> &events);
+    CommittingTransaction* commitTransaction(const QList<Event> &events);
 
     bool canFetchMore() const;
 
@@ -177,19 +175,15 @@ public:
 
     QueryRunner *queryRunner;
     QueryRunner *partQueryRunner;
-    SopranoLive::LiveNodes queryResult;
 
     static uint modelSerial;
-    QSqlError lastError;
 
     Event::PropertySet propertyMask;
 
     QSharedPointer<ContactListener> contactListener;
 
     // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QPair<int, QString> > contactCache;
-
-    QList<CommittingTransaction> transactions;
+    QMap<QPair<QString,QString>, Event::Contact > contactCache;
 
     QThread *bgThread;
 
@@ -200,18 +194,15 @@ public Q_SLOTS:
 
     virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);
 
-    virtual void modelUpdatedSlot();
+    virtual void modelUpdatedSlot(bool successful);
 
-    virtual void partsUpdatedSlot();
+    virtual void partsUpdatedSlot(bool successful);
 
     virtual void eventsAddedSlot(const QList<CommHistory::Event> &events);
 
     virtual void eventsUpdatedSlot(const QList<CommHistory::Event> &events);
 
     virtual void eventDeletedSlot(int id);
-
-    void commitFinishedSlot();
-    void commitErrorSlot(QString message);
 
     void canFetchMoreChangedSlot(bool canFetch);
 
@@ -233,7 +224,7 @@ Q_SIGNALS:
 
     void groupsDeleted(const QList<int> &groupIds);
 
-    void modelReady();
+    void modelReady(bool successful);
     void eventsCommitted(const QList<CommHistory::Event> &events, bool successful);
 
 };

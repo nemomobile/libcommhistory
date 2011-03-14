@@ -23,11 +23,10 @@
 #ifndef COMMHISTORY_QUERY_RESULT_H
 #define COMMHISTORY_QUERY_RESULT_H
 
-#include <QHash>
 #include <QString>
-#include <QtTracker/Tracker>
-
-#include "event.h"
+#include <QPointer>
+#include <QSparqlQuery>
+#include <QSparqlResult>
 
 namespace CommHistory {
 
@@ -36,28 +35,30 @@ class Group;
 class MessagePart;
 
 typedef enum {
-    EventQuery, GroupQuery, MessagePartQuery
+    EventQuery, GroupQuery, MessagePartQuery, GroupedCallQuery, GenericQuery
 } QueryType;
 
 struct QueryResult {
-    bool isValid;
-    SopranoLive::RDFSelect query;
+    QSparqlQuery query;
     QueryType queryType;
     Event::PropertySet propertyMask;
-    SopranoLive::LiveNodes model;
-    // Column mapping by header
-    QHash<QString, int> columns;
+    QPointer<QSparqlResult> result;
     // for message part queries
     int eventId;
+    QList<Event::Property> properties;
 
-    static void fillEventFromModel(QueryResult &result, int row, Event &event);
-    static void fillGroupFromModel(QueryResult &result, int row, Group &group);
-    static void fillMessagePartFromModel(QueryResult &result, int row, MessagePart &part);
+    void fillEventFromModel(Event &event);
+    void fillGroupFromModel(Group &group);
+    void fillMessagePartFromModel(MessagePart &part);
+    void fillCallGroupFromModel(Event &event);
 
+    static void parseContacts(const QString &result, const QString &imNickname,
+                              QList<Event::Contact> &contacts);
 
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,
                                     const QString &imNickname);
+    static QString buildContactName(const QString &names);
 };
 
 } //namespace

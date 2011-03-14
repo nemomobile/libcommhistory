@@ -124,12 +124,11 @@ public:
         IsMissedCall,
         IsEmergencyCall,
         Status,
-        BytesSent,
         BytesReceived,
         LocalUid,
         RemoteUid,
-        ContactId,
-        ContactName,
+        ContactId, // TODO: remove
+        ContactName, // TODO: remove
         ParentId,
         Subject,
         FreeText,
@@ -152,14 +151,16 @@ public:
         ReadStatus,
         ReportRead,
         ReportReadRequested,
-        ReportReadStatus,
         MmsId,
         To,
+        Contacts,
         //
         NumProperties
     };
 
     typedef QSet<Event::Property> PropertySet;
+
+    typedef QPair<int, QString> Contact;
 
 public:
     Event();
@@ -250,17 +251,19 @@ public:
 
     Event::EventStatus status() const;
 
-    int bytesSent() const;
-
     int bytesReceived() const;
 
     QString localUid() const;  /* telepathy account */
 
     QString remoteUid() const;
 
+    /* DEPRECATED - use contacts(). Returns the id of the first matching contact. */
     int contactId() const;
 
+    /* DEPRECATED - use contacts(). Returns the name of the first matching contact. */
     QString contactName() const;
+
+    QList<Event::Contact> contacts() const;
 
     int parentId() const; // SMS parent folder id
 
@@ -344,17 +347,19 @@ public:
 
     void setStatus(Event::EventStatus status);
 
-    void setBytesSent(int bytes);
-
     void setBytesReceived(int bytes);
 
     void setLocalUid(const QString &uid);
 
     void setRemoteUid(const QString &uid);
 
+    /* DEPRECATED - use setContacts() */
     void setContactId(int id);
 
+    /* DEPRECATED - use setContacts() */
     void setContactName(const QString &name);
+
+    void setContacts(const QList<Event::Contact> &contacts);
 
     void setParentId(int id);
 
@@ -402,7 +407,7 @@ public:
 
     void setContentLocation(const QString &location);
 
-    void setMessageParts(QList<MessagePart> &parts);
+    void setMessageParts(const QList<MessagePart> &parts);
 
     void addMessagePart(const MessagePart &part);
 
@@ -416,6 +421,13 @@ public:
 
     bool resetModifiedProperty(Event::Property property);
 
+    /*!
+     * \brief Copy all valid properties from other event
+     *
+     * \param another event
+     */
+    void copyValidProperties(const Event &other);
+
 private:
     QSharedDataPointer<EventPrivate> d;
 };
@@ -425,7 +437,12 @@ private:
 LIBCOMMHISTORY_EXPORT QDBusArgument &operator<<(QDBusArgument &argument, const CommHistory::Event &event);
 LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Event &event);
 
+LIBCOMMHISTORY_EXPORT QDBusArgument &operator<<(QDBusArgument &argument, const CommHistory::Event::Contact &contact);
+LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Event::Contact &contact);
+
 Q_DECLARE_METATYPE(CommHistory::Event);
 Q_DECLARE_METATYPE(QList<CommHistory::Event>);
+Q_DECLARE_METATYPE(CommHistory::Event::Contact);
+Q_DECLARE_METATYPE(QList<CommHistory::Event::Contact>);
 
 #endif

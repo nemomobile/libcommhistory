@@ -34,7 +34,7 @@ PROJECT_NAME = libcommhistory
 # Project version
 # remember to update debian/* files if you changes this
 #-----------------------------------------------------------------------------
-PROJECT_VERSION = 1.0.35
+PROJECT_VERSION = 1.0.37
 
 #------------------------------------------------------------------------------
 # Library version

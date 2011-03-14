@@ -1,0 +1,43 @@
+# Calls ordered by time. CallModel groups similar events when processing
+# query results.
+
+SELECT
+ ?message
+ rdf:type(?message)
+ nmo:sentDate(?message)
+ ?endTime
+ nmo:isSent(?message)
+ nmo:isRead(?message)
+ nmo:isEmergency(?message)
+ nie:contentSize(?message)
+ tracker:coalesce(nco:imID(?fromMedium), nco:phoneNumber(?fromMedium), ?fromMedium)
+ tracker:coalesce(nco:imID(?toMedium), nco:phoneNumber(?toMedium), ?toMedium)
+ nmo:communicationChannel(?message)
+ nie:generator(?message)
+ (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), "\u001f"), "\u001e")
+  WHERE {
+  {
+    ?target nco:hasIMAddress ?address .
+    ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] .
+  } UNION {
+    ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] .
+    ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] .
+  }}
+ ) AS ?contacts
+ (SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })
+WHERE
+{
+  SELECT ?message ?startTime ?endTime
+    ?fromMedium
+    ?toMedium
+    IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target
+  WHERE {
+    ?message nmo:from ?from ;
+      nmo:to ?to ;
+      nmo:receivedDate ?endTime ;
+      nmo:sentDate ?startTime .
+    ?from nco:hasContactMedium ?fromMedium .
+    ?to nco:hasContactMedium ?toMedium .
+    ?message a nmo:Call .
+  }
+} ORDER BY DESC(?endTime) DESC(tracker:id(?message))

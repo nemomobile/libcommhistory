@@ -25,6 +25,7 @@
 #include "callmodeltest.h"
 #include "common.h"
 #include "modelwatcher.h"
+#include "signal.h"
 
 using namespace CommHistory;
 
@@ -137,7 +138,7 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
                 QCOMPARE( e.direction(), Event::Inbound );
                 QCOMPARE( e.isMissedCall(), false );
                 // received and missed calls have invalid event count if sorted by contact
-                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? -1 : calls.at( i ).eventCount );
+                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
                 break;
             }
             case CallEvent::DialedCallType :
@@ -145,7 +146,7 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
                 QCOMPARE( e.direction(), Event::Outbound );
                 QCOMPARE( e.isMissedCall(), false );
                 // received and missed calls have invalid event count if sorted by contact
-                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? -1 : calls.at( i ).eventCount );
+                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
                 break;
             }
             default :
@@ -239,7 +240,7 @@ void CallModelTest::testAddEvent()
     /* by contact:
      * -----------
      * user2, missed   (1)
-     * user1, received (-1)
+     * user1, received (0)
      */
     testGetEvents( CallModel::SortByContact, 2, testCalls );
     /* by time:
@@ -262,7 +263,7 @@ void CallModelTest::testAddEvent()
 
     /* by contact: ***REORDERING
      * -----------
-     * user1, received (-1)
+     * user1, received (0)
      * user2, missed   (1)
      */
     testGetEvents( CallModel::SortByContact, 2, testCalls );
@@ -287,8 +288,8 @@ void CallModelTest::testAddEvent()
 
     /* by contact:
      * -----------
-     * user2, received (-1)
-     * user1, received (-1)
+     * user2, received (0)
+     * user1, received (0)
      */
     testGetEvents( CallModel::SortByContact, 2, testCalls );
     /* by time:
@@ -320,8 +321,8 @@ void CallModelTest::testDeleteEvent()
 
     /* by contact:
      * -----------
-     * user2, received (-1)***
-     * user1, received (-1)
+     * user2, received (0)***
+     * user1, received (0)
      */
     // take the event
     Event e = model.event( model.index( 0, 0 ) );
@@ -332,10 +333,15 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
+    watcher.waitForSignals(-1, -1, 2);
+    QCOMPARE(watcher.deletedCount(), 2);
     // correct test helper lists to match current situation
-    testCalls.takeFirst(); testCalls.takeFirst(); testCalls.takeFirst();
+    QMutableListIterator<TestCallItem> i(testCalls);
+    while (i.hasNext()) {
+        i.next();
+        if (i.value().remoteUid == REMOTEUID2)
+            i.remove();
+    }
     // test if model contains what we want it does
     testGetEvents( CallModel::SortByContact, 1, testCalls );
 
@@ -375,7 +381,13 @@ void CallModelTest::testDeleteEvent()
     QVERIFY( model.deleteEvent( e.id() ) );
     watcher.waitForSignals();
     // correct test helper lists to match current situation
-    testCalls.takeFirst();
+    foreach (TestCallItem item, testCalls) {
+        qDebug() << item.remoteUid << item.callType << item.eventCount;
+    }
+    testCalls.takeFirst(); testCalls.takeFirst();
+    foreach (TestCallItem item, testCalls) {
+        qDebug() << item.remoteUid << item.callType << item.eventCount;
+    }
     // test if model contains what we want it does
     testGetEvents( CallModel::SortByTime, testCalls.count(), testCalls );
 
@@ -417,7 +429,7 @@ void CallModelTest::testDeleteEvent()
     QVERIFY(watcher.waitForModelReady(5000));
     /* by contact:
      * -----------
-     * user1, dialed (-1)***
+     * user1, dialed (0)***
      *
      *    ||
      *    \/
@@ -433,7 +445,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    watcher.waitForSignals();
+    watcher.waitForSignals(-1, -1, 7);
     // correct test helper lists to match current situation
     testCalls.clear();
     // test if model contains what we want it does
@@ -511,7 +523,11 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     QVERIFY(watcher.waitForModelReady(5000));
     QVERIFY(model.rowCount() == 3);
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::ReceivedCallType, time));
+    qDebug() << time;
     QVERIFY(watcher.waitForModelReady(5000));
+    for (int i = 0; i < model.rowCount(); i++) {
+        qDebug() << model.event(model.index(i, 0)).toString();
+    }
     QVERIFY(model.rowCount() == 2);
 
     /**
@@ -541,6 +557,11 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::ReceivedCallType, time));
     QVERIFY(watcher.waitForModelReady(5000));
     QVERIFY(model.rowCount() == 0);
+
+    qDebug() << "wait thread";
+    modelThread.quit();
+    modelThread.wait(3000);
+    qDebug() << "done";
 }
 
 void CallModelTest::deleteAllCalls()

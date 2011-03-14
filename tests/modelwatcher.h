@@ -39,7 +39,7 @@ public:
     void setLoop(QEventLoop *loop);
     void setModel(CommHistory::EventModel *model);
     // -1 for minCommitted = don't care (for example status messages)
-    void waitForSignals(int minCommitted = 0, int minAdded = 0);
+    void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
     bool waitForModelReady(int msec);
 
     int addedCount() { return m_addedCount; }
@@ -49,13 +49,14 @@ public:
     QList<CommHistory::Event> lastAdded() { return m_lastAdded; }
     QList<CommHistory::Event> lastUpdated() { return m_lastUpdated; }
     int lastDeletedId() { return m_lastDeleted; }
+    bool lastSuccess() {return m_success;}
 
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
     void eventsUpdatedSlot(const QList<CommHistory::Event> &events);
     void eventDeletedSlot(int eventId);
     void eventsCommittedSlot(const QList<CommHistory::Event> &events, bool successful);
-    void modelReadySlot();
+    void modelReadySlot(bool success);
 
 public:
     static int m_watcherId;
@@ -64,6 +65,7 @@ public:
     int m_minCommitCount;
     int m_minAddCount;
     int m_committedCount;
+    int m_minDeleteCount;
     int m_addedCount;
     int m_updatedCount;
     int m_deletedCount;
@@ -73,6 +75,7 @@ public:
     bool m_eventsCommitted;
     bool m_dbusSignalReceived;
     bool m_modelReady;
+    bool m_success;
     QEventLoop *m_loop;
 };
 

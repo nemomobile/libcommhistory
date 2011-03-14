@@ -33,14 +33,13 @@
 #include "../src/group.h"
 #include "../src/trackerio.h"
 
-#include <QtTracker/Tracker>
-#include <QtTracker/rdfunbound.h>
-#include <QtTracker/ontologies/nmo.h>
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlQuery>
 
 #include "catcher.h"
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 const char *remoteUids[] = {
     "user@remotehost",
@@ -172,7 +171,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         remoteUids << remoteUid;
         group.setRemoteUids(remoteUids);
         if (!groupModel.addGroup(group)) {
-            qCritical() << "Error adding group:" << groupModel.lastError();
+            qCritical() << "Error adding group";
             return -1;
         }
         groupId = group.id();
@@ -281,7 +280,6 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         } else {
             e.setIsRead(false);
         }
-        e.setBytesSent(qrand() % 1024);
         e.setBytesReceived(qrand() % 1024);
         e.setGroupId(groupId);
         if (randomRemote) {
@@ -297,7 +295,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
     Catcher c(&model);
 
     if (!model.addEvents(events, false)) {
-        qCritical() << "Error adding events:" << model.lastError();
+        qCritical() << "Error adding events";
         return -1;
     }
 
@@ -370,7 +368,7 @@ int doAddCall( const QStringList &arguments, const QVariantMap &options )
     Catcher c(&model);
 
     if (!model.addEvents(events, false)) {
-        qCritical() << "Error adding event:" << model.lastError();
+        qCritical() << "Error adding event";
         return -1;
     }
 
@@ -392,7 +390,7 @@ int doAddVCard(const QStringList &arguments, const QVariantMap &options)
     EventModel model;
     Event e;
     if(!model.trackerIO().getEvent(id, e)) {
-        qCritical() << "Error getting event" << id << ":" << model.trackerIO().lastError();
+        qCritical() << "Error getting event" << id;
         return -1;
     }
     e.setFromVCard(arguments.at(3), arguments.at(4));
@@ -400,8 +398,7 @@ int doAddVCard(const QStringList &arguments, const QVariantMap &options)
     Catcher c(&model);
 
     if (!model.modifyEvent(e)) {
-        qCritical() << "Error modifying event" << id << ":"
-                    << model.lastError();
+        qCritical() << "Error modifying event" << id;
         return -1;
     }
 
@@ -440,7 +437,7 @@ int doAddClass0(const QStringList &arguments, const QVariantMap &options)
     EventModel model;
     if (!model.addEvent(e, true)) {
 
-        qCritical() << "Error adding events:" << model.lastError();
+        qCritical() << "Error adding events";
         return -1;
     }
     qDebug() << "Added Class Zero SMS.";
@@ -478,17 +475,12 @@ int doList(const QStringList &arguments, const QVariantMap &options)
         remoteUid = arguments.at(3);
     }
 
-    Group::ChatType chatType = Group::ChatTypeP2P;
-    Live<nmo::CommunicationChannel> conversation = ::tracker()->strictLiveNode(Group::idToUrl(groupId));
-    if (conversation)
-        chatType = (Group::ChatType)conversation->getIdentifier().toUInt();
-
     ConversationModel model;
     model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setTreeMode(tree);
-    if (!model.getEventsWithType(groupId, chatType)) {
-        qCritical() << "Error fetching events:" << model.lastError();
+    if (!model.getEvents(groupId)) {
+        qCritical() << "Error fetching events";
         return -1;
     }
 
@@ -536,26 +528,40 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getGroups(localUid, remoteUid)) {
-        qCritical() << "Error fetching groups:" << model.lastError();
+        qCritical() << "Error fetching groups";
         return -1;
     }
     EventModel eventModel;
     for (int i = 0; i < model.rowCount(); i++) {
         Group g = model.group(model.index(i, 0));
+
+        QString contacts;
+        if (!g.contacts().isEmpty()) {
+            QStringList contactList;
+            foreach (Event::Contact contact, g.contacts()) {
+                contactList << QString("%1,%2")
+                    .arg(QString::number(contact.first))
+                    .arg(contact.second);
+            }
+
+            contacts = contactList.join(QChar(';'));
+        }
+
         QString line =
-            QString("Group %1 (%2 messages, %3 unread, %4 sent) %5 %6 %7 %8")
-                .arg(g.id())
-                .arg(g.totalMessages())
-                .arg(g.unreadMessages())
-                .arg(g.sentMessages())
-                .arg(g.chatName())
-                .arg(g.remoteUids().join("|"))
-                .arg(g.contactId())
-                .arg(g.contactName());
+            QString("Group %1 (%2 messages, %3 unread, %4 sent) %5 %6 %7")
+            .arg(g.id())
+            .arg(g.totalMessages())
+            .arg(g.unreadMessages())
+            .arg(g.sentMessages())
+            .arg(g.chatName())
+            .arg(g.remoteUids().join("|"))
+            .arg(contacts);
         std::cout << qPrintable(line) << std::endl;
         Event e;
         if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);
+        } else {
+            qCritical() << "getEvent error ";
         }
 
         std::cout << std::endl;
@@ -592,7 +598,7 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
     model.setFilter(sorting);
     if ( !model.getEvents() )
     {
-        qCritical() << "Error fetching events:" << model.lastError();
+        qCritical() << "Error fetching events";
         return -1;
     }
 
@@ -628,15 +634,14 @@ int doIsRead(const QStringList &arguments, const QVariantMap &options)
     EventModel model;
     Event event;
     if (!model.trackerIO().getEvent(id, event)) {
-        qCritical() << "Error getting event" << id << ":" << model.trackerIO().lastError();
+        qCritical() << "Error getting event" << id;
         return -1;
     }
 
 
     event.setIsRead(isRead);
     if (!model.modifyEvent(event)) {
-        qCritical() << "Error updating event" << event.id() << ":"
-                    << model.lastError();
+        qCritical() << "Error updating event" << event.id();
         return -1;
     }
 
@@ -662,7 +667,7 @@ int doReportDelivery(const QStringList &arguments, const QVariantMap &options)
     EventModel model;
     Event event;
     if (!model.trackerIO().getEvent(id, event)) {
-        qCritical() << "Error getting event" << id << ":" << model.trackerIO().lastError();
+        qCritical() << "Error getting event" << id;
         return -1;
     }
 
@@ -671,8 +676,7 @@ int doReportDelivery(const QStringList &arguments, const QVariantMap &options)
     Catcher c(&model);
 
     if (!model.modifyEvents(QList<Event>() << event)) {
-        qCritical() << "Error modifying event" << id << ":"
-                    << model.lastError();
+        qCritical() << "Error modifying event" << id;
         return -1;
     }
 
@@ -695,7 +699,7 @@ int doSetStatus(const QStringList &arguments, const QVariantMap &options)
     EventModel model;
     Event event;
     if (!model.trackerIO().getEvent(id, event)) {
-        qCritical() << "Error getting event" << id << ":" << model.trackerIO().lastError();
+        qCritical() << "Error getting event" << id;
         return -1;
     }
 
@@ -732,7 +736,7 @@ int doSetStatus(const QStringList &arguments, const QVariantMap &options)
     Catcher c(&model);
 
     if (!model.modifyEvents(QList<Event>() << event)) {
-        qCritical() << "Error modifying event" << id << ":" << model.lastError();
+        qCritical() << "Error modifying event" << id;
         return -1;
     }
     c.waitCommit();
@@ -753,7 +757,7 @@ int doDelete(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     if (!model.deleteEvent(id)) {
-        qCritical() << "Error deleting event" << id << ":" << model.lastError();
+        qCritical() << "Error deleting event" << id;
         return -1;
     }
     return 0;
@@ -772,7 +776,7 @@ int doDeleteGroup(const QStringList &arguments, const QVariantMap &options)
 
     GroupModel model;
     if (!model.deleteGroups(QList<int>() << id)) {
-        qCritical() << "Error deleting group" << id << ":" << model.lastError();
+        qCritical() << "Error deleting group" << id;
         return -1;
     }
 
@@ -784,12 +788,14 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     Q_UNUSED(arguments);
     Q_UNUSED(options);
 
-    RDFUpdate deleter;
-    deleter.addDeletion(RDFVariable::fromType<nmo::Message>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    deleter.addDeletion(RDFVariable::fromType<nmo::CommunicationChannel>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(deleter);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String(
+            "DELETE {?n a rdfs:Resource}"
+            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                "nmo:CommunicationChannel))}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
 
     return 0;
 }

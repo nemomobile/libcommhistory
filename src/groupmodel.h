@@ -24,7 +24,6 @@
 #define COMMHISTORY_GROUPMODEL_H
 
 #include <QAbstractItemModel>
-#include <QSqlError>
 
 #include "eventmodel.h"
 #include "group.h"
@@ -63,8 +62,7 @@ public:
         UnreadMessages,
         SentMessages,
         LastEventId,
-        ContactId,
-        ContactName,
+        Contacts,
         LastMessageText,
         LastVCardFileName,
         LastVCardLabel,
@@ -90,13 +88,6 @@ public:
      * Destructor.
      */
     ~GroupModel();
-
-    /*!
-     * Get details of the last error that occurred when using the model.
-     *
-     * \return error
-     */
-    QSqlError lastError() const;
 
     /*!
      * Set query mode. See EventModel::setQueryMode().
@@ -145,17 +136,17 @@ public:
      * Add a new group. If successful, group.id() and group.isPermanent() are updated.
      *
      * \param group Group data to be inserted into the database.
-     * \toModelOnly Indicates wheter or not to save instance to database. //TODO: remove on next API break
-     * \return true if successful. Sets lastError() on failure.
+     *
+     * \return true if successful, otherwise false
      */
-    bool addGroup(Group &group, bool toModelOnly = false);
+    bool addGroup(Group &group);
 
     /*!
      * Modifies a group. This will update a group with a matching id in
      * the database.
      * group.lastModified() is automatically updated.
      * \param group Group to be modified.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool modifyGroup(Group &group);
 
@@ -167,7 +158,7 @@ public:
      *
      * \param localUid Local account (/org/freedesktop/Telepathy/Account/...).
      * \param remoteUid Remote contact uid (example: user@gmail.com).
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getGroups(const QString &localUid = QString(),
                    const QString &remoteUid = QString());
@@ -177,14 +168,14 @@ public:
      *
      * \param groupIds List of group ids to be deleted.
      * \param deleteMessages If true (default), also delete all messages in the groups.
-     * \return true if successful
+     * \return true if successful, otherwise false
      */
     bool deleteGroups(const QList<int> &groupIds, bool deleteMessages = true);
 
     /*!
      * Delete all groups from database.
      *
-     * \return true if successful
+     * \return true if successful, otherwise false
      */
     bool deleteAll();
 
@@ -194,7 +185,7 @@ public:
      * only groupsUpdated signal is emitted.
      *
      * \param id Database id of the group.
-     * \return true if successful
+     * \return true if successful, otherwise false
      */
     bool markAsReadGroup(int id);
 
@@ -255,8 +246,19 @@ public:
 Q_SIGNALS:
     /*!
      * Emitted when an async query is finished and the model has been filled.
+     *
+     * \param successful or false in case of an error
+     *
      */
-    void modelReady();
+    void modelReady(bool successful);
+
+    /*!
+     * Emitted when group operation finishes.
+     *
+     * \param group ids
+     * \param successful or false in case of an error
+     */
+    void groupsCommitted(const QList<int> &groupIds, bool successful);
 
 private:
     friend class GroupModelPrivate;

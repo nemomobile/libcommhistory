@@ -57,8 +57,7 @@ public:
 
     QString localUid;  /* telepathy account */
     QString remoteUid;
-    int contactId;
-    QString contactName;
+    QList<Event::Contact> contacts;
     int parentId;
 
     QString freeText;
@@ -105,8 +104,8 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.endTime() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
-             << event.bytesSent() << event.bytesReceived() << event.localUid()
-             << event.remoteUid() << event.contactId() << event.contactName()
+             << event.bytesReceived() << event.localUid()
+             << event.remoteUid() << event.contacts()
              << event.parentId() << event.freeText() << event.groupId()
              << event.messageToken() << event.mmsId() << event.lastModified()
              << event.eventCount()
@@ -117,6 +116,13 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.messageParts() << event.toList() << event.ccList() << event.bccList()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
              << event.validityPeriod();
+
+    // pass valid properties
+    argument.beginArray(qMetaTypeId<int>());
+    foreach (int e, event.validProperties())
+        argument << e;
+    argument.endArray();
+
     argument.endStructure();
     return argument;
 }
@@ -128,14 +134,23 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     argument.beginStructure();
     argument >> p.id >> type >> p.startTime >> p.endTime
              >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
-             >> status >> p.bytesSent >> p.bytesReceived >> p.localUid >> p.remoteUid
-             >> p.contactId >> p.contactName >> p.parentId >> p.freeText >> p.groupId
+             >> status >> p.bytesReceived >> p.localUid >> p.remoteUid >> p.contacts
+             >> p.parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
              >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts >> p.toList >> p.ccList >> p.bccList
              >> rstatus >> p.reportRead >> p.reportReadRequested
              >> p.validityPeriod;
+
+    //read valid properties
+    argument.beginArray();
+    while (!argument.atEnd()) {
+        int vp;
+        argument >> vp;
+        p.validProperties.insert((Event::Property)vp);
+    }
+    argument.endArray();
     argument.endStructure();
 
     event.setId(p.id);
@@ -148,12 +163,10 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setIsMissedCall( p.isMissedCall );
     event.setIsEmergencyCall( p.isEmergencyCall );
     event.setStatus((Event::EventStatus)status);
-    event.setBytesSent(p.bytesSent);
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
     event.setRemoteUid(p.remoteUid);
-    event.setContactId(p.contactId);
-    event.setContactName(p.contactName);
+    event.setContacts(p.contacts);
     event.setParentId(p.parentId);
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
@@ -178,8 +191,27 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
 
+    event.setValidProperties(p.validProperties);
     event.resetModifiedProperties();
 
+    return argument;
+}
+
+QDBusArgument &operator<<(QDBusArgument &argument,
+                          const CommHistory::Event::Contact &contact)
+{
+    argument.beginStructure();
+    argument << contact.first << contact.second;
+    argument.endStructure();
+    return argument;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                CommHistory::Event::Contact &contact)
+{
+    argument.beginStructure();
+    argument >> contact.first >> contact.second;
+    argument.endStructure();
     return argument;
 }
 
@@ -192,12 +224,10 @@ EventPrivate::EventPrivate()
         , isMissedCall( false )
         , isEmergencyCall( false )
         , status(Event::UnknownStatus)
-        , bytesSent(0)
         , bytesReceived(0)
-        , contactId(0)
         , parentId(-1)
         , groupId(-1)
-        , eventCount( -1 )
+        , eventCount(0)
         , deleted(false)
         , reportDelivery(false)
         , reportRead(false)
@@ -220,12 +250,10 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , isMissedCall( other.isMissedCall )
         , isEmergencyCall( other.isEmergencyCall )
         , status(other.status)
-        , bytesSent(other.bytesSent)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
         , remoteUid(other.remoteUid)
-        , contactId(other.contactId)
-        , contactName(other.contactName)
+        , contacts(other.contacts)
         , parentId(other.parentId)
         , freeText(other.freeText)
         , groupId(other.groupId)
@@ -316,8 +344,7 @@ Event::PropertySet Event::modifiedProperties() const
 
 bool Event::operator==(const Event &other) const
 {
-    return (this->d->contactId         == other.contactId()         &&
-            this->d->remoteUid         == other.remoteUid()         &&
+    return (this->d->remoteUid         == other.remoteUid()         &&
             this->d->localUid          == other.localUid()          &&
             this->d->startTime         == other.startTime()         &&
             this->d->endTime           == other.endTime()           &&
@@ -402,11 +429,6 @@ Event::EventStatus Event::status() const
     return d->status;
 }
 
-int Event::bytesSent() const
-{
-    return d->bytesSent;
-}
-
 int Event::bytesReceived() const
 {
     return d->bytesReceived;
@@ -424,12 +446,17 @@ QString Event::remoteUid() const
 
 int Event::contactId() const
 {
-    return d->contactId;
+    return (d->contacts.size() ? d->contacts.first().first : 0);
 }
 
 QString Event::contactName() const
 {
-    return d->contactName;
+    return (d->contacts.size() ? d->contacts.first().second : QString());
+}
+
+QList<Event::Contact> Event::contacts() const
+{
+    return d->contacts;
 }
 
 QString Event::subject() const
@@ -628,12 +655,6 @@ void Event::setStatus( Event::EventStatus status )
     d->propertyChanged(Event::Status);
 }
 
-void Event::setBytesSent(int bytes)
-{
-    d->bytesSent = bytes;
-    d->propertyChanged(Event::BytesSent);
-}
-
 void Event::setBytesReceived(int bytes)
 {
     d->bytesReceived = bytes;
@@ -654,14 +675,28 @@ void Event::setRemoteUid(const QString &uid)
 
 void Event::setContactId(int id)
 {
-    d->contactId = id;
-    d->propertyChanged(Event::ContactId);
+    if (d->contacts.isEmpty())
+        d->contacts << qMakePair(id, QString());
+    else
+        d->contacts.first().first = id;
+
+    d->propertyChanged(Event::Contacts);
 }
 
 void Event::setContactName(const QString &name)
 {
-    d->contactName = name;
-    d->propertyChanged(Event::ContactName);
+    if (d->contacts.isEmpty())
+        d->contacts << qMakePair(0, name);
+    else
+        d->contacts.first().second = name;
+
+    d->propertyChanged(Event::Contacts);
+}
+
+void Event::setContacts(const QList<Event::Contact> &contacts)
+{
+    d->contacts = contacts;
+    d->propertyChanged(Event::Contacts);
 }
 
 void Event::setSubject(const QString &subject)
@@ -756,7 +791,7 @@ void Event::setContentLocation(const QString &location)
     d->propertyChanged(Event::ContentLocation);
 }
 
-void Event::setMessageParts(QList<MessagePart> &parts)
+void Event::setMessageParts(const QList<MessagePart> &parts)
 {
     d->messageParts = parts;
     d->propertyChanged(Event::MessageParts);
@@ -806,6 +841,18 @@ void Event::setReportRead(bool reportRequested)
 
 QString Event::toString() const
 {
+    QString contacts;
+    if (!d->contacts.isEmpty()) {
+        QStringList contactList;
+        foreach (Event::Contact contact, d->contacts) {
+            contactList << QString("%1,%2")
+                .arg(QString::number(contact.first))
+                .arg(contact.second);
+        }
+
+        contacts = contactList.join(QChar(';'));
+    }
+
     return QString(QString::number(id())              % QChar('|') %
                    (isEmergencyCall() ? QLatin1String("!!!") :
                     QString::number(type()))          % QChar('|') %
@@ -815,12 +862,10 @@ QString Event::toString() const
                    QString::number(isDraft())         % QChar('|') %
                    QString::number(isRead())          % QChar('|') %
                    QString::number(isMissedCall())    % QChar('|') %
-                   QString::number(bytesSent())       % QChar('|') %
                    QString::number(bytesReceived())   % QChar('|') %
                    localUid()                         % QChar('|') %
                    remoteUid()                        % QChar('|') %
-                   QString::number(contactId())       % QChar('|') %
-                   contactName()                      % QChar('|') %
+                   contacts                           % QChar('|') %
                    freeText()                         % QChar('|') %
                    fromVCardFileName()                % QChar('|') %
                    fromVCardLabel()                   % QChar('|') %
@@ -831,4 +876,126 @@ QString Event::toString() const
                    QString::number(status())          % QChar('|') %
                    QString::number(reportDelivery())  % QChar('|') %
                    QString::number(messageParts().count()));
+}
+
+void Event::copyValidProperties(const Event &other)
+{
+    foreach(Property p, other.validProperties()) {
+        switch (p) {
+        case Id:
+            setId(other.id());
+            break;
+        case Type:
+            setType(other.type());
+        case StartTime:
+            setStartTime(other.startTime());
+            break;
+        case EndTime:
+            setEndTime(other.endTime());
+            break;
+        case Direction:
+            setDirection(other.direction());
+            break;
+        case IsDraft:
+            setIsDraft(other.isDraft());
+            break;
+        case IsRead:
+            setIsRead(other.isRead());
+            break;
+        case IsMissedCall:
+            setIsMissedCall(other.isMissedCall());
+            break;
+        case IsEmergencyCall:
+            setIsEmergencyCall(other.isEmergencyCall());
+            break;
+        case Status:
+            setStatus(other.status());
+            break;
+        case BytesReceived:
+            setBytesReceived(other.bytesReceived());
+            break;
+        case LocalUid:
+            setLocalUid(other.localUid());
+            break;
+        case RemoteUid:
+            setRemoteUid(other.remoteUid());
+            break;
+        case Contacts:
+            setContacts(other.contacts());
+            break;
+        case ParentId:
+            setParentId(other.parentId());
+            break;
+        case Subject:
+            setSubject(other.subject());
+            break;
+        case FreeText:
+            setFreeText(other.freeText());
+            break;
+        case GroupId:
+            setGroupId(other.groupId());
+            break;
+        case MessageToken:
+            setMessageToken(other.messageToken());
+            break;
+        case LastModified:
+            setLastModified(other.lastModified());
+            break;
+        case EventCount:
+            setEventCount(other.eventCount());
+            break;
+        case FromVCardFileName:
+        case FromVCardLabel:
+            setFromVCard(other.fromVCardFileName(), other.fromVCardLabel());
+            break;
+        case Encoding:
+            setEncoding(other.encoding());
+            break;
+        case CharacterSet:
+            setCharacterSet(other.characterSet());
+            break;
+        case Language:
+            setLanguage(other.language());
+            break;
+        case IsDeleted:
+            // ignore, not in use
+            break;
+        case ReportDelivery:
+            setReportDelivery(other.reportDelivery());
+            break;
+        case ValidityPeriod:
+            setValidityPeriod(other.validityPeriod());
+            break;
+        case ContentLocation:
+            setContentLocation(other.contentLocation());
+            break;
+        case MessageParts:
+            setMessageParts(other.messageParts());
+            break;
+        case Cc:
+            setCcList(other.ccList());
+            break;
+        case Bcc:
+            setBccList(other.bccList());
+            break;
+        case ReadStatus:
+            setReadStatus(other.readStatus());
+            break;
+        case ReportRead:
+            setReportRead(other.reportRead());
+            break;
+        case ReportReadRequested:
+            setReportReadRequested(other.reportReadRequested());
+            break;
+        case MmsId:
+            setMmsId(other.mmsId());
+            break;
+        case To:
+            setToList(other.toList());
+            break;
+        default:
+            qCritical() << "Unknown event property";
+            Q_ASSERT(false);
+        }
+    }
 }

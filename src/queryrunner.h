@@ -24,14 +24,14 @@
 #define COMMHISTORY_QUERYTHREAD_H
 
 #include <QMutex>
-#include <QtTracker/Tracker>
 
 #include "event.h"
 #include "group.h"
-#include "trackerio.h"
 #include "queryresult.h"
 
 namespace CommHistory {
+
+class TrackerIO;
 
 /*!
  * \class QueryRunner
@@ -43,7 +43,7 @@ class QueryRunner: public QObject
     Q_OBJECT
 
 public:
-    QueryRunner(QObject *parent = 0);
+    QueryRunner(TrackerIO *trackerIO, QObject *parent = 0);
     ~QueryRunner();
 
     void setStreamedMode(bool mode);
@@ -63,8 +63,16 @@ public:
     // fetched.
     void enableQueue(bool enable = true);
 
-    void runQuery(SopranoLive::RDFSelect &query, QueryType queryType,
-                  const Event::PropertySet &propertyMask = Event::allProperties());
+    void addQueryToQueue(QueryType type,
+                         const QSparqlQuery &query,
+                         const QList<Event::Property> &properties = Event::allProperties().toList());
+
+    void runEventsQuery(const QString &query, const QList<Event::Property> &properties);
+    void runGroupQuery(const QString &query);
+    void runGroupedCallQuery(const QString &query);
+    void runMessagePartQuery(const QString &query);
+    // Run generic sparql query. Caller is responsible for deleting the result.
+    void runQuery(const QSparqlQuery &query);
 
     void startQueue();
 
@@ -74,36 +82,39 @@ Q_SIGNALS:
     void eventsReceived(int start, int end, QList<CommHistory::Event> events);
     void groupsReceived(int start, int end, QList<CommHistory::Group> groups);
     void messagePartsReceived(int eventId, QList<CommHistory::MessagePart> parts);
+    void resultsReceived(QSparqlResult *result);
     void canFetchMoreChanged(bool canFetch);
-    void modelUpdated();
+    void modelUpdated(bool successful);
 
 private Q_SLOTS:
-    void rowsInsertedSlot(const QModelIndex &parent, int start, int end);
-    void modelUpdatedSlot();
+    void dataReady(int totalCount);
+    void finished();
     void nextSlot();
     void fetchMoreSlot();
 
 private:
-    /*!
-     * \brief Checks from Qt-Tracker's LiveNodes model if it can fetch more and compares that status
-     * to the previous one. If status has been changed from previous check, then emits a canFetchMoreChanged
-     * signal with the new status (boolean value).
-     */
     void checkCanFetchMoreChange();
     void startNextQueryIfReady();
+    bool reallyFetchMore(int pos);
+    void readData();
+    void endActiveQuery();
 
 private:
     bool m_streamedMode;
     int m_chunkSize;
     int m_firstChunkSize;
     bool m_enableQueue;
-    bool m_ready;
     bool m_canFetchMore;
 
     QMutex m_mutex; // protects m_queries
 
     QList<CommHistory::QueryResult> m_queries;
     CommHistory::QueryResult m_activeQuery;
+    int lastReadPos;
+
+    TrackerIO *m_pTracker;
+
+    bool m_syncMode;
 
 #ifdef DEBUG
     QTime m_timer;

@@ -26,8 +26,6 @@
 #include "event.h"
 #include "libcommhistoryexport.h"
 
-using namespace SopranoLive;
-
 namespace CommHistory {
 
 using namespace CommHistory;

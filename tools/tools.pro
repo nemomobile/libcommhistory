@@ -24,15 +24,14 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 TEMPLATE = app
 QT -= gui
-QT += sql
 CONFIG += qdbus \
-    debug
+    debug \
+    qtsparql
 VERSION = $$PROJECT_VERSION
 TARGET = commhistory-tool
 HEADERS += catcher.h
 SOURCES += commhistory-tool.cpp
 LIBS += -L../src \
-    ../src/libcommhistory.so \
-    -lqttracker 
+    ../src/libcommhistory.so
 INCLUDEPATH += ../src 
 include( ../common-installs-config.pri )

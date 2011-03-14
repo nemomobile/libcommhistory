@@ -110,8 +110,14 @@ void ConversationModelTest::getEvents()
     QVERIFY(watcher.waitForModelReady(5000));
 
     QCOMPARE(model.rowCount(), 10);
-    for (int i = 0; i < model.rowCount(); i++)
-        QVERIFY(model.event(model.index(i, 0)).type() != Event::CallEvent);
+    for (int i = 0; i < model.rowCount(); i++) {
+        Event e1, e2;
+        QModelIndex ind = model.index(i, 0);
+        e1 = model.event(ind);
+        QVERIFY(model.trackerIO().getEvent(e1.id(), e2));
+        QVERIFY(compareEvents(e1, e2));
+        QVERIFY(model.event(ind).type() != Event::CallEvent);
+    }
 
     // add but don't save status message and check content again
     addTestEvent(model, Event::StatusMessageEvent, Event::Outbound, ACCOUNT1,
@@ -259,7 +265,8 @@ void ConversationModelTest::modifyEvent()
     Event event;
     /* modify invalid event */
     QVERIFY(!model.modifyEvent(event));
-    QVERIFY(model.lastError().isValid());
+
+    QVERIFY(model.rowCount() > 0);
 
     int row = rand() % model.rowCount();
     event = model.event(model.index(row, 0));
@@ -288,7 +295,6 @@ void ConversationModelTest::deleteEvent()
     Event event;
     /* delete invalid event */
     QVERIFY(!model.deleteEvent(event));
-    QVERIFY(model.lastError().isValid());
 
     int rows = model.rowCount();
     int row = rand() % rows;
@@ -297,7 +303,6 @@ void ConversationModelTest::deleteEvent()
     QVERIFY(model.deleteEvent(event.id()));
     watcher.waitForSignals();
     QVERIFY(!model.trackerIO().getEvent(event.id(), event));
-    QVERIFY(model.lastError().isValid());
     QVERIFY(model.event(model.index(row, 0)).id() != event.id());
     QVERIFY(model.rowCount() == rows - 1);
 }
@@ -458,7 +463,6 @@ void ConversationModelTest::asyncMode()
     ConversationModel model;
     model.enableContactChanges(false);
     watcher.setModel(&model);
-    connect(&model, SIGNAL(modelReady()), this, SLOT(modelReadySlot()));
     QVERIFY(model.getEvents(group1.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 }
@@ -507,6 +511,72 @@ void ConversationModelTest::sorting()
     QCOMPARE(conv.event(conv.index(4, 0)).freeText(), QLatin1String("I"));
 }
 
+void ConversationModelTest::contacts_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+    QTest::addColumn<int>("eventType");
+
+    QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
+            << "bad@cclocalhost"
+            << (int)Event::IMEvent;
+    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+            << "+42992394"
+            << (int)Event::SMSEvent;
+}
+
+void ConversationModelTest::contacts()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+    QFETCH(int, eventType);
+
+    Group group;
+    addTestGroup(group, localId, remoteId);
+
+    ConversationModel model;
+    Event::PropertySet p;
+    p.insert(Event::ContactId);
+    p.insert(Event::ContactName);
+    model.setPropertyMask(p);
+
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId,
+                 group.id(), "text", false, false, QDateTime::currentDateTime(), remoteId);
+
+    QVERIFY(model.getEvents(group.id()));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    Event event;
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), 0);
+
+    QString noMatch = remoteId;
+    noMatch += remoteId[1];
+
+    int contactId1 = addTestContact("Really1Funny",
+                   noMatch,
+                   localId);
+
+    QVERIFY(model.getEvents(group.id()));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), 0);
+
+    int contactId = addTestContact("ReallyUFunny", remoteId, localId);
+    QVERIFY(model.getEvents(group.id()));
+    QVERIFY(watcher.waitForModelReady(5000));
+
+    event = model.event(model.index(0, 0));
+    QCOMPARE(event.contactId(), contactId);
+    QCOMPARE(event.contactName(), QString("ReallyUFunny"));
+
+    deleteTestContact(contactId1);
+    deleteTestContact(contactId);
+}
 
 void ConversationModelTest::cleanupTestCase()
 {

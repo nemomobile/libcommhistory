@@ -24,9 +24,6 @@
 #define COMMHISTORY_OUTBOXMODEL_H
 
 #include "eventmodel.h"
-#include "event.h"
-#include "callevent.h"
-#include "group.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
@@ -62,7 +59,7 @@ public:
     /*!
      * Reset model and fetch draft events.
      *
-     * \return true if successful, Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool getEvents();
 

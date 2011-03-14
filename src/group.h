@@ -67,15 +67,15 @@ public:
         UnreadMessages,
         SentMessages,
         LastEventId,
-        ContactId,
-        ContactName,
+        ContactId, // TODO: remove
+        ContactName, // TODO: remove
         LastMessageText,
         LastVCardFileName,
         LastVCardLabel,
         LastEventType,
         LastEventStatus,
-        IsPermanent, //TODO: remove on next API break
         LastModified,
+        Contacts,
         NumProperties
     };
 
@@ -185,6 +185,7 @@ public:
     int lastEventId() const;
 
     /*!
+     * DEPRECATED - use contacts(). Returns the id of the first contact.
      * Id of the remote contact in this conversation.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
@@ -192,11 +193,19 @@ public:
     int contactId() const;
 
     /*!
+     * DEPRECATED - use contacts(). Returns the name of the first contact.
      * Name of the remote contact in this conversation.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.
      */
     QString contactName() const;
+
+    /*!
+     * Ids and names for the contacts in this conversation.
+     * This property is not stored in the database. It is filled in by
+     * the model at runtime, if possible.
+     */
+    QList<Event::Contact> contacts() const;
 
     /*!
      * Text of the last message.
@@ -230,12 +239,6 @@ public:
      */
     Event::EventStatus lastEventStatus() const;
 
-    /*!
-     * Indicates whether or not group is saved to database or exists in memory only
-     * \return boolean value
-     */
-    bool isPermanent() const; //TODO: remove on next API break
-
     QDateTime lastModified() const;
 
     void setId(int id);
@@ -248,14 +251,16 @@ public:
     void setUnreadMessages(int unread);
     void setSentMessages(int sent);
     void setLastEventId(int id);
+    /* DEPRECATED - use setContacts() */
     void setContactId(int id);
+    /* DEPRECATED - use setContacts() */
     void setContactName(const QString &name);
+    void setContacts(const QList<Event::Contact> &contacts);
     void setLastMessageText(const QString &text);
     void setLastVCardFileName(const QString &filename);
     void setLastVCardLabel(const QString &label);
     void setLastEventType(Event::EventType eventType);
     void setLastEventStatus(Event::EventStatus eventStatus);
-    void setPermanent(bool permanent); //TODO: remove on next API break
     void setLastModified(const QDateTime &modified);
 
 private:

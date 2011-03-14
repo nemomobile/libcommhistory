@@ -49,14 +49,12 @@ public:
     int unreadMessages;
     int sentMessages;
     int lastEventId;
-    int contactId;
-    QString contactName;
+    QList<Event::Contact> contacts;
     QString lastMessageText;
     QString lastVCardFileName;
     QString lastVCardLabel;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
-    bool isPermanent;
     QDateTime lastModified;
 
     Group::PropertySet validProperties;
@@ -70,10 +68,8 @@ GroupPrivate::GroupPrivate()
         , unreadMessages(0)
         , sentMessages(0)
         , lastEventId(-1)
-        , contactId(0)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
-        , isPermanent(false)
 {
     lastModified = QDateTime::fromTime_t(0);
 }
@@ -90,14 +86,12 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , unreadMessages(other.unreadMessages)
         , sentMessages(other.sentMessages)
         , lastEventId(other.lastEventId)
-        , contactId(other.contactId)
-        , contactName(other.contactName)
+        , contacts(other.contacts)
         , lastMessageText(other.lastMessageText)
         , lastVCardFileName(other.lastVCardFileName)
         , lastVCardLabel(other.lastVCardLabel)
         , lastEventType(other.lastEventType)
         , lastEventStatus(other.lastEventStatus)
-        , isPermanent(other.isPermanent)
         , lastModified(other.lastModified)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
@@ -146,7 +140,10 @@ Group::~Group()
 
 int Group::urlToId(const QString &url)
 {
-    return url.mid(QString(QLatin1String("conversation:")).length()).toInt();
+    if (url.startsWith(QLatin1String("conversation:")))
+        return url.mid(QString(QLatin1String("conversation:")).length()).toInt();
+
+    return -1;
 }
 
 QUrl Group::idToUrl(int id)
@@ -244,12 +241,17 @@ int Group::lastEventId() const
 
 int Group::contactId() const
 {
-    return d->contactId;
+    return (!d->contacts.isEmpty() ? d->contacts.first().first : 0);
 }
 
 QString Group::contactName() const
 {
-    return d->contactName;
+    return (!d->contacts.isEmpty() ? d->contacts.first().second : QString());
+}
+
+QList<Event::Contact> Group::contacts() const
+{
+    return d->contacts;
 }
 
 QString Group::lastMessageText() const
@@ -275,11 +277,6 @@ Event::EventType Group::lastEventType() const
 Event::EventStatus Group::lastEventStatus() const
 {
     return d->lastEventStatus;
-}
-
-bool Group::isPermanent() const
-{
-    return d->isPermanent;
 }
 
 QDateTime Group::lastModified() const
@@ -359,14 +356,28 @@ void Group::setLastEventId(int id)
 
 void Group::setContactId(int id)
 {
-    d->contactId = id;
-    d->propertyChanged(Group::ContactId);
+    if (d->contacts.isEmpty())
+        d->contacts << qMakePair(id, QString());
+    else
+        d->contacts.first().first = id;
+
+    d->propertyChanged(Group::Contacts);
 }
 
 void Group::setContactName(const QString &name)
 {
-    d->contactName = name;
-    d->propertyChanged(Group::ContactName);
+    if (d->contacts.isEmpty())
+        d->contacts << qMakePair(0, name);
+    else
+        d->contacts.first().second = name;
+
+    d->propertyChanged(Group::Contacts);
+}
+
+void Group::setContacts(const QList<Event::Contact> &contacts)
+{
+    d->contacts = contacts;
+    d->propertyChanged(Group::Contacts);
 }
 
 void Group::setLastMessageText(const QString &text)
@@ -399,12 +410,6 @@ void Group::setLastEventStatus(Event::EventStatus eventStatus)
     d->propertyChanged(Group::LastEventStatus);
 }
 
-void Group::setPermanent(bool permanent)
-{
-    d->isPermanent = permanent;
-    d->propertyChanged(Group::IsPermanent);
-}
-
 void Group::setLastModified(const QDateTime &modified)
 {
     d->lastModified = modified.toUTC();
@@ -418,10 +423,10 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.chatType() << group.chatName()
              << group.endTime() << group.totalMessages()
              << group.unreadMessages() << group.sentMessages()
-             << group.lastEventId() << group.contactId() << group.contactName()
+             << group.lastEventId() << group.contacts()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
-             << group.lastEventStatus() << group.isPermanent() << group.lastModified();
+             << group.lastEventStatus() << group.lastModified();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -444,9 +449,9 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     argument >> p.id >> p.localUid >> p.remoteUids >> chatType
              >> p.chatName >> p.endTime
              >> p.totalMessages >> p.unreadMessages >> p.sentMessages
-             >> p.lastEventId >> p.contactId >> p.contactName
+             >> p.lastEventId >> p.contacts
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
-             >> type >> status >> p.isPermanent >> p.lastModified;
+             >> type >> status >> p.lastModified;
 
     //read valid properties
     argument.beginArray();
@@ -479,10 +484,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setSentMessages(p.sentMessages);
     if (p.validProperties.contains(Group::LastEventId))
         group.setLastEventId(p.lastEventId);
-    if (p.validProperties.contains(Group::ContactId))
-        group.setContactId(p.contactId);
-    if (p.validProperties.contains(Group::ContactName))
-        group.setContactName(p.contactName);
+    if (p.validProperties.contains(Group::Contacts))
+        group.setContacts(p.contacts);
     if (p.validProperties.contains(Group::LastMessageText))
         group.setLastMessageText(p.lastMessageText);
     if (p.validProperties.contains(Group::LastVCardFileName))
@@ -493,8 +496,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setLastEventType((Event::EventType)type);
     if (p.validProperties.contains(Group::LastEventStatus))
         group.setLastEventStatus((Event::EventStatus)status);
-    if (p.validProperties.contains(Group::IsPermanent))
-        group.setPermanent(p.isPermanent);
     if (p.validProperties.contains(Group::LastModified))
         group.setLastModified(p.lastModified);
 

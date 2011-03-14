@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
 
 #include "trackerio.h"
@@ -35,8 +34,7 @@
 #include "commonutils.h"
 #include "contactlistener.h"
 #include "committingtransaction.h"
-
-using namespace SopranoLive;
+#include "eventsquery.h"
 
 using namespace CommHistory;
 
@@ -98,18 +96,18 @@ void EventModelPrivate::resetQueryRunners()
 {
     deleteQueryRunners();
 
-    queryRunner = new QueryRunner();
-    partQueryRunner = new QueryRunner();
+    queryRunner = new QueryRunner(tracker());
+    partQueryRunner = new QueryRunner(tracker());
 
     connect(queryRunner, SIGNAL(eventsReceived(int, int, QList<CommHistory::Event>)),
             this, SLOT(eventsReceivedSlot(int, int, QList<CommHistory::Event>)));
     connect(queryRunner, SIGNAL(canFetchMoreChanged(bool)),
             this, SLOT(canFetchMoreChangedSlot(bool)));
-    connect(queryRunner, SIGNAL(modelUpdated()), this, SLOT(modelUpdatedSlot()));
+    connect(queryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(modelUpdatedSlot(bool)));
 
     connect(partQueryRunner, SIGNAL(messagePartsReceived(int, QList<CommHistory::MessagePart>)),
             this, SLOT(messagePartsReceivedSlot(int, QList<CommHistory::MessagePart>)));
-    connect(partQueryRunner, SIGNAL(modelUpdated()), this, SLOT(partsUpdatedSlot()));
+    connect(partQueryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(partsUpdatedSlot(bool)));
     partQueryRunner->enableQueue(true);
 
     if (bgThread) {
@@ -167,7 +165,7 @@ QModelIndex EventModelPrivate::findParent(const Event &event)
     return QModelIndex();
 }
 
-bool EventModelPrivate::executeQuery(RDFSelect &query)
+bool EventModelPrivate::executeQuery(EventsQuery &query)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
@@ -177,10 +175,11 @@ bool EventModelPrivate::executeQuery(RDFSelect &query)
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
     } else {
-        if (queryLimit) query.limit(queryLimit);
-        if (queryOffset) query.offset(queryOffset);
+        //if (queryLimit) query.limit(queryLimit);
+        //if (queryOffset) query.offset(queryOffset);
     }
-    queryRunner->runQuery(query, EventQuery, propertyMask);
+    QString sparqlQuery = query.query();
+    queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
     if (queryMode == EventModel::SyncQuery) {
         QEventLoop loop;
         while (!isReady || !messagePartsReady) {
@@ -228,9 +227,9 @@ void EventModelPrivate::addToModel(Event &event)
     qDebug() << __PRETTY_FUNCTION__ << event.id();
     qDebug() << __PRETTY_FUNCTION__ << event.toString();
 
-    if (event.contactId() > 0) {
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                            qMakePair(event.contactId(), event.contactName()));
+    if (!event.contacts().isEmpty()) {
+        foreach (Event::Contact contact, event.contacts())
+            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
     } else {
         setContactFromCache(event);
     }
@@ -252,14 +251,16 @@ void EventModelPrivate::modifyInModel(Event &event)
     Q_Q(EventModel);
     qDebug() << __PRETTY_FUNCTION__ << event.id();
 
-    if (event.contactId() <= 0) {
+    if (!event.validProperties().contains(Event::Contacts)) {
         setContactFromCache(event);
     }
 
     QModelIndex index = findEvent(event.id());
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-        item->setEvent(event);
+        Event oldEvent = item->event();
+        oldEvent.copyValidProperties(event);
+        item->setEvent(oldEvent);
         QModelIndex bottom = q->createIndex(index.row(),
                                             EventModel::NumberOfColumns - 1,
                                             index.internalPointer());
@@ -284,32 +285,23 @@ void EventModelPrivate::deleteFromModel(int id)
 bool EventModelPrivate::doAddEvent( Event &event )
 {
     if (event.type() == Event::UnknownType) {
-        lastError.setType(QSqlError::TransactionError);
-        lastError.setDatabaseText("Event type not set");
-        qWarning() << Q_FUNC_INFO << ":" << lastError;
+        qWarning() << Q_FUNC_INFO << "Event type not set";
         return false;
     }
 
     if (event.direction() == Event::UnknownDirection) {
-        lastError.setType(QSqlError::TransactionError);
-        lastError.setDatabaseText("Event direction not set");
-        qWarning() << Q_FUNC_INFO << ":" << lastError;
+        qWarning() << Q_FUNC_INFO << "Event direction not set";
         return false;
     }
 
     if (event.groupId() == -1) {
         if (!event.isDraft() && event.type() != Event::CallEvent) {
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText("Group id not set");
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
+            qWarning() << Q_FUNC_INFO << "Group id not set";
             return false;
         }
     }
 
     if (!tracker()->addEvent(event)) {
-        lastError = tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
         return false;
     }
 
@@ -320,17 +312,11 @@ bool EventModelPrivate::doDeleteEvent( int id, Event &event )
 {
     // fetch event from database
     if (!tracker()->getEvent(id, event)) {
-        lastError =tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << Q_FUNC_INFO << ":" << lastError;
         return false;
     }
 
     // delete it
     if (!tracker()->deleteEvent(event, bgThread)) {
-        lastError = tracker()->lastError();
-        if (lastError.isValid())
-            qWarning() << __FUNCTION__ << ":" << lastError;
         return false;
     }
     return true;
@@ -350,17 +336,14 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
             continue;
         }
 
-        if (event.contactId() > 0) {
-            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                                qMakePair(event.contactId(), event.contactName()));
+        if (!event.contacts().isEmpty()) {
+            foreach (Event::Contact contact, event.contacts())
+                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
         }
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
             messagePartsReady = false;
-            RDFSelect query;
-            RDFVariable message = event.url();
-            tracker()->prepareMessagePartQuery(query, message);
-            partQueryRunner->runQuery(query, MessagePartQuery);
+            partQueryRunner->runMessagePartQuery(tracker()->prepareMessagePartQuery(event.url().toString()));
         }
     }
 
@@ -371,7 +354,8 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         fillModel(start, end, events);
     }
 
-    partQueryRunner->startQueue();
+    if (!messagePartsReady)
+        partQueryRunner->startQueue();
 }
 
 void EventModelPrivate::messagePartsReceivedSlot(int eventId,
@@ -383,7 +367,8 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
     QModelIndex index = findEvent(eventId);
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-        item->event().setMessageParts(parts);
+        QList<CommHistory::MessagePart> newParts = item->event().messageParts() + parts;
+        item->event().setMessageParts(newParts);
         item->event().resetModifiedProperty(Event::MessageParts);
         QModelIndex bottom = q->createIndex(index.row(),
                                             EventModel::NumberOfColumns - 1,
@@ -392,23 +377,29 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
     }
 }
 
-void EventModelPrivate::modelUpdatedSlot()
+void EventModelPrivate::modelUpdatedSlot(bool successful)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
     isReady = true;
-    if (messagePartsReady) {
-        emit modelReady();
+    if (successful) {
+        if (messagePartsReady)
+            emit modelReady(true);
+    } else {
+        emit modelReady(false);
     }
 }
 
-void EventModelPrivate::partsUpdatedSlot()
+void EventModelPrivate::partsUpdatedSlot(bool successful)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
     messagePartsReady = true;
-    if (isReady) {
-        emit modelReady();
+    if (successful) {
+        if (isReady)
+            emit modelReady(true);
+    } else {
+        emit modelReady(false);
     }
 }
 
@@ -446,81 +437,25 @@ void EventModelPrivate::eventDeletedSlot(int id)
     deleteFromModel(id);
 }
 
-CommittingTransaction& EventModelPrivate::commitTransaction(const QList<Event> &events)
+CommittingTransaction* EventModelPrivate::commitTransaction(const QList<Event> &events)
 {
-    CommittingTransaction t;
+    CommittingTransaction *t = tracker()->commit();
 
-    t.transaction = tracker()->commit();
+    if (t) {
+        t->addSignal(false,
+                    this,
+                    "eventsCommitted",
+                    Q_ARG(QList<CommHistory::Event>, events),
+                    Q_ARG(bool, true));
 
-    connect(t.transaction.data(), SIGNAL(commitFinished()),
-            SLOT(commitFinishedSlot()));
-    connect(t.transaction.data(), SIGNAL(commitError(QString)),
-            SLOT(commitErrorSlot(QString)));
-
-    t.events = events;
-    transactions.append(t);
-
-    return transactions.last();
-}
-
-void EventModelPrivate::commitFinishedSlot()
-{
-    qDebug() << Q_FUNC_INFO;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction finished";
-        return;
+        t->addSignal(true,
+                    this,
+                    "eventsCommitted",
+                    Q_ARG(QList<CommHistory::Event>, events),
+                    Q_ARG(bool, false));
     }
 
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            t.sendSignals(this);
-            emit eventsCommitted(t.events, true);
-
-            i.remove();
-            break;
-        }
-    }
-}
-
-void EventModelPrivate::commitErrorSlot(QString message)
-{
-    qDebug() << Q_FUNC_INFO << message;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction error";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            lastError = QSqlError();
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText(message);
-
-            emit eventsCommitted(t.events, false);
-
-            foreach (DelayedSignal s, t.modelSignals) {
-                int type = QMetaType::type(s.arg.typeName);
-                if (type)
-                    QMetaType::destroy(type, s.arg.data);
-                else
-                    qCritical() << "Invalid type" << s.arg.typeName;
-            }
-
-
-            i.remove();
-            break;
-        }
-    }
+    return t;
 }
 
 void EventModelPrivate::canFetchMoreChangedSlot(bool canFetch)
@@ -562,23 +497,26 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                                                     event->remoteUid(),
                                                     contactAddresses)) {
 
+                Event::Contact contact((int)contactId, contactName);
+
                 // If contact is not yet in cache, add it
                 QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
                 if (!contactCache.contains(cacheKey)) {
-                    contactCache.insert(cacheKey, qMakePair((int)contactId, contactName));
+                    contactCache.insert(cacheKey, contact);
                 }
 
-                if ((quint32)event->contactId() != contactId
-                    || event->contactName() != contactName) {
-                    event->setContactId(contactId);
-                    event->setContactName(contactName);
+                // TODO: check how this should work with multiple contacts
+                if (event->contacts().isEmpty()
+                    || ((quint32)event->contacts().first().first != contactId
+                        || event->contacts().first().second != contactName)) {
+                    event->setContacts(QList<Event::Contact>() << contact);
                     eventChanged = true;
                 }
             } else {
+
                 if ((quint32)event->contactId() == contactId) {
                     // event doesn't match the contact anymore, reset contact info
-                    event->setContactId(0);
-                    event->setContactName(QString());
+                    event->setContacts(QList<Event::Contact>());
                     eventChanged = true;
                 }
             }
@@ -640,18 +578,15 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
 
 TrackerIO* EventModelPrivate::tracker()
 {
-    if (!m_pTracker)
-        m_pTracker = new TrackerIO(this);
-    return m_pTracker;
+    return TrackerIO::instance();
 }
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 {
-    QPair<int,QString> contact = contactCache.value(qMakePair(event.localUid(),
-                                                              event.remoteUid()));
+    Event::Contact contact = contactCache.value(qMakePair(event.localUid(),
+                                                          event.remoteUid()));
     if (contact.first > 0) {
-        event.setContactId(contact.first);
-        event.setContactName(contact.second);
+        event.setContacts(QList<Event::Contact>() << contact);
         return true;
     }
     return false;

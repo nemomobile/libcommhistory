@@ -26,7 +26,6 @@ include( ../tests.pri )
 
 TARGET = ut_syncmodel
 DESTDIR = ../bin
-QT += sql
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += syncmodeltest.cpp

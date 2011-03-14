@@ -17,60 +17,51 @@
 #ifndef COMMHISTORY_COMMITTINGTRANSACTION_H
 #define COMMHISTORY_COMMITTINGTRANSACTION_H
 
-#include <QList>
-#include <QtTracker/Tracker>
-#include <QDebug>
+#include <QObject>
+
+#include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
-class Event;
-class Group;
+class CommittingTransactionPrivate;
 
-// committing transactions
-// store model signals that should be emitted on transaction commit
-struct LIBCOMMHISTORY_EXPORT DelayedSignal {
-    const char *signalName;
-    struct {
-        const char *typeName;
-        void *data;
-    } arg;
+class LIBCOMMHISTORY_EXPORT CommittingTransaction : public QObject
+{
+    Q_OBJECT
+
+public:
+    CommittingTransaction(QObject *parent = 0);
+    ~CommittingTransaction();
+
+    /*!
+     * Add delayed signal to be send when transaction finished.
+     *
+     * \param onError indicates to emit the signal on failed transaction, otherwise it's
+     *                emitted on successful transaction
+     * \param singalName
+     * \param sender signale sender
+     * \param arg1 signal 1st argument
+     * \param arg2 signal 2nd argument
+     */
+    void addSignal(bool onError,
+                   QObject *sender,
+                   const char *signalName,
+                   QGenericArgument arg1,
+                   QGenericArgument arg2 = QGenericArgument());
+
+    bool isRunning() const;
+    bool isFinished() const;
+
+Q_SIGNALS:
+    void finished();
+
+private:
+    friend class TrackerIO;
+    friend class TrackerIOPrivate;
+    friend class CommittingTransactionPrivate;
+    CommittingTransactionPrivate * const d;
 };
 
-struct LIBCOMMHISTORY_EXPORT CommittingTransaction {
-    SopranoLive::RDFTransactionPtr transaction;
-    QList<DelayedSignal> modelSignals;
-    QList<Event> events;
-    QList<Group> groups;
-
-    void addSignal(const char *signalName,
-                   QGenericArgument arg1) {
-        int type = QMetaType::type(arg1.name());
-        if (type) {
-            DelayedSignal s;
-            s.signalName = signalName;
-            s.arg.typeName = arg1.name();
-            s.arg.data = QMetaType::construct(type, arg1.data());
-            modelSignals.append(s);
-        } else {
-            qCritical() << "Invalid type " << arg1.name();
-        }
-    }
-
-    void sendSignals(QObject *object) {
-        foreach (DelayedSignal s, modelSignals) {
-            QMetaObject::invokeMethod(object,
-                                      s.signalName,
-                                      QGenericArgument(s.arg.typeName,
-                                                       s.arg.data));
-            int type = QMetaType::type(s.arg.typeName);
-            if (type)
-                QMetaType::destroy(type, s.arg.data);
-            else
-                qCritical() << "Invalid type" << s.arg.typeName;
-        }
-    }
-};
-
-}
+} // namespace
 
 #endif

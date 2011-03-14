@@ -11,6 +11,9 @@ private slots:
     void initTestCase();
     void getEventByUri();
     void getEventByTokens();
+    void contactMatching_data();
+    void contactMatching();
+    void updateStatus();
     void cleanupTestCase();
 };
 

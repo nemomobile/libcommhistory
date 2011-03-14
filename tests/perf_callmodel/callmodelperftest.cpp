@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
 #include <QDateTime>
 #include <QDBusConnection>
 #include <cstdlib>
@@ -82,9 +81,6 @@ void CallModelPerfTest::getEvents()
 
     qDebug() << __FUNCTION__ << "- Creating" << contacts << "new contacts";
 
-    SopranoLive::RDFTransactionPtr contactTransaction;
-    contactTransaction = ::tracker()->createTransaction();
-
     int ci = 0;
     while(ci < contacts) {
         ci++;
@@ -95,21 +91,18 @@ void CallModelPerfTest::getEvents()
         if(ci % commitBatchSize == 0 && ci < contacts) {
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
-            contactTransaction->commitAndReinitiate(true);
             waitForIdle(5000);
         }
     }
     qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
         << ci << "/" << contacts << ")";
-    contactTransaction->commit(true);
+
     waitForIdle(5000);
     QTest::qWait(TIMEOUT);
 
     qDebug() << __FUNCTION__ << "- Creating" << events << "new events";
 
     QList<Event> eventList;
-    SopranoLive::RDFTransactionPtr eventTransaction;
-    eventTransaction = ::tracker()->createTransaction();
 
     int ei = 0;
     while(ei < events) {
@@ -143,7 +136,6 @@ void CallModelPerfTest::getEvents()
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "events (" << ei << "/" << events << ")";
             QVERIFY(addModel.addEvents(eventList, false));
-            eventTransaction->commitAndReinitiate(true);
             eventList.clear();
             waitForIdle();
         }
@@ -152,7 +144,6 @@ void CallModelPerfTest::getEvents()
     QVERIFY(addModel.addEvents(eventList, false));
     qDebug() << __FUNCTION__ << "- adding rest of the events ("
         << ei << "/" << events << ")";
-    eventTransaction->commit(true);
     eventList.clear();
     waitForIdle();
 

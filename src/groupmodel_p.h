@@ -24,21 +24,19 @@
 #define COMMHISTORY_GROUPMODEL_P_H
 
 #include <QAbstractItemModel>
-#include <QSqlError>
 #include <QList>
 #include <QPair>
-#include <QtTracker/Tracker>
 
 #include "groupmodel.h"
 #include "eventmodel.h"
 #include "group.h"
-#include "committingtransaction.h"
 
 namespace CommHistory {
 
 class QueryRunner;
 class TrackerIO;
 class ContactListener;
+class CommittingTransaction;
 
 class GroupModelPrivate: public QObject
 {
@@ -62,10 +60,6 @@ public:
      * \param parent Parent object.
      */
     GroupModelPrivate(GroupModel *parent = 0);
-
-    /*!
-     * Destructor.
-     */
     ~GroupModelPrivate();
 
     QString newObjectPath();
@@ -76,9 +70,9 @@ public:
 
     bool canFetchMore() const;
 
-    void executeQuery(SopranoLive::RDFSelect &query);
+    void executeQuery(const QString query);
 
-    CommittingTransaction& commitTransaction(QList<Group> groups);
+    CommittingTransaction* commitTransaction(QList<int> groupIds);
 
     void resetQueryRunner();
     void deleteQueryRunner();
@@ -98,13 +92,9 @@ public Q_SLOTS:
 
     void groupsReceivedSlot(int start, int end, QList<CommHistory::Group> result);
 
-    void modelUpdatedSlot();
+    void modelUpdatedSlot(bool successful);
 
     void canFetchMoreChangedSlot(bool canFetch);
-
-    void commitFinishedSlot();
-
-    void commitErrorSlot(QString message);
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
@@ -130,15 +120,12 @@ public:
     int queryOffset;
     bool isReady;
     QList<Group> groups;
-    QSqlError lastError;
 
     QString filterLocalUid;
     QString filterRemoteUid;
 
     QueryRunner *queryRunner;
     bool threadCanFetchMore;
-
-    QList<CommittingTransaction> transactions;
 
     QThread *bgThread;
 

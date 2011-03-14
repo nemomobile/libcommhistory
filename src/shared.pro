@@ -35,19 +35,14 @@ TEMPLATE = lib
 TARGET   = commhistory
 VERSION  = $$LIBRARY_VERSION
 
-QT      += sql
 CONFIG  += qdbus \
            shared \
            mobility \
-           debug
+           debug \
+           qtsparql
 MOBILITY += contacts
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
-
-# -----------------------------------------------------------------------------
-# dependencies
-# -----------------------------------------------------------------------------
-LIBS += -lqttracker
 
 # -----------------------------------------------------------------------------
 # input
@@ -71,63 +66,7 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/Models \
                    headers/TrackerIO
 
-HEADERS         += commonutils.h \
-                   trackerio.h \
-                   queryrunner.h \
-                   event.h \
-                   messagepart.h \
-                   eventmodel.h \
-                   eventmodel_p.h \
-                   callevent.h \
-                   eventtreeitem.h \
-                   conversationmodel.h \
-                   callmodel.h \
-                   callmodel_p.h \
-                   draftmodel.h \
-                   smsinboxmodel.h \
-                   syncsmsmodel.h \
-                   outboxmodel.h \
-                   groupmodel.h \
-                   groupmodel_p.h \
-                   group.h \
-                   adaptor.h \
-                   unreadeventsmodel.h \
-                   conversationmodel_p.h \
-                   classzerosmsmodel.h \
-                   mmscontentdeleter.h \
-                   updatequery.h \
-                   contactlistener.h \
-                   libcommhistoryexport.h \
-                   idsource.h \
-                   trackerio_p.h \
-                   queryresult.h \
-                   singleeventmodel.h \
-                   committingtransaction.h
-
-SOURCES         += commonutils.cpp \
-                   trackerio.cpp \
-                   queryrunner.cpp \
-                   eventmodel.cpp \
-                   eventmodel_p.cpp \
-                   eventtreeitem.cpp \
-                   conversationmodel.cpp \
-                   callmodel.cpp \
-                   draftmodel.cpp \
-                   smsinboxmodel.cpp \
-                   syncsmsmodel.cpp \
-                   outboxmodel.cpp \
-                   groupmodel.cpp \
-                   group.cpp \
-                   adaptor.cpp \
-                   event.cpp \
-                   messagepart.cpp \
-                   unreadeventsmodel.cpp \
-                   classzerosmsmodel.cpp \
-                   mmscontentdeleter.cpp \
-                   contactlistener.cpp \
-                   idsource.cpp \
-                   queryresult.cpp \
-                   singleeventmodel.cpp
+include(sources.pri)
 
 # -----------------------------------------------------------------------------
 # Installation target for API header files
@@ -153,3 +92,6 @@ INSTALLS       += pkgconfig
 # -----------------------------------------------------------------------------
 # End of file
 # -----------------------------------------------------------------------------
+
+OTHER_FILES += \
+    sources.pri

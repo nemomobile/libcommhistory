@@ -23,7 +23,6 @@
 #include <QString>
 #include <QRegExp>
 #include <QSettings>
-#include <QtDebug>
 
 #include "commonutils.h"
 #include "libcommhistoryexport.h"
@@ -33,22 +32,27 @@ namespace CommHistory {
 static const int DEFAULT_PHONE_NUMBER_MATCH_LENGTH = 7;
 static int numberMatchLength = 0;
 
-LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
+LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number,
+                                                   PhoneNumberNormalizeFlags flags)
 {
     QString result(number);
 
     // artistic reinterpretation of Fremantle code...
 
-    // remove extra punctuation
-    result.remove(QRegExp("[()\\-\\. ]"));
-
-    // check for invalid characters
-    if (result.indexOf(QRegExp("[^0-9#\\*\\+XxWwPp]")) != -1) {
-        return QString();
+    if (flags & NormalizeFlagRemovePunctuation) {
+        result.remove(QRegExp("[()\\-\\. ]"));
+        // check for invalid characters
+        if (result.indexOf(QRegExp("[^0-9#\\*\\+XxWwPp]")) != -1) {
+            return QString();
+        }
+    } else {
+        if (result.indexOf(QRegExp("[^()\\-\\. 0-9#\\*\\+XxWwPp]")) != -1) {
+            return QString();
+        }
     }
 
-    // remove everything after and including x/w/p
-    result.replace(QRegExp("[XxWwPp].*"), "");
+    if (!(flags & NormalizeFlagKeepDialString))
+        result.replace(QRegExp("[XxWwPp].*"), "");
 
     // can't have + with control codes
     if ((result.indexOf(QLatin1String("*31#")) != -1 ||
@@ -60,7 +64,9 @@ LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
     return result;
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString &match)
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid,
+                                              const QString &match,
+                                              PhoneNumberNormalizeFlags flags)
 {
     QString phone = normalizePhoneNumber(uid);
 
@@ -69,15 +75,10 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
         return false;
 
     // phone number
-    QString matchPhoneRight = normalizePhoneNumber(match).right(phoneNumberMatchLength());
-    QString phoneNumberRight = phone.right(phoneNumberMatchLength());
+    QString uidRight = makeShortNumber(uid, flags);
+    QString matchRight = makeShortNumber(match, flags);
 
-#ifdef QT_DEBUG
-    qDebug() << Q_FUNC_INFO << "Compared phone number sections:"
-                            << matchPhoneRight
-                            << phoneNumberRight;
-#endif
-    return matchPhoneRight == phoneNumberRight;
+    return uidRight == matchRight;
 }
 
 LIBCOMMHISTORY_EXPORT int phoneNumberMatchLength()
@@ -97,4 +98,22 @@ LIBCOMMHISTORY_EXPORT int phoneNumberMatchLength()
     return numberMatchLength;
 }
 
+LIBCOMMHISTORY_EXPORT QString makeShortNumber(const QString &number,
+                                              PhoneNumberNormalizeFlags flags)
+{
+    QString normalized = normalizePhoneNumber(number);
+    QString shortNumber = normalized.right(phoneNumberMatchLength());
+    if (flags & NormalizeFlagKeepDialString) {
+        QString normalizedWithString = normalizePhoneNumber(number,
+                                                            NormalizeFlagRemovePunctuation
+                                                            | NormalizeFlagKeepDialString);
+        if (normalized != normalizedWithString) {
+            QString dialString = normalizedWithString.mid(normalized.length());
+            shortNumber.append(dialString);
+        }
+    }
+
+    return shortNumber;
 }
+
+};

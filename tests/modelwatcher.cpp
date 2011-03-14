@@ -76,10 +76,10 @@ void ModelWatcher::setModel(CommHistory::EventModel *model)
     m_model = model;
     connect(m_model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)),
             this, SLOT(eventsCommittedSlot(const QList<CommHistory::Event>&, bool)));
-    connect(m_model, SIGNAL(modelReady()), this, SLOT(modelReadySlot()));
+    connect(m_model, SIGNAL(modelReady(bool)), this, SLOT(modelReadySlot(bool)));
 }
 
-void ModelWatcher::waitForSignals(int minCommitted, int minAdded)
+void ModelWatcher::waitForSignals(int minCommitted, int minAdded, int minDeleted)
 {
     m_addedCount = 0;
     m_updatedCount = 0;
@@ -88,6 +88,7 @@ void ModelWatcher::waitForSignals(int minCommitted, int minAdded)
 
     m_minCommitCount = minCommitted;
     m_minAddCount = minAdded;
+    m_minDeleteCount = minDeleted;
 
     m_eventsCommitted = (m_minCommitCount == -1 ? true : false);
     m_dbusSignalReceived = false;
@@ -112,6 +113,7 @@ void ModelWatcher::eventsCommittedSlot(const QList<CommHistory::Event> &events,
     qDebug() << Q_FUNC_INFO;
 
     m_committedCount += successful ? events.size() : 0;
+    m_success = successful;
 
     if (!successful) {
         m_loop->exit(0);
@@ -160,15 +162,19 @@ void ModelWatcher::eventDeletedSlot(int id)
     m_deletedCount++;
     m_lastDeleted = id;
 
-    if (m_eventsCommitted)
-        m_loop->exit(0);
-    else
-        m_dbusSignalReceived = true;
+    if (!m_minDeleteCount
+        || (m_minDeleteCount && m_deletedCount >= m_minDeleteCount)) {
+        if (m_eventsCommitted)
+            m_loop->exit(0);
+        else
+            m_dbusSignalReceived = true;
+    }
 }
 
-void ModelWatcher::modelReadySlot()
+void ModelWatcher::modelReadySlot(bool success)
 {
     qDebug() << Q_FUNC_INFO;
     m_modelReady = true;
+    m_success = success;
     m_loop->exit(0);
 }

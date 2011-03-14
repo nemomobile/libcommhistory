@@ -30,6 +30,8 @@ Adaptor::Adaptor(QObject *parent)
 {
     qDBusRegisterMetaType<CommHistory::Event>();
     qDBusRegisterMetaType<QList<CommHistory::Event> >();
+    qDBusRegisterMetaType<CommHistory::Event::Contact>();
+    qDBusRegisterMetaType<QList<CommHistory::Event::Contact> >();
     qDBusRegisterMetaType<CommHistory::MessagePart>();
     qDBusRegisterMetaType<QList<CommHistory::MessagePart> >();
     qDBusRegisterMetaType<CommHistory::Group>();

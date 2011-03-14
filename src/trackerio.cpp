@@ -20,12 +20,11 @@
 **
 ******************************************************************************/
 
-#include <QtTracker/Tracker>
-#include <QtTracker/ontologies/nco.h>
-#include <QtTracker/ontologies/nmo.h>
-#include <QtTracker/ontologies/nie.h>
-#include <QtTracker/ontologies/nfo.h>
-#include <QtTracker/ontologies/rdfs.h>
+#include <QSparqlConnectionOptions>
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlResultRow>
+#include <QSparqlError>
 
 #include "commonutils.h"
 #include "event.h"
@@ -34,19 +33,28 @@
 #include "mmscontentdeleter.h"
 #include "updatequery.h"
 #include "queryresult.h"
+#include "committingtransaction.h"
+#include "committingtransaction_p.h"
+#include "eventsquery.h"
+#include "preparedqueries.h"
 
 #include "trackerio_p.h"
 #include "trackerio.h"
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 #define LAT(STR) QLatin1String(STR)
 
+#define QSPARQL_DRIVER QLatin1String("QTRACKER_DIRECT")
+#define QSPARQL_DATA_READY_INTERVAL 25
+
+#define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
+
+Q_GLOBAL_STATIC(TrackerIO, trackerIO)
+
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
-    m_transaction(0),
-    m_service(::tracker()),
+    m_pTransaction(0),
     m_MmsContentDeleter(0),
     m_bgThread(0)
 {
@@ -54,21 +62,28 @@ TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
 
 TrackerIOPrivate::~TrackerIOPrivate()
 {
+    foreach(CommittingTransaction* t, m_pendingTransactions)
+        t->deleteLater();
+
     if (m_MmsContentDeleter) {
         m_MmsContentDeleter->deleteLater();
         m_MmsContentDeleter = 0;
     }
 }
 
-TrackerIO::TrackerIO(QObject *parent)
-    : QObject(parent),
-    d(new TrackerIOPrivate(this))
+TrackerIO::TrackerIO()
+    : d(new TrackerIOPrivate(this))
 {
 }
 
 TrackerIO::~TrackerIO()
 {
     delete d;
+}
+
+TrackerIO* TrackerIO::instance()
+{
+    return trackerIO();
 }
 
 int TrackerIO::nextEventId()
@@ -81,584 +96,72 @@ int TrackerIO::nextGroupId()
     return d->m_IdSource.nextGroupId();
 }
 
-void TrackerIO::addMessagePropertiesToQuery(SopranoLive::RDFSelect &query,
-                                            const Event::PropertySet &propertyMask,
-                                            SopranoLive::RDFVariable &message)
+QString TrackerIO::makeCallGroupURI(const CommHistory::Event &event)
 {
-    if (propertyMask.contains(Event::GroupId))
-        query.addColumn(LAT("channel"), message.function<nmo::communicationChannel>());
+    if (event.localUid().isEmpty() || event.remoteUid().isEmpty())
+        return QString();
 
-    if (propertyMask.contains(Event::Direction)
-        || propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)
-        || propertyMask.contains(Event::Status))
-        query.addColumn(LAT("isSent"), message.function<nmo::isSent>());
-
-    if (propertyMask.contains(Event::IsDraft))
-        query.addColumn(LAT("isDraft"), message.function<nmo::isDraft>());
-
-    if (propertyMask.contains(Event::IsRead))
-        query.addColumn(LAT("isRead"), message.function<nmo::isRead>());
-
-    if (propertyMask.contains(Event::IsMissedCall))
-        query.addColumn(LAT("isAnswered"), message.function<nmo::isAnswered>());
-
-    if (propertyMask.contains(Event::IsEmergencyCall))
-        query.addColumn(LAT("isEmergency"), message.function<nmo::isEmergency>());
-
-    if (propertyMask.contains(Event::IsDeleted))
-        query.addColumn(LAT("isDeleted"), message.function<nmo::isDeleted>());
-
-    if (propertyMask.contains(Event::MessageToken))
-        query.addColumn(LAT("messageId"), message.function<nmo::messageId>());
-
-    if (propertyMask.contains(Event::MmsId))
-        query.addColumn(LAT("mmsId"), message.function<nmo::mmsId>());
-
-    if (propertyMask.contains(Event::ParentId))
-        // TODO: smsId is being used as parentId, fix naming
-        query.addColumn(LAT("smsId"), message.function<nmo::phoneMessageId>());
-
-    if (propertyMask.contains(Event::StartTime))
-        query.addColumn(LAT("sentDate"), message.function<nmo::sentDate>());
-
-    if (propertyMask.contains(Event::EndTime))
-        query.addColumn(LAT("receivedDate"), message.function<nmo::receivedDate>());
-
-    if (propertyMask.contains(Event::LastModified))
-        query.addColumn(LAT("lastModified"), message.function<nie::contentLastModified>());
-
-    if (propertyMask.contains(Event::Subject))
-        query.addColumn(LAT("messageSubject"), message.function<nmo::messageSubject>());
-
-    if (propertyMask.contains(Event::FreeText))
-        query.addColumn(LAT("textContent"), message.function<nie::plainTextContent>());
-
-    if (propertyMask.contains(Event::Status))
-        query.addColumn(LAT("deliveryStatus"), message.function<nmo::deliveryStatus>());
-
-    if (propertyMask.contains(Event::ReportDelivery))
-        query.addColumn(LAT("reportDelivery"), message.function<nmo::reportDelivery>());
-
-    if (propertyMask.contains(Event::ReportRead))
-        query.addColumn(LAT("sentWithReportRead"), message.function<nmo::sentWithReportRead>());
-
-    if (propertyMask.contains(Event::ReportReadRequested))
-        query.addColumn(LAT("mustAnswerReportRead"), message.function<nmo::mustAnswerReportRead>());
-    if (propertyMask.contains(Event::ReportReadStatus))
-        query.addColumn(LAT("reportReadStatus"), message.function<nmo::reportReadStatus>());
-
-    if (propertyMask.contains(Event::ValidityPeriod))
-        query.addColumn("validityPeriod", message.function<nmo::validityPeriod>());
-
-    if (propertyMask.contains(Event::BytesReceived))
-        query.addColumn(LAT("contentSize"), message.function<nie::contentSize>());
-
-    // TODO: nie:url doesn't work anymore because nmo:PhoneMessage is
-    // not a subclass of nie:DataObject. nie:generator is a harmless
-    // workaround, but should we use something like a dummy nie:links
-    // dataobject (preferably with anon blank nodes)?
-    if (propertyMask.contains(Event::ContentLocation))
-        query.addColumn(LAT("contentLocation"), message.function<nie::generator>());
-
-    //additional parameters for sms
-    if (propertyMask.contains(Event::FromVCardFileName)
-        || propertyMask.contains(Event::FromVCardLabel)) {
-        RDFVariable fromVCard = message.function<nmo::fromVCard>();
-        query.addColumn(LAT("fromVCardName"), fromVCard.function<nfo::fileName>());
-        query.addColumn(LAT("fromVCardLabel"), fromVCard.function<rdfs::label>());
+    QString callGroupRemoteId;
+    QString number = normalizePhoneNumber(event.remoteUid());
+    if (number.isEmpty()) {
+        callGroupRemoteId = event.remoteUid();
+    } else {
+        // keep dial string in group uris for separate history entries
+        callGroupRemoteId = makeShortNumber(event.remoteUid(), NormalizeFlagKeepDialString);
     }
 
-    if (propertyMask.contains(Event::Encoding))
-        query.addColumn(LAT("encoding"), message.function<nmo::encoding>());
-
-    if (propertyMask.contains(Event::CharacterSet))
-        query.addColumn(LAT("characterSet"), message.function<nie::characterSet>());
-
-    if (propertyMask.contains(Event::Language))
-        query.addColumn(LAT("language"), message.function<nie::language>());
+    return QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId);
 }
 
-void TrackerIO::prepareMessageQuery(RDFSelect &messageQuery, RDFVariable &message,
-                                    const Event::PropertySet &propertyMask,
-                                    QUrl communicationChannel)
+QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
 {
-    RDFSelect query;
+    QString query(LAT(
+            "SELECT ?message "
+              "?part "
+              "?contentId "
+              "nie:plainTextContent(?part) "
+              "nie:mimeType(?part) "
+              "nie:characterSet(?part) "
+              "nie:contentSize(?part) "
+              "nfo:fileName(?part) "
+            "WHERE { "
+              "?message  nmo:mmsHasContent [nie:hasPart ?part] . "
+              "?part nmo:contentId ?contentId "
+            "FILTER(?message = <%1>)} "
+            "ORDER BY ?contentId"));
 
-    RDFVariable contact;
-    RDFVariable outerImAddress;
+    return query.arg(messageUri);
+}
 
-    RDFVariable outerMessage = query.newColumn(LAT("message"));
-    RDFVariable date = query.newColumn(LAT("date"));
-
-    RDFSubSelect subSelect;
-    RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
-    subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::receivedDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    query.addColumn(LAT("type"), outerMessage.function<rdf::type>());
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        query.addColumn(LAT("contact"), contact);
-        query.addColumn(LAT("imAddress"), outerImAddress);
-    }
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-        RDFVariable from = query.newColumn(LAT("from"));
-        RDFVariable to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subMessage.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subMessage.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (!communicationChannel.isEmpty()) {
-        // optimized query for one p2p conversation - tie all messages to the channel
-        subMessage.property<nmo::communicationChannel>(communicationChannel);
-    }
-
-    addMessagePropertiesToQuery(query, propertyMask, outerMessage);
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-
-        RDFVariable channel = contactSelect.variable(LAT("channel"));
-        RDFVariableList contacts = subContact.unionChildren(2);
-
-        // by IM address...
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable imChannel = contacts[0].variable(channel);
-        RDFVariable imParticipant;
-        RDFVariable imAddress;
-        if (communicationChannel.isEmpty()) {
-            imChannel = subMessage.property<nmo::communicationChannel>();
-            imParticipant = imChannel.property<nmo::hasParticipant>();
-            imAddress = imParticipant.property<nco::hasIMAddress>();
+QString TrackerIO::prepareGroupQuery(const QString &localUid,
+                                     const QString &remoteUid,
+                                     int groupId)
+{
+    QString queryFormat(GROUP_QUERY);
+    QStringList constraints;
+    if (!remoteUid.isEmpty()) {
+        QString number = normalizePhoneNumber(remoteUid);
+        if (number.isEmpty()) {
+            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
+                          .arg(remoteUid);
         } else {
-            imChannel = communicationChannel;
-            imParticipant = imChannel.property<nmo::hasParticipant>();
-            imAddress = imParticipant.property<nco::hasIMAddress>();
+            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
+                          .arg(number.right(CommHistory::phoneNumberMatchLength()));
         }
-        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
-        imAffiliation.property<nco::hasIMAddress>() = imAddress;
-
-        // affiliation (work number)
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable affChannel = contacts[1].variable(channel);
-        RDFVariable affParticipant;
-        if (communicationChannel.isEmpty()) {
-            affChannel = subMessage.property<nmo::communicationChannel>();
-            affParticipant = affChannel.property<nmo::hasParticipant>();
-        } else {
-            affChannel = communicationChannel;
-            affParticipant = affChannel.property<nmo::hasParticipant>();
-        }
-        RDFVariable affPhoneNumber = affParticipant.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-        contacts[1].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>() = affPhoneNumber;
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFSubSelect imNicknameSubSelect;
-        RDFVariable messageChannel = imNicknameSubSelect.variable(LAT("messageChannel"));
-        if (communicationChannel.isEmpty()) {
-            messageChannel = imNicknameSubSelect.variable(subMessage)
-                .property<nmo::communicationChannel>();
-        } else {
-            messageChannel = communicationChannel;
-        }
-        RDFVariable imNickAddress = messageChannel.property<nmo::hasParticipant>()
-            .property<nco::hasIMAddress>();
-        imNicknameSubSelect.addColumn(LAT("imNickname"), imNickAddress);
-        subSelect.addColumnAs(imNicknameSubSelect.asExpression(), outerImAddress);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), outerImAddress.function<nco::imNickname>());
     }
-
-    query.orderBy(date, false);
-    // enforce secondary sorting in the order of message saving
-    // tracker::id() used instead of plain message uri for performance reason
-    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
-    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
-    query.addColumn(msgTrackerId);
-    query.orderBy(msgTrackerId, false);
-
-    messageQuery = query;
-}
-
-void TrackerIO::prepareMUCQuery(RDFSelect &messageQuery, RDFVariable &message,
-                                const Event::PropertySet &propertyMask,
-                                QUrl communicationChannel)
-{
-    RDFSelect query;
-
-    RDFVariable contact;
-
-    RDFVariable outerMessage = query.newColumn(LAT("message"));
-    RDFVariable date = query.newColumn(LAT("date"));
-
-    RDFSubSelect subSelect;
-    RDFVariable subMessage = subSelect.newColumnAs(outerMessage);
-    subMessage = message; // copy constraints from argument
-    date = subMessage.property<nmo::receivedDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    RDFVariable outerAddress;
-    RDFVariable targetAddress;
-
-    query.addColumn(LAT("type"), outerMessage.function<rdf::type>());
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        query.addColumn(LAT("contact"), contact);
-    }
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-        RDFVariable from = query.newColumn(LAT("from"));
-        RDFVariable to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subMessage.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subMessage.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)
-        || propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)) {
-
-        outerAddress = query.newColumn(LAT("targetAddress"));
-        targetAddress = subSelect.newColumnAs(outerAddress);
-
-        RDFVariable target = subSelect.variable(LAT("target"));
-        RDFVariableList fromToUnion = subMessage.unionChildren(2);
-        fromToUnion[0].property<nmo::isSent>(LiteralValue(false));
-        fromToUnion[0].property<nmo::from>(target);
-        fromToUnion[1].property<nmo::isSent>(LiteralValue(true));
-        fromToUnion[1].property<nmo::to>(target);
-        target.property<nco::hasIMAddress>(targetAddress);
-    }
-
-    subMessage.property<nmo::communicationChannel>(communicationChannel);
-
-    addMessagePropertiesToQuery(query, propertyMask, outerMessage);
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-        subContact.isOfType<nco::PersonContact>();
-        RDFVariable imAffiliation = subContact.property<nco::hasAffiliation>();
-        imAffiliation.property<nco::hasIMAddress>(targetAddress);
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), outerAddress.function<nco::imNickname>());
-    }
-
-    query.orderBy(date, false);
-    // enforce secondary sorting in the order of message saving
-    // tracker::id() used instead of plain message uri for performance reason
-    RDFVariable msgTrackerId = outerMessage.filter(LAT("tracker:id"));
-    msgTrackerId.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
-    query.addColumn(msgTrackerId);
-    query.orderBy(msgTrackerId, false);
-
-    messageQuery = query;
-}
-
-void TrackerIO::prepareCallQuery(RDFSelect &callQuery, RDFVariable &call,
-                                 const Event::PropertySet &propertyMask)
-{
-    RDFSelect query;
-
-    RDFVariable contact;
-    RDFVariable outerCall = query.newColumn(LAT("call"));
-    RDFVariable date = query.newColumn(LAT("date"));
-    RDFVariable from;
-    RDFVariable to;
-
-    RDFSubSelect subSelect;
-    RDFVariable subCall = subSelect.newColumnAs(outerCall);
-    subCall = call; // copy constraints
-    date = subCall.property<nmo::sentDate>();
-    RDFVariable subDate = subSelect.newColumnAs(date);
-
-    query.addColumn(LAT("type"), outerCall.function<rdf::type>());
-
-    if (propertyMask.contains(Event::LocalUid)
-        || propertyMask.contains(Event::RemoteUid)
-        || propertyMask.contains(Event::Direction)) {
-        from = query.newColumn(LAT("from"));
-        to = query.newColumn(LAT("to"));
-        RDFVariable subFrom = subSelect.newColumnAs(from);
-        RDFVariable subTo = subSelect.newColumnAs(to);
-        from = subCall.property<nmo::from>().property<nco::hasContactMedium>();
-        to = subCall.property<nmo::to>().property<nco::hasContactMedium>();
-    }
-
-    if (propertyMask.contains(Event::ContactId)
-        || propertyMask.contains(Event::ContactName)) {
-        RDFSubSelect contactSelect;
-        RDFVariable subContact = contactSelect.newColumnAs(contact);
-        RDFVariableList contacts = subContact.unionChildren(2);
-
-        /*
-          (contact -> nco:hasAffiliation -> nco:hasIMAddress) ==
-          (call nmo:from|nmo:to -> nco:hasIMAddress)
-        */
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable affCall = contacts[0].variable(subCall);
-        RDFVariable affAddress = contacts[0].variable(LAT("imAddress"));
-//        RDFVariable affIMAddress = contacts[0].property<nco::hasIMAddress>();
-        RDFVariable affiliation;
-        contacts[0].property<nco::hasAffiliation>(affiliation);
-        affiliation.property<nco::hasIMAddress>(affAddress);
-
-        RDFPattern affFrom = contacts[0].pattern().child();
-        RDFPattern affTo = contacts[0].pattern().child();
-        affFrom.union_(affTo);
-
-        RDFVariable callFrom = affFrom.variable(subCall).property<nmo::from>();
-        RDFVariable callFromAddress = callFrom.property<nco::hasIMAddress>(affAddress);
-
-        RDFVariable callTo = affTo.variable(subCall).property<nmo::to>();
-        RDFVariable callToAddress = callTo.property<nco::hasIMAddress>(affAddress);
-
-//        affAddress.property<nco::hasIMAddress>(affIMAddress);
-
-        /*
-          (contact -> nco:hasAffiliation -> nco:hasPhoneNumber -> maemo:localPhoneNumber) ==
-          (call nmo:from|nmo:to -> nco:hasPhoneNumber -> maemo:localPhoneNumber)
-        */
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable affPhoneNumber = contacts[1].variable(LAT("phoneNumber"));
-        RDFVariable affContactPhoneNumber = contacts[1].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>();
-
-        RDFPattern affPhoneFrom = contacts[1].pattern().child();
-        RDFPattern affPhoneTo = contacts[1].pattern().child();
-        affPhoneFrom.union_(affPhoneTo);
-        affPhoneFrom.variable(subCall).property<nmo::from>(affPhoneNumber);
-        affPhoneTo.variable(subCall).property<nmo::to>(affPhoneNumber);
-
-        affPhoneNumber.property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>(affContactPhoneNumber);
-
-
-        subSelect.addColumnAs(contactSelect.asExpression(), contact);
-
-        RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-        query.addColumn(LAT("contactId"), idFilter);
-        query.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-        query.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-        query.addColumn(LAT("imNickname"), affAddress.function<nco::imNickname>());
-    }
-
-    if (propertyMask.contains(Event::Direction))
-        query.addColumn(LAT("isSent"), outerCall.function<nmo::isSent>());
-    if (propertyMask.contains(Event::IsMissedCall))
-        query.addColumn(LAT("isAnswered"), outerCall.function<nmo::isAnswered>());
-    if (propertyMask.contains(Event::IsEmergencyCall))
-        query.addColumn(LAT("isEmergency"), outerCall.function<nmo::isEmergency>());
-    if (propertyMask.contains(Event::IsRead))
-        query.addColumn(LAT("isRead"), outerCall.function<nmo::isRead>());
-    if (propertyMask.contains(Event::StartTime))
-        query.addColumn(LAT("sentDate"), outerCall.function<nmo::sentDate>());
-    if (propertyMask.contains(Event::EndTime))
-        query.addColumn(LAT("receivedDate"), outerCall.function<nmo::receivedDate>());
-    if (propertyMask.contains(Event::LastModified))
-        query.addColumn(LAT("lastModified"), outerCall.function<nie::contentLastModified>());
-
-    query.orderBy(date, false);
-
-    callQuery = query;
-}
-
-void TrackerIO::prepareMessagePartQuery(RDFSelect &query, RDFVariable &message)
-{
-    RDFVariable content = message.property<nmo::mmsHasContent>();
-    RDFVariable part = content.property<nie::hasPart>();
-    query.addColumn(LAT("message"), message);
-    query.addColumn(LAT("part"), part);
-    query.addColumn(LAT("contentId"), part.function<nmo::contentId>());
-    query.addColumn(LAT("textContent"), part.function<nie::plainTextContent>());
-    query.addColumn(LAT("contentType"), part.function<nie::mimeType>());
-    query.addColumn(LAT("characterSet"), part.function<nie::characterSet>());
-    query.addColumn(LAT("contentSize"), part.function<nie::contentSize>());
-    query.addColumn(LAT("contentLocation"), part.function<nfo::fileName>());
-    query.orderBy(part.function<nmo::contentId>(), RDFSelect::Ascending);
-}
-
-void TrackerIO::prepareGroupQuery(RDFSelect &channelQuery,
-                                  const QString &localUid,
-                                  const QString &remoteUid,
-                                  int groupId)
-{
-    RDFVariable channel = channelQuery.newColumn(LAT("channel"));
-    RDFVariable subject = channelQuery.newColumn(LAT("subject")); // local tp account
-    channelQuery.addColumn(LAT("remoteId"), channel.function<nie::generator>());
-
-    // MUC title (topic/subject)
-    channelQuery.addColumn(LAT("title"), channel.function<nie::title>());
-    // CommHistory::Group::ChatType
-    channelQuery.addColumn(LAT("identifier"), channel.function<nie::identifier>());
-
-    RDFVariable contact = channelQuery.variable(LAT("contact"));
-    RDFVariable imNickname = channelQuery.variable(LAT("imNickname"));
-
-    RDFVariable lastDate = channelQuery.newColumn(LAT("lastDate"));
-    RDFVariable lastMessage = channelQuery.newColumn(LAT("lastMessage"));
-    RDFVariable lastModified = channelQuery.newColumn(LAT("lastModified"));
-    channelQuery.addColumn(LAT("lastMessageText"), lastMessage.function<nie::plainTextContent>());
-    channelQuery.addColumn(LAT("lastMessageSubject"), lastMessage.function<nmo::messageSubject>());
-
-    RDFVariable vcard = lastMessage.function<nmo::fromVCard>();
-    channelQuery.addColumn(LAT("lastVCardFileName"), vcard.function<nfo::fileName>());
-    channelQuery.addColumn(LAT("lastVCardLabel"), vcard.function<rdfs::label>());
-    channelQuery.addColumn(LAT("type"), lastMessage.function<rdf::type>());
-    channelQuery.addColumn(LAT("deliveryStatus"), lastMessage.function<nmo::deliveryStatus>());
-
-    {
-        // select count of all messages and add it as an expression column to outer
-        RDFSubSelect allSubsel;
-        RDFVariable message = allSubsel.newCountColumn(LAT("total messages"));
-        message.property<nmo::communicationChannel>(channel);
-        message.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("totalMessages"), allSubsel.asExpression());
-    }
-
-    {
-        // select count of all already read messages and add it as an expression column to outer
-        RDFSubSelect readSubsel;
-        RDFVariable readMsg = readSubsel.newCountColumn(LAT("total unread messages"));
-        readMsg.property<nmo::communicationChannel>(channel);
-        readMsg.property<nmo::isRead>(LiteralValue(false));
-        readMsg.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("unreadMessages"), readSubsel.asExpression());
-    }
-
-    {
-        // select count of all sent messages and add it as an expression column to outer
-        RDFSubSelect sentSubsel;
-        RDFVariable sentMsg = sentSubsel.newCountColumn(LAT("total sent messages"));
-        sentMsg.property<nmo::communicationChannel>(channel);
-        sentMsg.property<nmo::isSent>(LiteralValue(true));
-        sentMsg.property<nmo::isDeleted>(LiteralValue(false));
-        channelQuery.addColumn(LAT("sentMessages"), sentSubsel.asExpression());
-    }
-
-    RDFSubSelect innerSubsel;
-    RDFVariable innerChannel = innerSubsel.newColumnAs<nmo::CommunicationChannel>(channel);
-    RDFVariable innerSubject = innerSubsel.newColumnAs(subject);
-    RDFVariable innerLastDate = innerSubsel.newColumnAs(lastDate);
-    RDFVariable innerLastModified = innerSubsel.newColumnAs(lastModified);
-    innerChannel.property<nie::subject>(innerSubject);
-    innerChannel.property<nmo::lastMessageDate>(innerLastDate);
-    innerChannel.property<nie::contentLastModified>(innerLastModified);
-
-    // restrict by account / remote id
     if (!localUid.isEmpty()) {
-        innerSubject == LiteralValue(localUid);
-        if (!remoteUid.isEmpty()) {
-            QString number = normalizePhoneNumber(remoteUid);
-            if (number.isEmpty()) {
-                innerChannel.property<nmo::hasParticipant>()
-                    .property<nco::hasIMAddress>()
-                    .property<nco::imID>(LiteralValue(remoteUid));
-            } else {
-                innerChannel.property<nmo::hasParticipant>()
-                    .property<nco::hasPhoneNumber>()
-                    .property<maemo::localPhoneNumber>() =
-                    LiteralValue(number.right(CommHistory::phoneNumberMatchLength()));
-            }
-        }
+        constraints << QString(LAT("FILTER(nie:subject(?channel) = \"%1\") ")).arg(localUid);
     }
-
     if (groupId != -1)
-        innerChannel == Group::idToUrl(groupId);
+        constraints << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
 
-    {
-        RDFSubSelect lastMsgSubsel;
-        RDFVariable message = lastMsgSubsel.newColumn(LAT("message"));
-        message.property<nmo::communicationChannel>(innerChannel);
-        message.property<nmo::isDeleted>(LiteralValue(false));
-        lastMsgSubsel
-            .orderBy(message.property<nmo::receivedDate>(), RDFSelect::Descending)
-            .orderBy(message.filter(LAT("tracker:id")), RDFSelect::Descending)
-            .limit(1);
+    return queryFormat.arg(constraints.join(LAT(" ")));
+}
 
-        innerSubsel.addColumnAs(lastMsgSubsel.asExpression(), lastMessage);
-    }
-
-    {
-        // contact match
-        RDFSubSelect contactSubsel;
-        RDFVariable subContact = contactSubsel.newColumn(LAT("contact"));
-        RDFVariable contactChannel = contactSubsel.variable(innerChannel);
-        RDFVariableList contacts = subContact.unionChildren(3);
-
-        // by IM address
-        contacts[0].isOfType<nco::PersonContact>();
-        RDFVariable imChannel = contacts[0].variable(contactChannel);
-        RDFVariable imParticipant = imChannel.property<nmo::hasParticipant>();
-        RDFVariable imAffiliation = contacts[0].property<nco::hasAffiliation>();
-        RDFVariable imAddress = imAffiliation.property<nco::hasIMAddress>();
-        imAddress = imParticipant.property<nco::hasIMAddress>();
-
-        // by phone number (last digits)
-        contacts[1].isOfType<nco::PersonContact>();
-        RDFVariable phoneChannel = contacts[1].variable(contactChannel);
-        RDFVariable phoneParticipant = phoneChannel.property<nmo::hasParticipant>();
-        RDFVariable number = contacts[1].property<nco::hasPhoneNumber>()
-            .property<maemo::localPhoneNumber>();
-        number = phoneParticipant.property<nco::hasPhoneNumber>().
-            property<maemo::localPhoneNumber>();
-
-        // affiliation (work number)
-        contacts[2].isOfType<nco::PersonContact>();
-        RDFVariable affChannel = contacts[2].variable(contactChannel);
-        RDFVariable affParticipant = affChannel.property<nmo::hasParticipant>();
-        RDFVariable affNumber = contacts[2].property<nco::hasAffiliation>()
-            .property<nco::hasPhoneNumber>().property<maemo::localPhoneNumber>();
-        affNumber = affParticipant.property<nco::hasPhoneNumber>().
-            property<maemo::localPhoneNumber>();
-        innerSubsel.addColumnAs(contactSubsel.asExpression(), contact);
-    }
-
-    {
-        // nickname associated with IM address
-        RDFSubSelect nickSubSelect;
-        RDFVariable nickChannel = nickSubSelect.variable(innerChannel);
-        RDFVariable participant = nickChannel.property<nmo::hasParticipant>();
-        nickSubSelect.addColumn(participant.property<nco::hasIMAddress>()
-                                .property<nco::imNickname>());
-        innerSubsel.addColumnAs(nickSubSelect.asExpression(), imNickname);
-    }
-
-    RDFVariable idFilter = contact.filter(LAT("tracker:id"));
-    channelQuery.addColumn(LAT("contactId"), idFilter);
-    channelQuery.addColumn(LAT("contactFirstName"), contact.function<nco::nameGiven>());
-    channelQuery.addColumn(LAT("contactLastName"), contact.function<nco::nameFamily>());
-    channelQuery.addColumn(LAT("imNickname"), imNickname);
-
-    channelQuery.orderBy(lastDate, RDFSelect::Descending);
-    channel.metaEnableStrategyFlags(RDFStrategy::IdentityColumn);
+QString TrackerIO::prepareGroupedCallQuery()
+{
+    QString queryFormat(GROUPED_CALL_QUERY);
+    return queryFormat;
 }
 
 QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &remoteUid)
@@ -666,146 +169,123 @@ QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &re
     return QUrl(QString(LAT("telepathy:")) + account + QLatin1Char('!') + remoteUid);
 }
 
-QUrl TrackerIOPrivate::findLocalContact(UpdateQuery &query,
-                                        const QString &accountPath)
+QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
+                                           const QString &accountPath)
 {
-    QUrl contact;
+    Q_UNUSED(query);
+
+    QString contact;
     QUrl uri = QString(LAT("telepathy:%1")).arg(accountPath);
-    if (m_imContactCache.contains(uri)) {
-        contact = m_imContactCache[uri];
+    if (m_contactCache.contains(uri)) {
+        contact = m_contactCache[uri];
     } else {
-        contact = m_service->createUniqueIri(LAT("contactLocal"));
-        query.insertion(contact,
-                        rdf::type::iri(),
-                        nco::Contact::iri());
-        query.insertion(contact,
-                        nco::hasIMAddress::iri(),
-                        uri);
-        m_imContactCache.insert(uri, contact);
+        contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
+                  .arg(uri.toString());
+
+        m_contactCache.insert(uri, contact);
     }
 
     return contact;
 }
 
-QUrl TrackerIOPrivate::findIMContact(UpdateQuery &query,
-                                     const QString &accountPath,
-                                     const QString &imID)
+void TrackerIOPrivate::addIMContact(UpdateQuery &query,
+                                    const QUrl &subject,
+                                    const char *predicate,
+                                    const QString &accountPath,
+                                    const QString &imID)
 {
-    QUrl contact;
+    QString contact;
     QUrl imAddressURI = uriForIMAddress(accountPath, imID);
 
-    if (m_imContactCache.contains(imAddressURI)) {
-        contact = m_imContactCache[imAddressURI];
+    if (m_contactCache.contains(imAddressURI)) {
+        contact = m_contactCache[imAddressURI];
     } else {
-        contact = m_service->createUniqueIri(LAT("contactIM"));
+        query.insertionRaw(imAddressURI,
+                           "rdf:type",
+                           LAT("nco:IMAddress"));
         query.insertion(imAddressURI,
-                        rdf::type::iri(),
-                        nco::IMAddress::iri());
-        query.insertion(imAddressURI,
-                        nco::imID::iri(),
-                        LiteralValue(imID));
-        query.insertion(contact,
-                        rdf::type::iri(),
-                        nco::Contact::iri());
-        query.insertion(contact,
-                        nco::hasIMAddress::iri(),
-                        imAddressURI);
-        m_imContactCache.insert(imAddressURI, contact);
+                        "nco:imID",
+                        imID);
+
+        contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
+            .arg(imAddressURI.toString());
+        m_contactCache.insert(imAddressURI, contact);
     }
 
-    return contact;
+    query.insertionRaw(subject, predicate, contact);
 }
 
-QUrl TrackerIOPrivate::findPhoneContact(UpdateQuery &query,
-                                        const QString &accountPath,
-                                        const QString &remoteId)
+void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
+                                       const QUrl &subject,
+                                       const char *predicate,
+                                       const QString &phoneNumber,
+                                       PhoneNumberNormalizeFlags normalizeFlags)
 {
-    Q_UNUSED(accountPath);
+    Q_UNUSED(normalizeFlags);
 
-    QUrl contact;
-    QUrl phoneNumberURI;
+    if (!m_contactCache.contains(phoneNumber)) {
+        QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
+        QString phoneNumberInsert =
+            QString(LAT("INSERT { _:_ a nco:PhoneNumber ; "
+                        "nco:phoneNumber \"%1\" ; "
+                        "maemo:localPhoneNumber \"%2\" . } "
+                        "WHERE { "
+                        "OPTIONAL { ?number nco:phoneNumber \"%1\" } "
+                        "FILTER(!BOUND(?number)) "
+                        "}"))
+            .arg(phoneNumber)
+            .arg(shortNumber);
 
-    QString phoneNumber = normalizePhoneNumber(remoteId);
-    if (phoneNumber.isEmpty()) {
-        phoneNumberURI = QString(LAT("tel:%1")).arg(remoteId);
-    } else {
-        phoneNumberURI = QString(LAT("tel:%1")).arg(phoneNumber);
+        query.appendInsertion(phoneNumberInsert);
     }
 
-    if (m_imContactCache.contains(phoneNumberURI)) {
-        contact = m_imContactCache[phoneNumberURI];
-    } else {
-        contact = m_service->createUniqueIri(LAT("contactPhone"));
-        query.insertion(phoneNumberURI,
-                        rdf::type::iri(),
-                        nco::PhoneNumber::iri());
-        query.insertion(contact,
-                        rdf::type::iri(),
-                        nco::Contact::iri());
-        query.insertion(contact,
-                        nco::hasPhoneNumber::iri(),
-                        phoneNumberURI);
-        m_imContactCache.insert(phoneNumberURI, contact);
+    QString contactInsert =
+        QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; nco:hasPhoneNumber ?number ] } "
+                    "WHERE { ?number nco:phoneNumber \"%3\" }"))
+        .arg(subject.toString())
+        .arg(predicate)
+        .arg(phoneNumber);
 
-        // insert nco:phoneNumber only if it doesn't exist
-        // TODO: use INSERT SILENT when available in libqttracker.
-        query.endQuery();
-        query.startQuery();
-        RDFVariable phone(phoneNumberURI);
-        RDFVariable ncoPhoneNumber = phone.optional().property<nco::phoneNumber>();
-        // phone.variable(...) moves the FILTER out of the OPTIONAL
-        RDFFilter doesntExist = phone.variable(ncoPhoneNumber).isBound().not_();
-        query.insertion(phone,
-                        nco::phoneNumber::iri(),
-                        LiteralValue(phoneNumber));
-
-        // and the same for maemo:localPhoneNumber (the short version).
-        query.endQuery();
-        query.startQuery();
-        RDFVariable localPhone(phoneNumberURI);
-        RDFVariable localPhoneNumber = localPhone.optional().property<maemo::localPhoneNumber>();
-        RDFFilter localDoesntExist = localPhone.variable(localPhoneNumber).isBound().not_();
-        query.insertion(localPhone,
-                        maemo::localPhoneNumber::iri(),
-                        LiteralValue(phoneNumber.right(CommHistory::phoneNumberMatchLength())));
-        query.endQuery();
-    }
-
-    return contact;
+    query.appendInsertion(contactInsert);
 }
 
-QUrl TrackerIOPrivate::findRemoteContact(UpdateQuery &query,
-                                         const QString &localUid,
-                                         const QString &remoteUid)
+void TrackerIOPrivate::addRemoteContact(UpdateQuery &query,
+                                        const QUrl &subject,
+                                        const char *predicate,
+                                        const QString &localUid,
+                                        const QString &remoteUid,
+                                        PhoneNumberNormalizeFlags normalizeFlags)
 {
-    QString phoneNumber = normalizePhoneNumber(remoteUid);
+    QString phoneNumber = normalizePhoneNumber(remoteUid, normalizeFlags);
     if (phoneNumber.isEmpty()) {
-        return findIMContact(query, localUid, remoteUid);
+        return addIMContact(query, subject, predicate, localUid, remoteUid);
     } else {
-        return findPhoneContact(query, localUid, phoneNumber);
+        return addPhoneContact(query, subject, predicate, remoteUid, normalizeFlags);
     }
 }
 
-void TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
+void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
                                              Event &event,
                                              bool modifyMode)
 {
-    // make sure isDeleted and isDraft get set, we need them for queries
-    if (event.type() != Event::CallEvent) {
-        if (!event.validProperties().contains(Event::IsDeleted))
-            event.setDeleted(false);
-        if (!event.validProperties().contains(Event::IsDraft))
-            event.setIsDraft(false);
+    if (!modifyMode) { // ensure fields only when adding new events
+        // make sure isDeleted and isDraft get set, we need them for queries
+        if (event.type() != Event::CallEvent) {
+            if (!event.validProperties().contains(Event::IsDeleted))
+                event.setDeleted(false);
+            if (!event.validProperties().contains(Event::IsDraft))
+                event.setIsDraft(false);
+        }
+
+        // nmo:sentDate is used for indexing, make sure it's valid
+        if (!event.validProperties().contains(Event::StartTime))
+            event.setStartTime(QDateTime::fromTime_t(0));
+
+        // also ensure valid nmo:isRead, filtering fails with libqttracker
+        // (see bug #174248)
+        if (!event.validProperties().contains(Event::IsRead))
+            event.setIsRead(false);
     }
-
-    // nmo:sentDate is used for indexing, make sure it's valid
-    if (!event.validProperties().contains(Event::StartTime))
-        event.setStartTime(QDateTime::fromTime_t(0));
-
-    // also ensure valid nmo:isRead, filtering fails with libqttracker
-    // (see bug #174248)
-    if (!event.validProperties().contains(Event::IsRead))
-        event.setIsRead(false);
 
     Event::PropertySet propertySet = modifyMode ? event.modifiedProperties() : event.validProperties();
     foreach (Event::Property property, propertySet) {
@@ -813,139 +293,136 @@ void TrackerIOPrivate::writeCommonProperties(UpdateQuery &query,
         case Event::StartTime:
             if (event.startTime().isValid())
                 query.insertion(event.url(),
-                                nmo::sentDate::iri(),
-                                LiteralValue(event.startTime()),
+                                "nmo:sentDate",
+                                event.startTime(),
                                 modifyMode);
             break;
         case Event::EndTime:
             if (event.endTime().isValid())
                 query.insertion(event.url(),
-                                nmo::receivedDate::iri(),
-                                LiteralValue(event.endTime()),
+                                "nmo:receivedDate",
+                                event.endTime(),
                                 modifyMode);
             break;
         case Event::Direction:
             if (event.direction() != Event::UnknownDirection) {
                 bool isSent = event.direction() == Event::Outbound;
                 query.insertion(event.url(),
-                                nmo::isSent::iri(),
-                                LiteralValue(isSent),
+                                "nmo:isSent",
+                                isSent,
                                 modifyMode);
             }
             break;
         case Event::IsDraft:
             query.insertion(event.url(),
-                            nmo::isDraft::iri(),
-                            LiteralValue(event.isDraft()),
+                            "nmo:isDraft",
+                            event.isDraft(),
                             modifyMode);
             break;
         case Event::IsRead:
             query.insertion(event.url(),
-                            nmo::isRead::iri(),
-                            LiteralValue(event.isRead()),
+                            "nmo:isRead",
+                            event.isRead(),
                             modifyMode);
             break;
         case Event::Status: {
             QUrl status;
             if (event.status() == Event::SentStatus) {
-                status = nmo::delivery_status_sent::iri();
+                status = LAT(NMO_ "delivery-status-sent");
             } else if (event.status() == Event::DeliveredStatus) {
-                status = nmo::delivery_status_delivered::iri();
+                status = LAT(NMO_ "delivery-status-delivered");
             } else if (event.status() == Event::TemporarilyFailedStatus) {
-                status = nmo::delivery_status_temporarily_failed::iri();
+                status = LAT(NMO_ "delivery-status-temporarily-failed");
             } else if (event.status() == Event::PermanentlyFailedStatus) {
-                status = nmo::delivery_status_permanently_failed::iri();
+                status = LAT(NMO_ "delivery-status-permanently-failed");
             }
             if (!status.isEmpty())
                 query.insertion(event.url(),
-                                nmo::deliveryStatus::iri(),
+                                "nmo:deliveryStatus",
                                 status,
                                 modifyMode);
             else if (modifyMode)
                 query.deletion(event.url(),
-                               nmo::deliveryStatus::iri());
+                               "nmo:deliveryStatus");
             break;
         }
         case Event::ReadStatus: {
             QUrl readStatus;
             if (event.readStatus() == Event::ReadStatusRead) {
-                readStatus = nmo::read_status_read::iri();
+                readStatus = LAT(NMO_ "read-status-read");
             } else if (event.readStatus() == Event::ReadStatusDeleted) {
-                readStatus = nmo::read_status_deleted::iri();
+                readStatus = LAT(NMO_ "read-status-deleted");
             }
             if (!readStatus.isEmpty())
                 query.insertion(event.url(),
-                                nmo::reportReadStatus::iri(),
+                                "nmo:reportReadStatus",
                                 readStatus,
                                 modifyMode);
             break;
         }
-        case Event::BytesSent:
-            // TODO: not implemented, do we need this?
-            break;
         case Event::BytesReceived:
             query.insertion(event.url(),
-                            nie::contentSize::iri(),
-                            LiteralValue(event.bytesReceived()),
+                            "nie:contentSize",
+                            event.bytesReceived(),
                             modifyMode);
             break;
         case Event::Subject:
             query.insertion(event.url(),
-                            nmo::messageSubject::iri(),
-                            LiteralValue(event.subject()),
+                            "nmo:messageSubject",
+                            event.subject(),
                             modifyMode);
             break;
         case Event::FreeText:
             query.insertion(event.url(),
-                            nie::plainTextContent::iri(),
-                            LiteralValue(event.freeText()),
+                            "nie:plainTextContent",
+                            event.freeText().replace("\"", "\\\""),
                             modifyMode);
             break;
         case Event::MessageToken:
             query.insertion(event.url(),
-                            nmo::messageId::iri(),
-                            LiteralValue(event.messageToken()),
+                            "nmo:messageId",
+                            event.messageToken(),
                             modifyMode);
             break;
         case Event::MmsId:
             query.insertion(event.url(),
-                            nmo::mmsId::iri(),
-                            LiteralValue(event.mmsId()),
+                            "nmo:mmsId",
+                            event.mmsId(),
                             modifyMode);
             break;
         case Event::CharacterSet:
             query.insertion(event.url(),
-                            nmo::characterSet::iri(),
-                            LiteralValue(event.characterSet()),
+                            "nmo:characterSet",
+                            event.characterSet(),
                             modifyMode);
             break;
         case Event::Language:
             query.insertion(event.url(),
-                            nmo::language::iri(),
-                            LiteralValue(event.language()),
+                            "nmo:language",
+                            event.language(),
                             modifyMode);
             break;
         case Event::IsDeleted:
             query.insertion(event.url(),
-                            nmo::isDeleted::iri(),
-                            LiteralValue(event.isDeleted()),
+                            "nmo:isDeleted",
+                            event.isDeleted(),
                             modifyMode);
             break;
         case Event::ReportDelivery:
             query.insertion(event.url(),
-                            nmo::reportDelivery::iri(),
-                            LiteralValue(event.reportDelivery()),
+                            "nmo:reportDelivery",
+                            event.reportDelivery(),
                             modifyMode);
         case Event::ReportRead:
             query.insertion(event.url(),
-                            nmo::sentWithReportRead::iri(),
-                            LiteralValue(event.reportRead()),
+                            "nmo:sentWithReportRead",
+                            event.reportRead(),
                             modifyMode);
             break;
         case Event::ReportReadRequested:
             query.insertion(event.url(),
-                            nmo::mustAnswerReportRead::iri(),
-                            LiteralValue(event.reportReadRequested()),
+                            "nmo:mustAnswerReportRead",
+                            event.reportReadRequested(),
                             modifyMode);
             break;
         default:; // do nothing
@@ -969,14 +446,14 @@ void TrackerIOPrivate::writeSMSProperties(UpdateQuery &query,
         switch (property) {
         case Event::ParentId:
             query.insertion(event.url(),
-                            nmo::phoneMessageId::iri(),
-                            LiteralValue(event.parentId()),
+                            "nmo:phoneMessageId",
+                            event.parentId(),
                             modifyMode);
             break;
         case Event::Encoding:
             query.insertion(event.url(),
-                            nmo::encoding::iri(),
-                            LiteralValue(event.encoding()),
+                            "nmo:encoding",
+                            event.encoding(),
                             modifyMode);
             break;
         case Event::FromVCardFileName:
@@ -987,41 +464,29 @@ void TrackerIOPrivate::writeSMSProperties(UpdateQuery &query,
 
             // if there is no filename set for the vcard, then we don't save anything
             if (!event.fromVCardFileName().isEmpty()) {
-                if (modifyMode) {
-                    query.startQuery();
-                    RDFVariable eventSubject(event.url());
-                    // TODO: check insert works when deleting WHERE fail
-                    RDFVariable oldVcard(QString(LAT("oldVcard")));
+                if (modifyMode)
+                    query.resourceDeletion(event.url(),
+                                           "nmo:fromVCard");
 
-                    eventSubject.property<nmo::fromVCard>(oldVcard);
-                    query.deletion(oldVcard,
-                                   rdf::type::iri(),
-                                   rdfs::Resource::iri());
-                    query.deletion(eventSubject,
-                                   nmo::fromVCard::iri(),
-                                   oldVcard);
-                    query.endQuery();
-                }
-
-                RDFVariable vcard(QString(LAT("vcard")));
+                QUrl vcard(LAT("_:vcard"));
                 query.insertion(event.url(),
-                                nmo::fromVCard::iri(),
+                                "nmo:fromVCard",
                                 vcard);
+                query.insertionRaw(vcard,
+                                   "rdf:type",
+                                   "nfo:FileDataObject");
                 query.insertion(vcard,
-                                rdf::type::iri(),
-                                nfo::FileDataObject::iri());
+                                "nfo:fileName",
+                                event.fromVCardFileName());
                 query.insertion(vcard,
-                                nfo::fileName::iri(),
-                                LiteralValue(event.fromVCardFileName()));
-                query.insertion(vcard,
-                                rdfs::label::iri(),
-                                LiteralValue(event.fromVCardLabel()));
+                                "rdfs:label",
+                                event.fromVCardLabel());
             }
             break;
         case Event::ValidityPeriod:
             query.insertion(event.url(),
-                            nmo::validityPeriod::iri(),
-                            LiteralValue(event.validityPeriod()),
+                            "nmo:validityPeriod",
+                            event.validityPeriod(),
                             modifyMode);
             break;
         default:; // do nothing
@@ -1038,109 +503,60 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
         switch (property) {
         case Event::MessageParts:
             if (modifyMode) {
-                RDFVariable part(QString(LAT("part")));
-                RDFVariable content(QString(LAT("content")));
-                RDFVariable eventNode = event.url();
-                eventNode.property<nmo::mmsHasContent>(content);
-                content.property<nmo::hasPart>(part);
-
-                query.startQuery();
-                query.deletion(part,
-                               rdf::type::iri(),
-                               rdf::Resource::iri());
-                query.deletion(event.url(),
-                               nmo::hasAttachment::iri(),
-                               part);
-                query.deletion(content,
-                               nmo::hasPart::iri(),
-                               part);
-                query.endQuery();
-
-                query.startQuery();
-                // new variables to remove connection between "content" and "part"
-                RDFVariable eventNode2 = event.url();
-                RDFVariable eventContent;
-                eventNode2.property<nmo::mmsHasContent>(eventContent);
-                query.deletion(eventContent,
-                               rdf::type::iri(),
-                               rdf::Resource::iri());
-                query.deletion(event.url(),
-                               nmo::mmsHasContent::iri(),
-                               eventContent);
-                query.endQuery();
+                query.deletion(QString(LAT(
+                        "DELETE  {<%1> nmo:hasAttachment ?_part; nmo:mmsHasContent> ?_content ."
+                        "?_content nie:hasPart ?_part ."
+                        "?_part rdf:type rdf:Resource ."
+                        "} WHERE {?_content nie:hasPart ?_part }")).arg(event.url().toString()));
+                query.resourceDeletion(event.url(),
+                                       "nmo:mmsHasContent");
             }
             addMessageParts(query, event);
             break;
         case Event::To:
-            if (modifyMode) {
-                RDFVariable header(QString(LAT("mmsHeader")));
-                RDFVariable eventSubject(event.url());
-
-                eventSubject.property<nmo::messageHeader>(header);
-
-                query.startQuery();
-                query.deletion(header,
-                               rdf::type::iri(),
-                               rdfs::Resource::iri());
-                query.deletion(eventSubject,
-                               nmo::messageHeader::iri(),
-                               header);
-                query.endQuery();
-            }
+            if (modifyMode)
+                query.resourceDeletion(event.url(),
+                                       "nmo:messageHeader");
 
             // Store To list in message header x-mms-to
             if (!event.toList().isEmpty()) {
-                RDFVariable header(QString(LAT("header")));
+                QUrl header(QString(LAT("_:header")));
+                query.insertionRaw(header,
+                                   "rdf:type",
+                                   LAT("nmo:MessageHeader"));
                 query.insertion(header,
-                                rdf::type::iri(),
-                                nmo::MessageHeader::iri());
+                                "nmo:headerName",
+                                LAT("x-mms-to"));
                 query.insertion(header,
-                                nmo::headerName::iri(),
-                                LiteralValue(LAT("x-mms-to")));
-                query.insertion(header,
-                                nmo::headerValue::iri(),
-                                LiteralValue(event.toList().join(LAT(";"))));
+                                "nmo:headerValue",
+                                event.toList().join("\x1e"));
                 query.insertion(event.url(),
-                                nmo::messageHeader::iri(),
+                                "nmo:messageHeader",
                                 header);
             }
             break;
         case Event::Cc:
-            if (modifyMode) {
-                //TODO: clean contact nodes
-                query.startQuery();
+            if (modifyMode)
                 query.deletion(event.url(),
-                               nmo::cc::iri());
-                query.endQuery();
-            }
+                               "nmo:cc");
+
             foreach (QString contactString, event.ccList()) {
-                QUrl ccContact = findRemoteContact(query, event.localUid(), contactString);
-                query.insertion(event.url(),
-                                nmo::cc::iri(),
-                                ccContact,
-                                false);
+                addRemoteContact(query, event.url(), "nmo:cc", event.localUid(), contactString);
             }
             break;
         case Event::Bcc:
-            if (modifyMode) {
-                //TODO: clean contact nodes
-                query.startQuery();
+            if (modifyMode)
                 query.deletion(event.url(),
-                               nmo::bcc::iri());
-                query.endQuery();
-            }
+                               "nmo:bcc");
+
             foreach (QString contactString, event.bccList()) {
-                QUrl bccContact = findRemoteContact(query, event.localUid(), contactString);
-                query.insertion(event.url(),
-                                nmo::bcc::iri(),
-                                bccContact,
-                                false);
+                addRemoteContact(query, event.url(), "nmo:bcc", event.localUid(), contactString);
             }
             break;
         case Event::ContentLocation:
             query.insertion(event.url(),
-                            nie::generator::iri(),
-                            LiteralValue(event.contentLocation()),
+                            "nie:generator",
+                            event.contentLocation(),
                             modifyMode);
             break;
         default:; //do nothing
@@ -1151,80 +567,81 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
 void TrackerIOPrivate::writeCallProperties(UpdateQuery &query, Event &event, bool modifyMode)
 {
     query.insertion(event.url(),
-                    nmo::isAnswered::iri(),
-                    LiteralValue(!event.isMissedCall()),
+                    "nmo:isAnswered",
+                    !event.isMissedCall(),
                     modifyMode);
     query.insertion(event.url(),
-                    nmo::isEmergency::iri(),
-                    LiteralValue(event.isEmergencyCall()),
+                    "nmo:isEmergency",
+                    event.isEmergencyCall(),
                     modifyMode);
     query.insertion(event.url(),
-                    nmo::duration::iri(),
-                    LiteralValue(event.endTime().toTime_t() - event.startTime().toTime_t()),
+                    "nmo:duration",
+                    (int)(event.endTime().toTime_t() - event.startTime().toTime_t()),
                     modifyMode);
 }
 
 void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
 {
-    RDFVariable content(QString(LAT("content")));
-    RDFVariable eventSubject(event.url());
+    QUrl content(QString(LAT("_:content")));
+    QUrl eventSubject(event.url());
 
-    query.insertion(content,
-                    rdf::type::iri(),
-                    nmo::Multipart::iri());
+    query.insertionRaw(content,
+                       "rdf:type",
+                       LAT("nmo:Multipart"));
     query.insertion(eventSubject,
-                    nmo::mmsHasContent::iri(),
+                    "nmo:mmsHasContent",
                     content);
 
+    int i = 0;
     foreach (const MessagePart &messagePart, event.messageParts()) {
-        RDFVariable part(QUrl(m_service->createUniqueIri(LAT("mmsPart"))));
-        query.insertion(part,
-                        rdf::type::iri(),
-                        nmo::Attachment::iri());
-
-        // set nmo:MimePart properties
-        query.insertion(part,
-                        nmo::contentId::iri(),
-                        LiteralValue(messagePart.contentId()));
-        query.insertion(part,
-                        nie::contentSize::iri(),
-                        LiteralValue(messagePart.contentSize()));
-
-        query.insertion(part,
-                        nfo::fileName::iri(),
-                        LiteralValue(messagePart.contentLocation()));
+        QUrl part(QString(LAT("_:part%1")).arg(i++));
+        query.insertionRaw(part,
+                           "rdf:type",
+                           LAT("nmo:Attachment"));
 
         // TODO: how exactly should we handle these?
         if (messagePart.contentType().startsWith(LAT("image/"))) {
-            query.insertion(part,
-                            rdf::type::iri(),
-                            nfo::Image::iri());
+            query.insertionRaw(part,
+                               "rdf:type",
+                               LAT("nfo:Image"));
         } else if (messagePart.contentType().startsWith(LAT("audio/"))) {
-            query.insertion(part,
-                            rdf::type::iri(),
-                            nfo::Audio::iri());
+            query.insertionRaw(part,
+                               "rdf:type",
+                               LAT("nfo:Audio"));
         } else if (messagePart.contentType().startsWith(LAT("video/"))) {
-            query.insertion(part,
-                            rdf::type::iri(),
-                            nfo::Video::iri());
+            query.insertionRaw(part,
+                               "rdf:type",
+                               LAT("nfo:Video"));
         } else {
-            query.insertion(part,
-                            rdf::type::iri(),
-                            nfo::PlainTextDocument::iri());
+            query.insertionRaw(part,
+                               "rdf:type",
+                               LAT("nfo:PlainTextDocument"));
         }
+
+        // set nmo:MimePart properties
+        query.insertion(part,
+                        "nmo:contentId",
+                        messagePart.contentId());
+        query.insertion(part,
+                        "nie:contentSize",
+                        messagePart.contentSize());
+
+        query.insertion(part,
+                        "nfo:fileName",
+                        messagePart.contentLocation());
 
         // set nie:InformationElement properties
         query.insertion(part,
-                        nie::plainTextContent::iri(),
-                        LiteralValue(messagePart.plainTextContent()));
+                        "nie:plainTextContent",
+                        messagePart.plainTextContent().replace("\"", "\\\""));
         query.insertion(part,
-                        nie::mimeType::iri(),
-                        LiteralValue(messagePart.contentType()));
+                        "nie:mimeType",
+                        messagePart.contentType());
         query.insertion(part,
-                        nie::characterSet::iri(),
-                        LiteralValue(messagePart.characterSet()));
+                        "nie:characterSet",
+                        messagePart.characterSet());
         query.insertion(content,
-                        nmo::hasPart::iri(),
+                        "nie:hasPart",
                         part);
 
         if (messagePart.contentType() != LAT("text/plain") &&
@@ -1232,7 +649,7 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         {
             qDebug() << "[MMS-ATTACH] Adding attachment" << messagePart.contentLocation() << messagePart.contentType() << "to message" << event.url();
             query.insertion(eventSubject,
-                            nmo::hasAttachment::iri(),
+                            "nmo:hasAttachment",
                             part);
         }
     }
@@ -1241,29 +658,24 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
 void TrackerIOPrivate::addIMEvent(UpdateQuery &query, Event &event)
 {
     event.setId(m_IdSource.nextEventId());
-    RDFVariable eventSubject(event.url());
+    QUrl eventSubject(event.url());
 
-    query.insertion(eventSubject,
-                    rdf::type::iri(),
-                    nmo::IMMessage::iri());
+    query.insertionRaw(eventSubject,
+                       "rdf:type",
+                       LAT("nmo:IMMessage"));
 
-    QUrl remoteContact = findIMContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        addIMContact(query, eventSubject, "nmo:to", event.localUid(), event.remoteUid());
     } else {
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        addIMContact(query, eventSubject, "nmo:from", event.localUid(), event.remoteUid());
     }
     writeCommonProperties(query, event, false);
 }
@@ -1271,16 +683,16 @@ void TrackerIOPrivate::addIMEvent(UpdateQuery &query, Event &event)
 void TrackerIOPrivate::addSMSEvent(UpdateQuery &query, Event &event)
 {
     event.setId(m_IdSource.nextEventId());
-    RDFVariable eventSubject(event.url());
+    QUrl eventSubject(event.url());
 
     if (event.type() == Event::MMSEvent) {
-        query.insertion(eventSubject,
-                        rdf::type::iri(),
-                        nmo::MMSMessage::iri());
+        query.insertionRaw(eventSubject,
+                           "rdf:type",
+                           LAT("nmo:MMSMessage"));
     } else if (event.type() == Event::SMSEvent) {
-        query.insertion(eventSubject,
-                        rdf::type::iri(),
-                        nmo::SMSMessage::iri());
+        query.insertionRaw(eventSubject,
+                           "rdf:type",
+                           LAT("nmo:SMSMessage"));
     }
 
     //TODO: add check that group exist as part of the query
@@ -1289,57 +701,80 @@ void TrackerIOPrivate::addSMSEvent(UpdateQuery &query, Event &event)
     if (event.type() == Event::MMSEvent)
         writeMMSProperties(query, event, false);
 
-    QUrl remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        addRemoteContact(query, eventSubject, "nmo:to", event.localUid(), event.remoteUid(),
+                         NormalizeFlagKeepDialString);
     } else {
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        addRemoteContact(query, eventSubject, "nmo:from", event.localUid(), event.remoteUid(),
+                         NormalizeFlagKeepDialString);
     }
 }
 
 void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
 {
     event.setId(m_IdSource.nextEventId());
-    RDFVariable eventSubject(event.url());
+    QUrl eventSubject(event.url());
 
-    query.insertion(eventSubject,
-                    rdf::type::iri(),
-                    nmo::Call::iri());
+    query.insertionRaw(eventSubject,
+                       "rdf:type",
+                       LAT("nmo:Call"));
 
-    QUrl remoteContact = findRemoteContact(query, event.localUid(), event.remoteUid());
-    QUrl localContact = findLocalContact(query, event.localUid());
+    QString localContact = findLocalContact(query, event.localUid());
 
     if (event.direction() == Event::Outbound) {
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:from",
+                           localContact);
+        addRemoteContact(query, eventSubject, "nmo:to", event.localUid(), event.remoteUid(),
+                         NormalizeFlagKeepDialString);
     } else {
-        query.insertion(eventSubject,
-                        nmo::to::iri(),
-                        localContact);
-        query.insertion(eventSubject,
-                        nmo::from::iri(),
-                        remoteContact);
+        query.insertionRaw(eventSubject,
+                           "nmo:to",
+                           localContact);
+        addRemoteContact(query, eventSubject, "nmo:from", event.localUid(), event.remoteUid(),
+                         NormalizeFlagKeepDialString);
     }
 
     writeCommonProperties(query, event, false);
 
     writeCallProperties(query, event, false);
+
+    QUrl channelUri = q->makeCallGroupURI(event);
+    QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
+    QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
+
+    query.insertionSilent(
+        QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
+        .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
+        .arg(channelUri.toString()));
+
+    // TODO: would it be cleaner to have all channel-related triples
+    // inside the call group graph?
+    query.insertion(channelUri, "nmo:lastMessageDate", event.startTime(), true);
+    query.insertion(channelUri, "nie:contentLastModified", event.startTime(), true);
+    query.deletion(channelUri, "nmo:hasParticipant");
+    addRemoteContact(query, channelUri, "nmo:hasParticipant", event.localUid(), event.remoteUid(),
+                     NormalizeFlagKeepDialString);
+
+    if (!event.isMissedCall()) {
+        query.insertion(channelUri, "nmo:lastSuccessfulMessageDate", event.startTime(), true);
+    } else {
+        // ensure existence of nmo:lastSuccessfulMessageDate
+        query.insertionSilent(
+            QString(LAT("<%1> nmo:lastSuccessfulMessageDate "
+                        "\"1970-01-01T00:00:00Z\"^^xsd:dateTime ."))
+            .arg(channelUri.toString()));
+    }
+
+    query.insertion(eventSubject, "nmo:communicationChannel", channelUri);
 }
 
 void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelId, bool modify)
@@ -1347,17 +782,94 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
     QUrl channelUrl = Group::idToUrl(channelId);
 
     query.insertion(channelUrl,
-                    nmo::lastMessageDate::iri(),
-                    LiteralValue(event.endTime()),
+                    "nmo:lastMessageDate",
+                    event.endTime(),
                     true);
     query.insertion(channelUrl,
-                    nie::contentLastModified::iri(),
-                    LiteralValue(event.endTime()),
+                    "nie:contentLastModified",
+                    event.endTime(),
                     true);
     query.insertion(event.url(),
-                    nmo::communicationChannel::iri(),
+                    "nmo:communicationChannel",
                     channelUrl,
                     modify);
+}
+
+void TrackerIOPrivate::updateGroupTimestamps(CommHistory::Event event)
+{
+    qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
+
+    if (event.type() != Event::CallEvent && event.groupId() == -1) return;
+
+    QDateTime lastMessageDate;
+    QDateTime lastSuccessfulMessageDate;
+    QString groupUri;
+    QString timeProperty;
+    if (event.type() == Event::CallEvent) {
+        groupUri = q->makeCallGroupURI(event);
+        timeProperty = QLatin1String("nmo:sentDate");
+    } else {
+        groupUri = Group::idToUrl(event.groupId()).toString();
+        timeProperty = QLatin1String("nmo:receivedDate");
+    }
+
+    if (groupUri.isEmpty()) return;
+
+    // get last message time
+    QString query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> ; "
+                                "%2 ?date . } "
+                                " ORDER BY DESC(?date) LIMIT 1"))
+        .arg(groupUri)
+        .arg(timeProperty);
+
+    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(query)));
+    if (runBlockedQuery(result.data())) {
+        if (result->first()) {
+            lastMessageDate = result->value(0).toDateTime();
+            qDebug() << "lastMessageDate" << lastMessageDate;
+        } else {
+            // delete empty call group
+            query = QString(LAT("DELETE { <%1> a rdfs:Resource }")).arg(groupUri);
+            result.reset(connection().exec(QSparqlQuery(query, QSparqlQuery::DeleteStatement)));
+            runBlockedQuery(result.data());
+            return;
+        }
+    } else {
+        qWarning() << Q_FUNC_INFO << "error getting last message date of group:"
+                   << result->lastError().message();
+    }
+
+    // get last successful message time
+    query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> . "
+                        "?lastMessage %2 ?date . "
+                        "FILTER(nmo:isSent(?lastMessage) = true || "
+                        "nmo:isAnswered(?lastMessage) = true) "
+                        "} ORDER BY DESC(?date) LIMIT 1"))
+        .arg(groupUri)
+        .arg(timeProperty);
+
+    result.reset(connection().exec(QSparqlQuery(query)));
+    if (runBlockedQuery(result.data()) && result->first()) {
+        lastSuccessfulMessageDate = result->value(0).toDateTime();
+        qDebug() << "lastSuccessfulMessageDate" << lastSuccessfulMessageDate;
+    }
+
+    UpdateQuery update;
+    if (lastMessageDate.isValid()) {
+        update.insertion(groupUri,
+                         "nmo:lastMessageDate",
+                         lastMessageDate,
+                         true);
+    }
+
+    if (lastSuccessfulMessageDate.isValid()) {
+        update.insertion(groupUri,
+                         "nmo:lastSuccessfulMessageDate",
+                         lastSuccessfulMessageDate,
+                         true);
+    }
+
+    handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::addEvent(Event &event)
@@ -1377,17 +889,14 @@ bool TrackerIO::addEvent(Event &event)
             d->addSMSEvent(query, event);
 
             //setting the time at which the folder was last updated
-            // do it in a separate query, cause the property may not exist yet
-            query.startQuery();
             d->setFolderLastModifiedTime(query, event.parentId(), QDateTime::currentDateTime());
-            query.endQuery();
         }
 
         // specify not-inherited classes only when adding events, not during modifications
         // to have tracker errors when modifying non-existent events
-        query.insertion(event.url(),
-                        rdf::type::iri(),
-                        nie::DataObject::iri());
+        query.insertionRaw(event.url(),
+                           "rdf:type",
+                           LAT("nie:DataObject"));
 
         if (!event.isDraft()) {
             // TODO: add missing participants
@@ -1397,10 +906,6 @@ bool TrackerIO::addEvent(Event &event)
     } else if (event.type() == Event::CallEvent) {
         d->addCallEvent(query, event);
     } else if (event.type() != Event::StatusMessageEvent) {
-        QSqlError ret;
-        ret.setType(QSqlError::TransactionError);
-        ret.setDatabaseText(LAT("Event type not implemented"));
-        d->lastError = ret;
         qWarning() << "event type not implemented";
         return false;
     }
@@ -1408,12 +913,11 @@ bool TrackerIO::addEvent(Event &event)
 
     event.setLastModified(QDateTime::currentDateTime());
     query.insertion(event.url(),
-                    nie::contentLastModified::iri(),
-                    LiteralValue(event.lastModified()));
+                    "nie:contentLastModified",
+                    event.lastModified());
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::addGroup(Group &group)
@@ -1421,174 +925,101 @@ bool TrackerIO::addGroup(Group &group)
     UpdateQuery query;
 
     if (group.localUid().isEmpty()) {
-        QSqlError ret;
-        ret.setType(QSqlError::TransactionError);
-        ret.setDatabaseText(LAT("Local uid required for group"));
-        d->lastError = ret;
+        qWarning() << "Local uid required for group";
         return false;
     }
 
-    // keep id of in-memory groups
-    if (!group.isValid()) {
-        group.setId(nextGroupId());
-    }
+    group.setId(nextGroupId());
 
-    group.setPermanent(true);
     qDebug() << __FUNCTION__ << group.url() << group.localUid() << group.remoteUids();
 
-    RDFVariable channelSubject(group.url());
+    QString channelSubject = group.url().toString();
 
-    query.insertion(channelSubject,
-                    rdf::type::iri(),
-                    nmo::CommunicationChannel::iri());
+    query.insertion(QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
+                    .arg(COMMHISTORY_GRAPH_MESSAGE_CHANNEL)
+                    .arg(channelSubject));
 
     // TODO: ontology
     query.insertion(channelSubject,
-                    nmo::subject::iri(),
-                    LiteralValue(group.localUid()));
+                    "nie:subject",
+                    group.localUid());
 
     query.insertion(channelSubject,
-                    nie::identifier::iri(),
-                    LiteralValue(QString::number(group.chatType())));
+                    "nie:identifier",
+                    QString::number(group.chatType()));
 
     query.insertion(channelSubject,
-                    nie::title::iri(),
-                    LiteralValue(group.chatName()));
+                    "nie:title",
+                    group.chatName());
 
     QString remoteUid = group.remoteUids().first();
     QString phoneNumber = normalizePhoneNumber(remoteUid);
 
     if (phoneNumber.isEmpty()) {
-        QUrl participant = d->findIMContact(query, group.localUid(), remoteUid);
+        d->addIMContact(query, channelSubject, "nmo:hasParticipant",
+                        group.localUid(), remoteUid);
         query.insertion(channelSubject,
-                        nmo::hasParticipant::iri(),
-                        participant);
-        query.insertion(channelSubject,
-                        nie::generator::iri(),
-                        LiteralValue(remoteUid));
+                        "nie:generator",
+                        remoteUid);
     } else {
-        QUrl participant = d->findPhoneContact(query, group.localUid(), phoneNumber);
+        d->addPhoneContact(query, channelSubject, "nmo:hasParticipant", remoteUid,
+                           NormalizeFlagRemovePunctuation);
         query.insertion(channelSubject,
-                        nmo::hasParticipant::iri(),
-                        participant);
-        query.insertion(channelSubject,
-                        nie::generator::iri(),
-                        LiteralValue(phoneNumber));
+                        "nie:generator",
+                        remoteUid);
     }
 
     query.insertion(channelSubject,
-                    nmo::lastMessageDate::iri(),
-                    LiteralValue(QDateTime::fromTime_t(0)));
+                    "nmo:lastMessageDate",
+                    QDateTime::fromTime_t(0));
 
     group.setLastModified(QDateTime::currentDateTime());
     query.insertion(channelSubject,
-                    nie::contentLastModified::iri(),
-                    LiteralValue(group.lastModified()));
+                    "nie:contentLastModified",
+                    group.lastModified());
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
-template<class CopyOntology>
-QStringList TrackerIOPrivate::queryMMSCopyAddresses(Event &event)
-{
-    LiveNodes model;
-    RDFSelect   copyQuery;
-    RDFVariable copyMessage = event.url();
-    RDFVariable copyContact = copyMessage.property<CopyOntology>();
-
-    RDFVariable mergedCopyAddresses;
-    mergedCopyAddresses.unionMerge(RDFVariableList()
-                                   << copyContact.optional().property<nco::hasPhoneNumber>()
-                                   .property<nco::phoneNumber>()
-                                   << copyContact.optional().property<nco::hasIMAddress>()
-                                   .property<nco::imID>());
-    copyQuery.addColumn(LAT("contact"), mergedCopyAddresses);
-    model = ::tracker()->modelQuery(copyQuery);
-
-    QStringList copyList;
-    if (model->rowCount()) {
-        for (int row = 0; row < model->rowCount(); row++) {
-            copyList << model->index(row, 0).data().toString();
-        }
-    }
-    qDebug()<<"[MMS-COMM] Extracted CC/BCC list::"<<copyList;
-    return copyList;
-}
-
-QStringList TrackerIOPrivate::queryMmsToAddresses(Event &event)
-{
-    LiveNodes model;
-    RDFSelect   query;
-    RDFVariable message = event.url();
-    RDFVariable header = message.property<nmo::messageHeader>();
-
-    header.property<nmo::headerName>(LiteralValue("x-mms-to"));
-
-    query.addColumn(LAT("header"), header.property<nmo::headerValue>());
-    model = ::tracker()->modelQuery(query);
-
-    QStringList copyList;
-
-    if (model->rowCount() > 0 ) {
-        copyList << model->index(0, 0).data().toString().split(";", QString::SkipEmptyParts);
-    }
-
-    qDebug()<<"[MMS-COMM] Extracted To list::" << copyList;
-    return copyList;
-}
-
-// direct instanciation for specific ontolgies
-template
-QStringList TrackerIOPrivate::queryMMSCopyAddresses<nmo::cc>(Event &event);
-template
-QStringList TrackerIOPrivate::queryMMSCopyAddresses<nmo::bcc>(Event &event);
-
-bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
+bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
 {
     QueryResult result;
-    LiveNodes model = ::tracker()->modelQuery(query);
-    result.model = model;
-    result.propertyMask = Event::allProperties();
-    if (!model->rowCount()) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Event not found"));
-        lastError = error;
+    QScopedPointer<QSparqlResult> events(connection().exec(QSparqlQuery(query.query())));
+
+    if (!runBlockedQuery(events.data())) // FIXIT
+        return false;
+
+    result.result = events.data();
+    result.properties = query.eventProperties();
+
+    if (!events->first()) {
+        qWarning() << "Event not found";
         return false;
     }
-    for (int i = 0; i < model->columnCount(); i++) {
-        result.columns.insert(model->headerData(i, Qt::Horizontal).toString(), i);
-    }
-    QueryResult::fillEventFromModel(result, 0, event);
+
+    QSparqlResultRow row = events->current();
+
+    result.fillEventFromModel(event);
 
     if (event.type() == Event::MMSEvent) {
-        RDFSelect partQuery;
-        RDFVariable message = event.url();
-        q->prepareMessagePartQuery(partQuery, message);
-        model = ::tracker()->modelQuery(partQuery);
-        result.model = model;
+        QString partQuery = q->prepareMessagePartQuery(event.url().toString());
 
-        if (model->rowCount()) {
-            for (int i = 0; i < model->columnCount(); i++) {
-                result.columns.insert(model->headerData(i, Qt::Horizontal).toString(), i);
-            }
-            for (int row = 0; row < model->rowCount(); row++) {
+        QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery)));
+
+        if (runBlockedQuery(parts.data()) &&
+            parts->size() > 0) {
+            result.result = parts.data();
+
+            parts->first();
+            QSparqlResultRow partRow = parts->current();
+
+            do {
                 MessagePart part;
-                QueryResult::fillMessagePartFromModel(result, row, part);
+                result.fillMessagePartFromModel(part);
                 event.addMessagePart(part);
-            }
+            } while (parts->next());
         }
-
-        QStringList copyAddresses;
-        copyAddresses = queryMMSCopyAddresses<nmo::cc> (event);
-        event.setCcList(copyAddresses);
-
-        copyAddresses = queryMMSCopyAddresses<nmo::bcc> (event);
-        event.setBccList(copyAddresses);
-
-        event.setToList(queryMmsToAddresses(event));
         event.resetModifiedProperties();
     }
 
@@ -1597,109 +1028,87 @@ bool TrackerIOPrivate::querySingleEvent(RDFSelect query, Event &event)
 
 bool TrackerIO::getEvent(int id, Event &event)
 {
-    RDFSelect query;
+    qDebug() << Q_FUNC_INFO << id;
+    EventsQuery query(Event::allProperties());
 
-    RDFVariable msg;
-    msg == Event::idToUrl(id);
-
-    RDFVariable type = msg.type();
-    type.isMemberOf(RDFVariableList() << nmo::Message::iri()
-                    << nmo::Call::iri());
-    query.addColumn(LAT("type"), type);
-
-    LiveNodes model = ::tracker()->modelQuery(query);
-    int count = model->rowCount();
-    bool isCall = (count == 2);
-
-    if (count == 0) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Event not found"));
-        d->lastError = error;
-        return false;
-    }
-
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message == Event::idToUrl(id);
-    if (isCall) {
-        prepareCallQuery(query, message, Event::allProperties());
-    } else {
-        prepareMessageQuery(query, message, Event::allProperties());
-    }
+    query.addPattern(QString(LAT("FILTER(%2 = <%1>)"))
+                     .arg(Event::idToUrl(id).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMessageToken(const QString& token, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::messageId>() = LiteralValue(token);
-    prepareMessageQuery(query, message, Event::allProperties());
+    EventsQuery query(Event::allProperties());
+
+    query.addPattern(QString(LAT("%2 nmo:messageId \"%1\" ."))
+                     .arg(token))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMessageToken(const QString &token, int groupId, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::messageId>() = LiteralValue(token);
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    prepareMessageQuery(query, message, Event::allProperties());
+    EventsQuery query(Event::allProperties());
+
+    query.addPattern(QString(LAT("%3 nmo:messageId \"%1\";"
+                                           "nmo:communicationChannel <%2> ."))
+                     .arg(token)
+                     .arg(Group::idToUrl(groupId).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
 bool TrackerIO::getEventByMmsId(const QString& mmsId, int groupId, Event &event)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::mmsId>() = LiteralValue(mmsId);
+    EventsQuery query(Event::allProperties());
 
-    //when sending to self number, the id of the message will be the same, but we need to pick outgoing message here
-    message.property<nmo::isSent>(LiteralValue(true));
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-
-    prepareMessageQuery(query, message, Event::allProperties());
+    query.addPattern(QString(LAT("%3 nmo:mmsId \"%1\";"
+                                           "nmo:isSent \"true\";"
+                                           "nmo:communicationChannel <%2> ."))
+                     .arg(mmsId)
+                     .arg(Group::idToUrl(groupId).toString()))
+                    .variable(Event::Id);
 
     return d->querySingleEvent(query, event);
 }
 
-bool TrackerIO::getEventByUri(const QUrl& uri, Event &event)
+bool TrackerIO::getEventByUri(const QUrl &uri, Event &event)
 {
     int eventId = Event::urlToId(uri.toString());
-    return getEvent(eventId,event);
+    return getEvent(eventId, event);
 }
 
 bool TrackerIO::modifyEvent(Event &event)
 {
     UpdateQuery query;
 
-    event.setLastModified(QDateTime::currentDateTime()); //always update modified times in case of modifyEvent
-                                                                                                         //irrespective whether client sets or not
-    // allow uid changes for drafts
+    event.setLastModified(QDateTime::currentDateTime()); // always update modified times in case of modifyEvent
+                                                         // irrespective whether client sets or not
+                                                         // allow uid changes for drafts
     if (event.isDraft()
         && (event.validProperties().contains(Event::LocalUid)
             || event.validProperties().contains(Event::RemoteUid))) {
         // TODO: allow multiple remote uids
-        QUrl localContact = d->findLocalContact(query, event.localUid());
-        QUrl remoteContact = d->findRemoteContact(query, event.localUid(), event.remoteUid());
-
+        QString localContact = d->findLocalContact(query, event.localUid());
         if (event.direction() == Event::Outbound) {
-            query.insertion(event.url(),
-                            nmo::from::iri(),
-                            localContact);
-            query.insertion(event.url(),
-                            nmo::to::iri(),
-                            remoteContact);
+            query.insertionRaw(event.url(),
+                               "nmo:from",
+                               localContact);
+            query.deletion(event.url(), "nmo:to");
+            d->addRemoteContact(query, event.url(), "nmo:to",
+                                event.localUid(), event.remoteUid(),
+                                NormalizeFlagKeepDialString);
         } else {
-            query.insertion(event.url(),
-                            nmo::to::iri(),
-                            localContact);
-            query.insertion(event.url(),
-                            nmo::from::iri(),
-                            remoteContact);
+            query.insertionRaw(event.url(),
+                               "nmo:to",
+                               localContact);
+            d->addRemoteContact(query, event.url(), "nmo:from",
+                                event.localUid(), event.remoteUid(),
+                                NormalizeFlagKeepDialString);
         }
     }
 
@@ -1719,8 +1128,8 @@ bool TrackerIO::modifyEvent(Event &event)
     if (event.modifiedProperties().contains(Event::LastModified)
         && event.lastModified() > QDateTime::fromTime_t(0)) {
         query.insertion(event.url(),
-                        nie::contentLastModified::iri(),
-                        LiteralValue(event.lastModified()),
+                        "nie:contentLastModified",
+                        event.lastModified(),
                         true);
     }
 
@@ -1729,9 +1138,8 @@ bool TrackerIO::modifyEvent(Event &event)
 
     d->writeCommonProperties(query, event, true);
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::modifyGroup(Group &group)
@@ -1743,58 +1151,50 @@ bool TrackerIO::modifyGroup(Group &group)
         switch (property) {
             case Group::ChatName:
                 query.insertion(group.url(),
-                                nie::title::iri(),
-                                LiteralValue(group.chatName()),
+                                "nie:title",
+                                group.chatName(),
                                 true);
                 break;
             case Group::EndTime:
                 if (group.endTime().isValid())
                     query.insertion(group.url(),
-                                    nmo::lastMessageDate::iri(),
-                                    LiteralValue(group.endTime()),
+                                    "nmo:lastMessageDate",
+                                    group.endTime(),
                                     true);
                 break;
             case Group::LastModified:
                 if ( group.lastModified() > QDateTime::fromTime_t(0) )
                     query.insertion(group.url(),
-                                    nie::contentLastModified::iri(),
-                                    LiteralValue(group.lastModified()),
+                                    "nie:contentLastModified",
+                                    group.lastModified(),
                                     true);
             default:; // do nothing
         }
     }
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::moveEvent(Event &event, int groupId)
 {
-    qDebug() << Q_FUNC_INFO << event.id() << groupId;
     UpdateQuery query;
 
     d->setChannel(query, event, groupId, true); // true means modify
 
     if (event.direction() == Event::Inbound) {
-        qDebug() << Q_FUNC_INFO << "Direction INBOUND";
-        QUrl remoteContact = d->findRemoteContact(query, QString(), event.remoteUid());
-        query.insertion(event.url(),
-                        nmo::from::iri(),
-                        remoteContact,
-                        true); //TODO: proper contact deletion
+        query.deletion(event.url(), "nmo:from");
+        d->addRemoteContact(query, event.url(), "nmo:from", event.localUid(), event.remoteUid(),
+                            NormalizeFlagKeepDialString);
     }
 
-    d->m_service->executeQuery(query.rdfUpdate());
-
-    return true;
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 {
-    qDebug() << Q_FUNC_INFO << event.id() << backgroundThread;
-
-    Live<nmo::Message> msg = d->m_service->liveNode(event.url());
+    qDebug() << Q_FUNC_INFO << event.id() << event.localUid() << event.remoteUid() << backgroundThread;
 
     if (event.type() == Event::MMSEvent) {
         if (d->isLastMmsEvent(event.messageToken())) {
@@ -1802,66 +1202,109 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
         }
     }
 
-    msg->remove();
+    QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
 
-    return true;
+    // delete empty call groups
+    if (event.type() == Event::CallEvent) {
+        query += LAT(
+            "DELETE { ?chan a rdfs:Resource } WHERE { "
+            "GRAPH ?:graph { "
+            "?chan a nmo:CommunicationChannel . "
+            "} "
+            "OPTIONAL { "
+            "?call a nmo:Call ; "
+            "nmo:communicationChannel ?chan . "
+            "} "
+            "FILTER (!BOUND(?call)) "
+            "}");
+    }
+
+    QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
+    deleteQuery.bindValue(LAT("uri"), event.url());
+
+    if (event.type() == Event::CallEvent)
+        deleteQuery.bindValue(LAT("graph"), COMMHISTORY_GRAPH_CALL_CHANNEL);
+
+    if (d->m_pTransaction) {
+        qDebug() << Q_FUNC_INFO << "addSignal";
+        d->m_pTransaction->addSignal(false, d, "updateGroupTimestamps",
+                                     Q_ARG(CommHistory::Event, event));
+        return d->handleQuery(deleteQuery);
+    }
+
+    if (d->handleQuery(deleteQuery)) {
+        d->updateGroupTimestamps(event);
+        return true;
+    }
+
+    return false;
 }
 
 bool TrackerIO::getGroup(int id, Group &group)
 {
     Group groupToFill;
 
-    RDFSelect query;
-    prepareGroupQuery(query, QString(), QString(), id);
+    QSparqlQuery query(prepareGroupQuery(QString(), QString(), id));
     QueryResult result;
-    result.query = query;
-    result.model = ::tracker()->modelQuery(query);
 
-    if (result.model->rowCount() == 0) {
-        QSqlError error;
-        error.setType(QSqlError::TransactionError);
-        error.setDatabaseText(LAT("Group not found"));
-        d->lastError = error;
+    QScopedPointer<QSparqlResult> groups(d->connection().exec(query));
+
+    if (!d->runBlockedQuery(groups.data())) // FIXIT
+        return false;
+
+    if (groups->size() == 0) {
+        qWarning() << "Group not found";
         return false;
     }
 
-    for (int i = 0; i < result.model->columnCount(); i++)
-        result.columns.insert(result.model->headerData(i, Qt::Horizontal).toString(), i);
-    QueryResult::fillGroupFromModel(result, 0, groupToFill);
+    groups->first();
+    QSparqlResultRow row = groups->current();
+
+    result.result = groups.data();
+    result.fillGroupFromModel(groupToFill);
     group = groupToFill;
 
     return true;
 }
 
-void TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId, LiveNodes& model)
+QSparqlResult* TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId)
 {
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    query.addColumn(message);
-    query.addColumn("messageId", message.function<nmo::messageId>());
+    QSparqlQuery query(LAT(
+            "SELECT ?message "
+              "nmo:messageId(?message) "
+              "(SELECT COUNT(?otherMessage) "
+                "WHERE {"
+                "?otherMessage rdf:type nmo:MMSMessage; nmo:isDeleted \"false\" "
+                "FILTER(nmo:messageId(?otherMessage) = nmo:messageId(?message))})"
+            "WHERE {"
+              "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?:conversation}"));
 
-    RDFSubSelect msgCountQuery;
-    RDFVariable innerMessage = RDFVariable::fromType<nmo::MMSMessage>();
-    innerMessage.property<nmo::isDeleted>(LiteralValue(false));
-    innerMessage.property<nmo::messageId>(msgCountQuery.variable(message).property<nmo::messageId>());
-    msgCountQuery.addCountColumn("total", innerMessage);
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
 
-    query.addColumn(msgCountQuery.asExpression());
-
-    model = ::tracker()->modelQuery(query);
+    return connection().exec(query);
 }
 
-void TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
+bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
 {
     // delete mms messages content from fs
-    LiveNodes model;
-    getMmsListForDeletingByGroup(groupId, model);
-    for(int r = 0; r < model->rowCount(); ++r){
-        QString messageToken(model->index(r,1).data().toString());
+    QScopedPointer<QSparqlResult> result(getMmsListForDeletingByGroup(groupId));
+
+    if (!runBlockedQuery(result.data())) // FIXIT
+        return false;
+
+    while (result->next()) {
+        QSparqlResultRow row = result->current();
+
+        if (row.isEmpty()) {
+            qWarning() << Q_FUNC_INFO << "Empty row";
+            continue;
+        }
+
+        QString messageToken(row.value(1).toString());
+        qDebug() << Q_FUNC_INFO << messageToken;
 
         if (!messageToken.isEmpty()) {
-            int refCount(model->index(r,2).data().toInt());
+            int refCount(row.value(2).toInt());
 
             MessageTokenRefCount::iterator it = m_messageTokenRefCount.find(messageToken);
 
@@ -1875,6 +1318,8 @@ void TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
             }
         }
     }
+
+    return true;
 }
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
@@ -1882,135 +1327,209 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
     Q_UNUSED(backgroundThread);
     qDebug() << __FUNCTION__ << groupId << deleteMessages << backgroundThread;
 
-    d->m_bgThread = backgroundThread;
-
     // error return left for possible future implementation
 
     QUrl group = Group::idToUrl(groupId);
-    RDFUpdate update;
+    UpdateQuery update;
 
     if (deleteMessages) {
-        RDFVariable msg = RDFVariable::fromType<nmo::Message>();
-        msg.property<nmo::communicationChannel>(group);
-        update.addDeletion(msg, rdf::type::iri(), rdfs::Resource::iri());
+        update.deletion(QString(LAT(
+                "DELETE {?msg rdf:type rdfs:Resource}"
+                "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel <%1>}"))
+                        .arg(group.toString()));
 
         // delete mms attachments
-        d->deleteMmsContentByGroup(groupId);
+        // FIXIT, make it async
+        if (!d->deleteMmsContentByGroup(groupId))
+            return false;
     }
 
+    d->m_bgThread = backgroundThread;
+
     // delete conversation
-    update.addDeletion(group, rdf::type::iri(), rdfs::Resource::iri());
+    update.deletion(group,
+                    "rdf:type",
+                    LAT("rdfs:Resource"));
 
-    d->m_service->executeQuery(update);
-
-    return true;
+    return d->handleQuery(QSparqlQuery(update.query(),
+                                       QSparqlQuery::DeleteStatement));
 }
 
 bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
 {
-    totalEvents = -1;
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::Message>();
-    message.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    message.property<nmo::isDeleted>(LiteralValue(false));
-    query.addCountColumn("total", message);
-    LiveNodes model = ::tracker()->modelQuery(query);
-    if (model->rowCount() > 0) {
-        totalEvents = model->index(0, 0).data().toInt();
+    QSparqlQuery query(LAT(
+            "SELECT COUNT(?message) "
+            "WHERE {"
+              "?message rdf:type nmo:Message; nmo:isDeleted \"false\";"
+              "nmo:communicationChannel ?:conversation}"));
+
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
+
+    QScopedPointer<QSparqlResult> queryResult(d->connection().exec(query));
+
+    if (!d->runBlockedQuery(queryResult.data())) // FIXIT
+        return false;
+
+    if (queryResult->first()) {
+        QSparqlResultRow row = queryResult->current();
+        if (!row.isEmpty()) {
+            totalEvents = row.value(0).toInt();
+            return true;
+        }
     }
 
-    return true;
+    return false;
 }
 
 bool TrackerIO::markAsReadGroup(int groupId)
 {
-    qDebug() << Q_FUNC_INFO << groupId;
+    QSparqlQuery query(LAT(
+            "DELETE {?msg nmo:isRead ?r; nie:contentLastModified ?d}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation;"
+                   "nmo:isRead ?r; nie:contentLastModified ?d}"
+            "INSERT {?msg nmo:isRead ?:read; nie:contentLastModified ?:date}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation}"),
+                       QSparqlQuery::InsertStatement);
 
-    RDFUpdate update;
-    RDFVariable msg = RDFVariable::fromType<nmo::Message>();
-
-    msg.property<nmo::communicationChannel>(Group::idToUrl(groupId));
-    update.addDeletion(msg, nmo::isRead::iri(), RDFVariable());
-    update.addInsertion(msg, nmo::isRead::iri(), LiteralValue(true));
+    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
+    query.bindValue(LAT("read"), true);
     //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
-    QDateTime currDateTime = QDateTime::currentDateTime();
-    qDebug() << "Setting modified time for group" << currDateTime;
-    update.addDeletion(msg, nie::contentLastModified::iri(), RDFVariable());
-    update.addInsertion(msg, nie::contentLastModified::iri(), LiteralValue(currDateTime));
+    query.bindValue(LAT("date"), QDateTime::currentDateTime());
 
-    d->m_service->executeQuery(update);
-
-    return true;
+    return d->handleQuery(query);
 }
 
 void TrackerIO::transaction(bool syncOnCommit)
 {
-    RDFTransaction::Mode mode = syncOnCommit ?
-        (RDFTransaction::Mode)BackEnds::Tracker::SyncOnCommit :
-        (RDFTransaction::Mode)RDFTransaction::Default;
+    Q_ASSERT(d->m_pTransaction == 0);
 
-    d->m_transaction = ::tracker()->createTransaction(mode);
-    if (d->m_transaction) {
-        d->m_service = d->m_transaction->service();
-    } else {
-        qWarning() << __PRETTY_FUNCTION__ << ": error starting transaction";
-        d->m_service = ::tracker();
-    }
-
+    d->syncOnCommit = syncOnCommit; //TODO: support syncOnCommit, call tracker's Sync dbus method directly
+    d->m_pTransaction = new CommittingTransaction(this);
     d->m_messageTokenRefCount.clear(); // make sure that nothing is removed if not requested
 }
 
-QSharedPointer<SopranoLive::RDFTransaction> TrackerIO::commit(bool isBlocking)
+CommittingTransaction* TrackerIO::commit(bool isBlocking)
 {
-    RDFTransactionPtr result = d->m_transaction;
+    Q_ASSERT(d->m_pTransaction);
 
-    if (d->m_transaction) {
-        d->m_transaction->commit(isBlocking);
+    CommittingTransaction *returnTransaction = 0;
+
+    if (isBlocking) {
+        foreach (QSparqlQuery query, d->m_pTransaction->d->queries()) {
+            QScopedPointer<QSparqlResult> result(d->connection().exec(query));
+            if (!d->runBlockedQuery(result.data())) {
+                break;
+            }
+        }
+        delete d->m_pTransaction;
+    } else {
+        if (!d->m_pTransaction->d->queries().isEmpty()) {
+            d->m_pendingTransactions.enqueue(d->m_pTransaction);
+            d->runNextTransaction();
+            returnTransaction = d->m_pTransaction;
+        } else {
+            qWarning() << Q_FUNC_INFO << "Empty transaction committing";
+            delete d->m_pTransaction;
+        }
+
     }
-    d->m_service = ::tracker();
-    d->m_transaction.clear();
-    d->m_imContactCache.clear();
 
+    d->m_contactCache.clear();
     d->checkAndDeletePendingMmsContent(d->m_bgThread);
+    d->m_pTransaction = 0;
 
-    return result;
+    return returnTransaction;
+}
+
+void TrackerIOPrivate::runNextTransaction()
+{
+    qDebug() << Q_FUNC_INFO;
+
+    if (m_pendingTransactions.isEmpty())
+        return;
+
+    CommittingTransaction *t = m_pendingTransactions.head();
+
+    Q_ASSERT(t);
+
+    if (t->isFinished()) {
+        t->deleteLater(); // straight delete causes crash or lockup?
+        m_pendingTransactions.dequeue();
+        t = 0;
+
+        if (!m_pendingTransactions.isEmpty())
+            t = m_pendingTransactions.head();
+    }
+
+    if (t && !t->isRunning()) {
+        foreach (QSparqlQuery query, t->d->queries()) {
+            QScopedPointer<QSparqlResult> result(connection().exec(query));
+            if (checkPendingResult(result.data(), false)) {
+                t->d->addResult(result.take());
+            } else {
+                qWarning() << Q_FUNC_INFO << "abort transaction" << t;
+                emit t->finished();
+                m_pendingTransactions.dequeue();
+                delete t;
+                t = 0;
+            }
+        }
+
+        if (t) {
+            connect(t,
+                    SIGNAL(finished()),
+                    this,
+                    SLOT(runNextTransaction()));
+        }
+    }
 }
 
 void TrackerIO::rollback()
 {
-    if (d->m_transaction) {
-        d->m_transaction->rollback();
-    }
-    d->m_service = ::tracker();
-    d->m_transaction.clear();
-    d->m_imContactCache.clear();
+    d->m_contactCache.clear();
     d->m_messageTokenRefCount.clear(); // Clear cache to avoid deletion after rollback
+    delete d->m_pTransaction;
+    d->m_pTransaction = 0;
 }
 
 bool TrackerIO::deleteAllEvents(Event::EventType eventType)
 {
     qDebug() << __FUNCTION__ << eventType;
 
-    RDFUpdate update;
+    QString query("DELETE {?e a rdfs:Resource}"
+                  "WHERE {?e rdf:type ?:eventType}");
+
+    QUrl eventTypeUrl;
+
     switch(eventType) {
-        // TODO: handle other event types
-        case Event::CallEvent:
-            // avoid "jump to case label crosses initialization" error by making
-            // call variable's scope smaller
-            {
-                RDFVariable call = RDFVariable::fromType<nmo::Call>();
-                update.addDeletion(call, rdf::type::iri(), rdfs::Resource::iri());
-            }
-            break;
-        default:
-            qDebug() << __FUNCTION__ << "Unsupported type" << eventType;
-            return false;
+    case Event::IMEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "IMMessage"));
+        break;
+    case Event::SMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "SMSMessage"));
+        break;
+    case Event::CallEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "Call"));
+        query += QString(LAT("DELETE { ?chan a rdfs:Resource } WHERE { "
+                             "GRAPH ?:graph { "
+                             "?chan a nmo:CommunicationChannel . "
+                             "} }"));
+        break;
+    case Event::MMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
+        break;
+    default:
+        qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
+        return false;
     }
 
-    d->m_service->executeQuery(update);
-    return true;
-}
+    QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
+    deleteQuery.bindValue(LAT("eventType"), eventTypeUrl);
+    if (eventType == Event::CallEvent)
+        deleteQuery.bindValue(LAT("graph"), COMMHISTORY_GRAPH_CALL_CHANNEL);
 
+    return d->handleQuery(deleteQuery);
+}
 
 void TrackerIOPrivate::calculateParentId(Event& event)
 {
@@ -2032,34 +1551,40 @@ void TrackerIOPrivate::setFolderLastModifiedTime(UpdateQuery &query,
 {
     QUrl folder;
     if (parentId == ::INBOX) {
-        folder = nmo::predefined_phone_msg_folder_inbox::iri();
+        folder = LAT(NMO_ "predefined-phone-msg-folder-inbox");
     } else if (parentId == ::OUTBOX) {
-        folder = nmo::predefined_phone_msg_folder_outbox::iri();
+        folder = LAT(NMO_ "predefined-phone-msg-folder-outbox");
     } else if (parentId == ::DRAFT) {
-        folder = nmo::predefined_phone_msg_folder_draft::iri();
+        folder = LAT(NMO_ "predefined-phone-msg-folder-draft");
     } else if (parentId == ::SENT) {
-        folder = nmo::predefined_phone_msg_folder_sent::iri();
+        folder = LAT(NMO_ "predefined-phone-msg-folder-sent");
     } else if (parentId == ::MYFOLDER) {
-        folder = nmo::predefined_phone_msg_folder_myfolder::iri();
+        folder = LAT(NMO_ "predefined-phone-msg-folder-myfolder");
     } else if (parentId > ::MYFOLDER) {
         // TODO: should this be nmo: prefixed?
         folder = QString(LAT("sms-folder-myfolder-0x%1")).arg(parentId, 0, 16);
     }
 
     if (!folder.isEmpty()) {
-        query.deletion(folder, nie::contentLastModified::iri());
-        query.insertion(folder, nie::contentLastModified::iri(), LiteralValue(lastModTime));
+        query.insertion(folder,
+                        "nie:contentLastModified",
+                        lastModTime,
+                        true);
     }
 }
 
 bool TrackerIO::markAsRead(const QList<int> &eventIds)
 {
+    UpdateQuery query;
     foreach (int id, eventIds) {
-        Live<nmo::Message> msg = d->m_service->liveNode(Event::idToUrl(id));
-        if (msg)
-            msg->setIsRead(true);
+        query.insertion(Event::idToUrl(id),
+                        "nmo:isRead",
+                        true,
+                        true);
     }
-    return true;
+
+    return d->handleQuery(QSparqlQuery(query.query(),
+                                       QSparqlQuery::InsertStatement));
 }
 
 MmsContentDeleter& TrackerIOPrivate::getMmsDeleter(QThread *backgroundThread)
@@ -2085,22 +1610,27 @@ MmsContentDeleter& TrackerIOPrivate::getMmsDeleter(QThread *backgroundThread)
 
 bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
 {
+    qDebug() << Q_FUNC_INFO << messageToken;
     int total = -1;
-    RDFSelect query;
-    RDFVariable message = RDFVariable::fromType<nmo::MMSMessage>();
-    message.property<nmo::messageId>(LiteralValue(messageToken));
-    query.addCountColumn("total", message);
-    LiveNodes model = ::tracker()->modelQuery(query);
-    if (model->rowCount() > 0) {
-        total = model->index(0, 0).data().toInt();
+
+    QSparqlQuery query(LAT(
+            "SELECT COUNT(?message) "
+            "WHERE {?message rdf:type nmo:MMSMessage; nmo:messageId ?:token}"));
+
+    query.bindValue(LAT("token"), messageToken);
+
+    QScopedPointer<QSparqlResult> queryResult(connection().exec(query));
+
+    if (!runBlockedQuery(queryResult.data())) // FIXIT
+        return false;
+
+    if (queryResult->first()) {
+        QSparqlResultRow row = queryResult->current();
+        if (!row.isEmpty())
+            total = row.value(0).toInt();
     }
 
     return (total == 1);
-}
-
-QSqlError TrackerIO::lastError() const
-{
-    return d->lastError;
 }
 
 void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread)
@@ -2118,4 +1648,55 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread
 
         m_messageTokenRefCount.clear();
     }
+}
+
+QSparqlConnection& TrackerIOPrivate::connection()
+{
+    if (!m_pConnection.hasLocalData()) {
+        QSparqlConnectionOptions ops;
+        ops.setDataReadyInterval(QSPARQL_DATA_READY_INTERVAL);
+        m_pConnection.setLocalData(new QSparqlConnection(QSPARQL_DRIVER, ops));
+    }
+
+    return *m_pConnection.localData();
+}
+
+bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnFinished)
+{
+    if (result->hasError()) {
+        qWarning() << result->lastError().message();
+        if (destroyOnFinished)
+            delete result;
+    }
+
+    return !result->hasError();
+}
+
+bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query)
+{
+    bool result = true;
+
+    if (m_pTransaction) {
+        // add query
+        m_pTransaction->d->addQuery(query);
+    } else {
+        QSparqlResult *sResult = connection().exec(query);
+        result = runBlockedQuery(sResult);
+        delete sResult;
+    }
+
+    return result;
+}
+
+bool TrackerIOPrivate::runBlockedQuery(QSparqlResult *result)
+{
+    if (!checkPendingResult(result, false))
+        return false;
+
+    result->waitForFinished();
+
+    if (!checkPendingResult(result, false))
+        return false;
+
+    return true;
 }

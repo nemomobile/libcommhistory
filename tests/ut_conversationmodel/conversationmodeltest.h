@@ -25,6 +25,7 @@
 
 #include <QObject>
 #include <QList>
+
 #include "event.h"
 
 using namespace CommHistory;
@@ -43,6 +44,8 @@ private slots:
     void treeMode();
     void asyncMode();
     void sorting();
+    void contacts_data();
+    void contacts();
     void cleanupTestCase();
 };
 

@@ -26,7 +26,6 @@ include( ../tests.pri )
 
 TARGET = ut_unreadeventsmodel
 DESTDIR = ../bin
-QT += sql
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += unreadeventsmodeltest.cpp

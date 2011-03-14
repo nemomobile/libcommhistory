@@ -21,19 +21,27 @@
 ******************************************************************************/
 
 #include <QtTest/QtTest>
-#include <QtTracker/Tracker>
-#include <QtTracker/rdfunbound.h>
-#include <QtTracker/ontologies/nmo.h>
+
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlQuery>
+#include <QSparqlError>
+
 #include <QFile>
 #include <QTextStream>
+
 #include "eventmodel.h"
 #include "groupmodel.h"
 #include "event.h"
 #include "common.h"
 #include "trackerio.h"
+#include "commonutils.h"
+
+namespace {
+static int contactNumber = 0;
+};
 
 using namespace CommHistory;
-using namespace SopranoLive;
 
 const int numWords = 23;
 const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
@@ -95,109 +103,178 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
     QStringList uids;
     uids << remoteUid;
     grp.setRemoteUids(uids);
-
+    QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QVERIFY(groupModel.addGroup(grp));
 
-    // wait till group is really added to tracker, so getGroup will not fail in
-    // testcases
-    bool added = false;
-    for (int i=0; i < 5 && !added; i++) {
-        Group group;
-        added = groupModel.trackerIO().getGroup(grp.id(), group);
-        if (!added)
-            sleep(1);
+    QVERIFY(waitSignal(ready, 1000));
+    QVERIFY(ready.first().at(1).toBool());
+}
+
+int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
+{
+    QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
+    QString addContact("INSERT { "
+                       " %1 "
+                       " %2 a nco:PersonContact ; "
+                       " nco:hasAffiliation _:foo ; "
+                       " nco:nameFamily \"%3\" . }");
+
+    QString addAffiliation("_:foo a nco:Affiliation; ");
+
+    QString addressQuery;
+    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
+    if (normal.isEmpty()) {
+        QString uri = QString("telepathy:%1!%2").arg(localUid).arg(remoteUid);
+        addressQuery = QString("INSERT { <%1> a nco:IMAddress }").arg(uri);
+        addAffiliation += QString("nco:hasIMAddress <%1> .").arg(uri);
+    } else {
+        QString shortNumber = makeShortNumber(remoteUid);
+        addressQuery =
+            QString("INSERT { _:_ a nco:PhoneNumber; nco:phoneNumber \"%1\"; "
+                    "maemo:localPhoneNumber \"%2\" . } "
+                    "WHERE { "
+                    "OPTIONAL { ?tel nco:phoneNumber \"%1\" } "
+                    "FILTER(!BOUND(?tel)) "
+                    "}")
+            .arg(remoteUid)
+            .arg(shortNumber);
+        addAffiliation += QString("nco:hasPhoneNumber ?tel .");
+        addContact += QString(" WHERE { ?tel a nco:PhoneNumber; nco:phoneNumber \"%1\" }")
+            .arg(remoteUid);
+    }
+
+    QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
+    QSparqlQuery insertQuery(query, QSparqlQuery::InsertStatement);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(insertQuery));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error inserting address:" << result->lastError().message();
+        return -1;
+    }
+
+    query = QString("SELECT tracker:id(?c) WHERE { ?c a nco:PersonContact. FILTER(?c = %1) }")
+        .arg(contactUri);
+    result.reset(conn->exec(QSparqlQuery(query)));
+    result->waitForFinished();
+    if (result->hasError() || !result->first()) {
+        qWarning() << "error getting id of inserted contact:" << result->lastError().message();
+        return -1;
+    }
+
+    qDebug() << "********** contact id" << result->value(0).toInt();
+
+    return result->value(0).toInt();
+}
+
+void modifyTestContact(int id, const QString &name)
+{
+    qDebug() << Q_FUNC_INFO << id << name;
+
+    QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
+                  "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
+                  "FILTER(tracker:id(?contact) = %1) }");
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
+                                                                 QSparqlQuery::DeleteStatement)));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error modifying contact:" << result->lastError().message();
+        return;
+    }
+
+    QString addContact("INSERT { ?c nco:nameFamily \"%2\" } "
+                       "WHERE {?c a nco:PersonContact . FILTER(tracker:id(?c) = %1) }");
+    QScopedPointer<QSparqlResult> result2(conn->exec(QSparqlQuery(addContact.arg(id).arg(name),
+                                                                  QSparqlQuery::InsertStatement)));
+
+    result2->waitForFinished();
+    if (result2->hasError()) {
+        qWarning() << "error modifying contact:" << result2->lastError().message();
+        return;
     }
 }
 
-void addTestContact(const QString &name, const QString &remoteUid)
+void deleteTestContact(int id)
 {
-    Live<nco::PersonContact> contact;
-    Live<nco::VoicePhoneNumber> number;
-    QUrl contactURI;
-    QUrl phoneNumberURI;
-
-    phoneNumberURI = QString(QLatin1String("tel:%1")).arg(remoteUid);
-    number = ::tracker()->liveNode(phoneNumberURI);
-
-    contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
-    contact = ::tracker()->liveNode(contactURI);
-    contact->setContactUID(remoteUid + remoteUid);
-    contact->addHasPhoneNumber(number);
-    contact->setNameFamily(name);
-}
-
-void modifyTestContact(const QString &name, const QString &remoteUid)
-{
-    Live<nco::PersonContact> contact;
-    QUrl contactURI;
-
-    contactURI = QString(QLatin1String("contact:%1")).arg(remoteUid);
-    contact = ::tracker()->liveNode(contactURI);
-    contact->setNameFamily(name);
+    QString query("DELETE { ?aff a nco:Affiliation } WHERE"
+                  "{ ?c a nco:PersonContact; nco:hasAffiliation ?aff . "
+                  "FILTER(tracker:id(?c) = %1) } "
+                  "DELETE { ?contact a nco:PersonContact } WHERE"
+                  "{ ?contact a nco:PersonContact . "
+                  "FILTER(tracker:id(?contact) = %1) }");
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
+                                                                 QSparqlQuery::DeleteStatement)));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error deleting contact:" << result->lastError().message();
+        return;
+    }
 }
 
 bool compareEvents(Event &e1, Event &e2)
 {
     if (e1.type() != e2.type()) {
-        qWarning() << "type:" << e1.type() << e2.type();
+        qWarning() << Q_FUNC_INFO << "type:" << e1.type() << e2.type();
         return false;
     }
     if (e1.direction() != e2.direction()) {
-        qWarning() << "direction:" << e1.direction() << e2.direction();
+        qWarning() << Q_FUNC_INFO << "direction:" << e1.direction() << e2.direction();
         return false;
     }
     if (e1.startTime().toTime_t() != e2.startTime().toTime_t()) {
-        qWarning() << "startTime:" << e1.startTime() << e2.startTime();
+        qWarning() << Q_FUNC_INFO << "startTime:" << e1.startTime() << e2.startTime();
         return false;
     }
     if (e1.endTime().toTime_t() != e2.endTime().toTime_t()) {
-        qWarning() << "endTime:" << e1.endTime() << e2.endTime();
+        qWarning() << Q_FUNC_INFO << "endTime:" << e1.endTime() << e2.endTime();
         return false;
     }
     if (e1.isDraft() != e2.isDraft()) {
-        qWarning() << "isDraft:" << e1.isDraft() << e2.isDraft();
+        qWarning() << Q_FUNC_INFO << "isDraft:" << e1.isDraft() << e2.isDraft();
         return false;
     }
     if (e1.isRead() != e2.isRead()) {
-        qWarning() << "isRead:" << e1.isRead() << e2.isRead();
+        qWarning() << Q_FUNC_INFO << "isRead:" << e1.isRead() << e2.isRead();
         return false;
     }
-    if (e1.isMissedCall() != e2.isMissedCall()) {
-        qWarning() << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
+    if (e1.type() == Event::CallEvent && e1.isMissedCall() != e2.isMissedCall()) {
+        qWarning() << Q_FUNC_INFO << "isMissedCall:" << e1.isMissedCall() << e2.isMissedCall();
         return false;
     }
-    if (e1.isEmergencyCall() != e2.isEmergencyCall()) {
-        qWarning() << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
+    if (e1.type() == Event::CallEvent && e1.isEmergencyCall() != e2.isEmergencyCall()) {
+        qWarning() << Q_FUNC_INFO << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
         return false;
     }
 //    QCOMPARE(e1.bytesSent(), e2.bytesSent());
 //    QCOMPARE(e1.bytesReceived(), e2.bytesReceived());
     if (e1.localUid() != e2.localUid()) {
-        qWarning() << "localUid:" << e1.localUid() << e2.localUid();
+        qWarning() << Q_FUNC_INFO << "localUid:" << e1.localUid() << e2.localUid();
         return false;
     }
     if (e1.remoteUid() != e2.remoteUid()) {
-        qWarning() << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
+        qWarning() << Q_FUNC_INFO << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
         return false;
     }
-    if (e1.freeText() != e2.freeText()) {
-        qWarning() << "freeText:" << e1.freeText() << e2.freeText();
+    if (e1.type() != Event::CallEvent && e1.freeText() != e2.freeText()) {
+        qWarning() << Q_FUNC_INFO << "freeText:" << e1.freeText() << e2.freeText();
         return false;
     }
     if (e1.groupId() != e2.groupId()) {
-        qWarning() << "groupId:" << e1.groupId() << e2.groupId();
+        qWarning() << Q_FUNC_INFO << "groupId:" << e1.groupId() << e2.groupId();
         return false;
     }
-    if (e1.fromVCardFileName() != e2.fromVCardFileName()) {
-        qWarning() << "vcardFileName:" << e1.fromVCardFileName() << e2.fromVCardFileName();
+    if (e1.type() != Event::CallEvent && e1.fromVCardFileName() != e2.fromVCardFileName()) {
+        qWarning() << Q_FUNC_INFO << "vcardFileName:" << e1.fromVCardFileName() << e2.fromVCardFileName();
         return false;
     }
-    if (e1.fromVCardLabel() != e2.fromVCardLabel()) {
-        qWarning() << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
+    if (e1.type() != Event::CallEvent && e1.fromVCardLabel() != e2.fromVCardLabel()) {
+        qWarning() << Q_FUNC_INFO << "vcardLabel:" << e1.fromVCardLabel() << e2.fromVCardLabel();
         return false;
     }
-    if (e1.status() != e2.status()) {
-        qWarning() << "status:" << e1.status() << e2.status();
+    if (e1.type() != Event::CallEvent && e1.status() != e2.status()) {
+        qWarning() << Q_FUNC_INFO << "status:" << e1.status() << e2.status();
         return false;
     }
 
@@ -207,60 +284,33 @@ bool compareEvents(Event &e1, Event &e2)
 
 void deleteAll()
 {
-    SopranoLive::RDFTransactionPtr transaction;
-    transaction = ::tracker()->createTransaction();
+    qDebug() << __FUNCTION__ << "- Deleting all";
 
-    qDebug() << __FUNCTION__ << "- Deleting all messages";
-    RDFUpdate messageDeleter;
-    messageDeleter.addDeletion(RDFVariable::fromType<nmo::Message>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(messageDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all attachments";
-    RDFUpdate attachmentDeleter;
-    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Attachment>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    attachmentDeleter.addDeletion(RDFVariable::fromType<nmo::Multipart>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(attachmentDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all calls";
-    RDFUpdate callDeleter;
-    callDeleter.addDeletion(RDFVariable::fromType<nmo::Call>(),
-                            rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(callDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all groups";
-    RDFUpdate groupDeleter;
-    groupDeleter.addDeletion(RDFVariable::fromType<nmo::CommunicationChannel>(),
-                             rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(groupDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all contacts";
-    RDFUpdate contactDeleter;
-    contactDeleter.addDeletion(RDFVariable::fromType<nco::PersonContact>(),
-                               rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(contactDeleter);
-    transaction->commitAndReinitiate(true);
-
-    qDebug() << __FUNCTION__ << "- Deleting all phone numbers";
-    RDFUpdate numberDeleter;
-    numberDeleter.addDeletion(RDFVariable::fromType<nco::PhoneNumber>(),
-                              rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(numberDeleter);
-    transaction->commit(true);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String(
+            "DELETE {?n a rdfs:Resource}"
+            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                "nmo:Attachment,"
+                                                "nmo:Multipart,"
+                                                "nmo:CommunicationChannel,"
+                                                "nco:IMAddress,"
+                                                "nco:PhoneNumber))}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
+    if (result->hasError())
+        qDebug() << result->lastError().message();
 }
 
 void deleteSmsMsgs()
 {
-    RDFUpdate deleter;
-    deleter.addDeletion(RDFVariable::fromType<nmo::SMSMessage>(),
-                        rdf::type::iri(), rdfs::Resource::iri());
-    ::tracker()->executeQuery(deleter);
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery query(QLatin1String("DELETE {?n a rdfs:Resource} WHERE {?n rdf:type nmo:SMSMessage}"),
+                       QSparqlQuery::DeleteStatement);
+    QSparqlResult* result = conn->exec(query);
+    result->waitForFinished();
+    if (result->hasError())
+        qDebug() << result->lastError().message();
 }
 
 QString randomMessage(int words)

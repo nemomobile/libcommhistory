@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtTracker/Tracker>
 #include <QDebug>
 
 #include "commonutils.h"
@@ -45,10 +44,8 @@ bool groupLessThan(CommHistory::Group &a, CommHistory::Group &b)
 }
 
 static const int defaultChunkSize = 50;
-
 }
 
-using namespace SopranoLive;
 using namespace CommHistory;
 
 uint GroupModelPrivate::modelSerial = 0;
@@ -125,7 +122,7 @@ void GroupModelPrivate::resetQueryRunner()
 {
     deleteQueryRunner();
 
-    queryRunner = new QueryRunner();
+    queryRunner = new QueryRunner(tracker());
 
     connect(queryRunner,
             SIGNAL(groupsReceived(int, int, QList<CommHistory::Group>)),
@@ -136,9 +133,9 @@ void GroupModelPrivate::resetQueryRunner()
             this,
             SLOT(canFetchMoreChangedSlot(bool)));
     connect(queryRunner,
-            SIGNAL(modelUpdated()),
+            SIGNAL(modelUpdated(bool)),
             this,
-            SLOT(modelUpdatedSlot()));
+            SLOT(modelUpdatedSlot(bool)));
 
     if (bgThread) {
         qDebug() << Q_FUNC_INFO << "MOVE" << queryRunner;
@@ -164,19 +161,24 @@ QString GroupModelPrivate::newObjectPath()
         QString::number(modelSerial++);
 }
 
-CommittingTransaction& GroupModelPrivate::commitTransaction(QList<Group> groups)
+CommittingTransaction* GroupModelPrivate::commitTransaction(QList<int> groupIds)
 {
-    CommittingTransaction t;
+    CommittingTransaction *t = tracker()->commit();
 
-    t.transaction = tracker()->commit();
+    if (t) {
+        t->addSignal(false,
+                     q_ptr,
+                     "groupsCommitted",
+                     Q_ARG(QList<int>, groupIds),
+                     Q_ARG(bool, true));
+        t->addSignal(true,
+                     q_ptr,
+                     "groupsCommitted",
+                     Q_ARG(QList<int>, groupIds),
+                     Q_ARG(bool, false));
+    }
 
-    connect(t.transaction.data(), SIGNAL(commitFinished()), SLOT(commitFinishedSlot()));
-    connect(t.transaction.data(), SIGNAL(commitError(QString)), SLOT(commitErrorSlot(QString)));
-
-    t.groups = groups;
-    transactions.append(t);
-
-    return transactions.last();
+    return t;
 }
 
 void GroupModelPrivate::addToModel(Group &group)
@@ -199,7 +201,6 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
             Group newGroup;
             if (query) {
                 if (!tracker()->getGroup(id, newGroup)) {
-                    qWarning() << Q_FUNC_INFO << tracker()->lastError();
                     return;
                 }
             } else {
@@ -207,10 +208,9 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
             }
 
             // preserve contact info if necessary
-            if (!newGroup.validProperties().contains(Group::ContactId)
-                && g.validProperties().contains(Group::ContactId)) {
-                newGroup.setContactId(g.contactId());
-                newGroup.setContactName(g.contactName());
+            if (!newGroup.validProperties().contains(Group::Contacts)
+                && g.validProperties().contains(Group::Contacts)) {
+                newGroup.setContacts(g.contacts());
             }
 
             groups.replace(row, newGroup);
@@ -268,16 +268,15 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
     }
 }
 
-void GroupModelPrivate::modelUpdatedSlot()
+void GroupModelPrivate::modelUpdatedSlot(bool successful)
 {
     Q_Q(GroupModel);
 
     isReady = true;
-    lastError = QSqlError();
-    emit q->modelReady();
+    emit q->modelReady(successful);
 }
 
-void GroupModelPrivate::executeQuery(RDFSelect &query)
+void GroupModelPrivate::executeQuery(const QString query)
 {
     isReady = false;
     if (queryMode == EventModel::StreamedAsyncQuery) {
@@ -285,11 +284,13 @@ void GroupModelPrivate::executeQuery(RDFSelect &query)
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
     } else {
-        if (queryLimit) query.limit(queryLimit);
-        if (queryOffset) query.offset(queryOffset);
+        // TODO: support this by query runner
+        //if (queryLimit) query.limit(queryLimit);
+        //if (queryOffset) query.offset(queryOffset);
     }
     qDebug() << Q_FUNC_INFO << this << queryRunner;
-    queryRunner->runQuery(query, GroupQuery);
+    queryRunner->runGroupQuery(query);
+
     if (queryMode == EventModel::SyncQuery) {
         QEventLoop loop;
         while (!isReady) {
@@ -387,7 +388,7 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
 void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
 {
     qDebug() << __PRETTY_FUNCTION__ << group.id() << group.localUid()
-             << group.remoteUids() << group.chatName() << group.chatType() << group.isPermanent();
+             << group.remoteUids() << group.chatName() << group.chatType();
 
     Group g;
     for (int i = 0; i < groups.count(); i++)
@@ -399,17 +400,6 @@ void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
         && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
         && (filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
-        //TODO: get rid of temp groups
-        // if new group matches a temp group, remove it
-        for (int i = 0; i < groups.count(); i++) {
-            Group localGroup = groups.at(i);
-            if (!localGroup.isPermanent()
-                && localGroup.localUid() == group.localUid()
-                && localGroup.remoteUids() == group.remoteUids()
-                && localGroup.chatType() == group.chatType()) {
-                deleteFromModel(localGroup);
-            }
-        }
         g = group;
         addToModel(g);
     }
@@ -431,72 +421,6 @@ void GroupModelPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
         g.setId(id);
 
         modifyInModel(g);
-    }
-}
-
-void GroupModelPrivate::commitFinishedSlot()
-{
-    qDebug() << __PRETTY_FUNCTION__;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction finished";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            QList<Group> modifiedGroups;
-            QMutableListIterator<Group> j(t.groups);
-            while (j.hasNext()) {
-                Group group = j.next();
-                qDebug() << __PRETTY_FUNCTION__ << " transaction finished for group " << group.id();
-                if (group.id() != -1
-                    && !modifiedGroups.contains(group)) {
-                        modifiedGroups.append(group);
-                }
-            }
-
-            t.sendSignals(this);
-
-            if (!modifiedGroups.isEmpty()) {
-                qDebug() << __PRETTY_FUNCTION__ << ": emitting groupsUpdatedFull signal";
-                emit groupsUpdatedFull(modifiedGroups);
-            }
-
-            i.remove();
-            break;
-        }
-    }
-}
-
-void GroupModelPrivate::commitErrorSlot(QString message)
-{
-    qDebug() << __PRETTY_FUNCTION__;
-    qDebug() << __PRETTY_FUNCTION__ << ": error while committing group changes into tracker:";
-    qDebug() << __PRETTY_FUNCTION__ << message;
-
-    RDFTransaction *finished = qobject_cast<RDFTransaction*>(sender());
-
-    if (!finished) {
-        qWarning() << Q_FUNC_INFO << "invalid transaction error";
-        return;
-    }
-
-    QMutableListIterator<CommittingTransaction> i(transactions);
-    while(i.hasNext()) {
-        CommittingTransaction t = i.next();
-        if (t.transaction == finished) {
-            lastError = QSqlError();
-            lastError.setType(QSqlError::TransactionError);
-            lastError.setDatabaseText(message);
-
-            i.remove();
-            break;
-        }
     }
 }
 
@@ -533,9 +457,7 @@ bool GroupModelPrivate::canFetchMore() const
 
 TrackerIO* GroupModelPrivate::tracker()
 {
-    if (!m_pTracker)
-        m_pTracker = new TrackerIO(this);
-    return m_pTracker;
+    return TrackerIO::instance();
 }
 
 void GroupModelPrivate::slotContactUpdated(quint32 localId,
@@ -548,22 +470,22 @@ void GroupModelPrivate::slotContactUpdated(quint32 localId,
         Group group = groups.at(row);
         bool updatedGroup = false;
 
+        // TODO: check how this should work with multiple contacts
         if (ContactListener::addressMatchesList(group.localUid(),
                                                 group.remoteUids().first(),
                                                 contactAddresses)) {
-                group.setContactId(localId);
-                group.setContactName(contactName);
-                updatedGroup = true;
+            Event::Contact contact(localId, contactName);
+            group.setContacts(QList<Event::Contact>() << contact);
+            updatedGroup = true;
         } else if (localId == (quint32)group.contactId()) {
-            group.setContactId(0);
-            group.setContactName(QString());
+            group.setContacts(QList<Event::Contact>());
             updatedGroup = true;
         }
 
         if (updatedGroup) {
             groups.replace(row, group);
-            emit q->dataChanged(q->index(row, GroupModel::ContactId),
-                                q->index(row, GroupModel::ContactName));
+            emit q->dataChanged(q->index(row, GroupModel::Contacts),
+                                q->index(row, GroupModel::Contacts));
         }
     }
 }
@@ -576,12 +498,11 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
         Group group = groups.at(row);
 
         if (localId == (quint32)group.contactId()) {
-            group.setContactId(0);
-            group.setContactName(QString());
+            group.setContacts(QList<Event::Contact>());
             groups.replace(row, group);
 
-            emit q->dataChanged(q->index(row, GroupModel::ContactId),
-                                q->index(row, GroupModel::ContactName));
+            emit q->dataChanged(q->index(row, GroupModel::Contacts),
+                                q->index(row, GroupModel::Contacts));
         }
     }
 }
@@ -611,11 +532,6 @@ GroupModel::~GroupModel()
 {
     delete d;
     d = 0;
-}
-
-QSqlError GroupModel::lastError() const
-{
-    return d->lastError;
 }
 
 void GroupModel::setQueryMode(EventModel::QueryMode mode)
@@ -653,7 +569,6 @@ int GroupModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
 
-    // The last column is LastVCardLabel.
     return NumberOfColumns;
 }
 
@@ -704,11 +619,8 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         case LastEventId:
             var = QVariant::fromValue(group.lastEventId());
             break;
-        case ContactId:
-            var = QVariant::fromValue(group.contactId());
-            break;
-        case ContactName:
-            var = QVariant::fromValue(group.contactName());
+        case Contacts:
+            var = QVariant::fromValue(group.contacts());
             break;
         case LastMessageText:
             var = QVariant::fromValue(group.lastMessageText());
@@ -724,9 +636,6 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
             break;
         case LastEventStatus:
             var = QVariant::fromValue((int)group.lastEventStatus());
-            break;
-        case IsPermanent:
-            var = QVariant::fromValue(group.isPermanent());
             break;
         case LastModified:
             var = QVariant::fromValue(group.lastModified());
@@ -788,11 +697,8 @@ QVariant GroupModel::headerData(int section,
             case LastEventId:
                 name = QLatin1String("last_event_id");
                 break;
-            case ContactId:
-                name = QLatin1String("contact_id");
-                break;
-            case ContactName:
-                name = QLatin1String("contact_name");
+            case Contacts:
+                name = QLatin1String("contacts");
                 break;
             case LastMessageText:
                 name = QLatin1String("last_message_text");
@@ -809,9 +715,6 @@ QVariant GroupModel::headerData(int section,
             case LastEventStatus:
                 name = QLatin1String("last_event_status");
                 break;
-            case IsPermanent:
-                name = QLatin1String("is_permanent");
-                break;
             case LastModified:
                 name = QLatin1String("last_modified");
                 break;
@@ -824,41 +727,17 @@ QVariant GroupModel::headerData(int section,
     return var;
 }
 
-bool GroupModel::addGroup(Group &group, bool toModelOnly)
+bool GroupModel::addGroup(Group &group)
 {
-    if (toModelOnly) {
-
-        group.setId(d->tracker()->nextGroupId());
-        group.setPermanent(false);
-    }
-    else {
-        d->tracker()->transaction();
-        if (!d->tracker()->addGroup(group)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
-            d->tracker()->rollback();
-            // group was not saved, thus it is still transient
-            group.setPermanent(false);
-            return false;
-        }
-        d->tracker()->commit();
+    d->tracker()->transaction();
+    if (!d->tracker()->addGroup(group)) {
+        d->tracker()->rollback();
+        return false;
     }
 
-    // if the group was a not-permanent group what we just now saved to tracker
-    // then we will find it in the internal list -> execute an update
-    for (int i = 0; i < d->groups.count(); i++) {
+    if (!d->commitTransaction(QList<int>() << group.id()))
+        return false;
 
-        if (d->groups.at(i).id() == group.id()
-            && !d->groups.at(i).isPermanent()
-            && group.isPermanent()) {
-
-            emit d->groupsUpdatedFull(QList<CommHistory::Group>() << group);
-            return true;
-        }
-    }
-
-    //otherwise proceed as usual
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
@@ -878,10 +757,7 @@ bool GroupModel::modifyGroup(Group &group)
     d->tracker()->transaction();
 
     if (group.id() == -1) {
-        d->lastError = QSqlError();
-        d->lastError.setType(QSqlError::TransactionError);
-        d->lastError.setDatabaseText(QLatin1String("Group id not set"));
-        qWarning() << __FUNCTION__ << ":" << d->lastError.text();
+        qWarning() << __FUNCTION__ << "Group id not set";
         d->tracker()->rollback();
         return false;
     }
@@ -891,16 +767,18 @@ bool GroupModel::modifyGroup(Group &group)
     }
 
     if (!d->tracker()->modifyGroup(group)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << __FUNCTION__ << ":" << d->lastError;
         d->tracker()->rollback();
         return false;
     }
 
-    d->commitTransaction(QList<Group>() << group);
+    CommittingTransaction *t = d->commitTransaction(QList<int>() << group.id());
+    if (t)
+        t->addSignal(false,
+                     d,
+                     "groupsUpdatedFull",
+                     Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
 
-    return true;
+    return t != 0;
 }
 
 bool GroupModel::getGroups(const QString &localUid,
@@ -912,9 +790,8 @@ bool GroupModel::getGroups(const QString &localUid,
     reset();
     d->groups.clear();
 
-    RDFSelect channelQuery;
-    d->tracker()->prepareGroupQuery(channelQuery, localUid, remoteUid);
-    d->executeQuery(channelQuery);
+    QSparqlQuery query(d->tracker()->prepareGroupQuery(localUid, remoteUid));
+    d->executeQuery(query.preparedQueryText());
 
     return true;
 }
@@ -926,14 +803,12 @@ bool GroupModel::markAsReadGroup(int id)
     d->tracker()->transaction();
 
     if (!d->tracker()->markAsReadGroup(id)) {
-        d->lastError = d->tracker()->lastError();
-        if (d->lastError.isValid())
-            qWarning() << Q_FUNC_INFO << d->lastError;
         d->tracker()->rollback();
         return false;
     }
 
-    d->tracker()->commit();
+    if (!d->commitTransaction(QList<int>() << id))
+        return false;
 
     Group group;
 
@@ -968,18 +843,17 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
     d->tracker()->transaction();
     foreach (int id, groupIds) {
         if (!d->tracker()->deleteGroup(id, deleteMessages, d->bgThread)) {
-            d->lastError = d->tracker()->lastError();
-            if (d->lastError.isValid())
-                qWarning() << Q_FUNC_INFO << d->lastError;
             d->tracker()->rollback();
             return false;
         }
     }
 
-    CommittingTransaction &t = d->commitTransaction(QList<Group>());
-    t.addSignal("groupsDeleted", Q_ARG(QList<int>, groupIds));
+    CommittingTransaction *t = d->commitTransaction(groupIds);
 
-    return true;
+    if (t)
+        t->addSignal(false, d, "groupsDeleted", Q_ARG(QList<int>, groupIds));
+
+    return t != 0;
 }
 
 bool GroupModel::deleteAll()

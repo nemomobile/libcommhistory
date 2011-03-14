@@ -70,7 +70,7 @@ public:
      * \param type Event type (IM or SMS).
      * \param account Local telepathy account path.
      * \param direction Event direction.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful, otherwise false
      */
     bool setFilter(Event::EventType type = Event::UnknownType,
                    const QString &account = QString(),
@@ -80,25 +80,10 @@ public:
      * Reset model to events from the specified group.
      *
      * \param groupId Valid group id
-     * \return true if successful, Sets lastError() on failure.
+     *
+     * \return true if successful, otherwise false
      */
     bool getEvents(int groupId);
-
-    /*!
-     * Same as getEvents(id), but you can specify what kind of query to
-     * use. Contacts for P2P chats are resolved against the channel,
-     * while multi-user chats use a query that resolves contacts for
-     * each event separately.
-     *
-     * \param groupId Valid group id
-     * \param chatType Type of the conversation
-     * \return true if successful, Sets lastError() on failure.
-     */
-    /*
-     * FIXME: Combine this with getEvents() when it's safe to break.
-     */
-    bool getEventsWithType(int groupId,
-                           CommHistory::Group::ChatType chatType = CommHistory::Group::ChatTypeP2P);
 
 private:
     Q_DECLARE_PRIVATE(ConversationModel);

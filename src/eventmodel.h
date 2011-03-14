@@ -24,7 +24,6 @@
 #define COMMHISTORY_EVENTMODEL_H
 
 #include <QAbstractItemModel>
-#include <QSqlError>
 
 #include "event.h"
 #include "libcommhistoryexport.h"
@@ -76,12 +75,10 @@ public:
         IsRead,
         IsMissedCall,
         Status,
-        BytesSent,     // not implemented
         BytesReceived, // not implemented
         LocalUid,
         RemoteUid,
-        ContactId,     // read only
-        ContactName,   // read only
+        Contacts,
         FreeText,
         GroupId,
         MessageToken,
@@ -107,13 +104,6 @@ public:
      * Destructor.
      */
     ~EventModel();
-
-    /*!
-     * Get details of the last error that occurred when using the model.
-     *
-     * \return error
-     */
-    QSqlError lastError() const;
 
     /*!
      * Set properties that will be fetched in getEvents() or other
@@ -234,7 +224,7 @@ public:
      * event.id() is updated.
      * \param toModelOnly Optional parameter. If set to true, event is not
      * saved to database, only added to the model.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool addEvent(Event &event, bool toModelOnly = false);
 
@@ -245,7 +235,7 @@ public:
      * event ids are updated.
      * \param toModelOnly Optional parameter. If set to true, event is not
      * saved to database, only added to the model.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool addEvents(QList<Event> &events, bool toModelOnly = false);
 
@@ -256,28 +246,28 @@ public:
      * remote_uid can only be changed for draft events.
      * event.lastModified() is automatically updated.
      * \param event Event to be modified.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool modifyEvent(Event &event);
 
     /*!
      * Modify many events at once. See modifyEvent().
      * \param events Events to be modified.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool modifyEvents(QList<Event> &events);
 
     /*!
      * Delete an event from the model and the database.
      * \param id id of the event to be deleted.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool deleteEvent(int id);
 
     /*!
      * Delete an event from the model and the database.
      * \param Event Valid event to be deleted.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     virtual bool deleteEvent(Event &event);
 
@@ -295,7 +285,7 @@ public:
      *
      * \param event Event to be changed.
      * \param groupId new group Id.
-     * \return true if successful. Sets lastError() on failure.
+     * \return true if successful
      */
     bool moveEvent(Event &event, int groupId);
 
@@ -364,15 +354,19 @@ public:
 Q_SIGNALS:
     /*!
      * Emitted when an async query is finished and the model has been filled.
+     *
+     * \param successful or false in case of an error
+     *
      */
-    void modelReady();
+    void modelReady(bool successful);
+
     /*!
      * Emitted when event operation finishes:
      * addEvent, modifyEvent(s) will emit this signal once the modifications committed
      * to the underlying storage.
      *
      * \param events committed events
-     * \param successful if false, see lastError()
+     * \param successful or false in case of an error
      */
     void eventsCommitted(const QList<CommHistory::Event> &events, bool successful);
 

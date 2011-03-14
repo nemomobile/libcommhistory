@@ -54,8 +54,9 @@ int addTestEvent(EventModel &model,
 
 void addTestGroups(Group &group1, Group &group2);
 void addTestGroup(Group& grp, QString localUid, QString remoteUid);
-void addTestContact(const QString &name, const QString &remoteUid);
-void modifyTestContact(const QString &name, const QString &remoteUid);
+int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid=QString());
+void modifyTestContact(int id, const QString &name);
+void deleteTestContact(int id);
 bool compareEvents(Event &e1, Event &e2);
 void deleteAll();
 void deleteSmsMsgs();

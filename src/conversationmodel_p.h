@@ -37,8 +37,7 @@ public:
 
     ConversationModelPrivate(EventModel *model);
 
-    bool updateEventsRecursive(int contactId,
-                               const QString &contactName,
+    bool updateEventsRecursive(const QList<Event::Contact> &contacts,
                                const QString &remoteUid,
                                EventTreeItem *parent);
     QModelIndex findParent(const Event &event);
@@ -55,7 +54,6 @@ public:
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;
-    Group::ChatType chatType;
 };
 
 }

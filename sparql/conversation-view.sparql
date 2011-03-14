@@ -1,0 +1,63 @@
+# Single conversation query.
+# Replace <conversation:1> as needed.
+
+SELECT
+ ?message
+ rdf:type(?message)
+ nmo:sentDate(?message)
+ ?endTime
+ nmo:isSent(?message)
+ nmo:isRead(?message)
+ nmo:isEmergency(?message)
+ nmo:deliveryStatus(?message)
+ nie:contentSize(?message)
+ tracker:coalesce(nco:imID(?fromMedium),nco:phoneNumber(?fromMedium),?fromMedium)
+ tracker:coalesce(nco:imID(?toMedium),nco:phoneNumber(?toMedium),?toMedium)
+ nmo:messageSubject(?message)
+ nie:plainTextContent(?message)
+ nmo:communicationChannel(?message)
+ nmo:messageId(?message)
+ nfo:fileName(nmo:fromVCard(?message))
+ rdfs:label(nmo:fromVCard(?message))
+ nmo:encoding(?message)
+ nie:characterSet(?message)
+ nie:language(?message)
+ nmo:isDeleted(?message)
+ nmo:reportDelivery(?message)
+ nmo:validityPeriod(?message)
+ nie:generator(?message)
+ (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), "\u001f"), "\u001e")
+  WHERE {
+  {
+    ?target nco:hasIMAddress ?address .
+    ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] .
+  } UNION {
+    ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] .
+    ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] .
+  }}
+ ) AS ?contacts
+ (SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })
+ nmo:reportReadStatus(?message)
+ nmo:sentWithReportRead(?message)
+ nmo:mustAnswerReportRead(?message)
+ nmo:mmsId(?message)
+ (SELECT ?mmsTo {?message nmo:messageHeader [nmo:headerName "x-mms-to"; nmo:headerValue ?mmsTo]})
+WHERE
+{
+  SELECT ?message ?startTime ?endTime
+    ?fromMedium
+    ?toMedium
+    IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target
+  WHERE {
+    ?message nmo:from ?from ;
+      nmo:to ?to ;
+      nmo:receivedDate ?endTime ;
+      nmo:sentDate ?startTime .
+    ?from nco:hasContactMedium ?fromMedium .
+    ?to nco:hasContactMedium ?toMedium .
+    ?message nmo:isDraft "false";
+      nmo:isDeleted "false" .
+    ?message nmo:communicationChannel <conversation:1> .
+    ?message a nmo:Message .
+  }
+} ORDER BY DESC(?endTime) DESC(tracker:id(?message))
