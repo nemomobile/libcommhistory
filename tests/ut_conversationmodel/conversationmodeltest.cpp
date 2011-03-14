@@ -178,21 +178,6 @@ void ConversationModelTest::getEvents()
         QCOMPARE(model.event(model.index(i, 0)).direction(), Event::Outbound);
     }
 
-    // run muc query
-    QVERIFY(model.setFilter(Event::IMEvent));
-    QVERIFY(watcher.waitForModelReady(5000));// ignore that it runs query
-    QVERIFY(model.getEvents(group1.id(), CommHistory::Group::ChatTypeRoom));
-    QVERIFY(watcher.waitForModelReady(5000));
-    QCOMPARE(model.rowCount(), 6);
-    for (int i = 0; i < model.rowCount(); i++) {
-        Event e1, e2;
-        QModelIndex ind = model.index(i, 0);
-        e1 = model.event(ind);
-        QVERIFY(model.trackerIO().getEvent(e1.id(), e2));
-        QVERIFY(compareEvents(e1, e2));
-        QCOMPARE(model.event(ind).type(), Event::IMEvent);
-    }
-
     modelThread.quit();
     modelThread.wait(3000);
 }
@@ -531,20 +516,13 @@ void ConversationModelTest::contacts_data()
     QTest::addColumn<QString>("localId");
     QTest::addColumn<QString>("remoteId");
     QTest::addColumn<int>("eventType");
-    QTest::addColumn<int>("chatType");
 
     QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
             << "bad@cclocalhost"
-            << (int)Event::IMEvent
-            << (int)Group::ChatTypeP2P;
-    QTest::newRow("muc") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
-            << "bada@muclocalhost"
-            << (int)Event::IMEvent
-            << (int)Group::ChatTypeUnnamed;
+            << (int)Event::IMEvent;
     QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
             << "+42992394"
-            << (int)Event::SMSEvent
-            << (int)Group::ChatTypeP2P;
+            << (int)Event::SMSEvent;
 }
 
 void ConversationModelTest::contacts()
@@ -552,7 +530,6 @@ void ConversationModelTest::contacts()
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);
-    QFETCH(int, chatType);
 
     Group group;
     addTestGroup(group, localId, remoteId);
@@ -569,7 +546,7 @@ void ConversationModelTest::contacts()
     addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId,
                  group.id(), "text", false, false, QDateTime::currentDateTime(), remoteId);
 
-    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
     Event event;
@@ -583,14 +560,14 @@ void ConversationModelTest::contacts()
                    noMatch,
                    localId);
 
-    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
     event = model.event(model.index(0, 0));
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("ReallyUFunny", remoteId, localId);
-    QVERIFY(model.getEvents(group.id(), (Group::ChatType)chatType));
+    QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady(5000));
 
     event = model.event(model.index(0, 0));

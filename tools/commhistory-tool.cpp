@@ -475,26 +475,11 @@ int doList(const QStringList &arguments, const QVariantMap &options)
         remoteUid = arguments.at(3);
     }
 
-    Group::ChatType chatType = Group::ChatTypeP2P;
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String(
-            "SELECT nie:identifier(?c) {?c rdf:type nmo:CommunicationChannel FILTER(?c = ?:conversation)}"));
-    query.bindValue(QLatin1String("conversation"), Group::idToUrl(groupId));
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
-    if (result->first()) {
-        QSparqlResultRow row = result->current();
-        if (!row.isEmpty()) {
-            chatType = (Group::ChatType) row.value(0).toUInt();
-        }
-    }
-
-
     ConversationModel model;
     model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setTreeMode(tree);
-    if (!model.getEvents(groupId, chatType)) {
+    if (!model.getEvents(groupId)) {
         qCritical() << "Error fetching events";
         return -1;
     }

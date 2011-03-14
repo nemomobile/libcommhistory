@@ -45,7 +45,6 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
-            , chatType(Group::ChatTypeP2P)
 {
     contactChangesEnabled = true;
     QDBusConnection::sessionBus().connect(
@@ -60,7 +59,6 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
     qDebug() << Q_FUNC_INFO;
     if (filterDirection == Event::Outbound
         || filterGroupId == -1
-        || chatType != Group::ChatTypeP2P
         || !propertyMask.contains(Event::ContactId))
         return;
 
@@ -318,16 +316,15 @@ bool ConversationModel::setFilter(Event::EventType type,
     d->filterDirection = direction;
 
     if (d->filterGroupId != -1) {
-        return getEvents(d->filterGroupId, d->chatType);
+        return getEvents(d->filterGroupId);
     }
 
     return true;
 }
 
-bool ConversationModel::getEvents(int groupId, Group::ChatType chatType)
+bool ConversationModel::getEvents(int groupId)
 {
     Q_D(ConversationModel);
-    Q_UNUSED(chatType);
 
     d->filterGroupId = groupId;
 

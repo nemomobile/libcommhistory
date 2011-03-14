@@ -55,7 +55,6 @@ public:
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;
-    Group::ChatType chatType;
 };
 
 }

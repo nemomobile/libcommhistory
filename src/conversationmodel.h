@@ -78,16 +78,12 @@ public:
 
     /*!
      * Reset model to events from the specified group.
-     * Contacts for P2P chats are resolved against the channel,
-     * while multi-user chats use a query that resolves contacts for
-     * each event separately.
      *
      * \param groupId Valid group id
-     * \param chatType Type of the conversation
      *
      * \return true if successful, otherwise false
      */
-    bool getEvents(int groupId, Group::ChatType chatType = Group::ChatTypeP2P);
+    bool getEvents(int groupId);
 
 private:
     Q_DECLARE_PRIVATE(ConversationModel);
