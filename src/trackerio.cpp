@@ -91,12 +91,12 @@ int TrackerIO::nextEventId()
     return d->m_IdSource.nextEventId();
 }
 
-int TrackerIO::nextGroupId()
+int TrackerIOPrivate::nextGroupId()
 {
-    return d->m_IdSource.nextGroupId();
+    return m_IdSource.nextGroupId();
 }
 
-QString TrackerIO::makeCallGroupURI(const CommHistory::Event &event)
+QString TrackerIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
 {
     if (event.localUid().isEmpty() || event.remoteUid().isEmpty())
         return QString();
@@ -113,7 +113,7 @@ QString TrackerIO::makeCallGroupURI(const CommHistory::Event &event)
     return QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId);
 }
 
-QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
+QString TrackerIOPrivate::prepareMessagePartQuery(const QString &messageUri)
 {
     QString query(LAT(
             "SELECT ?message "
@@ -133,9 +133,9 @@ QString TrackerIO::prepareMessagePartQuery(const QString &messageUri)
     return query.arg(messageUri);
 }
 
-QString TrackerIO::prepareGroupQuery(const QString &localUid,
-                                     const QString &remoteUid,
-                                     int groupId)
+QString TrackerIOPrivate::prepareGroupQuery(const QString &localUid,
+                                             const QString &remoteUid,
+                                             int groupId)
 {
     QString queryFormat(GROUP_QUERY);
     QStringList constraints;
@@ -158,7 +158,7 @@ QString TrackerIO::prepareGroupQuery(const QString &localUid,
     return queryFormat.arg(constraints.join(LAT(" ")));
 }
 
-QString TrackerIO::prepareGroupedCallQuery()
+QString TrackerIOPrivate::prepareGroupedCallQuery()
 {
     QString queryFormat(GROUPED_CALL_QUERY);
     return queryFormat;
@@ -747,7 +747,7 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
 
     writeCallProperties(query, event, false);
 
-    QUrl channelUri = q->makeCallGroupURI(event);
+    QUrl channelUri = makeCallGroupURI(event);
     QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
     QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
 
@@ -806,7 +806,7 @@ void TrackerIOPrivate::updateGroupTimestamps(CommHistory::Event event)
     QString groupUri;
     QString timeProperty;
     if (event.type() == Event::CallEvent) {
-        groupUri = q->makeCallGroupURI(event);
+        groupUri = makeCallGroupURI(event);
         timeProperty = QLatin1String("nmo:sentDate");
     } else {
         groupUri = Group::idToUrl(event.groupId()).toString();
@@ -929,7 +929,7 @@ bool TrackerIO::addGroup(Group &group)
         return false;
     }
 
-    group.setId(nextGroupId());
+    group.setId(d->nextGroupId());
 
     qDebug() << __FUNCTION__ << group.url() << group.localUid() << group.remoteUids();
 
@@ -1003,7 +1003,7 @@ bool TrackerIOPrivate::querySingleEvent(EventsQuery &query, Event &event)
     result.fillEventFromModel(event);
 
     if (event.type() == Event::MMSEvent) {
-        QString partQuery = q->prepareMessagePartQuery(event.url().toString());
+        QString partQuery = TrackerIOPrivate::prepareMessagePartQuery(event.url().toString());
 
         QScopedPointer<QSparqlResult> parts(connection().exec(QSparqlQuery(partQuery)));
 
@@ -1244,7 +1244,7 @@ bool TrackerIO::getGroup(int id, Group &group)
 {
     Group groupToFill;
 
-    QSparqlQuery query(prepareGroupQuery(QString(), QString(), id));
+    QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(QString(), QString(), id));
     QueryResult result;
 
     QScopedPointer<QSparqlResult> groups(d->connection().exec(query));

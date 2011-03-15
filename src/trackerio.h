@@ -59,33 +59,6 @@ public:
     int nextEventId();
 
     /*!
-     * Returns and increases the next available group id.
-     */
-    int nextGroupId();
-
-    /*!
-     * Builds a tracker callgroup URI for the event.
-     */
-    QString makeCallGroupURI(const CommHistory::Event &event);
-
-    /*!
-     * Adds required message part properties to the query.
-     */
-    static QString prepareMessagePartQuery(const QString &messageUri);
-
-    /*!
-     * Adds required message part properties to the query.
-     */
-    static QString prepareGroupQuery(const QString &localUid = QString(),
-                                     const QString &remoteUid = QString(),
-                                     int groupId = -1);
-
-    /*!
-     * Create query for calls grouped by contacts.
-     */
-    static QString prepareGroupedCallQuery();
-
-    /*!
      * Add a new event into the database. The id field of the event is
      * updated if successfully added.
      *

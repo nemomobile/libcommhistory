@@ -24,6 +24,7 @@
 #include <QDebug>
 
 #include "trackerio.h"
+#include "trackerio_p.h"
 #include "queryrunner.h"
 #include "eventmodel.h"
 #include "eventmodel_p.h"
@@ -343,7 +344,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
             messagePartsReady = false;
-            partQueryRunner->runMessagePartQuery(tracker()->prepareMessagePartQuery(event.url().toString()));
+            partQueryRunner->runMessagePartQuery(TrackerIOPrivate::prepareMessagePartQuery(event.url().toString()));
         }
     }
 

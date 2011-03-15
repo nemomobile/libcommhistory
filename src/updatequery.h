@@ -26,7 +26,6 @@
 #include <QUrl>
 #include <QStringList>
 #include <QDateTime>
-#include <QDebug>
 
 namespace CommHistory {
 

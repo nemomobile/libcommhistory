@@ -24,6 +24,7 @@
 #include <QDebug>
 
 #include "trackerio.h"
+#include "trackerio_p.h"
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "callmodel.h"
@@ -575,7 +576,7 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
                       "?call nmo:communicationChannel ?:channel . "
                       "}"));
 
-    QUrl channelUri(tracker()->makeCallGroupURI(event));
+    QUrl channelUri(TrackerIOPrivate::makeCallGroupURI(event));
 
     query.bindValue(QLatin1String("channel"), channelUri);
 
@@ -693,7 +694,7 @@ bool CallModel::getEvents()
     endResetModel();
 
     if (d->sortBy == SortByContact) {
-        QString query = d->tracker()->prepareGroupedCallQuery();
+        QString query = TrackerIOPrivate::prepareGroupedCallQuery();
         d->executeGroupedQuery(query);
         return true;
     }

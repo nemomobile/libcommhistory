@@ -25,6 +25,7 @@
 
 #include "commonutils.h"
 #include "trackerio.h"
+#include "trackerio_p.h"
 #include "queryrunner.h"
 #include "groupmodel.h"
 #include "groupmodel_p.h"
@@ -790,7 +791,7 @@ bool GroupModel::getGroups(const QString &localUid,
     reset();
     d->groups.clear();
 
-    QSparqlQuery query(d->tracker()->prepareGroupQuery(localUid, remoteUid));
+    QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(localUid, remoteUid));
     d->executeQuery(query.preparedQueryText());
 
     return true;
