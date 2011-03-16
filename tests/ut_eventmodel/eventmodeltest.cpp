@@ -687,6 +687,34 @@ void EventModelTest::testMessageParts()
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
         QVERIFY(parts.indexOf(part) >= 0);
+
+    // remove message parts
+    parts.clear();
+    parts << part1 << part5;
+    event.setMessageParts(parts);
+
+    QVERIFY(model.modifyEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+
+    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(compareEvents(event, e));
+    QCOMPARE(e.messageParts().size(), parts.size());
+    foreach (MessagePart part, e.messageParts())
+        QVERIFY(parts.indexOf(part) >= 0);
+
+    // modify message parts
+    parts.clear();
+    parts << part1 << part5;
+    QVERIFY(model.modifyEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+
+    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(compareEvents(event, e));
+    QCOMPARE(e.messageParts().size(), parts.size());
+    foreach (MessagePart part, e.messageParts())
+        QVERIFY(parts.indexOf(part) >= 0);
 }
 
 void EventModelTest::testMessagePartsQuery_data()
