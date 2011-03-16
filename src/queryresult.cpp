@@ -179,13 +179,13 @@ void QueryResult::fillEventFromModel(Event &event)
             eventToFill.setValidityPeriod(RESULT_INDEX2(Event::ValidityPeriod).toInt());
             break;
         case Event::Cc:
-            eventToFill.setCcList(RESULT_INDEX2(Event::Cc).toString().split('\x1e'));
+            eventToFill.setCcList(RESULT_INDEX2(Event::Cc).toString().split('\x1e', QString::SkipEmptyParts));
             break;
         case Event::Bcc:
-            eventToFill.setBccList(RESULT_INDEX2(Event::Bcc).toString().split('\x1e'));
+            eventToFill.setBccList(RESULT_INDEX2(Event::Bcc).toString().split('\x1e', QString::SkipEmptyParts));
             break;
         case Event::To:
-            eventToFill.setToList(RESULT_INDEX2(Event::To).toString().split('\x1e'));
+            eventToFill.setToList(RESULT_INDEX2(Event::To).toString().split('\x1e', QString::SkipEmptyParts));
             break;
         default:
             break;// handle below

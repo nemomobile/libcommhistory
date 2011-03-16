@@ -965,6 +965,22 @@ void EventModelTest::testCcBcc()
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
     QCOMPARE(e.toList().toSet(), toList.toSet());
+
+    event.resetModifiedProperties();
+    ccList.clear();
+    event.setCcList(ccList);
+    event.setBccList(ccList);
+    event.setToList(ccList);
+
+    QVERIFY(model.modifyEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(event.id() != -1);
+
+    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(e.ccList().isEmpty());
+    QVERIFY(e.bccList().isEmpty());
+    QVERIFY(e.toList().isEmpty());
 }
 
 
