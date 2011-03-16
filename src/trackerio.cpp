@@ -375,7 +375,7 @@ void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &quer
         case Event::FreeText:
             query.insertion(event.url(),
                             "nie:plainTextContent",
-                            event.freeText().replace("\"", "\\\""),
+                            event.freeText(),
                             modifyMode);
             break;
         case Event::MessageToken:
@@ -633,7 +633,7 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
         // set nie:InformationElement properties
         query.insertion(part,
                         "nie:plainTextContent",
-                        messagePart.plainTextContent().replace("\"", "\\\""));
+                        messagePart.plainTextContent());
         query.insertion(part,
                         "nie:mimeType",
                         messagePart.contentType());

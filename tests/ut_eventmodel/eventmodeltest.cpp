@@ -257,7 +257,7 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.updatedCount(), 0);
 
     im.resetModifiedProperties();
-    im.setFreeText("imtest modified");
+    im.setFreeText("imtest \"q\" modified\t tabs");
     im.setStartTime(QDateTime::currentDateTime());
     im.setEndTime(QDateTime::currentDateTime());
     im.setIsRead(false);
