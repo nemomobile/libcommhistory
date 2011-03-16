@@ -717,6 +717,82 @@ void EventModelTest::testMessageParts()
         QVERIFY(parts.indexOf(part) >= 0);
 }
 
+void EventModelTest::testDeleteMessageParts()
+{
+    EventModel model;
+    watcher.setModel(&model);
+
+    Event event1;
+    event1.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
+    event1.setRemoteUid("0506661234");
+    event1.setType(Event::MMSEvent);
+    event1.setDirection(Event::Outbound);
+    event1.setStartTime(QDateTime::currentDateTime());
+    event1.setEndTime(QDateTime::currentDateTime());
+    event1.setFreeText("mms1");
+    event1.setGroupId(group1.id());
+
+    MessagePart part1;
+    part1.setContentType("application/smil");
+    part1.setPlainTextContent("<smil>blah</smil>");
+
+    event1.setMessageParts(QList<MessagePart>() << part1);
+
+    QVERIFY(model.addEvent(event1));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(event1.id() != -1);
+
+    Event e;
+    QVERIFY(model.trackerIO().getEvent(event1.id(), e));
+    QVERIFY(compareEvents(event1, e));
+    QCOMPARE(e.messageParts().size(), 1);
+    QCOMPARE(e.messageParts()[0].plainTextContent(), part1.plainTextContent());
+    QCOMPARE(e.messageParts()[0].contentType(), part1.contentType());
+
+    Event event2;
+    event2.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
+    event2.setRemoteUid("0506661234");
+    event2.setType(Event::MMSEvent);
+    event2.setDirection(Event::Outbound);
+    event2.setStartTime(QDateTime::currentDateTime());
+    event2.setEndTime(QDateTime::currentDateTime());
+    event2.setFreeText("mms2");
+    event2.setGroupId(group1.id());
+
+    MessagePart part2;
+    part2.setContentId("text_slide1");
+    part2.setContentType("text/plain");
+    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
+
+    event2.setMessageParts(QList<MessagePart>() << part2);
+
+    QVERIFY(model.addEvent(event2));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(event2.id() != -1);
+
+    QVERIFY(model.trackerIO().getEvent(event2.id(), e));
+    QVERIFY(compareEvents(event2, e));
+    QCOMPARE(e.messageParts().size(), 1);
+    QCOMPARE(e.messageParts()[0].plainTextContent(), part2.plainTextContent());
+    QCOMPARE(e.messageParts()[0].contentType(), part2.contentType());
+
+    event1.setMessageParts(QList<MessagePart>());
+
+    QVERIFY(model.modifyEvent(event1));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+
+    QVERIFY(model.trackerIO().getEvent(event1.id(), e));
+    QVERIFY(compareEvents(event1, e));
+    QCOMPARE(e.messageParts().size(), 0);
+
+    QVERIFY(model.trackerIO().getEvent(event2.id(), e));
+    QVERIFY(compareEvents(event2, e));
+    QCOMPARE(e.messageParts().size(), 1);
+}
+
 void EventModelTest::testMessagePartsQuery_data()
 {
     QTest::addColumn<bool>("useThread");

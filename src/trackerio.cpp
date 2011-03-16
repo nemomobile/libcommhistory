@@ -504,10 +504,11 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
         case Event::MessageParts:
             if (modifyMode) {
                 query.deletion(QString(LAT(
-                        "DELETE  {<%1> nmo:hasAttachment ?_part; nmo:mmsHasContent ?_content ."
-                        "?_content nie:hasPart ?_part ."
+                        "DELETE  {<%1> nmo:hasAttachment ?_part . "
                         "?_part rdf:type rdfs:Resource ."
-                        "} WHERE {?_content nie:hasPart ?_part }")).arg(event.url().toString()));
+                        "} WHERE {<%1> nmo:mmsHasContent ?_content . "
+                        "?_content nie:hasPart ?_part }"))
+                               .arg(event.url().toString()));
                 query.resourceDeletion(event.url(),
                                        "nmo:mmsHasContent");
             }
