@@ -145,7 +145,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
     QSparqlQuery insertQuery(query, QSparqlQuery::InsertStatement);
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QScopedPointer<QSparqlResult> result(conn->exec(insertQuery));
     result->waitForFinished();
     if (result->hasError()) {
@@ -174,7 +174,7 @@ void modifyTestContact(int id, const QString &name)
     QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
                   "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
                   "FILTER(tracker:id(?contact) = %1) }");
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
                                                                  QSparqlQuery::DeleteStatement)));
     result->waitForFinished();
@@ -203,7 +203,7 @@ void deleteTestContact(int id)
                   "DELETE { ?contact a nco:PersonContact } WHERE"
                   "{ ?contact a nco:PersonContact . "
                   "FILTER(tracker:id(?contact) = %1) }");
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER")));
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
                                                                  QSparqlQuery::DeleteStatement)));
     result->waitForFinished();

@@ -435,6 +435,9 @@ void EventModelTest::testDeleteEventGroupUpdated()
     watcher.waitForSignals();
     QCOMPARE(watcher.committedCount(), 1);
     QCOMPARE(watcher.lastDeletedId(), event1.id());
+    QTime timer;
+    while (timer.elapsed() < 2000 && groupUpdated == -1)
+        QCoreApplication::processEvents();
     QCOMPARE(groupUpdated, group.id());
 
     QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));

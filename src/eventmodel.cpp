@@ -742,7 +742,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
         return false;
     }
 
-    emit d->eventDeleted(event.id());
+    int groupDeleted = -1;
     // update or delete old group
     if (event.groupId() != -1 && !event.isDraft()) {
         int total;
@@ -758,18 +758,25 @@ bool EventModel::moveEvent(Event &event, int groupId)
                 d->tracker()->rollback();
                 return false;
             } else {
-                emit d->groupsDeleted(QList<int>() << event.groupId());
+                groupDeleted = event.groupId();
             }
-        } else {
-            emit d->groupsUpdated(QList<int>() << event.groupId());
         }
     }
 
     event.setGroupId(groupId);
 
-    emit d->eventsAdded(QList<Event>() << event);
+    CommittingTransaction *t = d->commitTransaction(QList<Event>() << event);
+    t->addSignal(false, d, "eventDeleted", Q_ARG(int, event.id()));
 
-    d->commitTransaction(QList<Event>() << event);
+    if (groupDeleted != -1)
+        t->addSignal(false, d, "groupsDeleted",
+                     Q_ARG(QList<int>, QList<int>() << groupDeleted));
+    else
+        t->addSignal(false, d, "groupsUpdated",
+                     Q_ARG(QList<int>, QList<int>() << event.groupId()));
+
+    t->addSignal(false, d, "eventsAdded",
+                 Q_ARG(QList<CommHistory::Event>, QList<CommHistory::Event>() << event));
 
     return true;
 }
