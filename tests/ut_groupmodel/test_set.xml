@@ -1,6 +1,6 @@
 <set description="libcommhistory-tests:ut_groupmodel" name="ut_groupmodel">
                 <case description="libcommhistory-tests:ut_groupmodel:" name="groupmodel" level="Component" type="Functional" timeout="180">
-			<step expected_result="0">/usr/share/libcommhistory-tests/ut_groupmodel </step>
+			<step expected_result="0">su -l user -c /usr/share/libcommhistory-tests/ut_groupmodel </step>
                  </case>
                  <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
 </set>

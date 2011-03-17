@@ -1,6 +1,6 @@
 <set description="libcommhistory-tests:ut_singleeventmodel" name="ut_singleeventmodel">
     <case description="libcommhistory-tests:ut_singleeventmodel:" name="singleeventmodel" level="Component" type="Functional">
-        <step expected_result="0">/usr/share/libcommhistory-tests/ut_singleeventmodel</step>
+        <step expected_result="0">su -l user -c /usr/share/libcommhistory-tests/ut_singleeventmodel</step>
     </case>
     <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
 </set>

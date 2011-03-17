@@ -1,6 +1,6 @@
 <set description="libcommhistory-performance-tests:perf_groupmodel" name="perf_groupmodel">
                 <case description="libcommhistory-performance-tests:perf_groupmodel:" name="groupmodel" level="Component" type="Performance" timeout="3600">
-			<step expected_result="0">/usr/share/libcommhistory-performance-tests/perf_groupmodel </step>
+			<step expected_result="0">su -l user -c /usr/share/libcommhistory-performance-tests/perf_groupmodel </step>
                  </case>
                  <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
 </set>

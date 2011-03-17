@@ -1,6 +1,6 @@
 <set description="libcommhistory-tests:ut_outboxmodel" name="ut_outboxmodel">
                 <case description="libcommhistory-tests:ut_outboxmodel:" name="outboxmodel" level="Component" type="Functional">
-			<step expected_result="0">/usr/share/libcommhistory-tests/ut_outboxmodel </step>
+			<step expected_result="0">su -l user -c /usr/share/libcommhistory-tests/ut_outboxmodel </step>
                  </case>
                  <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
 </set>
