@@ -262,11 +262,9 @@ void QueryRunner::readData()
             if (!reallyFetchMore(lastReadPos))
                 break;
         }
-
-        if (added) {
-            checkCanFetchMoreChange();
+        checkCanFetchMoreChange();
+        if (added)
             emit eventsReceived(start, start + added - 1, events);
-        }
     } else if (m_activeQuery.queryType == GroupQuery) {
         QList<Group> groups;
 
@@ -280,10 +278,9 @@ void QueryRunner::readData()
                 break;
         }
 
-        if (added) {
-            checkCanFetchMoreChange();
+        checkCanFetchMoreChange();
+        if (added)
             emit groupsReceived(start, start + added - 1, groups);
-        }
     } else if (m_activeQuery.queryType == MessagePartQuery) {
         QList<MessagePart> parts;
         while (m_activeQuery.result->next()) {
@@ -295,10 +292,10 @@ void QueryRunner::readData()
             if (!reallyFetchMore(lastReadPos))
                 break;
         }
-        if (added) {
-            checkCanFetchMoreChange();
+
+        checkCanFetchMoreChange();
+        if (added)
             emit messagePartsReceived(m_activeQuery.eventId, parts);
-        }
     } else if (m_activeQuery.queryType == GroupedCallQuery) {
         QList<Event> events;
 
@@ -312,10 +309,9 @@ void QueryRunner::readData()
                 break;
         }
 
-        if (added) {
-            checkCanFetchMoreChange();
+        checkCanFetchMoreChange();
+        if (added)
             emit eventsReceived(start, start + added - 1, events);
-        }
     }
 
     // really finish current query in case more date than chunk size were read

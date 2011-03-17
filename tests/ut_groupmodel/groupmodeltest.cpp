@@ -668,6 +668,10 @@ void GroupModelTest::streamingQuery()
 
         count += chunkSize;
     }
+
+    if (streamModel.canFetchMore(QModelIndex()))
+        streamModel.fetchMore(QModelIndex());
+
     QVERIFY(waitSignal(modelReady, 5000));
     QVERIFY(!streamModel.canFetchMore(QModelIndex()));
     QCOMPARE(idsOrig.toSet().size(), idsOrig.size());

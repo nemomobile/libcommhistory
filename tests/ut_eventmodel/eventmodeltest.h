@@ -44,6 +44,7 @@ private slots:
     void testMoveEvent();
     void testReportDelivery();
     void testMessageParts();
+    void testDeleteMessageParts();
     void testCcBcc();
     void testStreaming_data();
     void testStreaming();
@@ -52,7 +53,6 @@ private slots:
     void testMessagePartsQuery();
     void testContactMatching_data();
     void testContactMatching();
-    void testDeleteMessageParts();
     void cleanupTestCase();
 
     void groupsUpdatedSlot(const QList<int> &groupIds);

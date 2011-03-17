@@ -1310,8 +1310,13 @@ void EventModelTest::testStreaming()
 
         count += chunkSize;
     }
+
+    if (streamModel.canFetchMore(QModelIndex()))
+        streamModel.fetchMore(QModelIndex());
+
     QVERIFY(waitSignal(modelReady, 5000));
     QVERIFY(!streamModel.canFetchMore(QModelIndex()));
+    QCOMPARE(streamModel.rowCount(), total);
 
     modelThread.quit();
     modelThread.wait(3000);
