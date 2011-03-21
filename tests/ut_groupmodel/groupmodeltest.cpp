@@ -176,6 +176,7 @@ void GroupModelTest::addGroups()
     QCOMPARE(group.localUid(), group1.localUid());
     QCOMPARE(group.remoteUids(), group1.remoteUids());
     QCOMPARE(group.chatName(), group1.chatName());
+    QVERIFY(group.startTime().isValid() == false);
     QVERIFY(group.endTime().isValid() == false);
     QCOMPARE(group.totalMessages(), 0);
     QCOMPARE(group.unreadMessages(), 0);
@@ -410,10 +411,12 @@ void GroupModelTest::updateGroups()
     QVERIFY(model.trackerIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), eventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
+    QCOMPARE(group.startTime().toTime_t(), event.startTime().toTime_t());
     QCOMPARE(group.endTime().toTime_t(), event.endTime().toTime_t());
 
     // add older event
     int lastEventId = eventId;
+    uint lastStartTime = group.startTime().toTime_t();
     uint lastEndTime = group.endTime().toTime_t();
     eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                  groupModel.group(groupModel.index(0, 0)).id(), "older added to group",
@@ -425,6 +428,7 @@ void GroupModelTest::updateGroups()
     QVERIFY(model.trackerIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), lastEventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
+    QCOMPARE(group.startTime().toTime_t(), lastStartTime);
     QCOMPARE(group.endTime().toTime_t(), lastEndTime);
 
     // add new SMS event for second group, check for resorted list, correct contents and date
@@ -439,6 +443,7 @@ void GroupModelTest::updateGroups()
     QVERIFY(group.endTime() > modified);
     Group testGroup;
     QVERIFY(groupModel.trackerIO().getGroup(id, testGroup));
+    QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
 
     // add new IM event for second group, check for resorted list, correct contents and date
@@ -453,6 +458,7 @@ void GroupModelTest::updateGroups()
     QVERIFY(group.endTime() > modified);
 
     QVERIFY(groupModel.trackerIO().getGroup(id, testGroup));
+    QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
 
     // check if status message is really not added to the group
@@ -649,6 +655,7 @@ void GroupModelTest::streamingQuery()
         for (int i = count; i < expectedEnd + 1; i++) {
             Group group1 = groupModel.group(groupModel.index(i, 0));
             Group group2 = streamModel.group(streamModel.index(i, 0));
+            QCOMPARE(group1.startTime(),group2.startTime());
             QCOMPARE(group1.endTime(),group2.endTime());
             idsOrig.append(group1.id());
             idsStream.append(group2.id());

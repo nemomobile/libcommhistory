@@ -299,6 +299,7 @@ void QueryResult::fillGroupFromModel(Group &group)
         groupToFill.setEndTime(QDateTime());
 
     groupToFill.setLastModified(result->value(Group::LastModified).toDateTime());
+    groupToFill.setStartTime(result->value(Group::StartTime).toDateTime());
 
     group = groupToFill;
     group.resetModifiedProperties();

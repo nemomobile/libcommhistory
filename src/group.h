@@ -75,6 +75,7 @@ public:
         LastEventType,
         LastEventStatus,
         LastModified,
+        StartTime,
         Contacts,
         NumProperties
     };
@@ -160,7 +161,17 @@ public:
     QString chatName() const;
 
     /*!
-     * Timestamp of the last message.
+     * Start time of the last message.
+     * For incoming messages this is the time message was sent. For
+     * outgoing messages this is the time message was delivered (or sent
+     * if delivery reporting is not enabled).
+     */
+    QDateTime startTime() const;
+
+    /*!
+     * End time of the last message.
+     * For incoming messages this is the time message was received.
+     * For outgoing messages this is the time message was sent.
      */
     QDateTime endTime() const;
 
@@ -246,6 +257,7 @@ public:
     void setRemoteUids(const QStringList &uids);
     void setChatType(Group::ChatType chatType);
     void setChatName(const QString &name);
+    void setStartTime(const QDateTime &startTime);
     void setEndTime(const QDateTime &endTime);
     void setTotalMessages(int total);
     void setUnreadMessages(int unread);

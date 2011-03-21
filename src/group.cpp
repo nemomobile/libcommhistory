@@ -44,6 +44,7 @@ public:
     QStringList remoteUids;
     Group::ChatType chatType;
     QString chatName;
+    QDateTime startTime;
     QDateTime endTime;
     int totalMessages;
     int unreadMessages;
@@ -81,6 +82,7 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , remoteUids(other.remoteUids)
         , chatType(other.chatType)
         , chatName(other.chatName)
+        , startTime(other.startTime)
         , endTime(other.endTime)
         , totalMessages(other.totalMessages)
         , unreadMessages(other.unreadMessages)
@@ -209,6 +211,10 @@ QString Group::chatName() const
     return d->chatName;
 }
 
+QDateTime Group::startTime() const
+{
+    return d->startTime;
+}
 
 QDateTime Group::endTime() const
 {
@@ -324,6 +330,12 @@ void Group::setChatName(const QString &name)
     d->propertyChanged(Group::ChatName);
 }
 
+void Group::setStartTime(const QDateTime &startTime)
+{
+    d->startTime = startTime.toUTC();
+    d->propertyChanged(Group::StartTime);
+}
+
 void Group::setEndTime(const QDateTime &endTime)
 {
     d->endTime = endTime.toUTC();
@@ -426,7 +438,8 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.lastEventId() << group.contacts()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
-             << group.lastEventStatus() << group.lastModified();
+             << group.lastEventStatus() << group.lastModified()
+             << group.startTime();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -451,7 +464,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
              >> p.totalMessages >> p.unreadMessages >> p.sentMessages
              >> p.lastEventId >> p.contacts
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
-             >> type >> status >> p.lastModified;
+             >> type >> status >> p.lastModified
+             >> p.startTime;
 
     //read valid properties
     argument.beginArray();
@@ -498,6 +512,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setLastEventStatus((Event::EventStatus)status);
     if (p.validProperties.contains(Group::LastModified))
         group.setLastModified(p.lastModified);
+    if (p.validProperties.contains(Group::StartTime))
+        group.setStartTime(p.startTime);
 
     group.resetModifiedProperties();
 

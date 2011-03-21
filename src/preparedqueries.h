@@ -69,6 +69,7 @@
 "  rdf:type(?_lastMessage) AS ?_type " \
 "  nmo:deliveryStatus(?_lastMessage) AS ?_deliveryStatus " \
 "  ?_lastModified " \
+"  nmo:sentDate(?_lastMessage)" \
 "WHERE " \
 "{" \
 "  {" \
