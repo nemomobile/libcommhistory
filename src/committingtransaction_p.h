@@ -23,6 +23,7 @@
 #include <QWeakPointer>
 #include <QMetaType>
 
+#include <QSparqlConnection>
 #include <QSparqlQuery>
 
 class QSparqlResult;
@@ -36,6 +37,14 @@ class CommittingTransactionPrivate : public QObject
     Q_OBJECT
 
 public:
+    struct PendingQuery {
+        QSparqlQuery query;
+        QPointer<QSparqlResult> result;
+        QWeakPointer<QObject> caller;
+        const char *callback;
+        QVariant argument;
+    };
+
     CommittingTransactionPrivate(CommittingTransaction *parent) :
             q(parent),
             error(false),
@@ -47,12 +56,24 @@ public:
 
     CommittingTransaction *q;
 
-    void addQuery(const QSparqlQuery &query);
-    QList<QSparqlQuery> queries() const;
+    /*!
+     * Add query to be executed within the transaction, with an optional callback.
+     * The callback slot will be called after the query has finished and must
+     * have the signature (CommittingTransaction *t, QSparqlResult *result,
+     * QVariant arg). Deleting the result is up to the callback.
+     */
+    void addQuery(const QSparqlQuery &query,
+                  QObject *caller = 0,
+                  const char *callback = 0,
+                  QVariant arg = QVariant());
 
-    void addResult(QSparqlResult *result);
+    bool isEmpty() const;
+
+    void handleCallbacks(PendingQuery *query);
+    void sendSignals();
 
 private Q_SLOTS:
+    bool runNextQuery();
     void finished();
 
 private:
@@ -73,7 +94,8 @@ private:
 
     QList<DelayedSignal> modelSignals;
 
-    QList<QSparqlQuery> pendingQueries;
+    QSparqlConnection *connection;
+    QList<PendingQuery *> pendingQueries;
     QList<QPointer<QSparqlResult> > results;
     bool error;
     bool started;

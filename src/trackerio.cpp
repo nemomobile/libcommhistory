@@ -115,6 +115,7 @@ QString TrackerIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
 
 QString TrackerIOPrivate::prepareMessagePartQuery(const QString &messageUri)
 {
+    // NOTE: check MessagePartColumns in queryresult.h if you change this!
     QString query(LAT(
             "SELECT ?message "
               "?part "
@@ -796,9 +797,55 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
                     modify);
 }
 
-void TrackerIOPrivate::updateGroupTimestamps(CommHistory::Event event)
+void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transaction,
+                                               QSparqlResult *result,
+                                               QVariant arg)
 {
+    Q_UNUSED(transaction);
+
+    QString groupUri = arg.toString();
+    qDebug() << Q_FUNC_INFO << groupUri;
+
+    QDateTime lastMessageDate;
+    QDateTime lastSuccessfulMessageDate;
+
+    if (result && result->first()) {
+        lastMessageDate = result->value(0).toDateTime();
+        lastSuccessfulMessageDate = result->value(1).toDateTime();
+    }
+
+    if (lastMessageDate.isValid() || lastSuccessfulMessageDate.isValid()) {
+        UpdateQuery update;
+        if (lastMessageDate.isValid()) {
+            update.insertion(groupUri,
+                             "nmo:lastMessageDate",
+                             lastMessageDate,
+                             true);
+        }
+
+        if (lastSuccessfulMessageDate.isValid()) {
+            update.insertion(groupUri,
+                             "nmo:lastSuccessfulMessageDate",
+                             lastSuccessfulMessageDate,
+                             true);
+        }
+
+        handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
+    }
+
+    result->deleteLater();
+}
+
+void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
+                                             QSparqlResult *result,
+                                             QVariant arg)
+{
+    Q_UNUSED(transaction);
+
+    Event event = qVariantValue<CommHistory::Event>(arg);
     qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
+
+    result->deleteLater();
 
     if (event.type() != Event::CallEvent && event.groupId() == -1) return;
 
@@ -817,60 +864,27 @@ void TrackerIOPrivate::updateGroupTimestamps(CommHistory::Event event)
     if (groupUri.isEmpty()) return;
 
     // get last message time
-    QString query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> ; "
-                                "%2 ?date . } "
-                                " ORDER BY DESC(?date) LIMIT 1"))
-        .arg(groupUri)
+    QString timestampQuery =
+        QString(LAT("SELECT "
+                    "(SELECT ?lastDate { ?lastMessage nmo:communicationChannel ?channel ; "
+                    "   %1 ?lastDate . } ORDER BY DESC(?lastDate)) "
+                    "(SELECT ?lastSuccessfulDate { "
+                    " ?lastMessage nmo:communicationChannel ?channel ; "
+                    " %1 ?lastSuccessfulDate . "
+                    " FILTER(nmo:isSent(?lastMessage) = true || "
+                    "   nmo:isAnswered(?lastMessage) = true) "
+                    "} ORDER BY DESC(?lastSuccessfulDate)) "
+                    "WHERE { "
+                    " ?channel a nmo:CommunicationChannel . "
+                    " FILTER(?channel = ?:channel) }"))
         .arg(timeProperty);
 
-    QScopedPointer<QSparqlResult> result(connection().exec(QSparqlQuery(query)));
-    if (runBlockedQuery(result.data())) {
-        if (result->first()) {
-            lastMessageDate = result->value(0).toDateTime();
-            qDebug() << "lastMessageDate" << lastMessageDate;
-        } else {
-            // delete empty call group
-            query = QString(LAT("DELETE { <%1> a rdfs:Resource }")).arg(groupUri);
-            result.reset(connection().exec(QSparqlQuery(query, QSparqlQuery::DeleteStatement)));
-            runBlockedQuery(result.data());
-            return;
-        }
-    } else {
-        qWarning() << Q_FUNC_INFO << "error getting last message date of group:"
-                   << result->lastError().message();
-    }
+    QSparqlQuery query(timestampQuery);
+    query.bindValue(LAT("channel"), QUrl(groupUri));
 
-    // get last successful message time
-    query = QString(LAT("SELECT ?date { ?lastMessage nmo:communicationChannel <%1> . "
-                        "?lastMessage %2 ?date . "
-                        "FILTER(nmo:isSent(?lastMessage) = true || "
-                        "nmo:isAnswered(?lastMessage) = true) "
-                        "} ORDER BY DESC(?date) LIMIT 1"))
-        .arg(groupUri)
-        .arg(timeProperty);
-
-    result.reset(connection().exec(QSparqlQuery(query)));
-    if (runBlockedQuery(result.data()) && result->first()) {
-        lastSuccessfulMessageDate = result->value(0).toDateTime();
-        qDebug() << "lastSuccessfulMessageDate" << lastSuccessfulMessageDate;
-    }
-
-    UpdateQuery update;
-    if (lastMessageDate.isValid()) {
-        update.insertion(groupUri,
-                         "nmo:lastMessageDate",
-                         lastMessageDate,
-                         true);
-    }
-
-    if (lastSuccessfulMessageDate.isValid()) {
-        update.insertion(groupUri,
-                         "nmo:lastSuccessfulMessageDate",
-                         lastSuccessfulMessageDate,
-                         true);
-    }
-
-    handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
+    handleQuery(QSparqlQuery(query), this,
+                "doUpdateGroupTimestamps",
+                QVariant(groupUri));
 }
 
 bool TrackerIO::addEvent(Event &event)
@@ -1226,19 +1240,9 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
     if (event.type() == Event::CallEvent)
         deleteQuery.bindValue(LAT("graph"), COMMHISTORY_GRAPH_CALL_CHANNEL);
 
-    if (d->m_pTransaction) {
-        qDebug() << Q_FUNC_INFO << "addSignal";
-        d->m_pTransaction->addSignal(false, d, "updateGroupTimestamps",
-                                     Q_ARG(CommHistory::Event, event));
-        return d->handleQuery(deleteQuery);
-    }
-
-    if (d->handleQuery(deleteQuery)) {
-        d->updateGroupTimestamps(event);
-        return true;
-    }
-
-    return false;
+    return d->handleQuery(deleteQuery, d,
+                          "updateGroupTimestamps",
+                          QVariant::fromValue(event));
 }
 
 bool TrackerIO::getGroup(int id, Group &group)
@@ -1416,15 +1420,10 @@ CommittingTransaction* TrackerIO::commit(bool isBlocking)
     CommittingTransaction *returnTransaction = 0;
 
     if (isBlocking) {
-        foreach (QSparqlQuery query, d->m_pTransaction->d->queries()) {
-            QScopedPointer<QSparqlResult> result(d->connection().exec(query));
-            if (!d->runBlockedQuery(result.data())) {
-                break;
-            }
-        }
+        d->m_pTransaction->run(d->connection(), true);
         delete d->m_pTransaction;
     } else {
-        if (!d->m_pTransaction->d->queries().isEmpty()) {
+        if (!d->m_pTransaction->d->isEmpty()) {
             d->m_pendingTransactions.enqueue(d->m_pTransaction);
             d->runNextTransaction();
             returnTransaction = d->m_pTransaction;
@@ -1463,20 +1462,13 @@ void TrackerIOPrivate::runNextTransaction()
     }
 
     if (t && !t->isRunning()) {
-        foreach (QSparqlQuery query, t->d->queries()) {
-            QScopedPointer<QSparqlResult> result(connection().exec(query));
-            if (checkPendingResult(result.data(), false)) {
-                t->d->addResult(result.take());
-            } else {
-                qWarning() << Q_FUNC_INFO << "abort transaction" << t;
-                emit t->finished();
-                m_pendingTransactions.dequeue();
-                delete t;
-                t = 0;
-            }
-        }
-
-        if (t) {
+        if (!t->run(connection())) {
+            qWarning() << Q_FUNC_INFO << "abort transaction" << t;
+            emit t->finished();
+            m_pendingTransactions.dequeue();
+            delete t;
+            t = 0;
+        } else {
             connect(t,
                     SIGNAL(finished()),
                     this,
@@ -1673,17 +1665,27 @@ bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnF
     return !result->hasError();
 }
 
-bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query)
+bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query,
+                                   QObject *caller,
+                                   const char *callback,
+                                   QVariant arg)
 {
     bool result = true;
 
     if (m_pTransaction) {
-        // add query
-        m_pTransaction->d->addQuery(query);
+        m_pTransaction->d->addQuery(query, caller, callback, arg);
     } else {
         QSparqlResult *sResult = connection().exec(query);
         result = runBlockedQuery(sResult);
-        delete sResult;
+        if (callback) {
+            // note: this can go recursive
+            QMetaObject::invokeMethod(caller, callback,
+                                      Q_ARG(CommittingTransaction *, 0),
+                                      Q_ARG(QSparqlResult *, sResult),
+                                      Q_ARG(QVariant, arg));
+        } else {
+            delete sResult;
+        }
     }
 
     return result;

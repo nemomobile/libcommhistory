@@ -95,6 +95,7 @@
 "ORDER BY DESC(?_lastDate)" \
 )
 
+// NOTE: check CallGroupColumns enum in queryresult.h if you change this!
 #define GROUPED_CALL_QUERY QLatin1String( \
 "SELECT ?channel" \
 "  ?lastCall" \

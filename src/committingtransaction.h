@@ -18,6 +18,9 @@
 #define COMMHISTORY_COMMITTINGTRANSACTION_H
 
 #include <QObject>
+#include <QVariant>
+
+class QSparqlConnection;
 
 #include "libcommhistoryexport.h"
 
@@ -48,6 +51,8 @@ public:
                    const char *signalName,
                    QGenericArgument arg1,
                    QGenericArgument arg2 = QGenericArgument());
+
+    bool run(QSparqlConnection &connection, bool isBlocking = false);
 
     bool isRunning() const;
     bool isFinished() const;

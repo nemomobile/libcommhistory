@@ -59,6 +59,36 @@ struct QueryResult {
                                     const QString &lastName,
                                     const QString &imNickname);
     static QString buildContactName(const QString &names);
+
+    // columns for message part query
+    enum {
+        MessagePartColumnMessage = 0,
+        MessagePartColumnMessagePart,
+        MessagePartColumnContentId,
+        MessagePartColumnText,
+        MessagePartColumnMimeType,
+        MessagePartColumnCharacterSet,
+        MessagePartColumnContentSize,
+        MessagePartColumnFileName
+    };
+
+    // columns for grouped calls query
+    enum {
+        CallGroupColumnChannel = 0,
+        CallGroupColumnLastCall,
+        CallGroupColumnStartTime,
+        CallGroupColumnEndTime,
+        CallGroupColumnFrom,
+        CallGroupColumnTo,
+        CallGroupColumnIsSent,
+        CallGroupColumnIsAnswered,
+        CallGroupColumnIsEmergency,
+        CallGroupColumnIsRead,
+        CallGroupColumnLastModified,
+        CallGroupColumnContacts,
+        CallGroupColumnIMNickname,
+        CallGroupColumnMissedCount
+    };
 };
 
 } //namespace
