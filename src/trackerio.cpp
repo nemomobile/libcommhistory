@@ -1153,8 +1153,9 @@ bool TrackerIO::modifyEvent(Event &event)
 
     d->writeCommonProperties(query, event, true);
 
-    return d->handleQuery(QSparqlQuery(query.query(),
-                                       QSparqlQuery::InsertStatement));
+    return d->handleQuery(QSparqlQuery(query.query(), QSparqlQuery::InsertStatement),
+                          d, "updateGroupTimestamps",
+                          QVariant::fromValue(event));
 }
 
 bool TrackerIO::modifyGroup(Group &group)
