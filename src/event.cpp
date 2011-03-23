@@ -854,8 +854,9 @@ QString Event::toString() const
     }
 
     return QString(QString::number(id())              % QChar('|') %
-                   (isEmergencyCall() ? QLatin1String("!!!") :
-                    QString::number(type()))          % QChar('|') %
+                   (isEmergencyCall()
+                       ? QLatin1String("!!!")
+                       : QString::number(type()))     % QChar('|') %
                    startTime().toString(Qt::TextDate) % QChar('|') %
                    endTime().toString(Qt::TextDate)   % QChar('|') %
                    QString::number(direction())       % QChar('|') %
