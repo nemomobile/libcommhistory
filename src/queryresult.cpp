@@ -299,6 +299,7 @@ void QueryResult::fillGroupFromModel(Group &group)
         groupToFill.setEndTime(QDateTime());
 
     groupToFill.setLastModified(result->value(Group::LastModified).toDateTime());
+    groupToFill.setStartTime(result->value(Group::StartTime).toDateTime());
 
     group = groupToFill;
     group.resetModifiedProperties();
@@ -309,15 +310,15 @@ void QueryResult::fillMessagePartFromModel(MessagePart &messagePart)
     MessagePart newPart;
 
     if (!eventId) {
-        eventId = Event::urlToId(result->value(0).toString());
+        eventId = Event::urlToId(result->value(MessagePartColumnMessage).toString());
     }
-    newPart.setUri(result->value(1).toString());
-    newPart.setContentId(result->value(2).toString());
-    newPart.setPlainTextContent(result->value(3).toString());
-    newPart.setContentType(result->value(4).toString());
-    newPart.setCharacterSet(result->value(5).toString());
-    newPart.setContentSize(result->value(6).toInt());
-    newPart.setContentLocation(result->value(7).toString());
+    newPart.setUri(result->value(MessagePartColumnMessagePart).toString());
+    newPart.setContentId(result->value(MessagePartColumnContentId).toString());
+    newPart.setPlainTextContent(result->value(MessagePartColumnText).toString());
+    newPart.setContentType(result->value(MessagePartColumnMimeType).toString());
+    newPart.setCharacterSet(result->value(MessagePartColumnCharacterSet).toString());
+    newPart.setContentSize(result->value(MessagePartColumnContentSize).toInt());
+    newPart.setContentLocation(result->value(MessagePartColumnFileName).toString());
 
     messagePart = newPart;
 }
@@ -327,13 +328,13 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     Event eventToFill;
 
     eventToFill.setType(Event::CallEvent);
-    eventToFill.setId(Event::urlToId(result->value(1).toString()));
-    eventToFill.setStartTime(result->value(2).toDateTime().toLocalTime());
-    eventToFill.setEndTime(result->value(3).toDateTime().toLocalTime());
-    QString fromId = result->value(4).toString();
-    QString toId = result->value(5).toString();
+    eventToFill.setId(Event::urlToId(result->value(CallGroupColumnLastCall).toString()));
+    eventToFill.setStartTime(result->value(CallGroupColumnStartTime).toDateTime().toLocalTime());
+    eventToFill.setEndTime(result->value(CallGroupColumnEndTime).toDateTime().toLocalTime());
+    QString fromId = result->value(CallGroupColumnFrom).toString();
+    QString toId = result->value(CallGroupColumnTo).toString();
 
-    if (result->value(6).toBool()) {
+    if (result->value(CallGroupColumnIsSent).toBool()) {
         eventToFill.setDirection(Event::Outbound);
         eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
         if (toId.startsWith(LAT("tel:"))) {
@@ -351,18 +352,18 @@ void QueryResult::fillCallGroupFromModel(Event &event)
         }
     }
 
-    eventToFill.setIsMissedCall(!(result->value(7).toBool()));
-    eventToFill.setIsEmergencyCall(result->value(8).toBool());
-    eventToFill.setIsRead(result->value(9).toBool());
-    eventToFill.setLastModified(result->value(10).toDateTime().toLocalTime());
+    eventToFill.setIsMissedCall(!(result->value(CallGroupColumnIsAnswered).toBool()));
+    eventToFill.setIsEmergencyCall(result->value(CallGroupColumnIsEmergency).toBool());
+    eventToFill.setIsRead(result->value(CallGroupColumnIsRead).toBool());
+    eventToFill.setLastModified(result->value(CallGroupColumnLastModified).toDateTime().toLocalTime());
 
     QList<Event::Contact> contacts;
-    parseContacts(result->value(11).toString(),
-                  result->value(12).toString(),
+    parseContacts(result->value(CallGroupColumnContacts).toString(),
+                  result->value(CallGroupColumnIMNickname).toString(),
                   contacts);
     eventToFill.setContacts(contacts);
 
-    eventToFill.setEventCount(result->value(13).toInt());
+    eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
 
     event = eventToFill;
 }

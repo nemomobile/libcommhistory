@@ -174,7 +174,10 @@ public:
 
     QSparqlConnection& connection();
     bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
-    bool handleQuery(const QSparqlQuery &query);
+    bool handleQuery(const QSparqlQuery &query,
+                     QObject *caller = 0,
+                     const char *callback = 0,
+                     QVariant argument = QVariant());
     bool runBlockedQuery(QSparqlResult *result);
 
 public Q_SLOTS:
@@ -183,7 +186,12 @@ public Q_SLOTS:
      * Update nmo:lastMessageDate and nmo:lastSuccessfulMessageDate for
      * channel and delete empty call groups.
      */
-    void updateGroupTimestamps(CommHistory::Event event);
+    void doUpdateGroupTimestamps(CommittingTransaction *transaction,
+                                 QSparqlResult *result,
+                                 QVariant arg);
+    void updateGroupTimestamps(CommittingTransaction *transaction,
+                               QSparqlResult *result,
+                               QVariant arg);
 
 public:
     QThreadStorage<QSparqlConnection*> m_pConnection;

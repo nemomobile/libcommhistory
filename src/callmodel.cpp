@@ -78,7 +78,7 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
     connect(this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SLOT(slotEventsCommitted(const QList<CommHistory::Event>&,bool)));
     connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
-            this, SLOT(deleteCallGroup2(QSparqlResult *)));
+            this, SLOT(doDeleteCallGroup(QSparqlResult *)));
 }
 
 void CallModelPrivate::executeGroupedQuery(const QString &query)
@@ -584,7 +584,7 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
     partQueryRunner->startQueue();
 }
 
-void CallModelPrivate::deleteCallGroup2(QSparqlResult *result)
+void CallModelPrivate::doDeleteCallGroup(QSparqlResult *result)
 {
     qDebug() << Q_FUNC_INFO;
 

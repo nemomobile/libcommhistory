@@ -69,6 +69,7 @@
 "  rdf:type(?_lastMessage) AS ?_type " \
 "  nmo:deliveryStatus(?_lastMessage) AS ?_deliveryStatus " \
 "  ?_lastModified " \
+"  nmo:sentDate(?_lastMessage)" \
 "WHERE " \
 "{" \
 "  {" \
@@ -95,6 +96,7 @@
 "ORDER BY DESC(?_lastDate)" \
 )
 
+// NOTE: check CallGroupColumns enum in queryresult.h if you change this!
 #define GROUPED_CALL_QUERY QLatin1String( \
 "SELECT ?channel" \
 "  ?lastCall" \

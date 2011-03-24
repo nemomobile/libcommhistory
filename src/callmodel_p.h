@@ -80,7 +80,7 @@ public:
 
 public Q_SLOTS:
     void slotEventsCommitted(const QList<CommHistory::Event> &events, bool success);
-    void deleteCallGroup2(QSparqlResult *result);
+    void doDeleteCallGroup(QSparqlResult *result);
 
 public:
     CallModel::Sorting sortBy;

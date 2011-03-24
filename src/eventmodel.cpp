@@ -830,6 +830,8 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
                 group.setLastVCardFileName(event.fromVCardFileName());
                 group.setLastVCardLabel(event.fromVCardLabel());
             }
+            if (event.modifiedProperties().contains(Event::StartTime))
+                group.setStartTime(event.startTime());
         }
     }
 

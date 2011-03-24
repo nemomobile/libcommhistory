@@ -337,6 +337,7 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
             g.setLastVCardLabel(event.fromVCardLabel());
             g.setLastEventStatus(event.status());
             g.setLastEventType(event.type());
+            g.setStartTime(event.startTime());
             g.setEndTime(event.endTime());
 
             sortNeeded = sortNeeded || row != 0;
@@ -641,6 +642,9 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         case LastModified:
             var = QVariant::fromValue(group.lastModified());
             break;
+        case StartTime:
+            var = QVariant::fromValue(group.startTime());
+            break;
         default:
             qDebug() << "Group::data: invalid column id??" << index.column();
             break;
@@ -718,6 +722,9 @@ QVariant GroupModel::headerData(int section,
                 break;
             case LastModified:
                 name = QLatin1String("last_modified");
+                break;
+            case StartTime:
+                name = QLatin1String("start_time");
                 break;
             default:
                 break;

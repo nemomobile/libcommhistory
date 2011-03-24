@@ -128,7 +128,7 @@ void printUsage()
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
     std::cout << "                 listdrafts"                                                                                                             << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
-    std::cout << "                 add [-newgroup] [-group group-id] [-date yyyyMMdd:hh:mm] [{-sms|-mms}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
+    std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
     std::cout << "                 addClass0"                                                                                                              << std::endl;
@@ -190,14 +190,31 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
     bool isSms = options.contains("-sms");
     bool isMms = options.contains("-mms");
 
-    QDateTime date = QDateTime::currentDateTime();
-    if (options.contains("-date")) {
-        date = QDateTime::fromString(options.value("-date").toString(), "yyyyMMdd:hh:mm");
-        if (!date.isValid()) {
-            qCritical() << "Invalid date";
+    QDateTime startTime = QDateTime::currentDateTime();
+    if (options.contains("-startTime")) {
+        startTime = QDateTime::fromString(options.value("-startTime").toString(), "yyyyMMdd:hh:mm");
+        if (!startTime.isValid()) {
+            qCritical() << "Invalid start time";
             return -1;
         }
     }
+
+    QDateTime endTime = startTime;
+    if (options.contains("-endTime")) {
+        endTime = QDateTime::fromString(options.value("-endTime").toString(), "yyyyMMdd:hh:mm");
+        if (!endTime.isValid()) {
+            qCritical() << "Invalid end time";
+            return -1;
+        }
+        if (!options.contains("-startTime"))
+            startTime = endTime;
+    }
+
+    Event::EventDirection direction = Event::UnknownDirection;
+    if (options.contains("-in"))
+        direction = Event::Inbound;
+    if (options.contains("-out"))
+        direction = Event::Outbound;
 
     qsrand(QDateTime::currentDateTime().toTime_t());
     bool randomRemote = true;
@@ -211,7 +228,10 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
     for (int i = 0; i < count; i++) {
         Event e;
 
-        e.setDirection((Event::EventDirection)((qrand() & 1) + 1));
+        if (direction == Event::UnknownDirection)
+            e.setDirection((Event::EventDirection)((qrand() & 1) + 1));
+        else
+            e.setDirection(direction);
 
         if (isMms)
         {
@@ -273,8 +293,8 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
             e.setLocalUid(localUid);
         }
 
-        e.setStartTime(date);
-        e.setEndTime(date);
+        e.setStartTime(startTime);
+        e.setEndTime(endTime);
         if (e.direction() == Event::Outbound) {
             e.setIsRead(true);
         } else {
@@ -548,14 +568,16 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         }
 
         QString line =
-            QString("Group %1 (%2 messages, %3 unread, %4 sent) %5 %6 %7")
+            QString("Group %1 (%2 messages, %3 unread, %4 sent) name:\"%5\" remoteUids:\"%6\" contacts:\"%7\" startTime:%8 endTime:%9")
             .arg(g.id())
             .arg(g.totalMessages())
             .arg(g.unreadMessages())
             .arg(g.sentMessages())
             .arg(g.chatName())
             .arg(g.remoteUids().join("|"))
-            .arg(contacts);
+            .arg(contacts)
+            .arg(g.startTime().toString())
+            .arg(g.endTime().toString());
         std::cout << qPrintable(line) << std::endl;
         Event e;
         if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
@@ -804,7 +826,7 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
 
-    optionsWithArguments << "-group" << "-date" << "-n";
+    optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n";
 
     QStringList args = app.arguments();
     QVariantMap options = parseOptions(args);

@@ -70,6 +70,7 @@ public:
         LastEventStatus,
         IsPermanent,
         LastModified,
+        StartTime,
         NumberOfColumns
     };
 
