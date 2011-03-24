@@ -39,6 +39,33 @@ void MmsContentDeleter::deleteMessage(const QString &messageToken)
     }
 }
 
+void MmsContentDeleter::cleanMmsPlace()
+{
+    qDebug() << "[MMS-DELETER] Schedule cleaning mms place";
+
+    QFileInfoList topEntryes;
+    QDir public_dir(QString("%1/.mms/msg/").arg(QDir::homePath()));
+    topEntryes << public_dir.entryInfoList(QStringList(),
+                                       QDir::Dirs | QDir::Files
+                                       | QDir::NoDotAndDotDot | QDir::Hidden
+                                       | QDir::System);
+
+    QDir private_dir(QString("%1/.mms/private/msg/").arg(QDir::homePath()));
+    if (private_dir.exists())
+    {
+        topEntryes << private_dir.entryInfoList(QStringList(),
+                                            QDir::Dirs | QDir::Files
+                                            | QDir::NoDotAndDotDot | QDir::Hidden
+                                            | QDir::System);
+    }
+    foreach (QFileInfo fi, topEntryes)
+    {
+        QMetaObject::invokeMethod(this,"doDeleteContent",
+                                       Qt::QueuedConnection,
+                                       Q_ARG(QString, fi.absoluteFilePath()));
+    }
+}
+
 QString MmsContentDeleter::resolveMessagePath(const QString &messageToken)
 {
     QString retval;
@@ -67,45 +94,51 @@ void MmsContentDeleter::doMessageDelete(const QString &messageToken)
     } else {
         qDebug() << "[MMS-DELETER] Delete message folder " << messagePath   << " Thread: " << thread();
 
-        deleteDirWithContent(messagePath);
+        doDeleteContent(messagePath);
     }
 }
 
-void MmsContentDeleter::deleteDirWithContent(const QString &path)
+void MmsContentDeleter::doDeleteContent(const QString &path)
 {
-    QFSFileEngine fse(path);
-    if (!fse.setPermissions( QFile::ReadOwner | QFile::ReadGroup | QFile::ReadOther |
-                             QFile::ExeOwner  | QFile::ExeGroup  | QFile::ExeOther |
-                             QFile::WriteOwner ) )
+    qDebug() << "[MMS-DELETER] Delete content. Path" << path;
+    QFileInfo entry(path);
+    if (!entry.exists())
     {
-        qWarning() << "[MMS-DELETER] failed to chmod dir " << path << " error:" << fse.errorString();
+        qDebug() << "[MMS-DELETER] Path" << path << " does not exists.";
+        return;
     }
 
-    QDir dir(path);
-
-    if (dir.exists()) {
+    QDir parent = entry.dir();
+    if (entry.isFile())
+    {
+        parent.remove(entry.fileName());
+    }
+    else if (entry.isDir())
+    {
+        QFSFileEngine fse(path);
+        if (!fse.setPermissions( QFile::ReadOwner | QFile::ReadGroup | QFile::ReadOther |
+                                 QFile::ExeOwner  | QFile::ExeGroup  | QFile::ExeOther |
+                                 QFile::WriteOwner ) )
+        {
+            qWarning() << "[MMS-DELETER] failed to chmod dir " << path << " error:" << fse.errorString();
+        }
+        QDir dir(path);
         foreach (QFileInfo fi, dir.entryInfoList(QStringList(),
                                                  QDir::Dirs | QDir::Files
                                                  | QDir::NoDotAndDotDot | QDir::Hidden
-                                                 | QDir::System)) {
-            if (fi.isFile()) {
-                dir.remove(fi.fileName());
-            }
-            else if (fi.isDir()) {
-                deleteDirWithContent(fi.absoluteFilePath());
-            }
-            else if (fi.isSymLink()) {
-                dir.remove(fi.fileName());
-            }
-            else {
-                qWarning() << "Unknow fs entry" << fi.absoluteFilePath() << fi.fileName();
-            }
+                                                 | QDir::System))
+        {
+            doDeleteContent(fi.absoluteFilePath());
         }
-
-        QString dirName(dir.dirName());
-
-        if (dir.cdUp()) {
-            dir.rmdir(dirName);
-        }
+        parent.rmdir(entry.fileName());
+    }
+    else if (entry.isSymLink())
+    {
+        parent.remove(entry.fileName());
+    }
+    else
+    {
+        qWarning() << "Unknow fs entry" << entry.absoluteFilePath() << entry.fileName();
     }
 }
+

@@ -168,6 +168,7 @@ public:
     bool deleteMmsContentByGroup(int group);
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
+    int countMmsEvents();
 
     void checkAndDeletePendingMmsContent(QThread* backgroundThread);
 

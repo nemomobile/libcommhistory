@@ -32,13 +32,14 @@ class MmsContentDeleter: public QObject
 
 public slots:
     void deleteMessage(const QString &messageToken);
+    void cleanMmsPlace();
 
 private slots:
     void doMessageDelete(const QString &messageToken);
+    void doDeleteContent(const QString &path);
 
 private:
     QString resolveMessagePath(const QString &messageToken);
-    void deleteDirWithContent(const QString &path);
 };
 
 #endif // MESSASGE_CONTENT_DELETER_H

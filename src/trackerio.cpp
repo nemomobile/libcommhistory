@@ -1447,8 +1447,13 @@ void TrackerIOPrivate::runNextTransaction()
     qDebug() << Q_FUNC_INFO;
 
     if (m_pendingTransactions.isEmpty())
+    {
+        if(countMmsEvents()==0)
+        {
+            getMmsDeleter(m_bgThread).cleanMmsPlace();
+        }
         return;
-
+    }
     CommittingTransaction *t = m_pendingTransactions.head();
 
     Q_ASSERT(t);
@@ -1459,7 +1464,16 @@ void TrackerIOPrivate::runNextTransaction()
         t = 0;
 
         if (!m_pendingTransactions.isEmpty())
+        {
             t = m_pendingTransactions.head();
+        }
+        else
+        {
+            if(countMmsEvents()==0)
+            {
+                getMmsDeleter(m_bgThread).cleanMmsPlace();
+            }
+        }
     }
 
     if (t && !t->isRunning()) {
@@ -1632,6 +1646,29 @@ bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
     }
 
     return (total == 1);
+}
+
+int TrackerIOPrivate::countMmsEvents()
+{
+    qDebug() << Q_FUNC_INFO;
+    int total = -1;
+
+    QSparqlQuery query(LAT(
+            "SELECT COUNT(?message) "
+            "WHERE {?message rdf:type nmo:MMSMessage}"));
+
+    QScopedPointer<QSparqlResult> queryResult(connection().exec(query));
+
+    if (!runBlockedQuery(queryResult.data())) // FIXIT
+        return total;
+
+    if (queryResult->first()) {
+        QSparqlResultRow row = queryResult->current();
+        if (!row.isEmpty())
+            total = row.value(0).toInt();
+    }
+    qDebug() << Q_FUNC_INFO << "total =" << total;
+    return total;
 }
 
 void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread)
