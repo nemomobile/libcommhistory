@@ -186,6 +186,8 @@ void GroupModelPrivate::addToModel(Group &group)
 {
     Q_Q(GroupModel);
 
+    qDebug() << __PRETTY_FUNCTION__ << ": added" << group.toString();
+
     QModelIndex index;
     q->beginInsertRows(index, 0, 0);
     groups.prepend(group);
@@ -227,7 +229,7 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
                 emit q->layoutChanged();
             }
 
-            qDebug() << __PRETTY_FUNCTION__ << ": updated";
+            qDebug() << __PRETTY_FUNCTION__ << ": updated" << newGroup.toString();
             break;
         }
     }
@@ -469,22 +471,61 @@ void GroupModelPrivate::slotContactUpdated(quint32 localId,
     Q_Q(GroupModel);
 
     for (int row = 0; row < groups.count(); row++) {
+
         Group group = groups.at(row);
         bool updatedGroup = false;
+        // NOTE: this is value copy, modifications need to be saved to group
+        QList<Event::Contact> resolvedContacts = group.contacts();
 
-        // TODO: check how this should work with multiple contacts
+        // if we already keep track of this contact and the address is in the provided matching addresses list
         if (ContactListener::addressMatchesList(group.localUid(),
                                                 group.remoteUids().first(),
                                                 contactAddresses)) {
-            Event::Contact contact(localId, contactName);
-            group.setContacts(QList<Event::Contact>() << contact);
-            updatedGroup = true;
-        } else if (localId == (quint32)group.contactId()) {
-            group.setContacts(QList<Event::Contact>());
+
+            // check if contact is already resolved and stored in group
+            for (int i = 0; i < resolvedContacts.count(); i++) {
+
+                // if yes, then just exchange the contactname
+                if ((quint32)resolvedContacts.at(i).first == localId) {
+
+                    // modify contacts list, save it to group later
+                    resolvedContacts[i].second = contactName;
+                    updatedGroup = true;
+                    break;
+                }
+            }
+
+            // if not yet in group, then add it there
+            if (!updatedGroup) {
+
+                // modify contacts list, save it to group later
+                resolvedContacts << Event::Contact(localId, contactName);
+            }
+
             updatedGroup = true;
         }
 
+        // otherwise we either don't keep track of the contact
+        // or the address was removed from the contact and that is why it's not in the provided matching addresses list
+        else {
+
+            // check if contact is already resolved and stored in group
+            for (int i = 0; i < resolvedContacts.count(); i++) {
+
+                // if yes, then remove it from there
+                if ((quint32)resolvedContacts.at(i).first == localId) {
+
+                    // modify contacts list, save it to group later
+                    resolvedContacts.removeAt(i);
+                    updatedGroup = true;
+                    break;
+                }
+            }
+        }
+
         if (updatedGroup) {
+
+            group.setContacts(resolvedContacts);
             groups.replace(row, group);
             emit q->dataChanged(q->index(row, GroupModel::Contacts),
                                 q->index(row, GroupModel::Contacts));
@@ -497,10 +538,28 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
     Q_Q(GroupModel);
 
     for (int row = 0; row < groups.count(); row++) {
-        Group group = groups.at(row);
 
-        if (localId == (quint32)group.contactId()) {
-            group.setContacts(QList<Event::Contact>());
+        Group group = groups.at(row);
+        bool updatedGroup = false;
+        // NOTE: this is value copy, modifications need to be saved to group
+        QList<Event::Contact> resolvedContacts = group.contacts();
+
+        // check if contact is already resolved and stored in group
+        for (int i = 0; i < resolvedContacts.count(); i++) {
+
+            // if yes, then remove it from there
+            if ((quint32)resolvedContacts.at(i).first == localId) {
+
+                // modify contacts list, save it to group later
+                resolvedContacts.removeAt(i);
+                updatedGroup = true;
+                break;
+            }
+        }
+
+        if (updatedGroup) {
+
+            group.setContacts(resolvedContacts);
             groups.replace(row, group);
 
             emit q->dataChanged(q->index(row, GroupModel::Contacts),
