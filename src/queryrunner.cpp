@@ -377,7 +377,8 @@ void QueryRunner::endActiveQuery()
     if (m_activeQuery.result) {
         m_activeQuery.result->disconnect(this);
         if (m_activeQuery.queryType != GenericQuery)
-            m_activeQuery.result->deleteLater();
+            // workaround qsparql memory problems
+            QMetaObject::invokeMethod(m_activeQuery.result, "deleteLater", Qt::QueuedConnection);
         m_activeQuery.result = 0;
     }
     m_activeQuery.query.setQuery(QString());
