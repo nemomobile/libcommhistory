@@ -56,6 +56,7 @@ TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
     m_pTransaction(0),
     m_MmsContentDeleter(0),
+    m_mmsDeletingFlag(false),
     m_bgThread(0)
 {
 }
@@ -1213,6 +1214,7 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
     qDebug() << Q_FUNC_INFO << event.id() << event.localUid() << event.remoteUid() << backgroundThread;
 
     if (event.type() == Event::MMSEvent) {
+        d->m_mmsDeletingFlag = true;
         if (d->isLastMmsEvent(event.messageToken())) {
             d->getMmsDeleter(backgroundThread).deleteMessage(event.messageToken());
         }
@@ -1348,6 +1350,8 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
         // FIXIT, make it async
         if (!d->deleteMmsContentByGroup(groupId))
             return false;
+
+        d->m_mmsDeletingFlag = true;
     }
 
     d->m_bgThread = backgroundThread;
@@ -1448,9 +1452,10 @@ void TrackerIOPrivate::runNextTransaction()
 
     if (m_pendingTransactions.isEmpty())
     {
-        if(countMmsEvents()==0)
+        if (m_mmsDeletingFlag)
         {
-            getMmsDeleter(m_bgThread).cleanMmsPlace();
+            requestCountMmsEvents();
+            m_mmsDeletingFlag = false;
         }
         return;
     }
@@ -1469,9 +1474,10 @@ void TrackerIOPrivate::runNextTransaction()
         }
         else
         {
-            if(countMmsEvents()==0)
+            if (m_mmsDeletingFlag)
             {
-                getMmsDeleter(m_bgThread).cleanMmsPlace();
+                requestCountMmsEvents();
+                m_mmsDeletingFlag = false;
             }
         }
     }
@@ -1525,6 +1531,7 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         break;
     case Event::MMSEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
+        d->m_mmsDeletingFlag = true;
         break;
     default:
         qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
@@ -1641,27 +1648,32 @@ bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
     return (total == 1);
 }
 
-int TrackerIOPrivate::countMmsEvents()
+void TrackerIOPrivate::requestCountMmsEvents()
 {
-    qDebug() << Q_FUNC_INFO;
-    int total = -1;
-
     QSparqlQuery query(LAT(
             "SELECT COUNT(?message) "
             "WHERE {?message rdf:type nmo:MMSMessage}"));
 
-    QScopedPointer<QSparqlResult> queryResult(connection().exec(query));
+    handleQuery(QSparqlQuery(query),
+                this,
+                "doCleanMmsGarbage",
+                QVariant());
+}
 
-    if (!runBlockedQuery(queryResult.data())) // FIXIT
-        return total;
-
-    if (queryResult->first()) {
-        QSparqlResultRow row = queryResult->current();
+void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction, QSparqlResult *result, QVariant arg)
+{
+    Q_UNUSED(transaction);
+    Q_UNUSED(arg);
+    if (result->first()) {
+        QSparqlResultRow row = result->current();
         if (!row.isEmpty())
-            total = row.value(0).toInt();
+        {
+            if(row.value(0).toInt() == 0)
+            {
+                getMmsDeleter(m_bgThread).cleanMmsPlace();
+            }
+        }
     }
-    qDebug() << Q_FUNC_INFO << "total =" << total;
-    return total;
 }
 
 void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread)

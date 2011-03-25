@@ -26,6 +26,7 @@
 #include <QProcess>
 #include <QDir>
 #include <QFSFileEngine>
+#include <QDateTime>
 
 void MmsContentDeleter::deleteMessage(const QString &messageToken)
 {
@@ -58,11 +59,19 @@ void MmsContentDeleter::cleanMmsPlace()
                                             | QDir::NoDotAndDotDot | QDir::Hidden
                                             | QDir::System);
     }
+
+    QDateTime garbageTime = QDateTime::currentDateTime().addDays(-1);
+    qDebug() << "[MMS-DELETER] Garbage time is" << garbageTime;
+
     foreach (QFileInfo fi, topEntryes)
     {
-        QMetaObject::invokeMethod(this,"doDeleteContent",
+        qDebug() << "[MMS-DELETER]" << fi.absoluteFilePath() << "time is" << fi.created();
+        if(fi.created() <= garbageTime)
+        {
+            QMetaObject::invokeMethod(this,"doDeleteContent",
                                        Qt::QueuedConnection,
                                        Q_ARG(QString, fi.absoluteFilePath()));
+        }
     }
 }
 
