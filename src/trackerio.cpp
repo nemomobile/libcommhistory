@@ -1451,7 +1451,7 @@ void TrackerIO::transaction(bool syncOnCommit)
 {
     Q_ASSERT(d->m_pTransaction == 0);
 
-    d->syncOnCommit = syncOnCommit; //TODO: support syncOnCommit, call tracker's Sync dbus method directly
+    d->syncOnCommit = syncOnCommit;
     d->m_pTransaction = new CommittingTransaction(this);
     d->m_messageTokenRefCount.clear(); // make sure that nothing is removed if not requested
 }
@@ -1464,9 +1464,14 @@ CommittingTransaction* TrackerIO::commit(bool isBlocking)
 
     if (isBlocking) {
         d->m_pTransaction->run(d->connection(), true);
+        if (d->syncOnCommit)
+            d->syncTracker();
         delete d->m_pTransaction;
     } else {
         if (!d->m_pTransaction->d->isEmpty()) {
+            if (d->syncOnCommit)
+                connect(d->m_pTransaction, SIGNAL(finished()),
+                        d, SLOT(syncTracker()));
             d->m_pendingTransactions.enqueue(d->m_pTransaction);
             d->runNextTransaction();
             returnTransaction = d->m_pTransaction;
