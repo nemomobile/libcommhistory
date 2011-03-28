@@ -191,6 +191,7 @@ public Q_SLOTS:
     void updateGroupTimestamps(CommittingTransaction *transaction,
                                QSparqlResult *result,
                                QVariant arg);
+    void syncTracker();
 
     void requestCountMmsEvents();
     void doCleanMmsGarbage(CommittingTransaction *transaction,

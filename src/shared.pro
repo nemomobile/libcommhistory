@@ -41,6 +41,7 @@ CONFIG  += qdbus \
            debug \
            qtsparql
 MOBILITY += contacts
+PKGCONFIG += tracker-sparql-0.10
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
 

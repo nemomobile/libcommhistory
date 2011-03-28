@@ -19,12 +19,16 @@
 ** 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 **
 ******************************************************************************/
+#include <tracker-sparql.h> // for syncTracker()
 
 #include <QSparqlConnectionOptions>
 #include <QSparqlConnection>
 #include <QSparqlResult>
 #include <QSparqlResultRow>
 #include <QSparqlError>
+#include <QDBusMessage>
+#include <QDBusConnection>
+#include <QDBusPendingCall>
 
 #include "commonutils.h"
 #include "event.h"
@@ -1771,4 +1775,14 @@ bool TrackerIOPrivate::runBlockedQuery(QSparqlResult *result)
         return false;
 
     return true;
+}
+
+
+void TrackerIOPrivate::syncTracker()
+{
+    QDBusMessage syncCall = QDBusMessage::createMethodCall(LAT(TRACKER_DBUS_SERVICE),
+                                                           LAT(TRACKER_DBUS_INTERFACE_RESOURCES),
+                                                           LAT(TRACKER_DBUS_OBJECT_RESOURCES),
+                                                           LAT("Sync"));
+    QDBusConnection::sessionBus().asyncCall(syncCall);
 }

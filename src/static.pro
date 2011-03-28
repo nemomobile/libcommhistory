@@ -25,6 +25,7 @@ include( ../common-vars.pri )
 
 TEMPLATE  = lib
 CONFIG   += qdbus static mobility debug qtsparql
+PKGCONFIG += tracker-sparql-0.10
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION
 TARGET    = commhistory
