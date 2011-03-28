@@ -66,7 +66,6 @@ public:
 
     void addToModel(Group &group);
     void modifyInModel(Group &group, bool query = true);
-    void deleteFromModel(Group &group);
 
     bool canFetchMore() const;
 

@@ -235,22 +235,6 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
     }
 }
 
-void GroupModelPrivate::deleteFromModel(Group &group)
-{
-    Q_Q(GroupModel);
-
-    qDebug() << __PRETTY_FUNCTION__ << q << group.id();
-
-    for (int row = 0; row < groups.count(); row++) {
-        if (groups.at(row).id() == group.id()) {
-            q->beginRemoveRows(QModelIndex(), row, row); // row your boat
-            groups.removeAt(row);
-            q->endRemoveRows();
-            break;
-        }
-    }
-}
-
 void GroupModelPrivate::groupsReceivedSlot(int start,
                                            int end,
                                            QList<CommHistory::Group> result)
@@ -441,14 +425,36 @@ void GroupModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &g
 
 void GroupModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
 {
+    Q_Q(GroupModel);
+
     qDebug() << __PRETTY_FUNCTION__ << groupIds.count();
 
-    foreach (int id, groupIds) {
-        Group g;
-        g.setId(id);
-
-        deleteFromModel(g);
+    // convert ids to indexes
+    QList<int> indexes;
+    for (int i = 0; i < groups.size(); i++) {
+        if (groupIds.contains(groups[i].id())) {
+            indexes.append(i);
+        }
     }
+    // ensure order
+    qDebug() << "SORT";
+    qSort(indexes.begin(), indexes.end());
+    qDebug() << "remove";
+    // delete from end
+    QList<int>::iterator i = indexes.end();
+    while (i != indexes.begin()) {
+        int end = *--i;
+        // find end
+        while (i != indexes.begin() && *i == (*(i - 1) + 1))
+            --i;
+        int start = *i;
+        qDebug() << "Remove" << start << end;
+        q->beginRemoveRows(QModelIndex(), start, end);
+        for (int j = end; j >= start; --j)
+            groups.removeAt(j);
+        q->endRemoveRows();
+    }
+    qDebug() << "done";
 }
 
 void GroupModelPrivate::canFetchMoreChangedSlot(bool canFetch)
