@@ -916,13 +916,10 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
     qDebug() << __FUNCTION__ << groupIds;
 
     d->tracker()->transaction();
-    foreach (int id, groupIds) {
-        if (!d->tracker()->deleteGroup(id, deleteMessages, d->bgThread)) {
-            d->tracker()->rollback();
-            return false;
-        }
+    if (!d->tracker()->deleteGroups(groupIds, deleteMessages, d->bgThread)) {
+        d->tracker()->rollback();
+        return false;
     }
-
     CommittingTransaction *t = d->commitTransaction(groupIds);
 
     if (t)
