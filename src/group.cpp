@@ -519,3 +519,29 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
 
     return argument;
 }
+
+QString Group::toString() const
+{
+    QString contacts;
+    if (!d->contacts.isEmpty()) {
+        QStringList contactList;
+        foreach (Event::Contact contact, d->contacts) {
+            contactList << QString("%1,%2")
+                .arg(QString::number(contact.first))
+                .arg(contact.second);
+        }
+
+        contacts = contactList.join(QChar(';'));
+    }
+
+    return QString("Group %1 (%2 messages, %3 unread, %4 sent) name:\"%5\" remoteUids:\"%6\" contacts:\"%7\" startTime:%8 endTime:%9")
+                   .arg(d->id)
+                   .arg(d->totalMessages)
+                   .arg(d->unreadMessages)
+                   .arg(d->sentMessages)
+                   .arg(d->chatName)
+                   .arg(d->remoteUids.join("|"))
+                   .arg(contacts)
+                   .arg(d->startTime.toString())
+                   .arg(d->endTime.toString());
+}

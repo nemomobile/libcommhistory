@@ -20,5 +20,14 @@
 #
 ###############################################################################
 
-TEMPLATE = subdirs
-SUBDIRS = unit_tests.pro performance_tests.pro mem_eventmodel
+include( ../../common-project-config.pri )
+include( ../../common-vars.pri )
+include( ../tests.pri )
+
+TARGET = mem_eventmodel
+DESTDIR = ../bin
+QT -= gui
+MOBILITY += contacts
+CONFIG  += qtestlib qdbus mobility
+SOURCES += mem_eventmodel.cpp
+HEADERS += mem_eventmodel.h

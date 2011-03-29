@@ -82,6 +82,8 @@ bool CommittingTransactionPrivate::runNextQuery()
     }
 
     connect(query->result, SIGNAL(finished()), SLOT(finished()));
+    // delete result out of the slot, workaround qsparl bugs for insert queries
+    connect(query->result, SIGNAL(finished()), query->result, SLOT(deleteLater()), Qt::QueuedConnection);
     started = true;
 
     return true;
@@ -116,8 +118,6 @@ void CommittingTransactionPrivate::handleCallbacks(PendingQuery *query)
                                   Q_ARG(CommittingTransaction *, q),
                                   Q_ARG(QSparqlResult *, query->result),
                                   Q_ARG(QVariant, query->argument));
-    } else {
-        query->result->deleteLater();
     }
 }
 

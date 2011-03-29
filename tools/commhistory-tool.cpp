@@ -554,31 +554,8 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     EventModel eventModel;
     for (int i = 0; i < model.rowCount(); i++) {
         Group g = model.group(model.index(i, 0));
+        std::cout << qPrintable(g.toString()) << std::endl;
 
-        QString contacts;
-        if (!g.contacts().isEmpty()) {
-            QStringList contactList;
-            foreach (Event::Contact contact, g.contacts()) {
-                contactList << QString("%1,%2")
-                    .arg(QString::number(contact.first))
-                    .arg(contact.second);
-            }
-
-            contacts = contactList.join(QChar(';'));
-        }
-
-        QString line =
-            QString("Group %1 (%2 messages, %3 unread, %4 sent) name:\"%5\" remoteUids:\"%6\" contacts:\"%7\" startTime:%8 endTime:%9")
-            .arg(g.id())
-            .arg(g.totalMessages())
-            .arg(g.unreadMessages())
-            .arg(g.sentMessages())
-            .arg(g.chatName())
-            .arg(g.remoteUids().join("|"))
-            .arg(contacts)
-            .arg(g.startTime().toString())
-            .arg(g.endTime().toString());
-        std::cout << qPrintable(line) << std::endl;
         Event e;
         if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);

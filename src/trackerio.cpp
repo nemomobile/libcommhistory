@@ -63,7 +63,7 @@ TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
 TrackerIOPrivate::~TrackerIOPrivate()
 {
     foreach(CommittingTransaction* t, m_pendingTransactions)
-        t->deleteLater();
+        delete t;
 
     if (m_MmsContentDeleter) {
         m_MmsContentDeleter->deleteLater();
@@ -832,8 +832,6 @@ void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transactio
 
         handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
     }
-
-    result->deleteLater();
 }
 
 void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
@@ -841,11 +839,10 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                                              QVariant arg)
 {
     Q_UNUSED(transaction);
+    Q_UNUSED(result);
 
     Event event = qVariantValue<CommHistory::Event>(arg);
     qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
-
-    result->deleteLater();
 
     if (event.type() != Event::CallEvent && event.groupId() == -1) return;
 
@@ -1459,7 +1456,7 @@ void TrackerIOPrivate::runNextTransaction()
     Q_ASSERT(t);
 
     if (t->isFinished()) {
-        t->deleteLater(); // straight delete causes crash or lockup?
+        delete t;
         m_pendingTransactions.dequeue();
         t = 0;
 

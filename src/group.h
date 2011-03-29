@@ -275,6 +275,8 @@ public:
     void setLastEventStatus(Event::EventStatus eventStatus);
     void setLastModified(const QDateTime &modified);
 
+    QString toString() const;
+
 private:
     QSharedDataPointer<GroupPrivate> d;
 };
