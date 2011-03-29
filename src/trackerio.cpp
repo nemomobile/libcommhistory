@@ -1461,9 +1461,7 @@ void TrackerIOPrivate::runNextTransaction()
         t = 0;
 
         if (!m_pendingTransactions.isEmpty())
-        {
             t = m_pendingTransactions.head();
-        }
     }
 
     if (t && !t->isRunning()) {
