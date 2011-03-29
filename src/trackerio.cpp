@@ -56,7 +56,6 @@ TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
     m_pTransaction(0),
     m_MmsContentDeleter(0),
-    m_mmsDeletingFlag(false),
     m_bgThread(0)
 {
 }
@@ -1214,10 +1213,11 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
     qDebug() << Q_FUNC_INFO << event.id() << event.localUid() << event.remoteUid() << backgroundThread;
 
     if (event.type() == Event::MMSEvent) {
-        d->m_mmsDeletingFlag = true;
         if (d->isLastMmsEvent(event.messageToken())) {
             d->getMmsDeleter(backgroundThread).deleteMessage(event.messageToken());
         }
+        Q_ASSERT(d->m_pTransaction);
+        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()));
     }
 
     QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
@@ -1351,7 +1351,8 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
         if (!d->deleteMmsContentByGroup(groupId))
             return false;
 
-        d->m_mmsDeletingFlag = true;
+        Q_ASSERT(d->m_pTransaction);
+        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()));
     }
 
     d->m_bgThread = backgroundThread;
@@ -1451,14 +1452,8 @@ void TrackerIOPrivate::runNextTransaction()
     qDebug() << Q_FUNC_INFO;
 
     if (m_pendingTransactions.isEmpty())
-    {
-        if (m_mmsDeletingFlag)
-        {
-            requestCountMmsEvents();
-            m_mmsDeletingFlag = false;
-        }
         return;
-    }
+
     CommittingTransaction *t = m_pendingTransactions.head();
 
     Q_ASSERT(t);
@@ -1471,14 +1466,6 @@ void TrackerIOPrivate::runNextTransaction()
         if (!m_pendingTransactions.isEmpty())
         {
             t = m_pendingTransactions.head();
-        }
-        else
-        {
-            if (m_mmsDeletingFlag)
-            {
-                requestCountMmsEvents();
-                m_mmsDeletingFlag = false;
-            }
         }
     }
 
@@ -1531,7 +1518,8 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         break;
     case Event::MMSEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
-        d->m_mmsDeletingFlag = true;
+        Q_ASSERT(d->m_pTransaction);
+        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()));
         break;
     default:
         qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
