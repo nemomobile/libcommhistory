@@ -180,6 +180,17 @@ public:
     bool deleteGroup(int groupId, bool deleteMessages = true, QThread *backgroundThread = 0);
 
     /*!
+     * Delete groups
+     *
+     * \param groupIds Existing group ids
+     * \param deleteMessages flag to delete group's messages
+     * \param backgroundThread optional thread (to delete mms attachments)
+     *
+     * \return true if successful, otherwise false
+     */
+    bool deleteGroups(QList<int> groupIds, bool deleteMessages = true, QThread *backgroundThread = 0);
+
+    /*!
      * Query the number of events in a group
      *
      * \param groupId Existing group id

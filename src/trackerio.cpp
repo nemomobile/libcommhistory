@@ -1338,10 +1338,7 @@ bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
 {
-    Q_UNUSED(backgroundThread);
     qDebug() << __FUNCTION__ << groupId << deleteMessages << backgroundThread;
-
-    // error return left for possible future implementation
 
     QUrl group = Group::idToUrl(groupId);
     UpdateQuery update;
@@ -1371,6 +1368,39 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
     update.deletion(group,
                     "rdf:type",
                     LAT("rdfs:Resource"));
+
+    return d->handleQuery(QSparqlQuery(update.query(),
+                                       QSparqlQuery::DeleteStatement));
+}
+
+bool TrackerIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *backgroundThread)
+{
+    qDebug() << __FUNCTION__ << groupIds << deleteMessages << backgroundThread;
+
+    UpdateQuery update;
+    //QList<QUrl> groupsToDelete;
+    foreach (int groupId, groupIds) {
+        QUrl group = Group::idToUrl(groupId);
+        //groupsToDelete.append(group);
+
+        if (deleteMessages) {
+            update.deletion(QString(LAT(
+                                        "DELETE {?msg rdf:type rdfs:Resource}"
+                                        "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel <%1>}"))
+                            .arg(group.toString()));
+
+            // delete mms attachments
+            // FIXIT, make it async
+            if (!d->deleteMmsContentByGroup(groupId))
+                return false;
+        }
+        // delete conversation
+        update.deletion(group,
+                        "rdf:type",
+                        LAT("rdfs:Resource"));
+    }
+
+    d->m_bgThread = backgroundThread;
 
     return d->handleQuery(QSparqlQuery(update.query(),
                                        QSparqlQuery::DeleteStatement));
