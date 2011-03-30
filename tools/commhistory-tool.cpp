@@ -164,6 +164,26 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         localUid.prepend(TELEPATHY_ACCOUNT_PREFIX);
     }
 
+    QDateTime startTime = QDateTime::currentDateTime();
+    if (options.contains("-startTime")) {
+        startTime = QDateTime::fromString(options.value("-startTime").toString(), "yyyyMMdd:hh:mm");
+        if (!startTime.isValid()) {
+            qCritical() << "Invalid start time";
+            return -1;
+        }
+    }
+
+    QDateTime endTime = startTime;
+    if (options.contains("-endTime")) {
+        endTime = QDateTime::fromString(options.value("-endTime").toString(), "yyyyMMdd:hh:mm");
+        if (!endTime.isValid()) {
+            qCritical() << "Invalid end time";
+            return -1;
+        }
+        if (!options.contains("-startTime"))
+            startTime = endTime;
+    }
+
     if (options.contains("-newgroup")) {
         Group group;
         group.setLocalUid(localUid);
@@ -189,26 +209,6 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
 
     bool isSms = options.contains("-sms");
     bool isMms = options.contains("-mms");
-
-    QDateTime startTime = QDateTime::currentDateTime();
-    if (options.contains("-startTime")) {
-        startTime = QDateTime::fromString(options.value("-startTime").toString(), "yyyyMMdd:hh:mm");
-        if (!startTime.isValid()) {
-            qCritical() << "Invalid start time";
-            return -1;
-        }
-    }
-
-    QDateTime endTime = startTime;
-    if (options.contains("-endTime")) {
-        endTime = QDateTime::fromString(options.value("-endTime").toString(), "yyyyMMdd:hh:mm");
-        if (!endTime.isValid()) {
-            qCritical() << "Invalid end time";
-            return -1;
-        }
-        if (!options.contains("-startTime"))
-            startTime = endTime;
-    }
 
     Event::EventDirection direction = Event::UnknownDirection;
     if (options.contains("-in"))
