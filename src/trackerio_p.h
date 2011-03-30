@@ -173,10 +173,19 @@ public:
 
     QSparqlConnection& connection();
     bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
+    // wrapper around addToTransactionOrRunQuery with m_pTransaction
     bool handleQuery(const QSparqlQuery &query,
                      QObject *caller = 0,
                      const char *callback = 0,
                      QVariant argument = QVariant());
+    // if transaction is not null, add the query to it,
+    // otherwise runs query blocked
+    bool addToTransactionOrRunQuery(CommittingTransaction *transaction,
+                                    const QSparqlQuery &query,
+                                    QObject *caller = 0,
+                                    const char *callback = 0,
+                                    QVariant argument = QVariant());
+
     bool runBlockedQuery(QSparqlResult *result);
 
 public Q_SLOTS:

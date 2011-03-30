@@ -805,8 +805,6 @@ void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transactio
                                                QSparqlResult *result,
                                                QVariant arg)
 {
-    Q_UNUSED(transaction);
-
     QString groupUri = arg.toString();
     qDebug() << Q_FUNC_INFO << groupUri;
 
@@ -834,7 +832,9 @@ void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transactio
                              true);
         }
 
-        handleQuery(QSparqlQuery(update.query(), QSparqlQuery::InsertStatement));
+        addToTransactionOrRunQuery(transaction,
+                                   QSparqlQuery(update.query(),
+                                                QSparqlQuery::InsertStatement));
     }
 }
 
@@ -842,7 +842,6 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                                              QSparqlResult *result,
                                              QVariant arg)
 {
-    Q_UNUSED(transaction);
     Q_UNUSED(result);
 
     Event event = qVariantValue<CommHistory::Event>(arg);
@@ -883,9 +882,11 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
     QSparqlQuery query(timestampQuery);
     query.bindValue(LAT("channel"), QUrl(groupUri));
 
-    handleQuery(QSparqlQuery(query), this,
-                "doUpdateGroupTimestamps",
-                QVariant(groupUri));
+    addToTransactionOrRunQuery(transaction,
+                               query,
+                               this,
+                               "doUpdateGroupTimestamps",
+                               QVariant(groupUri));
 }
 
 bool TrackerIO::addEvent(Event &event)
@@ -1743,15 +1744,16 @@ bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnF
     return !result->hasError();
 }
 
-bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query,
-                                   QObject *caller,
-                                   const char *callback,
-                                   QVariant arg)
+bool TrackerIOPrivate::addToTransactionOrRunQuery(CommittingTransaction *transaction,
+                                                  const QSparqlQuery &query,
+                                                  QObject *caller,
+                                                  const char *callback,
+                                                  QVariant argument)
 {
     bool result = true;
 
-    if (m_pTransaction) {
-        m_pTransaction->d->addQuery(query, caller, callback, arg);
+    if (transaction) {
+        transaction->d->addQuery(query, caller, callback, argument);
     } else {
         QSparqlResult *sResult = connection().exec(query);
         result = runBlockedQuery(sResult);
@@ -1760,13 +1762,24 @@ bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query,
             QMetaObject::invokeMethod(caller, callback,
                                       Q_ARG(CommittingTransaction *, 0),
                                       Q_ARG(QSparqlResult *, sResult),
-                                      Q_ARG(QVariant, arg));
-        } else {
-            delete sResult;
+                                      Q_ARG(QVariant, argument));
         }
+        sResult->deleteLater();
     }
 
     return result;
+}
+
+bool TrackerIOPrivate::handleQuery(const QSparqlQuery &query,
+                                   QObject *caller,
+                                   const char *callback,
+                                   QVariant argument)
+{
+    return addToTransactionOrRunQuery(m_pTransaction,
+                                      query,
+                                      caller,
+                                      callback,
+                                      argument);
 }
 
 bool TrackerIOPrivate::runBlockedQuery(QSparqlResult *result)
