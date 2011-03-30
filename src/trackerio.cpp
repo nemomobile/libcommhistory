@@ -1218,8 +1218,12 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
         if (d->isLastMmsEvent(event.messageToken())) {
             d->getMmsDeleter(backgroundThread).deleteMessage(event.messageToken());
         }
-        Q_ASSERT(d->m_pTransaction);
-        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()),Qt::UniqueConnection);
+        if (d->m_pTransaction)
+            connect(d->m_pTransaction,
+                    SIGNAL(finished()),
+                    d,
+                    SLOT(requestCountMmsEvents()),
+                    Qt::UniqueConnection);
     }
 
     QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
@@ -1353,8 +1357,12 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
         if (!d->deleteMmsContentByGroup(groupId))
             return false;
 
-        Q_ASSERT(d->m_pTransaction);
-        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()),Qt::UniqueConnection);
+        if (d->m_pTransaction)
+            connect(d->m_pTransaction,
+                    SIGNAL(finished()),
+                    d,
+                    SLOT(requestCountMmsEvents()),
+                    Qt::UniqueConnection);
     }
 
     d->m_bgThread = backgroundThread;
@@ -1559,8 +1567,12 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
         break;
     case Event::MMSEvent:
         eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
-        Q_ASSERT(d->m_pTransaction);
-        connect(d->m_pTransaction,SIGNAL(finished()),d,SLOT(requestCountMmsEvents()),Qt::UniqueConnection);
+        if (d->m_pTransaction)
+            connect(d->m_pTransaction,
+                    SIGNAL(finished()),
+                    d,
+                    SLOT(requestCountMmsEvents()),
+                    Qt::UniqueConnection);
         break;
     default:
         qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
