@@ -760,6 +760,25 @@ bool CallModel::deleteAll()
     return true;
 }
 
+bool CallModel::markAllRead()
+{
+    Q_D(CallModel);
+
+    d->tracker()->transaction();
+
+    bool marked;
+    marked = d->tracker()->markAsReadAll(Event::CallEvent);
+    if (!marked) {
+        qWarning() << __PRETTY_FUNCTION__ << "Failed to delete events";
+        d->tracker()->rollback();
+        return false;
+    }
+
+    d->commitTransaction(QList<Event>());
+
+    return true;
+}
+
 bool CallModel::addEvent( Event &event )
 {
     return EventModel::addEvent(event);

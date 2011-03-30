@@ -138,6 +138,13 @@ public:
      */
     bool deleteAll();
 
+    /*!
+     * \brief Marks all call events as read.
+     *
+     * \return true if successful; false otherwise.
+     */
+    bool markAllRead();
+
     // reimp
     // Override - call model works in sync mode.
     virtual void setQueryMode( EventModel::QueryMode mode );
