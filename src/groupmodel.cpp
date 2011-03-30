@@ -327,6 +327,8 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
         }
         if (!g.isValid()) continue;
 
+        sortNeeded = sortNeeded || !g.endTime().isValid();
+
         if (event.endTime() >= g.endTime()) {
             qDebug() << __PRETTY_FUNCTION__ << ": updating group" << g.id();
             g.setLastEventId(event.id());
