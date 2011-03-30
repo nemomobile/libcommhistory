@@ -284,9 +284,12 @@ void QueryResult::fillGroupFromModel(Group &group)
     groupToFill.setSentMessages(result->value(Group::SentMessages).toInt());
     groupToFill.setEndTime(result->value(Group::EndTime).toDateTime());
     groupToFill.setLastEventId(Event::urlToId(result->value(Group::LastEventId).toString()));
-    groupToFill.setLastMessageText(result->value(Group::LastMessageText).toString());
     groupToFill.setLastVCardFileName(result->value(Group::LastVCardFileName).toString());
     groupToFill.setLastVCardLabel(result->value(Group::LastVCardLabel).toString());
+
+    QStringList text = result->value(Group::LastMessageText).toString().split("\x1e", QString::SkipEmptyParts);
+    if (!text.isEmpty())
+        groupToFill.setLastMessageText(text[0]);
 
     // tracker query returns 0 for non-existing messages... make the
     // value api-compatible

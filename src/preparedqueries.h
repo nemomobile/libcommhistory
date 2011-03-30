@@ -62,8 +62,7 @@
 "    }" \
 "  }) AS ?contacts" \
 "  (SELECT ?nickname { ?part nco:hasIMAddress [ nco:imNickname ?nickname ] })" \
-"  tracker:coalesce(nmo:messageSubject(?_lastMessage)," \
-"                   nie:plainTextContent(?_lastMessage))" \
+"  fn:string-join((nmo:messageSubject(?_lastMessage),nie:plainTextContent(?_lastMessage)),\"\\u001e\")" \
 "  nfo:fileName(nmo:fromVCard(?_lastMessage))" \
 "  rdfs:label(nmo:fromVCard(?_lastMessage))" \
 "  rdf:type(?_lastMessage) AS ?_type " \
