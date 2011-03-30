@@ -43,6 +43,7 @@ private slots:
     void testGetEventsTimeTypeFilter_data();
     void testGetEventsTimeTypeFilter();
     void deleteAllCalls();
+    void testMarkAllRead();
     void cleanupTestCase();
 
 private:
