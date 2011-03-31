@@ -6,9 +6,10 @@ qt_config=lex yacc warn_on debug uic resources qt warn_on incremental link_prl e
 
 Name: libcommhistory
 Description: Messaging/Call-History Library
-Version: 1.1.0
+Version: 1.1.1
 Libs: -L${libdir} -lcommhistory
-Libs.private: -L/usr/lib -lQtCore -lpthread
+Libs.private: -L/usr/lib
 Cflags:  -I${includedir}
-Requires: QtSparql
+Requires: QtCore
+Requires.private: QtSparql, tracker-sparql-0.10
 
