@@ -26,6 +26,7 @@
 #include "common.h"
 #include "modelwatcher.h"
 #include "signal.h"
+#include "trackerio.h"
 
 using namespace CommHistory;
 
@@ -583,6 +584,36 @@ void CallModelTest::deleteAllCalls()
 
     QVERIFY(model.getEvents());
     QCOMPARE(model.rowCount(), 0);
+}
+
+void CallModelTest::testMarkAllRead()
+{
+    CallModel callModel;
+
+    QSignalSpy eventsCommitted(&callModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,
+                                                                   bool)));
+    // Test event is unread by default.
+    int eventId1 = addTestEvent(callModel, Event::CallEvent, Event::Inbound, ACCOUNT1, group1.id(),
+                                "Mark all as read test 1", false, false,
+                                QDateTime::currentDateTime(), REMOTEUID1);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
+
+    eventsCommitted.clear();
+    int eventId2 = addTestEvent(callModel, Event::CallEvent, Event::Inbound, ACCOUNT1, group1.id(),
+                                "Mark all as read test 2", false, false,
+                                QDateTime::currentDateTime(), REMOTEUID2);
+    QVERIFY(waitSignal(eventsCommitted, 5000));
+
+    eventsCommitted.clear();
+    QVERIFY(callModel.markAllRead());
+    waitSignal(eventsCommitted, 5000);
+
+    Event e1, e2;
+    QVERIFY(callModel.trackerIO().getEvent(eventId1, e1));
+    QVERIFY(e1.isRead());
+
+    QVERIFY(callModel.trackerIO().getEvent(eventId2, e2));
+    QVERIFY(e2.isRead());
 }
 
 void CallModelTest::cleanupTestCase()

@@ -138,6 +138,7 @@ void printUsage()
     std::cout << "                 delete event-id"                                                                                                        << std::endl;
     std::cout << "                 deletegroup group-id"                                                                                                   << std::endl;
     std::cout << "                 deleteall"                                                                                                              << std::endl;
+    std::cout << "                 markallcallsread"                                                                                                       << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
     std::cout << "New events are of IM type and have random contents."                                                                                     << std::endl;
@@ -799,6 +800,20 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     return 0;
 }
 
+int doMarkAllCallsRead(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED(arguments);
+    Q_UNUSED(options);
+
+    CallModel model;
+    if (!model.markAllRead()) {
+        qCritical() << "Error marking all calls as read.";
+        return -1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -850,6 +865,8 @@ int main(int argc, char **argv)
         return doDeleteGroup(args, options);
     } else if (args.at(1) == "deleteall") {
         return doDeleteAll(args, options);
+    } else if (args.at(1) == "markallcallsread") {
+        return doMarkAllCallsRead(args, options);
     } else {
         printUsage();
     }

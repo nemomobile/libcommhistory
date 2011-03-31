@@ -1407,6 +1407,42 @@ bool TrackerIO::markAsReadGroup(int groupId)
     return d->handleQuery(query);
 }
 
+bool TrackerIO::markAsReadAll(Event::EventType eventType)
+{
+    qDebug() << __FUNCTION__ << eventType;
+
+    QString query("DELETE {?e nmo:isRead ?r; nie:contentLastModified ?d}"
+                  "WHERE {?e rdf:type ?:eventType; nmo:isRead ?r; nie:contentLastModified ?d}"
+                  "INSERT {?e nmo:isRead true; nie:contentLastModified ?:date}"
+                  "WHERE {?e rdf:type ?:eventType}");
+
+    QUrl eventTypeUrl;
+
+    switch(eventType) {
+    case Event::IMEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "IMMessage"));
+        break;
+    case Event::SMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "SMSMessage"));
+        break;
+    case Event::CallEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "Call"));
+        break;
+    case Event::MMSEvent:
+        eventTypeUrl = QUrl(LAT(NMO_ "MMSMessage"));
+        break;
+    default:
+        qWarning() << __FUNCTION__ << "Unsupported type" << eventType;
+        return false;
+    }
+
+    QSparqlQuery markAllQuery(query, QSparqlQuery::InsertStatement);
+    markAllQuery.bindValue(LAT("eventType"), eventTypeUrl);
+    markAllQuery.bindValue(LAT("date"), QDateTime::currentDateTime());
+
+    return d->handleQuery(markAllQuery);
+}
+
 void TrackerIO::transaction(bool syncOnCommit)
 {
     Q_ASSERT(d->m_pTransaction == 0);

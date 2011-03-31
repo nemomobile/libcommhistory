@@ -208,6 +208,15 @@ public:
     bool markAsRead(const QList<int> &eventIds);
 
     /*!
+     * Mark all messages of a certain type as read
+     *
+     * \param eventType
+     *
+     * \return true if successful. Sets lastError() on failure.
+     */
+    bool markAsReadAll(Event::EventType eventType);
+
+    /*!
      * Delete events of a certain type
      *
      * \param eventType
