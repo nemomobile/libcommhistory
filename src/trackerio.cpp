@@ -55,6 +55,7 @@ using namespace CommHistory;
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
+Q_DECLARE_METATYPE(QList<int>)
 
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
@@ -1281,30 +1282,77 @@ bool TrackerIO::getGroup(int id, Group &group)
     return true;
 }
 
-QSparqlResult* TrackerIOPrivate::getMmsListForDeletingByGroup(int groupId)
+bool TrackerIOPrivate::deleteMmsContentByGroup(QList<int> groupIds)
 {
-    QSparqlQuery query(LAT(
-            "SELECT ?message "
-              "nmo:messageId(?message) "
-              "(SELECT COUNT(?otherMessage) "
-                "WHERE {"
-                "?otherMessage rdf:type nmo:MMSMessage; nmo:isDeleted \"false\" "
-                "FILTER(nmo:messageId(?otherMessage) = nmo:messageId(?message))})"
+    QStringList groups;
+    foreach (int groupId, groupIds) {
+        groups.append(QString(LAT("<conversation:%1>")).arg(groupId));
+    }
+
+    QSparqlQuery query(QString(LAT(
+            "SELECT nmo:messageId(?message) "
             "WHERE {"
-              "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?:conversation}"));
+              "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?c "
+              "FILTER(?c IN (%1))}")).arg(groups.join(LAT(","))));
 
-    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
-
-    return connection().exec(query);
+    return handleQuery(query,
+                       this,
+                       "mmsTokensReady",
+                       QVariant::fromValue(groupIds));
 }
 
-bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
+bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
+                                      QList<int> groupIds,
+                                      bool deleteMessages)
 {
-    // delete mms messages content from fs
-    QScopedPointer<QSparqlResult> result(getMmsListForDeletingByGroup(groupId));
+    qDebug() << Q_FUNC_INFO << groupIds << deleteMessages;
 
-    if (!runBlockedQuery(result.data())) // FIXIT
-        return false;
+    UpdateQuery update;
+    foreach (int groupId, groupIds) {
+        QUrl group = Group::idToUrl(groupId);
+
+        if (deleteMessages) {
+            update.deletion(QString(LAT("DELETE {?msg rdf:type rdfs:Resource}"
+                                        "WHERE {?msg rdf:type nmo:Message; "
+                                               "nmo:communicationChannel <%1>}"))
+                            .arg(group.toString()));
+        }
+        // delete conversation
+        update.deletion(group,
+                        "rdf:type",
+                        LAT("rdfs:Resource"));
+    }
+
+    QSparqlQuery query(update.query(), QSparqlQuery::DeleteStatement);
+    if (transaction) {
+        transaction->d->addQuery(query);
+        return true;
+    }
+
+    if (transaction) {
+        // TODO: megrge
+        connect(transaction,
+                SIGNAL(finished()),
+                this,
+                SLOT(checkAndDeletePendingMmsContent()));
+        connect(transaction,
+                SIGNAL(finished()),
+                this,
+                SLOT(requestCountMmsEvents()),
+                Qt::UniqueConnection);
+    }
+
+
+    return handleQuery(query);
+}
+
+void TrackerIOPrivate::mmsTokensReady(CommittingTransaction *transaction,
+                                      QSparqlResult *result,
+                                      QVariant arg)
+{
+    Q_ASSERT(transaction);
+
+    QList<int> groupIds = arg.value<QList<int> >();
 
     while (result->next()) {
         QSparqlResultRow row = result->current();
@@ -1318,92 +1366,31 @@ bool TrackerIOPrivate::deleteMmsContentByGroup(int groupId)
         qDebug() << Q_FUNC_INFO << messageToken;
 
         if (!messageToken.isEmpty()) {
-            int refCount(row.value(2).toInt());
-
-            MessageTokenRefCount::iterator it = m_messageTokenRefCount.find(messageToken);
-
-            // Update cache
-            if (it != m_messageTokenRefCount.end()) {
-                // Message token is already in cache -> decrease refcount since  message is going to be removed
-                --(it.value());
-            } else {
-                // Message token is not cache -> add into cache, decrease ref count by 1
-                m_messageTokenRefCount[messageToken] = refCount - 1;
-            }
+            m_mmsTokens.insert(messageToken);
         }
     }
 
-    return true;
+    if (transaction->d->isEmpty())
+        doDeleteGroups(transaction,
+                       groupIds,
+                       true);
 }
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
 {
-    qDebug() << __FUNCTION__ << groupId << deleteMessages << backgroundThread;
-
-    QUrl group = Group::idToUrl(groupId);
-    UpdateQuery update;
-
-    if (deleteMessages) {
-        update.deletion(QString(LAT(
-                "DELETE {?msg rdf:type rdfs:Resource}"
-                "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel <%1>}"))
-                        .arg(group.toString()));
-
-        // delete mms attachments
-        // FIXIT, make it async
-        if (!d->deleteMmsContentByGroup(groupId))
-            return false;
-
-        if (d->m_pTransaction)
-            connect(d->m_pTransaction,
-                    SIGNAL(finished()),
-                    d,
-                    SLOT(requestCountMmsEvents()),
-                    Qt::UniqueConnection);
-    }
-
-    d->m_bgThread = backgroundThread;
-
-    // delete conversation
-    update.deletion(group,
-                    "rdf:type",
-                    LAT("rdfs:Resource"));
-
-    return d->handleQuery(QSparqlQuery(update.query(),
-                                       QSparqlQuery::DeleteStatement));
+    return deleteGroups(QList<int>() << groupId, deleteMessages, backgroundThread);
 }
 
 bool TrackerIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *backgroundThread)
 {
     qDebug() << __FUNCTION__ << groupIds << deleteMessages << backgroundThread;
 
-    UpdateQuery update;
-    //QList<QUrl> groupsToDelete;
-    foreach (int groupId, groupIds) {
-        QUrl group = Group::idToUrl(groupId);
-        //groupsToDelete.append(group);
-
-        if (deleteMessages) {
-            update.deletion(QString(LAT(
-                                        "DELETE {?msg rdf:type rdfs:Resource}"
-                                        "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel <%1>}"))
-                            .arg(group.toString()));
-
-            // delete mms attachments
-            // FIXIT, make it async
-            if (!d->deleteMmsContentByGroup(groupId))
-                return false;
-        }
-        // delete conversation
-        update.deletion(group,
-                        "rdf:type",
-                        LAT("rdfs:Resource"));
-    }
-
     d->m_bgThread = backgroundThread;
 
-    return d->handleQuery(QSparqlQuery(update.query(),
-                                       QSparqlQuery::DeleteStatement));
+    if (deleteMessages)
+        return d->deleteMmsContentByGroup(groupIds);
+
+    return d->doDeleteGroups(d->m_pTransaction, groupIds, deleteMessages);
 }
 
 bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
@@ -1492,7 +1479,7 @@ void TrackerIO::transaction(bool syncOnCommit)
 
     d->syncOnCommit = syncOnCommit;
     d->m_pTransaction = new CommittingTransaction(this);
-    d->m_messageTokenRefCount.clear(); // make sure that nothing is removed if not requested
+    d->m_mmsTokens.clear();
 }
 
 CommittingTransaction* TrackerIO::commit(bool isBlocking)
@@ -1522,7 +1509,7 @@ CommittingTransaction* TrackerIO::commit(bool isBlocking)
     }
 
     d->m_contactCache.clear();
-    d->checkAndDeletePendingMmsContent(d->m_bgThread);
+    //d->checkAndDeletePendingMmsContent(d->m_bgThread);
     d->m_pTransaction = 0;
 
     return returnTransaction;
@@ -1567,7 +1554,7 @@ void TrackerIOPrivate::runNextTransaction()
 void TrackerIO::rollback()
 {
     d->m_contactCache.clear();
-    d->m_messageTokenRefCount.clear(); // Clear cache to avoid deletion after rollback
+    d->m_mmsTokens.clear(); // Clear cache to avoid deletion after rollback
     delete d->m_pTransaction;
     d->m_pTransaction = 0;
 }
@@ -1747,6 +1734,7 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction, QSp
     }
 }
 
+#if 0
 void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread)
 {
     if (!m_messageTokenRefCount.isEmpty()) {
@@ -1763,7 +1751,7 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(QThread *backgroundThread
         m_messageTokenRefCount.clear();
     }
 }
-
+#endif
 QSparqlConnection& TrackerIOPrivate::connection()
 {
     if (!m_pConnection.hasLocalData()) {

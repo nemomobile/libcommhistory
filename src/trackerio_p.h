@@ -26,6 +26,7 @@
 #include <QObject>
 #include <QUrl>
 #include <QHash>
+#include <QSet>
 #include <QThreadStorage>
 #include <QSparqlQuery>
 #include <QQueue>
@@ -169,7 +170,7 @@ public:
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
-    void checkAndDeletePendingMmsContent(QThread* backgroundThread);
+    //void checkAndDeletePendingMmsContent(QThread* backgroundThread);
 
     QSparqlConnection& connection();
     bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
@@ -187,6 +188,10 @@ public:
                                     QVariant argument = QVariant());
 
     bool runBlockedQuery(QSparqlResult *result);
+    bool deleteMmsContentByGroup(QList<int> groupIds);
+    bool doDeleteGroups(CommittingTransaction *transaction,
+                        QList<int> groupIds,
+                        bool deleteMessages);
 
 public Q_SLOTS:
     void runNextTransaction();
@@ -206,6 +211,9 @@ public Q_SLOTS:
     void doCleanMmsGarbage(CommittingTransaction *transaction,
                            QSparqlResult *result,
                            QVariant arg);
+    void mmsTokensReady(CommittingTransaction *transaction,
+                        QSparqlResult *result,
+                        QVariant arg);
 
 public:
     QThreadStorage<QSparqlConnection*> m_pConnection;
@@ -215,8 +223,7 @@ public:
     // Temporary contact cache, valid during a transaction
     QHash<QUrl, QString> m_contactCache;
     MmsContentDeleter *m_MmsContentDeleter;
-    typedef QHash<QString, int> MessageTokenRefCount;
-    MessageTokenRefCount m_messageTokenRefCount;
+    QSet<QString> m_mmsTokens;
     bool syncOnCommit;
 
     IdSource m_IdSource;
