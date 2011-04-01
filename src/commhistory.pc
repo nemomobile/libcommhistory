@@ -10,6 +10,5 @@ Version: 1.1.1
 Libs: -L${libdir} -lcommhistory
 Libs.private: -L/usr/lib
 Cflags:  -I${includedir}
-Requires: QtCore
-Requires.private: QtSparql, tracker-sparql-0.10
+Requires: QtCore, QtSparql, tracker-sparql-0.10
 
