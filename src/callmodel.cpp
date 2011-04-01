@@ -98,6 +98,30 @@ void CallModelPrivate::executeGroupedQuery(const QString &query)
     }
 }
 
+bool CallModelPrivate::eventMatchesFilter( const Event &event ) const
+{
+    bool match = true;
+
+    switch (eventType) {
+    case CallEvent::MissedCallType:
+        if (event.direction() != Event::Inbound || !event.isMissedCall())
+            match = false;
+        break;
+    case CallEvent::DialedCallType:
+        if (event.direction() != Event::Outbound)
+            match = false;
+        break;
+    case CallEvent::ReceivedCallType:
+        if (event.direction() != Event::Inbound || event.isMissedCall())
+            match = false;
+        break;
+    default:
+        break;
+    }
+
+    return match;
+}
+
 bool CallModelPrivate::acceptsEvent( const Event &event ) const
 {
     qDebug() << __PRETTY_FUNCTION__ << event.id();
@@ -111,23 +135,25 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
         return false;
     }
 
-    if(this->eventType != CallEvent::UnknownCallType)
-    {
-        if(eventType == CallEvent::MissedCallType && !(event.direction() == Event::Inbound && event.isMissedCall()))
-        {
-                return false;
-        }
-        else if(eventType == CallEvent::DialedCallType && !(event.direction() == Event::Outbound) )
-        {
-            return false;
-        }
-        else if(eventType == CallEvent::ReceivedCallType && !(event.direction() == Event::Inbound && !event.isMissedCall()))
-        {
-            return false;
-        }
-    }
+    if (!isInTreeMode && eventType != CallEvent::UnknownCallType && !eventMatchesFilter(event))
+        return false;
 
     return true;
+}
+
+void CallModelPrivate::modelUpdatedSlot( bool successful )
+{
+    Q_Q( CallModel );
+
+    // ensure that last event count is up to date after filling
+    if (successful && sortBy != CallModel::SortByContact && eventRootItem->childCount()) {
+        EventTreeItem *last = eventRootItem->child(eventRootItem->childCount() - 1);
+        last->event().setEventCount(calculateEventCount(last));
+        emit q->dataChanged(q->createIndex(0, 0, last),
+                            q->createIndex(0, CallModel::NumberOfColumns - 1, last));
+    }
+
+    EventModelPrivate::modelUpdatedSlot(successful);
 }
 
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
@@ -189,6 +215,9 @@ int CallModelPrivate::calculateEventCount( EventTreeItem *item )
             break;
     }
 
+    if (count < 1)
+        count = 1;
+
     return count;
 }
 
@@ -221,11 +250,6 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
          * on second level, there are all call events listed (also group reps)
          */
 
-        QList<EventTreeItem *> topLevelItems;
-        // get the first event and save it as top level item
-        Event event = events.first();
-        topLevelItems.append(new EventTreeItem(event));
-
         switch ( sortBy )
         {
             /*
@@ -257,6 +281,11 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
              */
             case CallModel::SortByContact :
             {
+                QList<EventTreeItem *> topLevelItems;
+                // get the first event and save it as top level item
+                Event event = events.first();
+                topLevelItems.append(new EventTreeItem(event));
+
                 QList<CommHistory::Event> newEvents;
                 for (int i = 1; i < events.count(); i++) {
                     Event event = events.at(i);
@@ -276,6 +305,15 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                     if (!found)
                         topLevelItems.append(new EventTreeItem(event));
                 }
+
+                // save top level items into the model
+                q->beginInsertRows( QModelIndex(), 0, topLevelItems.count() - 1);
+                foreach ( EventTreeItem *item, topLevelItems )
+                {
+                    eventRootItem->appendChild( item );
+                }
+                q->endInsertRows();
+
                 break;
             }
             /*
@@ -291,28 +329,64 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
              */
             case CallModel::SortByTime  :
             {
-                // add first item to the top and also to the second level
-                topLevelItems.last()->appendChild(new EventTreeItem(event, topLevelItems.last()));
+                int previousLastRow = eventRootItem->childCount() - 1;
 
-                // loop through the result set
-                for ( int row = 1; row < events.count(); row++ )
-                {
-                    Event event = events.at( row );
-                    // if event is NOT groupable with the last top level one, then create new group
-                    if ( !belongToSameGroup( event, topLevelItems.last()->event() ) )
-                    {
-                        topLevelItems.append( new EventTreeItem( event ) );
+                EventTreeItem *last = 0;
+                if (eventRootItem->childCount())
+                    last = eventRootItem->child(previousLastRow);
+
+                QList<EventTreeItem *> newItems;
+
+                foreach (Event event, events) {
+                    if (!last && eventMatchesFilter(event)) {
+                        // empty list
+                        EventTreeItem *first = new EventTreeItem(event);
+                        first->appendChild(new EventTreeItem(event, first));
+                        first->event().setEventCount(-1);
+                        newItems.append(first);
+                        last = first;
+                        continue;
                     }
-                    // add event to the last group
-                    // this is an existing or a freshly created one with the same event as representative
-                    topLevelItems.last()->appendChild( new EventTreeItem( event, topLevelItems.last() ) );
+
+                    if (last && last->event().eventCount() == -1
+                        && belongToSameGroup(event, last->event())) {
+                        // still filling last row with matching events
+                        last->appendChild(new EventTreeItem(event, last));
+                    } else {
+                        // no match to previous event -> update count
+                        // for last row and add a new row if event is
+                        // acceptable
+                        if (last)
+                            last->event().setEventCount(calculateEventCount(last));
+
+                        if (eventMatchesFilter(event)) {
+                            event.setEventCount(-1);
+                            last = new EventTreeItem(event);
+                            last->appendChild(new EventTreeItem(event, last));
+                            newItems.append(last);
+                        }
+                    }
                 }
 
-                // once the events are grouped,
-                // loop through the top level items and update event counts
-                foreach ( EventTreeItem *item, topLevelItems )
-                {
-                    item->event().setEventCount( calculateEventCount( item ) );
+                // update count for last item in the previous batch
+                if (!newItems.isEmpty()) {
+                    if (previousLastRow != -1)
+                        emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(previousLastRow)),
+                                            q->createIndex(0, CallModel::NumberOfColumns - 1,
+                                                           eventRootItem->child(previousLastRow)));
+
+                    // insert the rest
+                    q->beginInsertRows(QModelIndex(), previousLastRow + 1, previousLastRow + newItems.count());
+                    foreach (EventTreeItem *item, newItems)
+                        eventRootItem->appendChild(item);
+                    q->endInsertRows();
+                }
+
+                if (isReady && eventRootItem->childCount()) {
+                    last = eventRootItem->child(eventRootItem->childCount() - 1);
+                    last->event().setEventCount(calculateEventCount(last));
+                    emit q->dataChanged(q->createIndex(0, 0, last),
+                                        q->createIndex(0, CallModel::NumberOfColumns - 1, last));
                 }
 
                 break;
@@ -321,14 +395,6 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
             default:
                 break;
         }
-
-        // save top level items into the model
-        q->beginInsertRows( QModelIndex(), 0, topLevelItems.count() - 1);
-        foreach ( EventTreeItem *item, topLevelItems )
-        {
-            eventRootItem->appendChild( item );
-        }
-        q->endInsertRows();
     }
 
     return true;
@@ -337,7 +403,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
 void CallModelPrivate::addToModel( Event &event )
 {
     Q_Q(CallModel);
-    qDebug() << __PRETTY_FUNCTION__ << event.id();
+    qDebug() << __PRETTY_FUNCTION__ << event.toString();
 
     if(!isInTreeMode)
     {
@@ -372,26 +438,33 @@ void CallModelPrivate::addToModel( Event &event )
 
             if (matchingRow != -1) {
                 EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
-                // replace with new event
-                int eventCount = matchingItem->event().eventCount();
-                if (eventCount < 0)
-                    eventCount = 0;
-                event.setEventCount(event.isMissedCall() ? eventCount + 1 : 0);
-                matchingItem->setEvent(event);
 
-                // move to top if not there already
-                if (matchingRow != 0) {
-                    emit q->layoutAboutToBeChanged();
-                    eventRootItem->moveChild(matchingRow, 0);
-                    emit q->layoutChanged();
-                } else {
+                if (matchingRow == 0) {
+                    // already at the top, update row
+                    if (matchingItem->event().direction() == event.direction()
+                        && matchingItem->event().isMissedCall() == event.isMissedCall())
+                        event.setEventCount(matchingItem->event().eventCount() + 1);
+                    else
+                        event.setEventCount(1);
+
+                    matchingItem->setEvent(event);
+
                     emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(0)),
                                         q->createIndex(0, CallModel::NumberOfColumns - 1,
                                                        eventRootItem->child(0)));
+                } else {
+                    // update row and move to top
+                    event.setEventCount(1);
+                    matchingItem->setEvent(event);
+
+                    emit q->layoutAboutToBeChanged();
+                    eventRootItem->moveChild(matchingRow, 0);
+                    emit q->layoutChanged();
                 }
             } else {
+                // no match, insert new row at top
                 emit q->beginInsertRows(QModelIndex(), 0, 0);
-                event.setEventCount(0);
+                event.setEventCount(1);
                 eventRootItem->prependChild(new EventTreeItem(event));
                 emit q->endInsertRows();
             }
@@ -400,6 +473,28 @@ void CallModelPrivate::addToModel( Event &event )
         }
         case CallModel::SortByTime :
         {
+            // reset event count if type doesn't match top event
+            if (!eventMatchesFilter(event) && eventRootItem->childCount()) {
+                EventTreeItem *topItem = eventRootItem->child(0);
+                if (remoteAddressMatch(topItem->event().remoteUid(),
+                                       event.remoteUid(), NormalizeFlagKeepDialString)
+                    && topItem->event().localUid() == event.localUid()) {
+                    EventTreeItem *newTopItem = new EventTreeItem(topItem->event());
+                    newTopItem->event().setEventCount(1);
+
+                    eventRootItem->removeAt(0);
+                    eventRootItem->prependChild(newTopItem);
+
+                    emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(0)),
+                                        q->createIndex(0, CallModel::NumberOfColumns - 1,
+                                                       eventRootItem->child(0)));
+                    return;
+                }
+            }
+
+            if (!eventMatchesFilter(event))
+                return;
+
             // if new item is groupable with the first one in the list
             // NOTE: assumption is that time value is ok
             if ( eventRootItem->childCount() && belongToSameGroup( event, eventRootItem->child( 0 )->event() ) )
@@ -704,17 +799,19 @@ bool CallModel::getEvents()
     query.addPattern(QLatin1String("%1 a nmo:Call .")).variable(Event::Id);
 
     if (d->eventType != CallEvent::UnknownCallType) {
-        if (d->eventType == CallEvent::ReceivedCallType) {
-            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
-                                           "%1 nmo:isAnswered \"true\". "))
-                .variable(Event::Id);
-        } else if (d->eventType == CallEvent::MissedCallType) {
-            query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
-                                           "%1 nmo:isAnswered \"false\". "))
-                .variable(Event::Id);
-        } else {
-            query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
-                .variable(Event::Id);
+        if (!d->isInTreeMode) {
+            if (d->eventType == CallEvent::ReceivedCallType) {
+                query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
+                                               "%1 nmo:isAnswered \"true\". "))
+                    .variable(Event::Id);
+            } else if (d->eventType == CallEvent::MissedCallType) {
+                query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
+                                               "%1 nmo:isAnswered \"false\". "))
+                    .variable(Event::Id);
+            } else if (d->eventType == CallEvent::DialedCallType) {
+                query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
+                    .variable(Event::Id);
+            }
         }
 
         if (!d->referenceTime.isNull()) {

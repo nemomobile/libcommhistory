@@ -42,6 +42,8 @@ private slots:
     void testDeleteEvent();
     void testGetEventsTimeTypeFilter_data();
     void testGetEventsTimeTypeFilter();
+    void testSortByContactUpdate();
+    void testSortByTimeUpdate();
     void deleteAllCalls();
     void testMarkAllRead();
     void cleanupTestCase();

@@ -249,8 +249,11 @@ void ContactListener::resolveContact(const QString &localUid,
 {
     qDebug() << Q_FUNC_INFO << localUid << remoteUid;
 
-    m_PendingUnresolvedContacts << qMakePair(localUid, remoteUid);
-    startRequestOrTimer();
+    QPair<QString, QString> unresolved(localUid, remoteUid);
+    if (!m_PendingUnresolvedContacts.contains(unresolved)) {
+        m_PendingUnresolvedContacts << unresolved;
+        startRequestOrTimer();
+    }
 }
 
 void ContactListener::startRequestOrTimer()

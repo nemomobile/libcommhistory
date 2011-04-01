@@ -565,6 +565,125 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     qDebug() << "done";
 }
 
+void CallModelTest::testSortByContactUpdate()
+{
+    deleteAll();
+
+    CallModel model;
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    /*
+     * user1, missed   (2)
+     * (user1, dialed)
+     * user1, missed   (1)
+     */
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when, REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(1), REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(2), REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(3), REMOTEUID1);
+    watcher.waitForSignals(4);
+
+    QVERIFY(model.setFilter(CallModel::SortByContact));
+    QVERIFY(model.getEvents());
+    QVERIFY(watcher.waitForModelReady(5000));
+    QCOMPARE(model.rowCount(), 1);
+
+    Event e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.eventCount(), 2);
+
+    // add received call
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(4), REMOTEUID1);
+    watcher.waitForSignals(1);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 1);
+    QCOMPARE(e1.direction(), Event::Inbound);
+
+    // add call to another contact
+    addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(5), REMOTEUID2);
+    watcher.waitForSignals(1);
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 1);
+    QCOMPARE(e1.direction(), Event::Outbound);
+    QCOMPARE(e1.remoteUid(), REMOTEUID2);
+
+    // missed call to first contact, should reorder
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(6), REMOTEUID1);
+    watcher.waitForSignals(1);
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.eventCount(), 1);
+
+    // another missed call, increase event count
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(7), REMOTEUID1);
+    watcher.waitForSignals(1);
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.eventCount(), 2);
+}
+
+void CallModelTest::testSortByTimeUpdate()
+{
+    deleteAll();
+
+    CallModel model;
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    /*
+     * user1, missed   (2)
+     * (user1, dialed)
+     * user1, missed   (1)
+     */
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when, REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(1), REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(2), REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(3), REMOTEUID1);
+    watcher.waitForSignals(4);
+
+    QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::MissedCallType));
+    QVERIFY(model.getEvents());
+    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(model.rowCount() == 2);
+
+    Event e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.eventCount(), 2);
+
+    Event e2 = model.event(model.index(1, 0));
+    QCOMPARE(e2.remoteUid(), REMOTEUID1);
+    QVERIFY(e2.isMissedCall());
+    QCOMPARE(e2.eventCount(), 1);
+
+    // add received call, count for top item should reset
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(4), REMOTEUID1);
+    watcher.waitForSignals(1);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 1);
+
+    // add missed call, count should remain 1
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(5), REMOTEUID1);
+    watcher.waitForSignals(1);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 1);
+
+    // add another missed call, count should increase
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(6), REMOTEUID1);
+    watcher.waitForSignals(1);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 2);
+}
+
 void CallModelTest::deleteAllCalls()
 {
     CallModel model;

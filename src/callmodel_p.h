@@ -46,6 +46,10 @@ public:
 
     void executeGroupedQuery(const QString &query);
 
+    void modelUpdatedSlot(bool successful);
+
+    bool eventMatchesFilter( const Event &event ) const;
+
     bool acceptsEvent( const Event &event ) const;
 
     int calculateEventCount( EventTreeItem *item );
