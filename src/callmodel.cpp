@@ -77,8 +77,6 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
     propertyMask -= unusedProperties;
     connect(this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SLOT(slotEventsCommitted(const QList<CommHistory::Event>&,bool)));
-    connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
-            this, SLOT(doDeleteCallGroup(QSparqlResult *)));
 }
 
 void CallModelPrivate::executeGroupedQuery(const QString &query)
@@ -580,6 +578,9 @@ void CallModelPrivate::deleteCallGroup( const Event &event )
 
     query.bindValue(QLatin1String("channel"), channelUri);
 
+    connect(partQueryRunner, SIGNAL(resultsReceived(QSparqlResult *)),
+            this, SLOT(doDeleteCallGroup(QSparqlResult *)),
+            Qt::UniqueConnection);
     partQueryRunner->runQuery(query);
     partQueryRunner->startQueue();
 }
