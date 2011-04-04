@@ -913,7 +913,7 @@ void GroupModel::updateGroups(QList<Group> &groups)
 
 bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
 {
-    qDebug() << __FUNCTION__ << groupIds;
+    qDebug() << Q_FUNC_INFO << groupIds;
 
     d->tracker()->transaction();
     if (!d->tracker()->deleteGroups(groupIds, deleteMessages, d->bgThread)) {
@@ -930,7 +930,7 @@ bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
 
 bool GroupModel::deleteAll()
 {
-    qDebug() << __FUNCTION__;
+    qDebug() << Q_FUNC_INFO;
 
     QList<int> ids;
     foreach (Group group, d->groups) {

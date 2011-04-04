@@ -170,8 +170,6 @@ public:
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
-    //void checkAndDeletePendingMmsContent(QThread* backgroundThread);
-
     QSparqlConnection& connection();
     bool checkPendingResult(QSparqlResult *result, bool destroyOnFinished = true);
     // wrapper around addToTransactionOrRunQuery with m_pTransaction
@@ -214,6 +212,9 @@ public Q_SLOTS:
     void mmsTokensReady(CommittingTransaction *transaction,
                         QSparqlResult *result,
                         QVariant arg);
+    void checkAndDeletePendingMmsContent(CommittingTransaction *transaction,
+                                         QSparqlResult *result,
+                                         QVariant arg);
 
 public:
     QThreadStorage<QSparqlConnection*> m_pConnection;
@@ -224,6 +225,7 @@ public:
     QHash<QUrl, QString> m_contactCache;
     MmsContentDeleter *m_MmsContentDeleter;
     QSet<QString> m_mmsTokens;
+    QSet<QString> m_mmsTokensToDelete;
     bool syncOnCommit;
 
     IdSource m_IdSource;

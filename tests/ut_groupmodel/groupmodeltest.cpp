@@ -794,12 +794,14 @@ void GroupModelTest::deleteMmsContent()
         QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QVERIFY(content_dir.exists(mms_token3) == true);
+    QTest::qWait(1000); // folders deleted after transaction, wait a bit
 
     groupsCommitted.clear();
     model.deleteGroups(QList<int>() << group1.id() << group2.id() << group3.id());
     if (groupsCommitted.isEmpty())
         QVERIFY(waitSignal(groupsCommitted, 1000));
     QVERIFY(groupsCommitted.first().at(1).toBool());
+    QTest::qWait(1000); // folders deleted after transaction, wait a bit
 
     QVERIFY(content_dir.exists(mms_token3) == false);
 }
