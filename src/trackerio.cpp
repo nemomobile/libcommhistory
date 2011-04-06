@@ -52,6 +52,8 @@ using namespace CommHistory;
 #define QSPARQL_DRIVER QLatin1String("QTRACKER_DIRECT")
 #define QSPARQL_DATA_READY_INTERVAL 25
 
+#define MAX_VARIABLES_IN_QUERY 100
+
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
@@ -1284,21 +1286,34 @@ bool TrackerIO::getGroup(int id, Group &group)
 
 bool TrackerIOPrivate::deleteMmsContentByGroup(QList<int> groupIds)
 {
-    QStringList groups;
-    foreach (int groupId, groupIds) {
-        groups.append(QString(LAT("<conversation:%1>")).arg(groupId));
+    QListIterator<int> i(groupIds);
+    QList<int> batchGroups;
+
+    // query in batches to avoid "too many variables" error
+    while (i.hasNext()) {
+        while (batchGroups.size() < MAX_VARIABLES_IN_QUERY && i.hasNext())
+            batchGroups << i.next();
+
+        QStringList groups;
+        foreach (int groupId, batchGroups) {
+            groups.append(QString(LAT("<conversation:%1>")).arg(groupId));
+        }
+
+        QSparqlQuery query(QString(LAT(
+                                       "SELECT DISTINCT nmo:messageId(?message) "
+                                       "WHERE {"
+                                       "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?c "
+                                       "FILTER(?c IN (%1))}")).arg(groups.join(LAT(","))));
+
+        if (!handleQuery(query,
+                          this,
+                          "mmsTokensReady",
+                          QVariant::fromValue(batchGroups)))
+            return false;
+        batchGroups.clear();
     }
 
-    QSparqlQuery query(QString(LAT(
-            "SELECT DISTINCT nmo:messageId(?message) "
-            "WHERE {"
-              "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?c "
-              "FILTER(?c IN (%1))}")).arg(groups.join(LAT(","))));
-
-    return handleQuery(query,
-                       this,
-                       "mmsTokensReady",
-                       QVariant::fromValue(groupIds));
+    return true;
 }
 
 bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
@@ -1339,8 +1354,6 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
         return true;
     }
 
-
-
     return handleQuery(query);
 }
 
@@ -1361,17 +1374,15 @@ void TrackerIOPrivate::mmsTokensReady(CommittingTransaction *transaction,
         }
 
         QString messageToken(row.value(0).toString());
-        qDebug() << Q_FUNC_INFO << messageToken;
 
         if (!messageToken.isEmpty()) {
             m_mmsTokens.insert(messageToken);
         }
     }
 
-    if (transaction->d->isEmpty())
-        doDeleteGroups(transaction,
-                       groupIds,
-                       true);
+    doDeleteGroups(transaction,
+                   groupIds,
+                   true);
 }
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
@@ -1381,7 +1392,7 @@ bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroun
 
 bool TrackerIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *backgroundThread)
 {
-    qDebug() << __FUNCTION__ << groupIds << deleteMessages << backgroundThread;
+    qDebug() << Q_FUNC_INFO << groupIds << deleteMessages << backgroundThread;
 
     d->m_bgThread = backgroundThread;
 
@@ -1727,7 +1738,7 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
         QSparqlResultRow row = result->current();
         cleanMms = !row.isEmpty() && row.value(0).toInt() == 0;
     }
-    qDebug() << "Clean all mms?" << cleanMms;
+    qDebug() << "Clean all mms?" << cleanMms << m_mmsTokens.isEmpty();
     if (cleanMms) {
         // explicitly delete "old" mms
         foreach (QString token, m_mmsTokens) {
@@ -1736,25 +1747,34 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
         }
         getMmsDeleter(m_bgThread).cleanMmsPlace();
     } else if (!m_mmsTokens.isEmpty()) {
-        QStringList mmsTokens;
-        m_mmsTokensToDelete.unite(m_mmsTokens);
+        QSetIterator<QString> i(m_mmsTokens);
+        QStringList batchTokens;
 
-        foreach (QString token, m_mmsTokensToDelete) {
-            mmsTokens.append(QString(LAT("\"%1\"")).arg(token));
+        while (i.hasNext()) {
+            while (batchTokens.size() < MAX_VARIABLES_IN_QUERY && i.hasNext())
+                batchTokens << i.next();
+
+            QStringList mmsTokens;
+
+            foreach (QString token, batchTokens) {
+                mmsTokens.append(QString(LAT("\"%1\"")).arg(token));
+            }
+
+            QSparqlQuery query(QString(LAT(
+                                           "SELECT DISTINCT ?token "
+                                           "WHERE {"
+                                           "?message rdf:type nmo:MMSMessage; nmo:messageId ?token "
+                                           "FILTER(?token IN (%1))}")).arg(mmsTokens.join(LAT(","))));
+
+            //qDebug() << Q_FUNC_INFO << query.query();
+
+            addToTransactionOrRunQuery(transaction,
+                                       query,
+                                       this,
+                                       "checkAndDeletePendingMmsContent",
+                                       QVariant::fromValue(batchTokens));
+            batchTokens.clear();
         }
-
-        qDebug() << Q_FUNC_INFO << "Check refs TO " << mmsTokens;
-
-        QSparqlQuery query(QString(LAT(
-                "SELECT DISTINCT ?token "
-                "WHERE {"
-                  "?message rdf:type nmo:MMSMessage; nmo:messageId ?token "
-                  "FILTER(?token IN (%1))}")).arg(mmsTokens.join(LAT(","))));
-
-        addToTransactionOrRunQuery(transaction,
-                                   query,
-                                   this,
-                                   "checkAndDeletePendingMmsContent");
     }
     m_mmsTokens.clear();
 }
@@ -1764,8 +1784,10 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *tr
                                                        QVariant arg)
 {
     Q_UNUSED(transaction);
-    Q_UNUSED(arg);
+
     qDebug() << Q_FUNC_INFO << (result?result->size():-1);
+
+    QStringList mmsTokens = arg.value<QStringList>();
     while (result->next()) {
         QSparqlResultRow row = result->current();
 
@@ -1779,17 +1801,16 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *tr
 
         if (!messageToken.isEmpty()) {
             qDebug() << Q_FUNC_INFO << "DONT DELETE " << messageToken;
-            m_mmsTokensToDelete.remove(messageToken);
+            mmsTokens.removeOne(messageToken);
         }
     }
 
-    qDebug() << "FINALLY DELETE" << m_mmsTokensToDelete;
+    qDebug() << "FINALLY DELETE" << mmsTokens;
 
-    foreach (QString token, m_mmsTokensToDelete) {
+    foreach (QString token, mmsTokens) {
         qDebug() << "[DELETER] Message: " << token;
         getMmsDeleter(m_bgThread).deleteMessage(token);
     }
-    m_mmsTokensToDelete.clear();
 }
 
 QSparqlConnection& TrackerIOPrivate::connection()

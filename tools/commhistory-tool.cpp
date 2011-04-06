@@ -23,6 +23,7 @@
 #include <iostream>
 #include <QtCore>
 #include <QDebug>
+#include <QUuid>
 
 #include "../src/groupmodel.h"
 #include "../src/conversationmodel.h"
@@ -239,6 +240,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
             e.setType(Event::MMSEvent);
             e.setLocalUid(MMS_ACCOUNT);
             e.setSubject(mmsSubject[qrand() % numMmsSubjects]);
+            e.setMessageToken(QUuid::createUuid().toString());
 
             if(e.direction() == Event::Outbound || qrand() % 2 == 0)
             {
@@ -287,6 +289,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         {
             e.setType(Event::SMSEvent);
             e.setLocalUid(RING_ACCOUNT);
+            e.setMessageToken(QUuid::createUuid().toString());
         }
         else
         {

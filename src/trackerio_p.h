@@ -225,7 +225,6 @@ public:
     QHash<QUrl, QString> m_contactCache;
     MmsContentDeleter *m_MmsContentDeleter;
     QSet<QString> m_mmsTokens;
-    QSet<QString> m_mmsTokensToDelete;
     bool syncOnCommit;
 
     IdSource m_IdSource;
