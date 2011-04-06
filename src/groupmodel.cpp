@@ -862,8 +862,10 @@ bool GroupModel::getGroups(const QString &localUid,
     d->filterLocalUid = localUid;
     d->filterRemoteUid = remoteUid;
 
-    reset();
-    d->groups.clear();
+    if (!d->groups.isEmpty()) {
+        reset();
+        d->groups.clear();
+    }
 
     QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(localUid, remoteUid));
     d->executeQuery(query.preparedQueryText());
