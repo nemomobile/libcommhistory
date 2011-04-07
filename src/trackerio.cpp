@@ -1284,7 +1284,7 @@ bool TrackerIO::getGroup(int id, Group &group)
     return true;
 }
 
-bool TrackerIOPrivate::deleteMmsContentByGroup(QList<int> groupIds)
+bool TrackerIOPrivate::queryMmsTokensForGroups(QList<int> groupIds)
 {
     QListIterator<int> i(groupIds);
     QList<int> batchGroups;
@@ -1348,7 +1348,7 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
         connect(transaction,
                 SIGNAL(finished()),
                 this,
-                SLOT(requestCountMmsEvents()),
+                SLOT(requestMmsEventsCount()),
                 Qt::UniqueConnection);
     }
 
@@ -1400,7 +1400,7 @@ bool TrackerIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *
     d->m_bgThread = backgroundThread;
 
     if (deleteMessages)
-        return d->deleteMmsContentByGroup(groupIds);
+        return d->queryMmsTokensForGroups(groupIds);
 
     return d->doDeleteGroups(d->m_pTransaction, groupIds, deleteMessages);
 }
@@ -1717,7 +1717,7 @@ bool TrackerIOPrivate::isLastMmsEvent(const QString &messageToken)
     return (total == 1);
 }
 
-void TrackerIOPrivate::requestCountMmsEvents()
+void TrackerIOPrivate::requestMmsEventsCount()
 {
     qDebug() << Q_FUNC_INFO;
     QSparqlQuery query(LAT(
@@ -1726,12 +1726,12 @@ void TrackerIOPrivate::requestCountMmsEvents()
 
     handleQuery(QSparqlQuery(query),
                 this,
-                "doCleanMmsGarbage");
+                "mmsCountReady");
 }
 
-void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
-                                         QSparqlResult *result,
-                                         QVariant arg)
+void TrackerIOPrivate::mmsCountReady(CommittingTransaction *transaction,
+                                     QSparqlResult *result,
+                                     QVariant arg)
 {
     Q_UNUSED(arg);
 
@@ -1743,7 +1743,8 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
     }
 
     if (cleanMms) {
-        // explicitly delete "old" mms
+        // no mms in tracker, delete all mms content
+        // explicitly delete "old" mms bypassing folder time check in cleanMmsPlace()
         foreach (QString token, m_mmsTokens) {
             getMmsDeleter(m_bgThread).deleteMessage(token);
         }
@@ -1772,7 +1773,7 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
             addToTransactionOrRunQuery(transaction,
                                        query,
                                        this,
-                                       "checkAndDeletePendingMmsContent",
+                                       "deleteMmsContent",
                                        QVariant::fromValue(batchTokens));
             batchTokens.clear();
         }
@@ -1780,9 +1781,9 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
     m_mmsTokens.clear();
 }
 
-void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *transaction,
-                                                       QSparqlResult *result,
-                                                       QVariant arg)
+void TrackerIOPrivate::deleteMmsContent(CommittingTransaction *transaction,
+                                        QSparqlResult *result,
+                                        QVariant arg)
 {
     Q_UNUSED(transaction);
 

@@ -165,8 +165,6 @@ public:
                                           int parentId,
                                           const QDateTime& lastModTime);
 
-    QSparqlResult* getMmsListForDeletingByGroup(int groupId);
-    bool deleteMmsContentByGroup(int group);
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
@@ -186,7 +184,7 @@ public:
                                     QVariant argument = QVariant());
 
     bool runBlockedQuery(QSparqlResult *result);
-    bool deleteMmsContentByGroup(QList<int> groupIds);
+    bool queryMmsTokensForGroups(QList<int> groupIds);
     bool doDeleteGroups(CommittingTransaction *transaction,
                         QList<int> groupIds,
                         bool deleteMessages);
@@ -205,16 +203,16 @@ public Q_SLOTS:
                                QVariant arg);
     void syncTracker();
 
-    void requestCountMmsEvents();
-    void doCleanMmsGarbage(CommittingTransaction *transaction,
-                           QSparqlResult *result,
-                           QVariant arg);
+    void requestMmsEventsCount();
+    void mmsCountReady(CommittingTransaction *transaction,
+                       QSparqlResult *result,
+                       QVariant arg);
     void mmsTokensReady(CommittingTransaction *transaction,
                         QSparqlResult *result,
                         QVariant arg);
-    void checkAndDeletePendingMmsContent(CommittingTransaction *transaction,
-                                         QSparqlResult *result,
-                                         QVariant arg);
+    void deleteMmsContent(CommittingTransaction *transaction,
+                          QSparqlResult *result,
+                          QVariant arg);
 
 public:
     QThreadStorage<QSparqlConnection*> m_pConnection;
