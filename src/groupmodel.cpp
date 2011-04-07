@@ -436,10 +436,9 @@ void GroupModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
             indexes.append(i);
         }
     }
+
     // ensure order
-    qDebug() << "SORT";
     qSort(indexes.begin(), indexes.end());
-    qDebug() << "remove";
     // delete from end
     QList<int>::iterator i = indexes.end();
     while (i != indexes.begin()) {
@@ -448,13 +447,12 @@ void GroupModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
         while (i != indexes.begin() && *i == (*(i - 1) + 1))
             --i;
         int start = *i;
-        qDebug() << "Remove" << start << end;
+
         q->beginRemoveRows(QModelIndex(), start, end);
         for (int j = end; j >= start; --j)
             groups.removeAt(j);
         q->endRemoveRows();
     }
-    qDebug() << "done";
 }
 
 void GroupModelPrivate::canFetchMoreChangedSlot(bool canFetch)

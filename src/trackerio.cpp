@@ -1343,7 +1343,7 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
 
 
     QSparqlQuery query(update.query(), QSparqlQuery::DeleteStatement);
-    qDebug() << Q_FUNC_INFO << transaction;
+
     if (transaction) {
         connect(transaction,
                 SIGNAL(finished()),
@@ -1353,7 +1353,6 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
     }
 
     if (transaction) {
-        qDebug() << Q_FUNC_INFO << "add query";
         transaction->d->addQuery(query);
         return true;
     }
@@ -1742,14 +1741,14 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
         QSparqlResultRow row = result->current();
         cleanMms = !row.isEmpty() && row.value(0).toInt() == 0;
     }
-    qDebug() << "Clean all mms?" << cleanMms << m_mmsTokens.isEmpty();
+
     if (cleanMms) {
         // explicitly delete "old" mms
         foreach (QString token, m_mmsTokens) {
-            qDebug() << "[DELETER] Message: " << token;
             getMmsDeleter(m_bgThread).deleteMessage(token);
         }
         getMmsDeleter(m_bgThread).cleanMmsPlace();
+
     } else if (!m_mmsTokens.isEmpty()) {
         QSetIterator<QString> i(m_mmsTokens);
         QStringList batchTokens;
@@ -1770,8 +1769,6 @@ void TrackerIOPrivate::doCleanMmsGarbage(CommittingTransaction *transaction,
                                            "?message rdf:type nmo:MMSMessage; nmo:messageId ?token "
                                            "FILTER(?token IN (%1))}")).arg(mmsTokens.join(LAT(","))));
 
-            //qDebug() << Q_FUNC_INFO << query.query();
-
             addToTransactionOrRunQuery(transaction,
                                        query,
                                        this,
@@ -1789,8 +1786,6 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *tr
 {
     Q_UNUSED(transaction);
 
-    qDebug() << Q_FUNC_INFO << (result?result->size():-1);
-
     QStringList mmsTokens = arg.value<QStringList>();
     while (result->next()) {
         QSparqlResultRow row = result->current();
@@ -1801,7 +1796,6 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *tr
         }
 
         QString messageToken(row.value(0).toString());
-        qDebug() << Q_FUNC_INFO << messageToken;
 
         if (!messageToken.isEmpty()) {
             qDebug() << Q_FUNC_INFO << "DONT DELETE " << messageToken;
@@ -1809,10 +1803,7 @@ void TrackerIOPrivate::checkAndDeletePendingMmsContent(CommittingTransaction *tr
         }
     }
 
-    qDebug() << "FINALLY DELETE" << mmsTokens;
-
     foreach (QString token, mmsTokens) {
-        qDebug() << "[DELETER] Message: " << token;
         getMmsDeleter(m_bgThread).deleteMessage(token);
     }
 }

@@ -374,7 +374,6 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 void QueryResult::parseContacts(const QString &result, const QString &imNickname,
                                 QList<Event::Contact> &contacts)
 {
-    qDebug() << Q_FUNC_INFO << imNickname;
     QStringList contactStringList = result.split('\x1e', QString::SkipEmptyParts);
     if (contactStringList.isEmpty() && imNickname != QString()) {
         Event::Contact contact(0, imNickname);
