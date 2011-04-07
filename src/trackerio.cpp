@@ -196,6 +196,64 @@ QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
     return contact;
 }
 
+void TrackerIOPrivate::ensureIMAddress(UpdateQuery &query,
+                                       const QUrl &imAddressURI,
+                                       const QString &imID)
+{
+    query.insertionRaw(imAddressURI, "rdf:type", LAT("nco:IMAddress"));
+    query.insertion(imAddressURI, "nco:imID", imID);
+}
+
+void TrackerIOPrivate::ensurePhoneNumber(UpdateQuery &query,
+                                         const QString &phoneNumber,
+                                         const QString &shortNumber)
+{
+    QString phoneNumberInsert =
+        QString(LAT("INSERT { _:_ a nco:PhoneNumber ; "
+                    "nco:phoneNumber \"%1\" ; "
+                    "maemo:localPhoneNumber \"%2\" . } "
+                    "WHERE { "
+                    "OPTIONAL { ?number nco:phoneNumber \"%1\" } "
+                    "FILTER(!BOUND(?number)) "
+                    "}"))
+        .arg(phoneNumber)
+        .arg(shortNumber);
+
+    query.appendInsertion(phoneNumberInsert);
+}
+
+void TrackerIOPrivate::addSIPContact(UpdateQuery &query,
+                                     const QUrl &subject,
+                                     const char *predicate,
+                                     const QString &accountPath,
+                                     const QString &remoteUid,
+                                     const QString &phoneNumber)
+{
+    // in SIP cases, save both the raw remoteUid
+    // ("sip:01234567@voip.com") and the extracted phone number
+    // (01234567) to the dummy contact for contact resolving.
+
+    QUrl sipAddressURI = uriForIMAddress(accountPath, remoteUid);
+
+    if (!m_contactCache.contains(sipAddressURI)) {
+        ensureIMAddress(query, sipAddressURI, remoteUid);
+        QString shortNumber = makeShortNumber(phoneNumber);
+        ensurePhoneNumber(query, phoneNumber, shortNumber);
+    }
+
+    QString contactInsert =
+        QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; "
+                    "nco:hasIMAddress <%3> ; "
+                    "nco:hasPhoneNumber ?number ] } "
+                    "WHERE { ?number nco:phoneNumber \"%4\" }"))
+        .arg(subject.toString())
+        .arg(predicate)
+        .arg(sipAddressURI.toString())
+        .arg(phoneNumber);
+
+    query.appendInsertion(contactInsert);
+}
+
 void TrackerIOPrivate::addIMContact(UpdateQuery &query,
                                     const QUrl &subject,
                                     const char *predicate,
@@ -208,12 +266,7 @@ void TrackerIOPrivate::addIMContact(UpdateQuery &query,
     if (m_contactCache.contains(imAddressURI)) {
         contact = m_contactCache[imAddressURI];
     } else {
-        query.insertionRaw(imAddressURI,
-                           "rdf:type",
-                           LAT("nco:IMAddress"));
-        query.insertion(imAddressURI,
-                        "nco:imID",
-                        imID);
+        ensureIMAddress(query, imAddressURI, imID);
 
         contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
             .arg(imAddressURI.toString());
@@ -229,22 +282,9 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
                                        const QString &phoneNumber,
                                        PhoneNumberNormalizeFlags normalizeFlags)
 {
-    Q_UNUSED(normalizeFlags);
-
     if (!m_contactCache.contains(phoneNumber)) {
         QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
-        QString phoneNumberInsert =
-            QString(LAT("INSERT { _:_ a nco:PhoneNumber ; "
-                        "nco:phoneNumber \"%1\" ; "
-                        "maemo:localPhoneNumber \"%2\" . } "
-                        "WHERE { "
-                        "OPTIONAL { ?number nco:phoneNumber \"%1\" } "
-                        "FILTER(!BOUND(?number)) "
-                        "}"))
-            .arg(phoneNumber)
-            .arg(shortNumber);
-
-        query.appendInsertion(phoneNumberInsert);
+        ensurePhoneNumber(query, phoneNumber, shortNumber);
     }
 
     QString contactInsert =
@@ -264,7 +304,19 @@ void TrackerIOPrivate::addRemoteContact(UpdateQuery &query,
                                         const QString &remoteUid,
                                         PhoneNumberNormalizeFlags normalizeFlags)
 {
-    QString phoneNumber = normalizePhoneNumber(remoteUid, normalizeFlags);
+    QRegExp sipRegExp("^sips?:(.*)@");
+
+    QString phoneNumber;
+    if (sipRegExp.indexIn(remoteUid) != -1) {
+        phoneNumber = normalizePhoneNumber(sipRegExp.cap(1));
+        if (!phoneNumber.isEmpty()) {
+            return addSIPContact(query, subject, predicate, localUid, remoteUid, sipRegExp.cap(1));
+        } else {
+            return addIMContact(query, subject, predicate, localUid, remoteUid);
+        }
+    }
+
+    phoneNumber = normalizePhoneNumber(remoteUid, normalizeFlags);
     if (phoneNumber.isEmpty()) {
         return addIMContact(query, subject, predicate, localUid, remoteUid);
     } else {

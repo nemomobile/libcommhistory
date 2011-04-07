@@ -52,6 +52,24 @@ Event::EventStatus nmoStatusToEventStatus(const QString &status)
 
     return Event::UnknownStatus;
 }
+
+// parse concatted & coalesced sip/tel/IM remote id column
+QString parseRemoteUid(const QString &remoteUid)
+{
+    QString result;
+
+    QStringList uids = remoteUid.split('\x1e', QString::SkipEmptyParts);
+    foreach (QString id, uids) {
+        if (id.startsWith(LAT("sip:")) || id.startsWith(LAT("sips:")))
+            return id;
+    }
+
+    if (!uids.isEmpty())
+        result = uids.first().section(IM_ADDRESS_SEPARATOR, -1);
+
+    return result;
+}
+
 }
 
 void QueryResult::fillEventFromModel(Event &event)
@@ -202,18 +220,10 @@ void QueryResult::fillEventFromModel(Event &event)
 
         if (eventToFill.direction() == Event::Outbound) {
             eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
-            if (toId.startsWith(LAT("tel:"))) {
-                eventToFill.setRemoteUid(toId.section(QLatin1Char(':'), 1));
-            } else {
-                eventToFill.setRemoteUid(toId.section(IM_ADDRESS_SEPARATOR, -1));
-            }
+            eventToFill.setRemoteUid(parseRemoteUid(toId));
         } else {
             eventToFill.setLocalUid(toId.mid(TELEPATHY_URI_PREFIX_LEN));
-            if (fromId.startsWith(LAT("tel:"))) {
-                eventToFill.setRemoteUid(fromId.section(QLatin1Char(':'), 1));
-            } else {
-                eventToFill.setRemoteUid(fromId.section(IM_ADDRESS_SEPARATOR, -1));
-            }
+            eventToFill.setRemoteUid(parseRemoteUid(fromId));
         }
     }
 
@@ -340,19 +350,11 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     if (result->value(CallGroupColumnIsSent).toBool()) {
         eventToFill.setDirection(Event::Outbound);
         eventToFill.setLocalUid(fromId.mid(TELEPATHY_URI_PREFIX_LEN));
-        if (toId.startsWith(LAT("tel:"))) {
-            eventToFill.setRemoteUid(toId.section(QLatin1Char(':'), 1));
-        } else {
-            eventToFill.setRemoteUid(toId.section(IM_ADDRESS_SEPARATOR, -1));
-        }
+        eventToFill.setRemoteUid(parseRemoteUid(toId));
     } else {
         eventToFill.setDirection(Event::Inbound);
         eventToFill.setLocalUid(toId.mid(TELEPATHY_URI_PREFIX_LEN));
-        if (fromId.startsWith(LAT("tel:"))) {
-            eventToFill.setRemoteUid(fromId.section(QLatin1Char(':'), 1));
-        } else {
-            eventToFill.setRemoteUid(fromId.section(IM_ADDRESS_SEPARATOR, -1));
-        }
+        eventToFill.setRemoteUid(parseRemoteUid(fromId));
     }
 
     eventToFill.setIsMissedCall(!(result->value(CallGroupColumnIsAnswered).toBool()));
@@ -391,7 +393,8 @@ void QueryResult::parseContacts(const QString &result, const QString &imNickname
         Event::Contact contact;
         contact.first = contactInfo[0].toInt();
         contact.second = buildContactName(firstName, lastName, imNickname);
-        contacts << contact;
+        if (!contacts.contains(contact))
+            contacts << contact;
     }
 }
 

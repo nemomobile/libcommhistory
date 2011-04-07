@@ -37,6 +37,10 @@ LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number,
 {
     QString result(number);
 
+    QRegExp sipRegExp("^sips?:(.*)@");
+    if (sipRegExp.indexIn(number) != -1)
+        result = sipRegExp.cap(1);
+
     // artistic reinterpretation of Fremantle code...
 
     if (flags & NormalizeFlagRemovePunctuation) {

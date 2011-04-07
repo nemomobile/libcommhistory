@@ -11,8 +11,14 @@ SELECT
  nmo:isRead(?message)
  nmo:isEmergency(?message)
  nie:contentSize(?message)
- tracker:coalesce(nco:imID(?fromMedium), nco:phoneNumber(?fromMedium), ?fromMedium)
- tracker:coalesce(nco:imID(?toMedium), nco:phoneNumber(?toMedium), ?toMedium)
+ (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
+  WHERE {
+    ?from nco:hasContactMedium ?medium .
+  })
+ (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
+  WHERE {
+    ?to nco:hasContactMedium ?medium .
+  })
  nmo:communicationChannel(?message)
  nie:generator(?message)
  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), "\u001f"), "\u001e")
@@ -28,17 +34,13 @@ SELECT
  (SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })
 WHERE
 {
-  SELECT ?message ?startTime ?endTime
-    ?fromMedium
-    ?toMedium
+  SELECT ?message ?startTime ?endTime ?from ?to
     IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target
   WHERE {
     ?message nmo:from ?from ;
       nmo:to ?to ;
       nmo:receivedDate ?endTime ;
       nmo:sentDate ?startTime .
-    ?from nco:hasContactMedium ?fromMedium .
-    ?to nco:hasContactMedium ?toMedium .
     ?message a nmo:Call .
   }
 } ORDER BY DESC(?endTime) DESC(tracker:id(?message))

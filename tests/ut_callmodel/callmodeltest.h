@@ -44,6 +44,7 @@ private slots:
     void testGetEventsTimeTypeFilter();
     void testSortByContactUpdate();
     void testSortByTimeUpdate();
+    void testSIPAddress();
     void deleteAllCalls();
     void testMarkAllRead();
     void cleanupTestCase();

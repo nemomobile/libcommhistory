@@ -4,13 +4,13 @@ SELECT ?channel
   ?lastCall
   ?lastDate
   nmo:receivedDate(?lastCall)
-  (SELECT tracker:coalesce(nco:imID(?from), nco:phoneNumber(?from), ?from)
+  (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
    WHERE {
-     ?lastCall nmo:from [ nco:hasContactMedium ?from ] .
+     ?lastCall nmo:from [ nco:hasContactMedium ?medium ] .
    })
-  (SELECT tracker:coalesce(nco:imID(?to), nco:phoneNumber(?to), ?to)
+  (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
    WHERE {
-     ?lastCall nmo:to [ nco:hasContactMedium ?to ] .
+     ?lastCall nmo:to [ nco:hasContactMedium ?medium ] .
    })
   nmo:isSent(?lastCall)
   nmo:isAnswered(?lastCall)

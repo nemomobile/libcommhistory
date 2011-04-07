@@ -11,8 +11,14 @@ SELECT
  nmo:isEmergency(?message)
  nmo:deliveryStatus(?message)
  nie:contentSize(?message)
- tracker:coalesce(nco:imID(?fromMedium),nco:phoneNumber(?fromMedium),?fromMedium)
- tracker:coalesce(nco:imID(?toMedium),nco:phoneNumber(?toMedium),?toMedium)
+ (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
+  WHERE {
+    ?from nco:hasContactMedium ?medium .
+  })
+ (SELECT GROUP_CONCAT(tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), "\u001e")
+  WHERE {
+    ?to nco:hasContactMedium ?medium .
+  })
  nmo:messageSubject(?message)
  nie:plainTextContent(?message)
  nmo:communicationChannel(?message)
@@ -44,17 +50,13 @@ SELECT
  (SELECT ?mmsTo {?message nmo:messageHeader [nmo:headerName "x-mms-to"; nmo:headerValue ?mmsTo]})
 WHERE
 {
-  SELECT ?message ?startTime ?endTime
-    ?fromMedium
-    ?toMedium
+  SELECT ?message ?startTime ?endTime ?from ?to
     IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target
   WHERE {
     ?message nmo:from ?from ;
       nmo:to ?to ;
       nmo:receivedDate ?endTime ;
       nmo:sentDate ?startTime .
-    ?from nco:hasContactMedium ?fromMedium .
-    ?to nco:hasContactMedium ?toMedium .
     ?message nmo:isDraft "false";
       nmo:isDeleted "false" .
     ?message nmo:communicationChannel <conversation:1> .

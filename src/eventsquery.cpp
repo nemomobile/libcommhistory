@@ -111,9 +111,9 @@ QLatin1String ontologyProperty(Event::Property p)
     // the properties are always requested togeather,
     // NOTE: the mapping should be same in queryresult.cpp !!!
     case Event::LocalUid:
-        return QLatin1String("?fromMedium");
+        return QLatin1String("?from");
     case Event::RemoteUid:
-        return QLatin1String("?toMedium");
+        return QLatin1String("?to");
     case Event::ParentId:
         return QLatin1String("nmo:phoneMessageId");
     case Event::Subject:
@@ -206,13 +206,11 @@ QString functionForProperty(Event::Property p)
         break;
     case Event::LocalUid:
     case Event::RemoteUid:
-        func << QLatin1String("tracker:coalesce(nco:imID(")
+        func << QLatin1String("(SELECT GROUP_CONCAT(")
+             << QLatin1String("tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), \"\\u001e\") ")
+             << QLatin1String("WHERE { ")
              << ontologyProperty(p)
-             << QLatin1String("),nco:phoneNumber(")
-             << ontologyProperty(p)
-             << QLatin1String("),")
-             << ontologyProperty(p)
-             << QLatin1String(")");
+             << QLatin1String(" nco:hasContactMedium ?medium . })");
         break;
     case Event::ContactId:
         // join all contact matches
@@ -525,13 +523,11 @@ QString EventsQuery::query() const
 
     /* handle a few properties separately for query purposes -
      */
-    query << QLatin1String("SELECT ?message ?fromMedium ?toMedium ")
+    query << QLatin1String("SELECT ?message ?from ?to ")
           << QLatin1String("IF (nmo:isSent(?message) = true, ?to, ?from) AS ?target ")
           << subselectProjections.join(" ")
           << QLatin1String("WHERE {"
-                           "?message nmo:from ?from ; nmo:to ?to . "
-                           "?from nco:hasContactMedium ?fromMedium . "
-                           "?to nco:hasContactMedium ?toMedium . ");
+                           "?message nmo:from ?from ; nmo:to ?to . ");
 
     query << d->parts[EventsQueryPrivate::Patterns].patterns;
     query << QLatin1String("} }");

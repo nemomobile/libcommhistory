@@ -102,9 +102,29 @@ public:
                              const QString &accountPath);
 
     /*!
+     * Update the query to ensure the existence of the nco:IMAddress resource in tracker.
+     */
+    void ensureIMAddress(UpdateQuery &query,
+                         const QUrl &imAddressURI,
+                         const QString &imID);
+
+    /*!
+     * Update the query to ensure the existence of the phone number resource in tracker.
+     */
+    void ensurePhoneNumber(UpdateQuery &query,
+                           const QString &phoneNumber,
+                           const QString &shortNumber);
+    /*!
      * Modify the query to take care of adding a suitable anon blank contact for
      * the specified property and make sure that the IMAddress or phone number exists.
      */
+    void addSIPContact(UpdateQuery &query,
+                       const QUrl &subject,
+                       const char *predicate,
+                       const QString &accountPath,
+                       const QString &remoteUid,
+                       const QString &phoneNumber);
+
     void addIMContact(UpdateQuery &query,
                       const QUrl &subject,
                       const char *predicate,

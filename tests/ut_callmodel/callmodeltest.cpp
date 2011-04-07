@@ -684,6 +684,87 @@ void CallModelTest::testSortByTimeUpdate()
     QCOMPARE(e1.eventCount(), 2);
 }
 
+void CallModelTest::testSIPAddress()
+{
+    deleteAll();
+
+    CallModel model;
+    model.setQueryMode(EventModel::SyncQuery);
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    QString account("/org/freedesktop/Telepathy/Account/ring/tel/ring");
+    QString contactName("Donkey Kong");
+    QString phoneNumber("012345678");
+    QString sipAddress("sip:012345678@voip.com");
+
+    QString contactName2("Mario");
+    QString sipAddress2("sip:mario@voip.com");
+
+    QDateTime when = QDateTime::currentDateTime();
+    int contactId = addTestContact(contactName, phoneNumber, account);
+    QVERIFY(contactId != -1);
+    int contactId2 = addTestContact(contactName2, sipAddress2, account);
+    QVERIFY(contactId2 != -1);
+
+    // normal phone call
+    addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when, phoneNumber);
+    watcher.waitForSignals();
+    QCOMPARE(model.rowCount(), 1);
+    Event e = model.event(model.index(0, 0));
+    QCOMPARE(e.remoteUid(), phoneNumber);
+
+    // SIP call to same number, should group with first event
+    addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when.addSecs(5), sipAddress);
+    watcher.waitForSignals();
+    QCOMPARE(model.rowCount(), 1);
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.remoteUid(), sipAddress);
+
+    // SIP call to non-numeric address
+    addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when.addSecs(10), sipAddress2);
+    watcher.waitForSignals();
+    QCOMPARE(model.rowCount(), 2);
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.remoteUid(), sipAddress2);
+
+    // check contact resolving for call groups
+    QVERIFY(model.setFilter(CallModel::SortByContact));
+    QVERIFY(model.getEvents());
+    QCOMPARE(model.rowCount(), 2);
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.remoteUid(), sipAddress2);
+    QVERIFY(!e.contacts().isEmpty());
+    QCOMPARE(e.contacts().first().first, contactId2);
+    QCOMPARE(e.contacts().first().second, contactName2);
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.remoteUid(), sipAddress);
+    QVERIFY(!e.contacts().isEmpty());
+    QCOMPARE(e.contacts().first().first, contactId);
+    QCOMPARE(e.contacts().first().second, contactName);
+
+    // check contact resolving when sorting by time
+    QVERIFY(model.setFilter(CallModel::SortByTime));
+    QVERIFY(model.getEvents());
+    QCOMPARE(model.rowCount(), 2);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.remoteUid(), sipAddress2);
+    QVERIFY(!e.contacts().isEmpty());
+    QCOMPARE(e.contacts().first().first, contactId2);
+    QCOMPARE(e.contacts().first().second, contactName2);
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.remoteUid(), sipAddress);
+    QVERIFY(!e.contacts().isEmpty());
+    QCOMPARE(e.contacts().first().first, contactId);
+    QCOMPARE(e.contacts().first().second, contactName);
+
+    deleteTestContact(contactId);
+    deleteTestContact(contactId2);
+}
+
 void CallModelTest::deleteAllCalls()
 {
     CallModel model;
