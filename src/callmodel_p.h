@@ -83,7 +83,7 @@ public:
                                QString &contactName);
 
 public Q_SLOTS:
-    void slotEventsCommitted(const QList<CommHistory::Event> &events, bool success);
+    void slotAllCallsDeleted(int unused);
     void doDeleteCallGroup(QSparqlResult *result);
 
 public:

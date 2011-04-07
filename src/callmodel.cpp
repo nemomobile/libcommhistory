@@ -75,8 +75,6 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
 {
     contactChangesEnabled = true;
     propertyMask -= unusedProperties;
-    connect(this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
-            this, SLOT(slotEventsCommitted(const QList<CommHistory::Event>&,bool)));
 }
 
 void CallModelPrivate::executeGroupedQuery(const QString &query)
@@ -713,18 +711,16 @@ void CallModelPrivate::doDeleteCallGroup(QSparqlResult *result)
     result->deleteLater();
 }
 
-void CallModelPrivate::slotEventsCommitted(const QList<CommHistory::Event> &events, bool success)
+void CallModelPrivate::slotAllCallsDeleted(int unused)
 {
-    Q_UNUSED(events);
+    Q_UNUSED(unused);
     Q_Q(CallModel);
 
-    // Empty events list means all events have been deleted (with deleteAll)
-    if (success && events.isEmpty()) {
-        qWarning() << __PRETTY_FUNCTION__ << "clearing model";
-        q->beginResetModel();
-        clearEvents();
-        q->endResetModel();
-    }
+    qWarning() << __PRETTY_FUNCTION__ << "clearing model";
+
+    q->beginResetModel();
+    clearEvents();
+    q->endResetModel();
 }
 
 /* ************************************************************************** *
@@ -853,7 +849,9 @@ bool CallModel::deleteAll()
         return false;
     }
 
-    d->commitTransaction(QList<Event>());
+    CommittingTransaction *t = d->commitTransaction(QList<Event>());
+    if (t != 0)
+        t->addSignal(false, this, "slotAllCallsDeleted", Q_ARG(int, -1));
 
     return true;
 }
@@ -949,6 +947,11 @@ bool CallModel::deleteEvent( int id )
 bool CallModel::deleteEvent( Event &event )
 {
     return deleteEvent( event.id() );
+}
+
+void CallModel::slotAllCallsDeleted(int unused) {
+    Q_D(CallModel);
+    d->slotAllCallsDeleted(unused);
 }
 
 }
