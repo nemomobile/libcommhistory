@@ -1296,14 +1296,14 @@ bool TrackerIOPrivate::deleteMmsContentByGroup(QList<int> groupIds)
 
         QStringList groups;
         foreach (int groupId, batchGroups) {
-            groups.append(QString(LAT("<conversation:%1>")).arg(groupId));
+            groups.append(QString(LAT("<%1>")).arg(Group::idToUrl(groupId).toString()));
         }
 
         QSparqlQuery query(QString(LAT(
                                        "SELECT DISTINCT nmo:messageId(?message) "
                                        "WHERE {"
-                                       "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?c "
-                                       "FILTER(?c IN (%1))}")).arg(groups.join(LAT(","))));
+                                       "?message rdf:type nmo:MMSMessage; nmo:communicationChannel ?channel "
+                                       "FILTER(?channel IN (%1))}")).arg(groups.join(LAT(","))));
 
         if (!handleQuery(query,
                           this,
@@ -1323,20 +1323,24 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
     qDebug() << Q_FUNC_INFO << groupIds << deleteMessages;
 
     UpdateQuery update;
+    QStringList groups;
     foreach (int groupId, groupIds) {
-        QUrl group = Group::idToUrl(groupId);
-
-        if (deleteMessages) {
-            update.deletion(QString(LAT("DELETE {?msg rdf:type rdfs:Resource}"
-                                        "WHERE {?msg rdf:type nmo:Message; "
-                                               "nmo:communicationChannel <%1>}"))
-                            .arg(group.toString()));
-        }
-        // delete conversation
-        update.deletion(group,
-                        "rdf:type",
-                        LAT("rdfs:Resource"));
+        groups.append(QString(LAT("<%1>")).arg(Group::idToUrl(groupId).toString()));
     }
+
+    if (deleteMessages) {
+        update.deletion(QString(LAT("DELETE {?msg rdf:type rdfs:Resource}"
+                                    "WHERE {?msg rdf:type nmo:Message; "
+                                    "nmo:communicationChannel ?channel "
+                                    "FILTER(?channel IN (%1))}"))
+                        .arg(groups.join(LAT(","))));
+    }
+
+    update.deletion(QString(LAT("DELETE {?channel rdf:type rdfs:Resource}"
+                                "WHERE {?channel rdf:type nmo:CommunicationChannel "
+                                "FILTER(?channel IN (%1))}"))
+                    .arg(groups.join(LAT(","))));
+
 
     QSparqlQuery query(update.query(), QSparqlQuery::DeleteStatement);
     qDebug() << Q_FUNC_INFO << transaction;
