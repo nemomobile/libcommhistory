@@ -1811,8 +1811,8 @@ bool TrackerIOPrivate::runBlockedQuery(QSparqlResult *result)
 void TrackerIOPrivate::syncTracker()
 {
     QDBusMessage syncCall = QDBusMessage::createMethodCall(LAT(TRACKER_DBUS_SERVICE),
-                                                           LAT(TRACKER_DBUS_INTERFACE_RESOURCES),
                                                            LAT(TRACKER_DBUS_OBJECT_RESOURCES),
+                                                           LAT(TRACKER_DBUS_INTERFACE_RESOURCES),
                                                            LAT("Sync"));
     QDBusConnection::sessionBus().asyncCall(syncCall);
 }
