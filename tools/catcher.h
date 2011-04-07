@@ -30,27 +30,36 @@
 
 #include "../src/eventmodel.h"
 
-using namespace CommHistory;
+namespace CommHistory {
+    class GroupModel;
+};
 
 class Catcher : public QObject
 {
     Q_OBJECT
 public:
-    Catcher(EventModel *model) : count(0) {
+    Catcher(CommHistory::EventModel *model) : count(0) {
         connect(model, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
                 this, SLOT(eventsCommittedSlot(QList<CommHistory::Event>,bool)));
     };
 
+    Catcher(CommHistory::GroupModel *model) : count(0) {
+        connect((QObject*)model, SIGNAL(groupsCommitted(QList<int>,bool)),
+                this, SLOT(groupsCommittedSlot(QList<int>,bool)));
+    };
+
     void waitCommit(int numEvents = 1) {
-        while(count < numEvents) {
+        stop = false;
+        while(count < numEvents || (numEvents == 0 && !stop)) {
             qDebug() << ".";
             QCoreApplication::instance()->processEvents(QEventLoop::WaitForMoreEvents);
         }
     };
 
     bool ok;
-    QList<Event> events;
+    QList<CommHistory::Event> events;
     int count;
+    bool stop;
 
 public Q_SLOTS:
     void eventsCommittedSlot(QList<CommHistory::Event> committedEvents, bool success) {
@@ -58,7 +67,16 @@ public Q_SLOTS:
         ok = success;
         events = committedEvents;
         count += committedEvents.count();
+        stop = true;
     };
+
+    void groupsCommittedSlot(QList<int> committedGroups, bool success) {
+        Q_UNUSED(committedGroups);
+
+        qDebug() << Q_FUNC_INFO;
+        ok = success;
+        stop = true;
+    }
 };
 
 #endif // CATCHER_H

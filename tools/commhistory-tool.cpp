@@ -759,10 +759,14 @@ int doDelete(const QStringList &arguments, const QVariantMap &options)
     }
 
     EventModel model;
+    Catcher c(&model);
+
     if (!model.deleteEvent(id)) {
         qCritical() << "Error deleting event" << id;
         return -1;
     }
+    c.waitCommit();
+
     return 0;
 }
 
@@ -778,10 +782,13 @@ int doDeleteGroup(const QStringList &arguments, const QVariantMap &options)
     }
 
     GroupModel model;
+    Catcher c(&model);
+
     if (!model.deleteGroups(QList<int>() << id)) {
         qCritical() << "Error deleting group" << id;
         return -1;
     }
+    c.waitCommit(0);
 
     return 0;
 }
@@ -809,10 +816,13 @@ int doMarkAllCallsRead(const QStringList &arguments, const QVariantMap &options)
     Q_UNUSED(options);
 
     CallModel model;
+    Catcher c(&model);
+
     if (!model.markAllRead()) {
         qCritical() << "Error marking all calls as read.";
         return -1;
     }
+    c.waitCommit(0);
 
     return 0;
 }
