@@ -851,7 +851,7 @@ bool CallModel::deleteAll()
 
     CommittingTransaction *t = d->commitTransaction(QList<Event>());
     if (t != 0)
-        t->addSignal(false, this, "slotAllCallsDeleted", Q_ARG(int, -1));
+        t->addSignal(false, d, "slotAllCallsDeleted", Q_ARG(int, -1));
 
     return true;
 }
@@ -947,11 +947,6 @@ bool CallModel::deleteEvent( int id )
 bool CallModel::deleteEvent( Event &event )
 {
     return deleteEvent( event.id() );
-}
-
-void CallModel::slotAllCallsDeleted(int unused) {
-    Q_D(CallModel);
-    d->slotAllCallsDeleted(unused);
 }
 
 }

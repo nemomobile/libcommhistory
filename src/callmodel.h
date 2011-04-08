@@ -157,9 +157,6 @@ public:
 
     virtual bool deleteEvent( Event &event );
 
-private slots:
-    void slotAllCallsDeleted(int unused);
-
 private:
     Q_DECLARE_PRIVATE(CallModel);
 };
