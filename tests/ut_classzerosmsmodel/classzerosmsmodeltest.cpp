@@ -23,6 +23,8 @@
 #include <QtTest/QtTest>
 #include <QDBusConnection>
 #include <time.h>
+#include <QProcess>
+
 #include "classzerosmsmodeltest.h"
 #include "classzerosmsmodel.h"
 #include "event.h"
@@ -100,6 +102,11 @@ void ClassZeroSMSModelTest::deleteEvents()
         watcher.waitForSignals(-1, 1);
     }
     QVERIFY( m_pModel->rowCount() == 0);
+}
+
+void ClassZeroSMSModelTest::cleanupTestCase()
+{
+    QProcess::execute("pkill messaging-ui");
 }
 
 QTEST_MAIN(ClassZeroSMSModelTest)

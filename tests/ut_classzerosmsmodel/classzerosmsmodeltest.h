@@ -44,6 +44,7 @@ private Q_SLOTS:
     void addEvent();
     void getEvents();
     void deleteEvents();
+    void cleanupTestCase();
 
 private:
     QEventLoop m_eventLoop;
