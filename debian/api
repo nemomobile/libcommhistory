@@ -1,0 +1,8 @@
+interface: libcommhistory
+type: library
+scope: Platform
+state: stable
+libs-pkg: libcommhistory0
+dev-pkg: libcommhistory-dev
+doc-type: doxygen
+doxygen-conf: doc/doxy.cfg

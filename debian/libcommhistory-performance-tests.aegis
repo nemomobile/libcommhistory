@@ -1,0 +1,10 @@
+<aegis>
+  <request>
+    <credential name="TrackerReadAccess"/>
+    <credential name="TrackerWriteAccess"/>
+    <credential name="GRP::metadata-users"/>
+    <for path="/usr/share/libcommhistory-performance-tests/perf_conversationmodel"/>
+    <for path="/usr/share/libcommhistory-performance-tests/perf_callmodel"/>
+    <for path="/usr/share/libcommhistory-performance-tests/perf_groupmodel"/>
+  </request>
+</aegis>

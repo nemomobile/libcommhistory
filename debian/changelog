@@ -1,0 +1,877 @@
+libcommhistory (1.1.1.7) unstable; urgency=low
+
+  * Fix classzero test cases
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 08 Apr 2011 16:37:42 +0300
+
+libcommhistory (1.1.1.6) unstable; urgency=low
+
+  * Fixes: NB#177200 - For voip events displayName is the remoteUid
+  * Fixes: NB#238904 - libcommhistory doesn't do the lookup of sip contacts
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 08 Apr 2011 14:07:25 +0300
+
+libcommhistory (1.1.1.5) unstable; urgency=low
+
+  * Fixes: NB#242907 - No call logs shown in recent calls when phone application is relaunched
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 08 Apr 2011 11:06:36 +0300
+
+libcommhistory (1.1.1.4) unstable; urgency=low
+
+  * Fixes: NB#217906 - 'Aplication Conversations not responding'
+    dialog appears after deleting 1000 threads from Conversations List
+    View
+  * Fixes: NB#240680 - All data sync initiated from device does not end
+    - SMS sync always fails
+  * Fixes: NB#173277 - Brackets for Amount of calls are not cleared for
+    missed calls after dialed or received calls from same contact.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 07 Apr 2011 15:53:18 +0300
+
+libcommhistory (1.1.1.3) unstable; urgency=low
+
+  * Fixes: NB#242304 - After deleting a call entry from recent call list, the call list is not updating keep on refreshing
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 04 Apr 2011 14:03:28 +0300
+
+libcommhistory (1.1.1.2) unstable; urgency=low
+
+  * Fix dev dependencies
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 01 Apr 2011 11:00:02 +0300
+
+libcommhistory (1.1.1.1) unstable; urgency=low
+
+  * Support syncOnCommit
+  * Fixes:NB#241746 - Sending MMS to multiple recipeints cause
+    occasional crashes of libcommhistory
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 31 Mar 2011 15:08:06 +0300
+
+libcommhistory (1.1.1.0) unstable; urgency=low
+
+  * Added CallModel::markAsReadAll()
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 31 Mar 2011 10:17:15 +0300
+
+libcommhistory (1.1.0.5) unstable; urgency=low
+
+  * Release QSparqlResult deleteLater() workaround
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 29 Mar 2011 13:58:18 +0300
+
+libcommhistory (1.1.0.4) unstable; urgency=low
+
+  * Fixes: NB#238781 - Call duration is not properly updated for call
+    logs in call history.
+  * Workaround QSparqlResult deleteLater() problem, improve memory usage
+  * Handle multiple matched contacs for newly added events/groups
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 25 Mar 2011 16:21:49 +0200
+
+libcommhistory (1.1.0.3) unstable; urgency=low
+
+  * Added chained query support to transactions.
+  * Add last event's start time to group properties.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 23 Mar 2011 11:21:08 +0200
+
+libcommhistory (1.1.0.2) unstable; urgency=low
+
+  * Fix mms regression
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 17 Mar 2011 14:28:39 +0200
+
+libcommhistory (1.1.0.1) unstable; urgency=low
+
+  * Run tests as user.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 17 Mar 2011 11:06:24 +0200
+
+libcommhistory (1.1.0.0) unstable; urgency=low
+
+  * Move to qtsparql from qttracker
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 15 Mar 2011 11:10:55 +0200
+
+libcommhistory (1.0.36.19) unstable; urgency=low
+
+  * Fixed synch model test cases and skipped one test case (resolve contacts) in group model tests.
+  * Removed staging gate from performance tests.
+  * Fixes: NB#233855 - libcommhistory-performance-tests : CITA cases FAILS
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 10 Mar 2011 11:39:00 +0200
+
+libcommhistory (1.0.36.18) unstable; urgency=low
+
+  * Fixes: NB#232452 - MMS content locations are not unique
+  * Move commhistory-tool to own commhistory-utils package
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 07 Mar 2011 10:36:30 +0200
+
+libcommhistory (1.0.36.17) unstable; urgency=low
+
+  * Fixes: NB#218421 - Delivery report does not update in Conversational
+    View after MMS is delivered
+  * Fixes: NB#233237 - commhistoryd should not write local IMAccounts as nco:IMAddresses
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 04 Mar 2011 10:00:46 +0200
+
+libcommhistory (1.0.36.16) unstable; urgency=low
+
+  * Fixes: NB#216355 - Order of syncd messages is not proper in
+    conversationl view
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 03 Mar 2011 10:34:19 +0200
+
+libcommhistory (1.0.36.15) unstable; urgency=low
+
+  * Fixes: NB#230269 - [REG]First sent mms msg is not visible in conversational view
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 25 Feb 2011 14:02:28 +0200
+
+libcommhistory (1.0.36.14) unstable; urgency=low
+
+  * Fixes: NB#226830 - Return call dialog of unsaved contact is opened, when tapped on saved contact in Call history
+  * Deprecated nco:contactLocalUID replaced with tracker:id
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 21 Feb 2011 09:35:45 +0200
+
+libcommhistory (1.0.36.13) unstable; urgency=low
+
+  * Fixes: NB#225250 - Use UTC timestamps
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 15 Feb 2011 10:55:12 +0200
+
+libcommhistory (1.0.36.12) unstable; urgency=low
+
+  * Sort message and muc query results by received time stamp
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 09 Feb 2011 16:06:55 +0200
+
+libcommhistory (1.0.36.11) unstable; urgency=low
+
+  * Apply group query fixes from previous release to other queries
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 01 Feb 2011 09:56:24 +0200
+
+libcommhistory (1.0.36.10) unstable; urgency=low
+
+  * Fixes: NB#220672 - [REG] Contact avatar is changed while "Delete"
+    option is used in Conversational View
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 27 Jan 2011 12:43:03 +0200
+
+libcommhistory (1.0.36.9) unstable; urgency=low
+
+  * Get number of matched digits from contacts settings
+  * Fix testcases crashes by disabling contact tracking when not needed
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 25 Jan 2011 15:10:27 +0200
+
+libcommhistory (1.0.36.8) unstable; urgency=low
+
+  * Fixes: NB#218544 - MM messages not displayed in conversation when
+    replying to all
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 18 Jan 2011 11:26:34 +0200
+
+libcommhistory (1.0.36.7) unstable; urgency=low
+
+  * Fixes: NB#216983 - Empty conversations if sending MMS to phone
+    number and email recipients
+  * Set IsEmergency when reading from tracker
+  * Fixes: NB#211145 - libcommhistory doesn't flush the items in the
+    model when deleteAll() is called
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 11 Jan 2011 10:54:02 +0200
+
+libcommhistory (1.0.36.6) unstable; urgency=low
+
+  * Module tests updated. Test line coverage now 82.9 % (without DraftModel that is not used anywhere).
+  * Deprecated SyncSMSModel::folderInfo().
+  * Added extra parameter for TrackerIOPrivate::setChannel().
+  * Added calling of executeQuery at the end of TrackerIO::moveEvent.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 05 Jan 2011 13:33:29 +0200
+
+libcommhistory (1.0.36.5) unstable; urgency=low
+
+  * Fixes: NB#214007 - Gtalk contact name is not displayed in
+    Conversations List View, Conversational View and Notifications
+  * Use Group in groupAdded signal and serialize validProperties for it
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 29 Dec 2010 14:23:12 +0200
+
+libcommhistory (1.0.36.4) unstable; urgency=low
+
+  * Fixes: NB#213358 - Saved contact name is not resolved after deleting
+    all messages inside SMS thread
+  * Fixes: NB#213602 - Empty Conversation View after sending a 1st SMS
+    message
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 20 Dec 2010 13:40:11 +0200
+
+libcommhistory (1.0.36.3) unstable; urgency=low
+
+  * Don't set SMS filter in performance cases cause it's not used in
+    messaging-ui
+  * Always specify nmo::Message type constrain in message queries to
+    avoid performance drop
+  * Reset event's MessageParts modified flag when event is fetched from
+    tracker (#210909)
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 16 Dec 2010 13:49:01 +0200
+
+libcommhistory (1.0.36.2) unstable; urgency=low
+
+  * Use ContactListener in GroupModel
+  * Add contact resolving to ContactListener and use it for new
+    groups in GroupModel and new calls in CallModel
+  * Update call event properties (#210946)
+  * Use correct sorting order (#206594)
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 13 Dec 2010 18:16:29 +0200
+
+libcommhistory (1.0.36.1.1) unstable; urgency=low
+
+  * Incorrect comment syntax in copyright notes of Qt-like headers
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 07 Dec 2010 10:43:01 +0200
+
+libcommhistory (1.0.36.1) unstable; urgency=low
+
+  * Proper copyright notes -> ready to open source
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 07 Dec 2010 09:28:57 +0200
+
+libcommhistory (1.0.35.5) unstable; urgency=low
+
+  * Fixes: NB#208660 - Deleting more than 250 Messages in conversation
+    list blurs the visible window for some time
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 03 Dec 2010 16:53:04 +0200
+
+libcommhistory (1.0.35.4) unstable; urgency=low
+
+  * Fix test cases
+  * Fixes: NB#96105 - .mms/msg folder is not empty after deleting all
+    conversations
+  * Fixes:NB#207762 - The locally added contact name is not displayed
+    for the new incoming messages in the existing Skype group chat
+    conversation view.
+  * Fixes:NB#202712 - Message bubble with first image thumbnail and
+    description of the last one
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 30 Nov 2010 10:41:09 +0200
+
+libcommhistory (1.0.35.3) unstable; urgency=low
+
+  * Delete SMS messages instead of using isDeleted
+  * Add contact resolving for group chats
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 19 Nov 2010 17:25:53 +0200
+
+libcommhistory (1.0.35.2) unstable; urgency=low
+
+  * Add SingleEventModel
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 12 Nov 2010 15:40:42 +0200
+
+libcommhistory (1.0.35.1) unstable; urgency=low
+
+  * Fixes: NB#177780 - Call history logs with multiple events has not been
+    deleted properly - if we delete each event individually
+  * Longer timeouts defined for performance tests
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 08 Nov 2010 13:34:05 +0200
+
+libcommhistory (1.0.35.0) unstable; urgency=low
+
+  * Clean TrackerIO header from private stuff
+  * Move getEvent(), getGroup() from models to TrackerIO, and rename
+    getEvent(*) explicitly (e.g. getEventByMessageToken())
+  * Make threads usage optional, models should be provided with working
+    thread
+  * Rename Event::messageId() to Event::mmsId()
+  * Remove syncOnCommit flag from models, it's implicitly set for
+    modifications and deletions
+  * Fixes: NB#199447 - COREWEB: /usr/bin/messaging-ui
+    'QObject::metaObject operator<< CommHistory::QueryThread::run
+    QThreadPrivate::start start_thread'
+  * Fixes: NB#199640 - Restore procedure is not working properly for SMS
+    conversations
+  * Fixes: NB#188991 - Contact ID updated in the Call::Model when
+    something is changed in contacts
+  * Fixes: NB#196105 - .mms/msg folder is not empty after deleting all
+    conversations
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 04 Nov 2010 09:35:16 +0200
+
+libcommhistory (1.0.34.13) unstable; urgency=low
+
+  * Fixes: NB#200534 - Missed calls from same contact to different accounts are grouped
+  * Fixes: NB#196725 - Dissapearing body content for previous MMS messages in conversation
+  * Changed writeMMSProperties to delete nmo:mmsHasContent and associated message parts correctly.
+  * Fixes: NB#199094 - MMS content presented in a random manner in case of multipart/mixed (no SMIL)
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 1 Nov 2010 11:31:19 +0300
+
+libcommhistory (1.0.34.12) unstable; urgency=low
+
+  * Added modify groups module tests.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 22 Oct 2010 08:30:34 +0300
+
+libcommhistory (1.0.34.11) unstable; urgency=low
+
+  * Fixes: NB#177780 - Call history logs with multiple events has not been
+    deleted properly - if we delete each event individually
+  * Fixes: NB#193184 - Most of the times few empty call events (without Phone
+    number or contact name) have been displayed
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 20 Oct 2010 11:50:16 +0300
+
+libcommhistory (1.0.34.10) unstable; urgency=low
+
+  * Added modify group implementation.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 20 Oct 2010 10:19:11 +0300
+
+libcommhistory (1.0.34.9) unstable; urgency=low
+
+  * Fixes: NB#198736 - BT PBAP: Cannot get call histories at all on 42-3+
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 20 Oct 2010 09:05:22 +0300
+
+libcommhistory (1.0.34.8) unstable; urgency=low
+
+  * Fixes: NB#198601 - tests.xml missing in libcommhistory-performance-tests
+  * Fixes: NB#196105 -  .mms/msg folder is not empty after deleting all conversations
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 18 Oct 2010 14:39:43 +0300
+
+libcommhistory (1.0.34.7) unstable; urgency=low
+
+  * Added Event::isEmergencyCall property
+  * Performance test improvements
+  * Added support for nco:hasAffiliation (work numbers) to queries
+  * Fixes: NB#186940 - Messages, the sent sms messages are not found from the sent folder!
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 12 Oct 2010 15:45:51 +0300
+
+libcommhistory (1.0.34.6.1) unstable; urgency=low
+
+  * Fixed ontology breaks caused by nmo:PhoneMessage changes.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 11 Oct 2010 15:46:09 +0300
+
+libcommhistory (1.0.34.6) unstable; urgency=low
+
+  * Add aegis security tokens for commhistory-tool and tests
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 30 Sep 2010 14:53:36 +0300
+
+libcommhistory (1.0.34.5) unstable; urgency=low
+
+  * MUC: Added Group::chatType and implemented Group::chatName.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 29 Sep 2010 12:02:19 +0300
+
+libcommhistory (1.0.34.4) unstable; urgency=low
+
+  * Added missing libcommhistoryexport.h to package.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 29 Sep 2010 11:40:09 +0300
+
+libcommhistory (1.0.34.3) unstable; urgency=low
+
+  * Make deleteEvent a bit faster
+  * Make testStreaming work with any number of groups
+  * Limit exported symbols
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 29 Sep 2010 10:05:15 +0300
+
+libcommhistory (1.0.34.2) unstable; urgency=low
+
+  * Fixes: NB#190885 - Duration of every call is 00:00
+
+ -- Artem Garmash <artem.garmash@nokia.com>  Wed, 22 Sep 2010 13:44:48 +0300
+
+libcommhistory (1.0.34.1) unstable; urgency=low
+
+  * Fixes: NB#191391 - Source package 'libcommhistory' interfaces not frozen in 0.2010.36-5
+  * Don't use Live objects for update queries
+  * Fixes: NB#191946 - Memory leaks when adding SMS messages
+
+ -- Artem Garmash <artem.garmash@nokia.com>  Tue, 21 Sep 2010 14:57:31 +0300
+
+libcommhistory (1.0.33.3) unstable; urgency=low
+
+  * Add toList property to Event
+  * Add getEvent with group argument
+
+ -- Artem Garmash <artem.garmash@nokia.com>  Fri, 10 Sep 2010 17:04:38 +0300
+
+libcommhistory (1.0.33.2) unstable; urgency=low
+
+  * Fixes: NB#188158 - Wrong message is opening when try to open SMS
+
+ -- Alexander Shalamov <alexander.shalamov@nokia.com>  Thu, 02 Sep 2010 09:51:00 +0300
+
+libcommhistory (1.0.33.1) unstable; urgency=low
+
+  * Added in-memory group support
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 30 Aug 2010 15:56:45 +0300
+
+libcommhistory (1.0.32.3) unstable; urgency=low
+
+  * Fixes: NB#176451 - Sometimes Call logs doesn't show the contact name
+    properly if the phone number doesn't have country code
+  * Add support for setting first chunk size
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 19 Aug 2010 17:38:11 +0300
+
+libcommhistory (1.0.32.2) unstable; urgency=low
+
+  * Fixes: NB#173521 - Phone number is still displayed in message UI for
+    a deleted message after sync
+  * Fixes: NB#168643 - Sent mms message is displayed without attachment
+    icon and also produces a dummy email content item in Content Manager
+  * Fixes: NB#179404 - MMS message text body is presented in
+    Conversations List View - instead of MMS subject
+  * Fixes: NB#184605 -  No subject nor msg body displayed in
+    Conversations List View in case of manually downloaded MMS
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 17 Aug 2010 16:23:42 +0300
+
+libcommhistory (1.0.32.1) unstable; urgency=low
+
+  * Add support for temporarily / permanently failed messages
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 02 Aug 2010 13:24:54 +0300
+
+libcommhistory (1.0.31.3) unstable; urgency=low
+
+  * Fixes: NB#175536 - Message deleted from device are not deleted from N95
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 28 Jul 2010 16:15:18 +0530
+
+libcommhistory (1.0.31.2) unstable; urgency=low
+
+  * Fix trackerio.h header file
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 26 Jul 2010 16:42:04 +0300
+
+libcommhistory (1.0.31.1) unstable; urgency=low
+
+  * Added latest message status and type to the group class
+  * Fixes: NB#173373 - Add API file to libcommhistory
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 26 Jul 2010 16:40:43 +0300
+
+libcommhistory (1.0.30.1) unstable; urgency=low
+
+  * Added in-memory model for class 0 messages
+  * Improved MMS support in commhistory-tool
+  * Removed event update queue, fixes updates during streaming queries
+  * Fixes: NB#171093 - commhistory-tool fail to create more than 100 chat or SMS messages thread in Messaging-UI application
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 13 Jul 2010 11:50:47 +0300
+
+libcommhistory (1.0.29.6) unstable; urgency=low
+
+  * Don't use sync commit in CallModel::deleteAll().
+  * Fixes: NB#175488 - When MMS is sent with email as a recipient in To field, message is not visible in Conversational View
+  * Replace raw ASCII string literals with QLatin1Strings
+  * Update events in conversation model based on group updates signal
+  * commhistory-tool tuning
+  * Fixes: NB#157288 - CommHistory: Add support for 'validity' of outgoing SMS message
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 09 Jul 2010 15:21:58 +0300
+
+libcommhistory (1.0.29.5) unstable; urgency=low
+
+  * Moved contact name logic from queries to TrackerIO (fixes empty name
+    when nco:nameFamily is missing).
+  * Removed obsolete code.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 21 Jun 2010 15:20:52 +0300
+
+libcommhistory (1.0.29.4) unstable; urgency=low
+
+  * Support tracker SyncOnCommit
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 17 Jun 2010 18:16:39 +0300
+
+libcommhistory (1.0.29.3) unstable; urgency=low
+
+  * Improve adding groups by using transaction
+  * Improve adding events by omitting channel existence check
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 14 Jun 2010 15:20:01 +0300
+
+libcommhistory (1.0.29.2) unstable; urgency=low
+
+  * Fixes: NB#170705 - Thread marked as read without reading
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Sun, 13 Jun 2010 13:27:03 +0300
+
+libcommhistory (1.0.29.1) unstable; urgency=low
+
+  * Added CallModel::deleteAll().
+  * Fixed IM nickname matching in message query.
+  * Fixes: NB#169611 - Dummy empty thread is created whem MMS message is received.
+  * Fixed bad getGroup() performance with lots of contacts.
+  * Add EventModle::changeStatus() and new EventModel::markAsRead() that avoid
+    getGroup() queries
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 11 Jun 2010 17:56:55 +0300
+
+libcommhistory (1.0.28.1) unstable; urgency=low
+
+  * Added GroupModel::deleteAll().
+  * Added MMS properties: reportRead, reportReadRequested, readStatus.
+  * Fixes: NB#159558 - Incorrect time stamp is displayed in Conversational List View even delivery reports are disabled
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Sun, 06 Jun 2010 10:40:39 +0300
+
+libcommhistory (1.0.27.2) unstable; urgency=low
+
+  * Changed phone number matching in call query for a little speed boost.
+  * Fixes: NB#142468 - [Performance] It takes long time (more than 3 seconds) to display call history view, when the list has 20+ items.
+  * Added streaming support to groupmodel.
+  * Removed more deprecated stuff.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 04 Jun 2010 13:29:07 +0300
+
+libcommhistory (1.0.27.1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-2193 - Commhistory optimization: Implement new queries from tracker team
+  * Implemented streaming support.
+  * Deprecated headers are removed
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 31 May 2010 16:35:00 +0300
+
+libcommhistory (1.0.26.1) unstable; urgency=low
+
+  * Add EventsModel::eventsCommitted signal
+  * Remove blocking in EventModel::addEvent(s) an EventModel::modifyEvents
+  * Add syncOnCommit option for EventModel::modifyEvent(s)
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 28 May 2010 12:58:45 +0300
+
+libcommhistory (1.0.25.1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-2110 - commhistory optimization: selectable properties for models
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 21 May 2010 16:26:24 +0300
+
+libcommhistory (1.0.24.4) unstable; urgency=low
+
+  * Ontology change in queries for contact compatibility:
+    nco:contactUID -> nco:contactLocalUID.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 18 May 2010 11:51:57 +0300
+
+libcommhistory (1.0.24.3) unstable; urgency=low
+
+  * Added deleteGroup(). Groups are now automatically deleted if there
+    are no messages remaining in the group after deleteEvent().
+  * Added missing remoteUid filtering to group model.
+  * Added remoteAddressMatch() to common utils.
+  * Added markAsReadGroup() to the group model
+  * Fixes: NB#163489 - Deleting the last message in a group doesn't delete the group
+  * Fixes: NB#162044 - IM messages are not grouped by local contact
+  * Fixed cc and bcc fields not being modified in modifyEvent().
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 05 May 2010 15:42:32 +0300
+
+libcommhistory (1.0.24.2) unstable; urgency=low
+
+  * Added CC and BCC fields support for MMS events
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 04 May 2010 10:55:36 +0300
+
+libcommhistory (1.0.24.1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-1785 - Sync tracker transactions for SMS in libcommhistory
+  * Implemented: SWP#RTCHM-1733 - Modify libcommhistory queries to use number matching
+  * Implemented: SWP#RTCHM-1894 - Multipart message support in libcommhistory
+  * Fixes: NB#162116 - CommHistoryModel::deleteEvent doesn't work
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 27 Apr 2010 08:37:00 +0200
+
+libcommhistory (1.0.23.1) unstable; urgency=low
+
+  * Big API break. See NEWS file for details.
+  * Fixes: NB#163519 - Group model update signals need optimizing
+  * Fixes: NB#162065 - Dummy contacts are created in Content manager when receiving sms messages
+  * Added partial phone number matching for contacts (maemo:localPhoneNumber).
+  * Resolve contacts before emitting groupAdded().
+  * Added per-model contact cache to preserve contact data for new events.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 8 Apr 2010 14:35:00 +0200
+
+libcommhistory (1.0.22.1) unstable; urgency=low
+
+  * Tracker usage now compatible with the updated IMAddress ontology.
+  * Fetch contact id/name for events when possible (no last digit
+    matching for phone numbers yet).
+  * Use column-based queries for better performance.
+  * Fixed QueryThread stability issues.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 01 Apr 2010 13:49:26 +0300
+
+libcommhistory (1.0.21.1) unstable; urgency=low
+
+  * Support reportDelivery event property
+  * Fixes: NB#160510 - commhistory pkg-config file should depend on QSql
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 30 Mar 2010 13:40:47 +0300
+
+libcommhistory (1.0.20.2) unstable; urgency=low
+
+  * Fixed CallModel constructor API break.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 10 Mar 2010 10:41:21 +0200
+
+libcommhistory (1.0.20.1) unstable; urgency=low
+
+  * Fixes: NB#159804 - ut_activitymodel ->RTComm
+  * Added CommHistoryModel::findEvent().
+  * Use nmo:isAnswered property for calls
+  * Added CommHistorySyncSMSModel, modified CommHistoryCallModel. See NEWS file for details.
+  * StatusMessageEvent type is added to Event class
+  * Event can be added only to model through CommHistoryModel::addEvent()
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 10 Mar 2010 09:20:38 +0200
+
+libcommhistory (1.0.19.1) unstable; urgency=low
+
+  * Fixed invalid date errors when inserting events to tracker.
+  * Fixed modeltest not setting dates for events properly.
+  * Use -n <number> for message counts in commhistory-tool (avoid
+    confusion with phone numbers).
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 03 Mar 2010 12:59:30 +0200
+
+libcommhistory (1.0.18.1) unstable; urgency=low
+
+  * Add VCard information to group.
+  * Enable testcases in scratchbox
+  * Add doxygen to control file
+  * Fixed query crash with drafts (non-existing nmo:communicationChannel).
+  * Split new events to smaller chunks in addEvents().
+
+ -- Salvatore Iovene <salvatore.iovene@nokia.com>  Fri, 26 Feb 2010 15:46:25 +0200
+
+libcommhistory (1.0.17.1) unstable; urgency=low
+
+  * Implemented call event sorting by contact
+  * nmo:deliveryStatus is taken into use
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 19 Feb 2010 13:30:00 +0200
+
+libcommhistory (1.0.16.3) unstable; urgency=low
+
+  * Build fix - removed qtcontacts #includes from tool.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 10 Feb 2010 09:37:12 +0200
+
+libcommhistory (1.0.16-2) unstable; urgency=low
+
+  * Fixes: NB#156272 - libcommhistory-tests does not depend on ci-testing
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 10 Feb 2010 9:20:00 +0200
+
+libcommhistory (1.0.16-1) unstable; urgency=low
+
+  * Big tracker ontology and query changes, API breaks. See NEWS for details.
+  * Added async query modes.
+  * Added limit and offset support.
+  * Added batch add/modify for events.
+  * Removed Event::Flag enum and Commhistory[Group]Model::setPlugin().
+  * VCard support.
+  * commhistory-tool is back.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 5 Feb 2010 10:00:00 +0200
+
+libcommhistory (1.0.15-1) unstable; urgency=low
+
+  * Possible to specify remote uid with commhistory-tool for added calls
+  * Fixed deprecated libqttracker calls
+  * Temporary integration fix: Removed tool from package
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 01 Dec 2009 12:31:18 +0200
+
+libcommhistory (1.0.14-2) unstable; urgency=low
+
+  * Fixes for test package
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 27 Nov 2009 14:46:12 +0200
+
+libcommhistory (1.0.14-1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-1138 - Show all event for call history
+  * Grouping of call events is implemented with revert time line sorting
+  * Added libcommhistory-test package
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 24 Nov 2009 14:15:00 +0300
+
+libcommhistory (1.0.13-2) unstable; urgency=low
+
+  * Changed devian/control
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thr, 29 Oct 2009 16:05:00 +0300
+
+libcommhistory (1.0.13-1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-65 - Receive delivery reports for SMS
+  * Upgraded to QtContacts 4.5.3
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thr, 29 Oct 2009 15:30:00 +0300
+
+libcommhistory (1.0.12-1) unstable; urgency=low
+
+  * Refactored API: Read functionality moved to CommHistoryModel subclasses.
+  * Tracker performance improvements.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 08 Oct 2009 16:27:33 +0300
+
+libcommhistory (1.0.11-2) unstable; urgency=low
+
+  * Removed examples from build due to environment problems.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 25 Sep 2009 12:22:55 +0300
+
+libcommhistory (1.0.11-1) unstable; urgency=low
+
+  * Fix broken build with libqttracker1pre6 1~6.1.1+0m6.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 24 Sep 2009 09:27:35 +0300
+
+libcommhistory (1.0.10-1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-942
+  * Uses tracker instead of sqlite.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 04 Sep 2009 12:21:06 +0300
+
+libcommhistory (1.0.9-1) unstable; urgency=low
+
+  * Implemented: SWP#RTCHM-871
+  * Fixed issues with drafts and group id handling.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 03 Sep 2009 12:14:25 +0300
+
+libcommhistory (1.0.8-2) unstable; urgency=low
+
+  * API improvements
+  * Using QtContacts instead of libcontacts
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 18 Aug 2009 15:24:18 +0300
+
+libcommhistory (1.0.8-1) unstable; urgency=low
+
+  * Added support for mark-as-read functionality
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 16 Jul 2009 11:03:07 +0300
+
+libcommhistory (1.0.7-2) unstable; urgency=low
+
+  * Fixed libcommhistory.so install.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 16 Jun 2009 12:37:59 +0300
+
+libcommhistory (1.0.7-1) unstable; urgency=low
+
+  * Updated version number, so it doesnt cause ingegration conflicts
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 16 Jun 2009 10:51:00 +0300
+
+libcommhistory (1.0.6-1) unstable; urgency=low
+
+  * Release libcommhistory
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 15 Jun 2009 16:25:31 +0300
+
+libcommhistory (1.0.5-4) unstable; urgency=low
+
+  * Added flag that represents missed calls
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 15 Jun 2009 16:05:53 +0300
+
+libcommhistory (1.0.5-3) unstable; urgency=low
+
+  * Added libcontacts-dev to build deps.
+  * Bumped project version in common-vars.pri.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 29 May 2009 15:38:46 +0300
+
+libcommhistory (1.0.5-2) unstable; urgency=low
+
+  * changed 1.0.5-1 item details text formatting
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 29 May 2009 14:56:04 +0300
+
+libcommhistory (1.0.5-1) unstable; urgency=low
+
+  * PBI: RTCHM-538 (View conversation history of local contact) done
+  * Added contact id and telepathy message id into the data model.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 28 May 2009 11:41:34 +0300
+
+libcommhistory (1.0.4-2) unstable; urgency=low
+
+  * Added Depends: libqt4-sql-sqlite.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 08 May 2009 15:28:42 +0300
+
+libcommhistory (1.0.4-1) unstable; urgency=low
+
+  * Fixed event model ignoring new events when local uid filter was empty.
+  * Fixed lib*.so* installing.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 17 Apr 2009 13:44:24 +0300
+
+libcommhistory (1.0.3-3) unstable; urgency=low
+
+  * Fixed changelog
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu,  9 Apr 2009 14:29:12 +0300
+
+libcommhistory (1.0.3-2) unstable; urgency=low
+
+  * Fixed package dependencies.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 08 Apr 2009 12:02:56 +0300
+
+libcommhistory (1.0.3-1) unstable; urgency=low
+
+  * Added CommHistoryGroupModel for conversation support (db schema changed!).
+  * Improved model updating (eventAdded, groupUpdated).
+  * Refactored database handling.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 07 Apr 2009 13:07:25 +0300
+
+libcommhistory (1.0.2-1) unstable; urgency=low
+
+  * Renamed to libcommhistory.
+  * Fixed some packaging issues.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 11 Mar 2009 16:10:35 +0200
+
+libeventlogger (1.0.1-1) unstable; urgency=low
+
+  * First version for integration.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 09 Mar 2009 13:49:32 +0200
+
+libeventlogger (0.0.1-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed,  4 Feb 2009 13:23:07 +0200
