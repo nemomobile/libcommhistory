@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.8) unstable; urgency=low
+
+  * Fixes: NB#241229 - adding a phone number to an existing contact doesn't create a 'multi contact' item
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 12 Apr 2011 13:17:07 +0300
+
 libcommhistory (1.1.1.7) unstable; urgency=low
 
   * Fix classzero test cases
