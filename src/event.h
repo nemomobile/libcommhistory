@@ -57,14 +57,6 @@ class EventPrivate;
 class LIBCOMMHISTORY_EXPORT Event
 {
 public:
-    // TODO : create specified event classes like ImEvent, SmsEvent, CallEvent
-    //        the current Event would be an abstract base class of these derived classes
-    //        all needless properties would be hidden + accessible ones would be type specific:
-    //          - CallEvent      : startTime, endTime, *does not have* text, *no need for* status, isMissed
-    //          - SmsEvent       : sentTime, deliveredTime, freeText, isDraft, *all listed* status
-    //          - ImEvent        : sentTime, freeText, htmlText, *limited* status (unknown/sent/failed)
-    //          - VoicemailEvent : TODO this type isn't supported in tracker yet. Only commhistoryd uses it internally at the moment
-    // TODO : ^^^
     enum EventType
     {
         UnknownType = 0,
@@ -160,6 +152,8 @@ public:
 
     typedef QSet<Event::Property> PropertySet;
 
+    // FIXME: potential risk of QContactLocalId (quint32) not fitting to int.
+    // should we change event/group.contactId to uint?
     typedef QPair<int, QString> Contact;
 
 public:

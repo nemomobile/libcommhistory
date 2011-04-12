@@ -480,63 +480,80 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
     Q_Q(EventModel);
 
     for (int row = 0; row < parent->childCount(); row++) {
+
         Event *event = &(parent->eventAt(row));
-
         bool eventChanged = false;
+        QList<Event::Contact> contacts = event->contacts();
+        bool addressMatchesList = ContactListener::addressMatchesList(event->localUid(),
+                                                                      event->remoteUid(),
+                                                                      contactAddresses);
 
-        if (changeType == ContactRemoved) {
-            // FIXME: potential risk of QContactLocalId (quint32) not
-            // fitting to int. should we change event/group.contactId to
-            // uint?
-            if ((quint32)event->contactId() == contactId) {
-                event->setContactId(0);
-                event->setContactName(QString());
+        // the contact was removed
+        if (changeType == ContactRemoved ||
+        // the contact was modified and address removed
+            (changeType == ContactUpdated && !addressMatchesList)) {
+
+            for (int i = 0; i < contacts.count(); i++)
+                // if contact is already resolved, remove it from list
+                if ((quint32)contacts.at(i).first == contactId) {
+
+                    contacts.removeAt(i);
+                    eventChanged = true;
+                    break;
+                }
+        }
+
+        // the contact was modified and the address was found
+        else if (changeType == ContactUpdated && addressMatchesList) {
+
+            // create new contact, i.e. <id, name> pair
+            Event::Contact newContact((int)contactId, contactName);
+            // create cache key
+            QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
+            // if contact is not yet in cache, add it there
+            if (!contactCache.contains(cacheKey))
+                contactCache.insert(cacheKey, newContact);
+
+            for (int i = 0; i < contacts.count(); i++)
+                // if contact is already resolved, change name to new one
+                if ((quint32)contacts.at(i).first == contactId) {
+
+                    contacts[i].second = contactName;
+                    eventChanged = true;
+                    break;
+                }
+
+            // if event is not yet updated, then the contact hasn't been resolved yet -> add it to contacts
+            if (!eventChanged) {
+
+                contacts << newContact;
                 eventChanged = true;
             }
-        } else if (changeType == ContactUpdated) {
-            if (ContactListener::addressMatchesList(event->localUid(),
-                                                    event->remoteUid(),
-                                                    contactAddresses)) {
+        }
 
-                Event::Contact contact((int)contactId, contactName);
+        else {
 
-                // If contact is not yet in cache, add it
-                QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
-                if (!contactCache.contains(cacheKey)) {
-                    contactCache.insert(cacheKey, contact);
-                }
-
-                // TODO: check how this should work with multiple contacts
-                if (event->contacts().isEmpty()
-                    || ((quint32)event->contacts().first().first != contactId
-                        || event->contacts().first().second != contactName)) {
-                    event->setContacts(QList<Event::Contact>() << contact);
-                    eventChanged = true;
-                }
-            } else {
-
-                if ((quint32)event->contactId() == contactId) {
-                    // event doesn't match the contact anymore, reset contact info
-                    event->setContacts(QList<Event::Contact>());
-                    eventChanged = true;
-                }
-            }
-        } else {
             qWarning() << "unknown contact change type???";
             break;
         }
 
         if (eventChanged) {
+
+            // save the modified list back to the event
+            event->setContacts(contacts);
+
             QModelIndex left = q->createIndex(row, 0, parent->child(row));
-            QModelIndex right = q->createIndex(row, EventModel::NumberOfColumns - 1,
-                                               parent->child(row));
+            QModelIndex right = q->createIndex(row, EventModel::NumberOfColumns - 1, parent->child(row));
             emit q->dataChanged(left, right);
         }
 
         // dig down to children
         if (parent->child(row)->childCount()) {
-            changeContactsRecursive(changeType, contactId, contactName,
-                                    contactAddresses, parent->child(row));
+            changeContactsRecursive(changeType,
+                                    contactId,
+                                    contactName,
+                                    contactAddresses,
+                                    parent->child(row));
         }
     }
 }
@@ -545,18 +562,25 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
                                            const QList< QPair<QString,QString> > &contactAddresses)
 {
+    // (local id, remote id) -> (contact id, name)
     QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
     while (i.hasNext()) {
+
         i.next();
-        if (ContactListener::addressMatchesList(i.key().first,
-                                                i.key().second,
+        if (ContactListener::addressMatchesList(i.key().first,  // local id
+                                                i.key().second, // remote id
                                                 contactAddresses)) {
-            // update old record
-            i.value().first = localId;
-            i.value().second = contactName;
+
+            // address found in cache -> update
+            i.value().first = localId;      // contact id
+            i.value().second = contactName; // contact name
             break;
-        } else if ((quint32)(i.value().first) == localId) {
-            // old record doesn't match, remove
+        }
+        // address not found, but we've got the contact in the cache
+        // -> contact was updated -> address removed
+        else if ((quint32)(i.value().first) == localId) {
+
+            // delete our record since the address doesn't match anymore
             i.remove();
             break;
         }
@@ -569,12 +593,18 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
 {
     QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
     while (i.hasNext()) {
+
         i.next();
+        // contact has been removed -> delete it from cache
         if ((quint32)(i.value().first) == localId)
             i.remove();
     }
 
-    changeContactsRecursive(ContactRemoved, localId, QString(), QList< QPair<QString,QString> >(), eventRootItem);
+    changeContactsRecursive(ContactRemoved,
+                            localId,
+                            QString(), // contactName
+                            QList< QPair<QString,QString> >(), // contactAddresses
+                            eventRootItem);
 }
 
 TrackerIO* EventModelPrivate::tracker()
