@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.9) unstable; urgency=low
+
+  * Update group remoteUid when new event is added
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 12 Apr 2011 16:42:40 +0300
+
 libcommhistory (1.1.1.8) unstable; urgency=low
 
   * Fixes: NB#241229 - adding a phone number to an existing contact doesn't create a 'multi contact' item
