@@ -328,6 +328,19 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
             g.setStartTime(event.startTime());
             g.setEndTime(event.endTime());
 
+            if (g.remoteUids().first() != event.remoteUid()) {
+                qDebug() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
+                QStringList updatedUids;
+                foreach (const QString& uid, g.remoteUids()) {
+                    if (CommHistory::remoteAddressMatch(uid, event.remoteUid())) {
+                        updatedUids << event.remoteUid();
+                    } else {
+                        updatedUids << uid;
+                    }
+                }
+                g.setRemoteUids(updatedUids);
+            }
+
             sortNeeded = sortNeeded || row != 0;
         }
 

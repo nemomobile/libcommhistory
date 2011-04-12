@@ -1045,4 +1045,96 @@ void GroupModelTest::queryContacts()
     deleteTestContact(contactIdPhone2);
 }
 
+void GroupModelTest::changeRemoteUid()
+{
+    const QString oldRemoteUid = "+1117654321";
+    const QString newRemoteUid = "+2227654321";
+    bool oldContactFound = false;
+    bool newContactFound = false;
+
+    // Add two contacts with matching numbers
+    int oldContactId = addTestContact("OldContact", oldRemoteUid, RING_ACCOUNT);
+    int newContactId = addTestContact("NewContact", newRemoteUid, RING_ACCOUNT);
+
+    GroupModel groupModel;
+    groupModel.enableContactChanges(false);
+    groupModel.setQueryMode(EventModel::SyncQuery);
+    QSignalSpy modelReady(&groupModel, SIGNAL(modelReady(bool)));
+    QVERIFY(groupModel.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    // Add new group with old remoteUid
+    Group group;
+    addTestGroup(group, RING_ACCOUNT, oldRemoteUid);
+    QVERIFY(groupModel.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    int groupsFound = 0;
+    for (int i=0; i < groupModel.rowCount(); i++) {
+        Group g = groupModel.group(groupModel.index(i, 0));
+        if (g.id() == group.id()) {
+            QCOMPARE(g.remoteUids().size(), 1);
+            QCOMPARE(g.remoteUids().first(), oldRemoteUid);
+            QCOMPARE(g.contacts().size(), 2);
+            oldContactFound = false;
+            newContactFound = false;
+            for (int j = 0; j < g.contacts().size(); j++) {
+                Event::Contact c = g.contacts().at(j);
+                if (c.first == oldContactId)
+                    oldContactFound = true;
+                if (c.first == newContactId)
+                    newContactFound = true;
+            }
+            QVERIFY(oldContactFound);
+            QVERIFY(newContactFound);
+            groupsFound++;
+        }
+    }
+    QCOMPARE(groupsFound, 1);
+
+    // Add test event, which updates group remoteUid
+    EventModel eventModel;
+    QSignalSpy groupUpdated(&groupModel,
+                            SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
+    addTestEvent(eventModel, Event::SMSEvent, Event::Inbound, RING_ACCOUNT,
+                 group.id(), "added to group", false, false,
+                 QDateTime::currentDateTime(), newRemoteUid);
+    QVERIFY(waitSignal(groupUpdated, 5000));
+
+    QTest::qWait(1000);
+    group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.remoteUids().size(), 1);
+    QCOMPARE(group.remoteUids().first(), newRemoteUid);
+    QCOMPARE(group.contacts().size(), 2);
+    oldContactFound = false;
+    newContactFound = false;
+    for (int i = 0; i < group.contacts().size(); i++) {
+        Event::Contact c = group.contacts().at(i);
+        if (c.first == oldContactId)
+            oldContactFound = true;
+        if (c.first == newContactId)
+            newContactFound = true;
+    }
+    QVERIFY(oldContactFound);
+    QVERIFY(newContactFound);
+
+    QVERIFY(groupModel.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+    group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.remoteUids().size(), 1);
+    QCOMPARE(group.remoteUids().first(), newRemoteUid);
+    QCOMPARE(group.contacts().size(), 2);
+    oldContactFound = false;
+    newContactFound = false;
+    for (int i = 0; i < group.contacts().size(); i++) {
+        Event::Contact c = group.contacts().at(i);
+        if (c.first == oldContactId)
+            oldContactFound = true;
+        if (c.first == newContactId)
+            newContactFound = true;
+    }
+    QVERIFY(oldContactFound);
+    QVERIFY(newContactFound);
+}
+
 QTEST_MAIN(GroupModelTest)

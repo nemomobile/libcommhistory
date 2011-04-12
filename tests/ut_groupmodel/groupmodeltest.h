@@ -58,6 +58,7 @@ private slots:
     void markGroupAsRead();
     void resolveContact();
     void queryContacts();
+    void changeRemoteUid();
     void cleanupTestCase();
     void init();
     void cleanup();

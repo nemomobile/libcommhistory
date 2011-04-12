@@ -297,6 +297,26 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
     query.appendInsertion(contactInsert);
 }
 
+void TrackerIOPrivate::removePhoneContact(UpdateQuery &query,
+                                          const QUrl &subject,
+                                          const char *predicate,
+                                          const QString &phoneNumber,
+                                          PhoneNumberNormalizeFlags normalizeFlags)
+{
+    QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
+    QString contactDelete =
+        QString(LAT("DELETE { <%1> %2 ?c } "
+                    "WHERE { <%1> %2 ?c . "
+                            "?c a nco:Contact . "
+                            "?c nco:hasPhoneNumber ?num . "
+                            "?num maemo:localPhoneNumber \"%3\" . }"))
+        .arg(subject.toString())
+        .arg(predicate)
+        .arg(shortNumber);
+
+    query.deletion(contactDelete);
+}
+
 void TrackerIOPrivate::addRemoteContact(UpdateQuery &query,
                                         const QUrl &subject,
                                         const char *predicate,
@@ -854,6 +874,18 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
                     "nmo:communicationChannel",
                     channelUrl,
                     modify);
+    query.insertion(channelUrl,
+                    "nie:generator",
+                    event.remoteUid(),
+                    true);
+
+    QString phoneNumber = normalizePhoneNumber(event.remoteUid());
+    if (!phoneNumber.isEmpty()) {
+        removePhoneContact(query, channelUrl, "nmo:hasParticipant",
+                           event.remoteUid(), NormalizeFlagRemovePunctuation);
+        addPhoneContact(query, channelUrl, "nmo:hasParticipant",
+                        event.remoteUid(), NormalizeFlagRemovePunctuation);
+    }
 }
 
 void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transaction,
