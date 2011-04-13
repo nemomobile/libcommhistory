@@ -146,6 +146,7 @@ public:
 
     /*!
      * Remote contacts participating in this conversation.
+     * NOTE: QString("") is interpreted as a hidden/private phone number.
      */
     QStringList remoteUids() const;
 

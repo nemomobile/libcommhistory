@@ -27,6 +27,8 @@
 #include <QSparqlQuery>
 #include <QSparqlError>
 
+#include <qtcontacts-tracker/phoneutils.h>
+
 #include <QFile>
 #include <QTextStream>
 
@@ -72,6 +74,8 @@ int addTestEvent(EventModel &model,
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
         event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
+    } else if (remoteUid == "<hidden>") {
+        event.setRemoteUid(QString());
     } else {
         event.setRemoteUid(remoteUid);
     }
@@ -129,18 +133,15 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
         addAffiliation += QString("nco:hasIMAddress <%1> .").arg(uri);
     } else {
         QString shortNumber = makeShortNumber(remoteUid);
+        QString phoneIRI = qctMakePhoneNumberIri(remoteUid);
         addressQuery =
-            QString("INSERT { _:_ a nco:PhoneNumber; nco:phoneNumber \"%1\"; "
-                    "maemo:localPhoneNumber \"%2\" . } "
-                    "WHERE { "
-                    "OPTIONAL { ?tel nco:phoneNumber \"%1\" } "
-                    "FILTER(!BOUND(?tel)) "
-                    "}")
+            QString("INSERT SILENT { <%1> a nco:PhoneNumber ; "
+                    "nco:phoneNumber \"%2\" ; "
+                    "maemo:localPhoneNumber \"%3\" . }")
+            .arg(phoneIRI)
             .arg(remoteUid)
             .arg(shortNumber);
-        addAffiliation += QString("nco:hasPhoneNumber ?tel .");
-        addContact += QString(" WHERE { ?tel a nco:PhoneNumber; nco:phoneNumber \"%1\" }")
-            .arg(remoteUid);
+        addAffiliation += QString("nco:hasPhoneNumber <%1> .").arg(phoneIRI);
     }
 
     QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);

@@ -26,7 +26,7 @@ INCLUDEPATH += . ../../src ..
 LIBS += ../../src/libcommhistory.a
 DEPENDPATH  += $${INCLUDEPATH}
 
-CONFIG += qtsparql
+CONFIG += qtsparql qtcontacts_extensions_tracker
 
 SOURCES += ../common.cpp
 HEADERS += ../common.h

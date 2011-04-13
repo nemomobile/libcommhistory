@@ -30,6 +30,8 @@
 #include <QDBusConnection>
 #include <QDBusPendingCall>
 
+#include <qtcontacts-tracker/phoneutils.h>
+
 #include "commonutils.h"
 #include "event.h"
 #include "group.h"
@@ -115,9 +117,6 @@ int TrackerIOPrivate::nextGroupId()
 
 QString TrackerIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
 {
-    if (event.localUid().isEmpty() || event.remoteUid().isEmpty())
-        return QString();
-
     QString callGroupRemoteId;
     QString number = normalizePhoneNumber(event.remoteUid());
     if (number.isEmpty()) {
@@ -157,7 +156,11 @@ QString TrackerIOPrivate::prepareGroupQuery(const QString &localUid,
 {
     QString queryFormat(GROUP_QUERY);
     QStringList constraints;
-    if (!remoteUid.isEmpty()) {
+    if (!remoteUid.isNull() && remoteUid.isEmpty()) {
+        // special case for hidden phone numbers
+        constraints << QString(LAT("OPTIONAL { ?channel nmo:hasParticipant [ nco:hasContactMedium ?m ] . } "
+                                   "FILTER(!BOUND(?m))"));
+    } else if (!remoteUid.isEmpty()) {
         QString number = normalizePhoneNumber(remoteUid);
         if (number.isEmpty()) {
             constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID %1]] ."))
@@ -215,17 +218,15 @@ void TrackerIOPrivate::ensureIMAddress(UpdateQuery &query,
 }
 
 void TrackerIOPrivate::ensurePhoneNumber(UpdateQuery &query,
+                                         const QString &phoneIRI,
                                          const QString &phoneNumber,
                                          const QString &shortNumber)
 {
     QString phoneNumberInsert =
-        QString(LAT("INSERT { _:_ a nco:PhoneNumber ; "
-                    "nco:phoneNumber \"%1\" ; "
-                    "maemo:localPhoneNumber \"%2\" . } "
-                    "WHERE { "
-                    "OPTIONAL { ?number nco:phoneNumber \"%1\" } "
-                    "FILTER(!BOUND(?number)) "
-                    "}"))
+        QString(LAT("INSERT SILENT { <%1> a nco:PhoneNumber ; "
+                    "nco:phoneNumber \"%2\" ; "
+                    "maemo:localPhoneNumber \"%3\" . }"))
+        .arg(phoneIRI)
         .arg(phoneNumber)
         .arg(shortNumber);
 
@@ -243,23 +244,25 @@ void TrackerIOPrivate::addSIPContact(UpdateQuery &query,
     // ("sip:01234567@voip.com") and the extracted phone number
     // (01234567) to the dummy contact for contact resolving.
 
-    QUrl sipAddressURI = uriForIMAddress(accountPath, remoteUid);
+    QUrl sipAddressIRI = uriForIMAddress(accountPath, remoteUid);
+    QString phoneIRI = qctMakePhoneNumberIri(phoneNumber);
 
-    if (!m_contactCache.contains(sipAddressURI)) {
-        ensureIMAddress(query, sipAddressURI, remoteUid);
+    // cache only used to avoid redundant inserts, ignore value
+    if (!m_contactCache.contains(sipAddressIRI)) {
+        ensureIMAddress(query, sipAddressIRI, remoteUid);
         QString shortNumber = makeShortNumber(phoneNumber);
-        ensurePhoneNumber(query, phoneNumber, shortNumber);
+        ensurePhoneNumber(query, phoneIRI, phoneNumber, shortNumber);
+        m_contactCache.insert(sipAddressIRI, remoteUid);
     }
 
     QString contactInsert =
         QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; "
                     "nco:hasIMAddress <%3> ; "
-                    "nco:hasPhoneNumber ?number ] } "
-                    "WHERE { ?number nco:phoneNumber \"%4\" }"))
+                    "nco:hasPhoneNumber <%4> ] }"))
         .arg(subject.toString())
         .arg(predicate)
-        .arg(encodeUri(sipAddressURI))
-        .arg(phoneNumber);
+        .arg(encodeUri(sipAddressIRI))
+        .arg(phoneIRI);
 
     query.appendInsertion(contactInsert);
 }
@@ -292,17 +295,29 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
                                        const QString &phoneNumber,
                                        PhoneNumberNormalizeFlags normalizeFlags)
 {
-    if (!m_contactCache.contains(phoneNumber)) {
-        QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
-        ensurePhoneNumber(query, phoneNumber, shortNumber);
-    }
+    QString contactInsert;
 
-    QString contactInsert =
-        QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; nco:hasPhoneNumber ?number ] } "
-                    "WHERE { ?number nco:phoneNumber \"%3\" }"))
-        .arg(encodeUri(subject))
-        .arg(predicate)
-        .arg(phoneNumber);
+    if (phoneNumber.isEmpty()) {
+        contactInsert =
+            QString(LAT("INSERT { <%1> %2 [ a nco:Contact ] }"))
+            .arg(encodeUri(subject))
+            .arg(predicate);
+    } else {
+        QString phoneIRI = qctMakePhoneNumberIri(phoneNumber);
+
+        // cache only used to avoid redundant inserts, ignore value
+        if (!m_contactCache.contains(phoneNumber)) {
+            QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
+            ensurePhoneNumber(query, phoneIRI, phoneNumber, shortNumber);
+            m_contactCache.insert(phoneNumber, phoneIRI);
+        }
+
+        contactInsert =
+            QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; nco:hasPhoneNumber <%3> ] } "))
+            .arg(encodeUri(subject))
+            .arg(predicate)
+            .arg(phoneIRI);
+    }
 
     query.appendInsertion(contactInsert);
 }
@@ -346,11 +361,10 @@ void TrackerIOPrivate::addRemoteContact(UpdateQuery &query,
         }
     }
 
-    phoneNumber = normalizePhoneNumber(remoteUid, normalizeFlags);
-    if (phoneNumber.isEmpty()) {
-        return addIMContact(query, subject, predicate, localUid, remoteUid);
-    } else {
+    if (remoteUid.isEmpty() || !normalizePhoneNumber(remoteUid, normalizeFlags).isEmpty()) {
         return addPhoneContact(query, subject, predicate, remoteUid, normalizeFlags);
+    } else {
+        return addIMContact(query, subject, predicate, localUid, remoteUid);
     }
 }
 
@@ -1070,15 +1084,15 @@ bool TrackerIO::addGroup(Group &group)
     QString remoteUid = group.remoteUids().first();
     QString phoneNumber = normalizePhoneNumber(remoteUid);
 
-    if (phoneNumber.isEmpty()) {
-        d->addIMContact(query, channelSubject, "nmo:hasParticipant",
-                        group.localUid(), remoteUid);
+    if (remoteUid.isEmpty() || !phoneNumber.isEmpty()) {
+        d->addPhoneContact(query, channelSubject, "nmo:hasParticipant", remoteUid,
+                           NormalizeFlagRemovePunctuation);
         query.insertion(channelSubject,
                         "nie:generator",
                         remoteUid);
     } else {
-        d->addPhoneContact(query, channelSubject, "nmo:hasParticipant", remoteUid,
-                           NormalizeFlagRemovePunctuation);
+        d->addIMContact(query, channelSubject, "nmo:hasParticipant",
+                        group.localUid(), remoteUid);
         query.insertion(channelSubject,
                         "nie:generator",
                         remoteUid);

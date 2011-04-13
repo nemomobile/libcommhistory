@@ -112,6 +112,7 @@ public:
      * Update the query to ensure the existence of the phone number resource in tracker.
      */
     void ensurePhoneNumber(UpdateQuery &query,
+                           const QString &phoneIRI,
                            const QString &phoneNumber,
                            const QString &shortNumber);
     /*!

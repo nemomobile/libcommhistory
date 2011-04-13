@@ -327,6 +327,34 @@ void CallModelTest::testAddEvent()
      * user1, dialed   (2)
      */
     testGetEvents( CallModel::SortByTime, testCalls.count(), testCalls );
+
+    // add 1 received from hidden number
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(90), "<hidden>");
+    testCalls.insert(0, TestCallItem(QString(), CallEvent::ReceivedCallType, 1));
+    watcher.waitForSignals();
+
+    /* by contact:
+     * -----------
+     * "", received (0)
+     * user2, received (0)
+     * user1, received (0)
+     */
+    testGetEvents( CallModel::SortByContact, 3, testCalls );
+    /* by time:
+     * --------
+     * "", received (1)
+     * user2, received (1)
+     * user1, received (1)
+     * user2, missed   (1)
+     * user1, received (5)
+     * user1, dialed   (1)
+     * user1, missed   (2)
+     * user1, dialed   (1)
+     * user1, received (2)
+     * user1, missed   (1)
+     * user1, dialed   (2)
+     */
+    testGetEvents( CallModel::SortByTime, testCalls.count(), testCalls );
 }
 
 void CallModelTest::testDeleteEvent()
@@ -342,22 +370,51 @@ void CallModelTest::testDeleteEvent()
 
     /* by contact:
      * -----------
-     * user2, received (0)***
+     * "", received (0)
+     * user2, received (0)
      * user1, received (0)
      */
-    // take the event
+    // delete first event from hidden number
     Event e = model.event( model.index( 0, 0 ) );
     QVERIFY( e.isValid() );
     QCOMPARE( e.type(), Event::CallEvent );
     qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Inbound );
     QCOMPARE( e.isMissedCall(), false );
+    QCOMPARE( e.remoteUid(), QString() );
+    // delete it
+    QVERIFY( model.deleteEvent( e.id() ) );
+    watcher.waitForSignals(-1, -1, 1);
+    QCOMPARE(watcher.deletedCount(), 1);
+    // correct test helper lists to match current situation
+    QMutableListIterator<TestCallItem> i(testCalls);
+    while (i.hasNext()) {
+        i.next();
+        if (i.value().remoteUid == QString())
+            i.remove();
+    }
+    // test if model contains what we want it does
+    testGetEvents( CallModel::SortByContact, 2, testCalls );
+
+    /* by contact:
+     * -----------
+     * user2, received (0)
+     * user1, received (0)
+     */
+    // delete first group from user2
+    e = model.event( model.index( 0, 0 ) );
+    QVERIFY( e.isValid() );
+    QCOMPARE( e.type(), Event::CallEvent );
+    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+    QCOMPARE( e.direction(), Event::Inbound );
+    QCOMPARE( e.isMissedCall(), false );
+    QCOMPARE( e.remoteUid(), REMOTEUID2 );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
     watcher.waitForSignals(-1, -1, 2);
     QCOMPARE(watcher.deletedCount(), 2);
     // correct test helper lists to match current situation
-    QMutableListIterator<TestCallItem> i(testCalls);
+    i = QMutableListIterator<TestCallItem>(testCalls);
     while (i.hasNext()) {
         i.next();
         if (i.value().remoteUid == REMOTEUID2)
@@ -365,7 +422,6 @@ void CallModelTest::testDeleteEvent()
     }
     // test if model contains what we want it does
     testGetEvents( CallModel::SortByContact, 1, testCalls );
-
 
     // force change of sorting to SortByTime
     QVERIFY( model.setFilter( CallModel::SortByTime ) );
