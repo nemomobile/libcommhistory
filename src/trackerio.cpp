@@ -874,10 +874,13 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
                     "nmo:communicationChannel",
                     channelUrl,
                     modify);
-    query.insertion(channelUrl,
-                    "nie:generator",
-                    event.remoteUid(),
-                    true);
+
+    if (event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) {
+        query.insertion(channelUrl,
+                        "nie:generator",
+                        event.remoteUid(),
+                        true);
+    }
 
     QString phoneNumber = normalizePhoneNumber(event.remoteUid());
     if (!phoneNumber.isEmpty()) {

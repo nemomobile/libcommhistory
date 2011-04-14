@@ -328,7 +328,9 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
             g.setStartTime(event.startTime());
             g.setEndTime(event.endTime());
 
-            if (g.remoteUids().first() != event.remoteUid()) {
+            if ((event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) &&
+                g.remoteUids().first() != event.remoteUid()) {
+
                 qDebug() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
                 QStringList updatedUids;
                 foreach (const QString& uid, g.remoteUids()) {
