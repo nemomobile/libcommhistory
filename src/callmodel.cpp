@@ -141,17 +141,8 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
 
 void CallModelPrivate::modelUpdatedSlot( bool successful )
 {
-    Q_Q( CallModel );
-
-    // ensure that last event count is up to date after filling
-    if (successful && sortBy != CallModel::SortByContact && eventRootItem->childCount()) {
-        EventTreeItem *last = eventRootItem->child(eventRootItem->childCount() - 1);
-        last->event().setEventCount(calculateEventCount(last));
-        emit q->dataChanged(q->createIndex(0, 0, last),
-                            q->createIndex(0, CallModel::NumberOfColumns - 1, last));
-    }
-
     EventModelPrivate::modelUpdatedSlot(successful);
+    countedUids.clear();
 }
 
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
@@ -336,16 +327,6 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 QList<EventTreeItem *> newItems;
 
                 foreach (Event event, events) {
-                    if (!last && eventMatchesFilter(event)) {
-                        // empty list
-                        EventTreeItem *first = new EventTreeItem(event);
-                        first->appendChild(new EventTreeItem(event, first));
-                        first->event().setEventCount(-1);
-                        newItems.append(first);
-                        last = first;
-                        continue;
-                    }
-
                     if (last && last->event().eventCount() == -1
                         && belongToSameGroup(event, last->event())) {
                         // still filling last row with matching events
@@ -354,16 +335,26 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                         // no match to previous event -> update count
                         // for last row and add a new row if event is
                         // acceptable
-                        if (last)
-                            last->event().setEventCount(calculateEventCount(last));
+                        if (last) {
+                            if (!countedUids.contains(last->event().remoteUid()))
+                                last->event().setEventCount(calculateEventCount(last));
+                            countedUids.insert(last->event().remoteUid());
 
-                        if (eventMatchesFilter(event)) {
-                            event.setEventCount(-1);
-                            last = new EventTreeItem(event);
-                            last->appendChild(new EventTreeItem(event, last));
-                            newItems.append(last);
+                            if (eventMatchesFilter(last->event()))
+                                newItems.append(last);
                         }
+
+                        event.setEventCount(-1);
+                        last = new EventTreeItem(event);
+                        last->appendChild(new EventTreeItem(event, last));
                     }
+                }
+
+                if (last && eventMatchesFilter(last->event())) {
+                    if (!countedUids.contains(last->event().remoteUid()))
+                        last->event().setEventCount(calculateEventCount(last));
+                    countedUids.insert(last->event().remoteUid());
+                    newItems.append(last);
                 }
 
                 // update count for last item in the previous batch
@@ -378,13 +369,6 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                     foreach (EventTreeItem *item, newItems)
                         eventRootItem->appendChild(item);
                     q->endInsertRows();
-                }
-
-                if (isReady && eventRootItem->childCount()) {
-                    last = eventRootItem->child(eventRootItem->childCount() - 1);
-                    last->event().setEventCount(calculateEventCount(last));
-                    emit q->dataChanged(q->createIndex(0, 0, last),
-                                        q->createIndex(0, CallModel::NumberOfColumns - 1, last));
                 }
 
                 break;
@@ -495,7 +479,8 @@ void CallModelPrivate::addToModel( Event &event )
 
             // if new item is groupable with the first one in the list
             // NOTE: assumption is that time value is ok
-            if ( eventRootItem->childCount() && belongToSameGroup( event, eventRootItem->child( 0 )->event() ) )
+            if (eventRootItem->childCount() && belongToSameGroup(event, eventRootItem->child(0)->event())
+                && eventRootItem->child(0)->event().eventCount() != -1)
             {
                 // alias
                 EventTreeItem *firstTopLevelItem = eventRootItem->child( 0 );
@@ -784,6 +769,7 @@ bool CallModel::getEvents()
     beginResetModel();
     d->clearEvents();
     endResetModel();
+    d->countedUids.clear();
 
     if (d->sortBy == SortByContact) {
         QString query = TrackerIOPrivate::prepareGroupedCallQuery();

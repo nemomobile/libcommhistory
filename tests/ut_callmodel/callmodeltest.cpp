@@ -25,7 +25,6 @@
 #include "callmodeltest.h"
 #include "common.h"
 #include "modelwatcher.h"
-#include "signal.h"
 #include "trackerio.h"
 
 using namespace CommHistory;
@@ -119,19 +118,32 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
     qDebug() << "Top level event(s):" << row_count;
     QCOMPARE( model.rowCount(), row_count );
 
+    QSet<QString> countedUids;
     for ( int i = 0; i < row_count; i++ )
     {
         Event e = model.event( model.index( i, 0 ) );
         qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
         QCOMPARE( e.type(), Event::CallEvent );
         QCOMPARE( e.remoteUid(), calls.at( i ).remoteUid );
+
+        bool addressFound = false;
+        foreach (QString address, countedUids) {
+            if (address == e.remoteUid()) {
+                addressFound = true;
+                break;
+            }
+        }
+
         switch ( calls.at( i ).callType )
         {
             case CallEvent::MissedCallType :
             {
                 QCOMPARE( e.direction(), Event::Inbound );
                 QCOMPARE( e.isMissedCall(), true );
-                QCOMPARE( e.eventCount(), calls.at( i ).eventCount );
+                if (addressFound)
+                    QVERIFY(e.eventCount() <= 1);
+                else
+                    QCOMPARE( e.eventCount(), calls.at( i ).eventCount );
                 break;
             }
             case CallEvent::ReceivedCallType :
@@ -139,7 +151,10 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
                 QCOMPARE( e.direction(), Event::Inbound );
                 QCOMPARE( e.isMissedCall(), false );
                 // received and missed calls have invalid event count if sorted by contact
-                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
+                if (addressFound)
+                    QVERIFY(e.eventCount() <= 1);
+                else
+                    QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
                 break;
             }
             case CallEvent::DialedCallType :
@@ -147,7 +162,10 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
                 QCOMPARE( e.direction(), Event::Outbound );
                 QCOMPARE( e.isMissedCall(), false );
                 // received and missed calls have invalid event count if sorted by contact
-                QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
+                if (addressFound)
+                    QVERIFY(e.eventCount() <= 1);
+                else
+                    QCOMPARE( e.eventCount(), sorting == CallModel::SortByContact ? 0 : calls.at( i ).eventCount );
                 break;
             }
             default :
@@ -156,6 +174,8 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
                 return;
             }
         }
+
+        countedUids.insert(e.remoteUid());
     }
 }
 
@@ -653,7 +673,7 @@ void CallModelTest::testSortByTimeUpdate()
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::MissedCallType));
     QVERIFY(model.getEvents());
     QVERIFY(watcher.waitForModelReady(5000));
-    QVERIFY(model.rowCount() == 2);
+    QCOMPARE(model.rowCount(), 2);
 
     Event e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.remoteUid(), REMOTEUID1);
@@ -663,7 +683,7 @@ void CallModelTest::testSortByTimeUpdate()
     Event e2 = model.event(model.index(1, 0));
     QCOMPARE(e2.remoteUid(), REMOTEUID1);
     QVERIFY(e2.isMissedCall());
-    QCOMPARE(e2.eventCount(), 1);
+    QVERIFY(e2.eventCount() <= 1);
 
     // add received call, count for top item should reset
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(4), REMOTEUID1);
@@ -671,17 +691,32 @@ void CallModelTest::testSortByTimeUpdate()
     e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.eventCount(), 1);
 
+    CallModel model2;
+    model2.setQueryMode(EventModel::SyncQuery);
+    QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
+    QCOMPARE(model2.rowCount(), 2);
+    QVERIFY(model2.event(model2.index(0, 0)).eventCount() <= 1);
+
     // add missed call, count should remain 1
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(5), REMOTEUID1);
     watcher.waitForSignals(1);
     e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.eventCount(), 1);
+    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 1);
+
+    QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
+    QCOMPARE(model2.rowCount(), 3);
+    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 1);
 
     // add another missed call, count should increase
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(6), REMOTEUID1);
     watcher.waitForSignals(1);
     e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.eventCount(), 2);
+    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 2);
+    QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
+    QCOMPARE(model2.rowCount(), 3);
+    QCOMPARE(model2.event(model.index(0, 0)).eventCount(), 2);
 }
 
 void CallModelTest::testSIPAddress()
