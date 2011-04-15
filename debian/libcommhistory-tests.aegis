@@ -14,5 +14,6 @@
     <for path="/usr/share/libcommhistory-tests/ut_unreadeventsmodel"/>
     <for path="/usr/share/libcommhistory-tests/ut_groupmodel"/>
     <for path="/usr/share/libcommhistory-tests/ut_singleeventmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_eventsquery"/>
   </request>
 </aegis>
