@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.10) unstable; urgency=low
+
+  * Don't update group remoteUid when new IM event is added
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 15 Apr 2011 08:53:22 +0300
+
 libcommhistory (1.1.1.9) unstable; urgency=low
 
   * Update group remoteUid when new event is added
