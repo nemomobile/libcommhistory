@@ -30,7 +30,7 @@
 #include "groupmodel.h"
 #include "groupmodel_p.h"
 #include "eventmodel.h"
-#include "adaptor.h"
+#include "updatesemitter.h"
 #include "group.h"
 #include "event.h"
 #include "constants.h"
@@ -48,8 +48,6 @@ static const int defaultChunkSize = 50;
 }
 
 using namespace CommHistory;
-
-uint GroupModelPrivate::modelSerial = 0;
 
 GroupModelPrivate::GroupModelPrivate(GroupModel *model)
         : q_ptr(model)
@@ -70,10 +68,15 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
     qRegisterMetaType<QList<CommHistory::Event> >();
     qRegisterMetaType<QList<CommHistory::Group> >();
 
-    new Adaptor(this);
-    if (!QDBusConnection::sessionBus().registerObject(newObjectPath(), this)) {
-        qWarning() << __FUNCTION__ << ": error registering object";
-    }
+    emitter = UpdatesEmitter::instance();
+    connect(this, SIGNAL(groupAdded(CommHistory::Group)),
+            emitter.data(), SIGNAL(groupAdded(CommHistory::Group)));
+    connect(this, SIGNAL(groupsUpdated(const QList<int>&)),
+            emitter.data(), SIGNAL(groupsUpdated(const QList<int>&)));
+    connect(this, SIGNAL(groupsUpdatedFull(const QList<CommHistory::Group>&)),
+            emitter.data(),SIGNAL(groupsUpdatedFull(const QList<CommHistory::Group>&)));
+    connect(this, SIGNAL(groupsDeleted(const QList<int>&)),
+            emitter.data(),SIGNAL(groupsDeleted(const QList<int>&)));
 
     QDBusConnection::sessionBus().connect(
         QString(),
@@ -154,12 +157,6 @@ void GroupModelPrivate::deleteQueryRunner()
         queryRunner->deleteLater();
         queryRunner = 0;
     }
-}
-
-QString GroupModelPrivate::newObjectPath()
-{
-    return QString(QLatin1String("/CommHistoryGroupModel")) +
-        QString::number(modelSerial++);
 }
 
 CommittingTransaction* GroupModelPrivate::commitTransaction(QList<int> groupIds)
