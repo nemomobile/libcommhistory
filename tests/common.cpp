@@ -388,8 +388,22 @@ bool waitSignal(QSignalSpy &spy, int msec)
 {
     QTime timer;
     timer.start();
-    while (timer.elapsed() < msec && spy.isEmpty())
+    while (timer.elapsed() < msec && spy.isEmpty()) {
+        QCoreApplication::sendPostedEvents();
+        QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
         QCoreApplication::processEvents();
+    }
 
     return !spy.isEmpty();
+}
+
+void waitWithDeletes(int msec)
+{
+    QTime timer;
+    timer.start();
+    while (timer.elapsed() < msec) {
+        QCoreApplication::sendPostedEvents();
+        QCoreApplication::sendPostedEvents(0, QEvent::DeferredDelete);
+        QCoreApplication::processEvents();
+    }
 }
