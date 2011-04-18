@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.9.1) unstable; urgency=low
+
+  * Cherry picked f45911d8421c0cc22f9432ed6414405222ddec92
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 18 Apr 2011 8:33:12 +0300
+
 libcommhistory (1.1.1.9) unstable; urgency=low
 
   * Update group remoteUid when new event is added
