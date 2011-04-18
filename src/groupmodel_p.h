@@ -46,13 +46,6 @@ class GroupModelPrivate: public QObject
     Q_DECLARE_PUBLIC(GroupModel);
 
 public:
-    // For async query safety - queue changes until the model is ready.
-    typedef enum {
-        GROUP_ADD,
-        GROUP_MODIFY,
-        GROUP_DELETE
-    } GroupChangeType;
-
     GroupModel *q_ptr;
 
     /*!
@@ -83,7 +76,7 @@ public:
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
 
-    void groupAddedSlot(CommHistory::Group group);
+    void groupsAddedSlot(const QList<CommHistory::Group> &addedGroups);
 
     void groupsUpdatedSlot(const QList<int> &groupIds);
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
@@ -103,7 +96,7 @@ public Q_SLOTS:
     void slotContactRemoved(quint32 localId);
 
 Q_SIGNALS:
-    void groupAdded(CommHistory::Group group);
+    void groupsAdded(const QList<CommHistory::Group> &groups);
 
     void groupsUpdated(const QList<int> &groupIds);
     void groupsUpdatedFull(const QList<CommHistory::Group> &groups);

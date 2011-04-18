@@ -45,6 +45,8 @@ bool groupLessThan(CommHistory::Group &a, CommHistory::Group &b)
 }
 
 static const int defaultChunkSize = 50;
+
+static const int maxAddGroupsSize = 25;
 }
 
 using namespace CommHistory;
@@ -67,10 +69,11 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
 {
     qRegisterMetaType<QList<CommHistory::Event> >();
     qRegisterMetaType<QList<CommHistory::Group> >();
+    qRegisterMetaType<QList<int> >();
 
     emitter = UpdatesEmitter::instance();
-    connect(this, SIGNAL(groupAdded(CommHistory::Group)),
-            emitter.data(), SIGNAL(groupAdded(CommHistory::Group)));
+    connect(this, SIGNAL(groupsAdded(const QList<CommHistory::Group> &)),
+            emitter.data(), SIGNAL(groupsAdded(const QList<CommHistory::Group> &)));
     connect(this, SIGNAL(groupsUpdated(const QList<int>&)),
             emitter.data(), SIGNAL(groupsUpdated(const QList<int>&)));
     connect(this, SIGNAL(groupsUpdatedFull(const QList<CommHistory::Group>&)),
@@ -89,9 +92,9 @@ GroupModelPrivate::GroupModelPrivate(GroupModel *model)
         QString(),
         QString(),
         COMM_HISTORY_SERVICE_NAME,
-        GROUP_ADDED_SIGNAL,
+        GROUPS_ADDED_SIGNAL,
         this,
-        SLOT(groupAddedSlot(CommHistory::Group)));
+        SLOT(groupsAddedSlot(const QList<CommHistory::Group> &)));
     QDBusConnection::sessionBus().connect(
         QString(),
         QString(),
@@ -387,30 +390,29 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
     }
 }
 
-void GroupModelPrivate::groupAddedSlot(CommHistory::Group group)
+void GroupModelPrivate::groupsAddedSlot(const QList<CommHistory::Group> &addedGroups)
 {
-    qDebug() << __PRETTY_FUNCTION__ << group.id() << group.localUid()
-             << group.remoteUids() << group.chatName() << group.chatType();
+    qDebug() << Q_FUNC_INFO << addedGroups.count();
 
-    Group g;
-    for (int i = 0; i < groups.count(); i++)
-        if (groups.at(i).id() == group.id()) {
-            g = groups.at(i);
+    foreach (Group group, addedGroups) {
+        Group g;
+        for (int i = 0; i < groups.count(); i++)
+            if (groups.at(i).id() == group.id()) {
+                g = groups.at(i);
+            }
+
+        if (!g.isValid()
+            && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
+            && (filterRemoteUid.isEmpty()
+                || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
+            g = group;
+            addToModel(g);
+
+            startContactListening();
+            if (contactListener)
+                contactListener->resolveContact(g.localUid(),
+                                                g.remoteUids().first());
         }
-
-    if (!g.isValid()
-        && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
-        && (filterRemoteUid.isEmpty()
-            || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
-        g = group;
-        addToModel(g);
-    }
-
-    if (g.isValid()) {
-        startContactListening();
-        if (contactListener)
-            contactListener->resolveContact(g.localUid(),
-                                            g.remoteUids().first());
     }
 }
 
@@ -826,13 +828,46 @@ bool GroupModel::addGroup(Group &group)
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
             || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
-        QModelIndex index;
-        beginInsertRows(index, 0, 0);
-        d->groups.prepend(group);
-        endInsertRows();
+        d->addToModel(group);
     }
 
-    emit d->groupAdded(group);
+    emit d->groupsAdded(QList<Group>() << group);
+
+    return true;
+}
+
+bool GroupModel::addGroups(QList<Group> &groups)
+{
+    QList<int> addedIds;
+    QList<Group> addedGroups;
+
+    QMutableListIterator<Group> i(groups);
+
+    while (i.hasNext()) {
+        d->tracker()->transaction();
+
+        while (addedGroups.size() < maxAddGroupsSize && i.hasNext()) {
+            Group &group = i.next();
+            if (!d->tracker()->addGroup(group)) {
+                d->tracker()->rollback();
+                return false;
+            }
+
+            if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
+                && (d->filterRemoteUid.isEmpty()
+                    || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
+                d->addToModel(group);
+            }
+
+            addedIds.append(group.id());
+            addedGroups.append(group);
+        }
+
+        d->commitTransaction(addedIds);
+        emit d->groupsAdded(addedGroups);
+        addedIds.clear();
+        addedGroups.clear();
+    }
 
     return true;
 }

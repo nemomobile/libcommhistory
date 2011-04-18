@@ -57,7 +57,6 @@ using namespace CommHistory;
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
-Q_DECLARE_METATYPE(QList<int>)
 
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),

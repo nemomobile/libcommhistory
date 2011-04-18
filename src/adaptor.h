@@ -45,7 +45,7 @@ Q_SIGNALS:
 
     void eventDeleted(int id);
 
-    void groupAdded(CommHistory::Group group);
+    void groupsAdded(const QList<CommHistory::Group> &groups);
 
     void groupsUpdated(const QList<int> &groupIds);
 

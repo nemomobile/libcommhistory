@@ -41,15 +41,17 @@ int addedGroupId = -1;
 #define mms_token3 QLatin1String("333-333-333")
 #define mms_content_path QLatin1String(".mms/msg")
 
+#define ADD_GROUPS_NUM 30
+
 void GroupModelTest::eventsAddedSlot(const QList<CommHistory::Event> &events)
 {
     qDebug() << "eventsAdded:" << events.count();
     loop->exit(0);
 }
 
-void GroupModelTest::groupAddedSlot(CommHistory::Group group)
+void GroupModelTest::groupsAddedSlot(const QList<CommHistory::Group> &groups)
 {
-    qDebug() << "groupAddedSlot:" << group.id();
+    qDebug() << "groupsAddedSlot:" << groups.count();
     loop->exit(0);
 }
 
@@ -96,8 +98,8 @@ void GroupModelTest::initTestCase()
                 QString(), QString(), "com.nokia.commhistory", "eventsAdded",
                 this, SLOT(eventsAddedSlot(const QList<CommHistory::Event> &))));
     QVERIFY(QDBusConnection::sessionBus().connect(
-                QString(), QString(), "com.nokia.commhistory", "groupAdded",
-                this, SLOT(groupAddedSlot(CommHistory::Group))));
+                QString(), QString(), "com.nokia.commhistory", "groupsAdded",
+                this, SLOT(groupsAddedSlot(const QList<CommHistory::Group> &))));
     QVERIFY(QDBusConnection::sessionBus().connect(
                 QString(), QString(), "com.nokia.commhistory", "groupsUpdated",
                 this, SLOT(groupsUpdatedSlot(const QList<int> &))));
@@ -689,6 +691,44 @@ void GroupModelTest::streamingQuery()
     modelThread.wait(5000);
 }
 
+void GroupModelTest::addMultipleGroups()
+{
+    deleteAll();
+
+    QList<Group> groups;
+    for (int i = 0; i < ADD_GROUPS_NUM; i++) {
+        Group group;
+        group.setLocalUid(ACCOUNT1);
+        group.setRemoteUids(QStringList() << QString("testgroup%1").arg(i));
+        groups.append(group);
+    }
+
+    GroupModel model;
+    model.enableContactChanges(false);
+    model.setQueryMode(EventModel::SyncQuery);
+    QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>, bool)));
+    QVERIFY(model.addGroups(groups));
+    QVERIFY(waitSignal(groupsCommitted, 1000));
+    QList<int> committedIds;
+    while (committedIds.count() < ADD_GROUPS_NUM) {
+        QVERIFY(waitSignal(groupsCommitted, 1000));
+        QVERIFY(groupsCommitted.first().at(1).toBool());
+        committedIds << groupsCommitted.first().at(0).value<QList<int> >();
+        groupsCommitted.clear();
+    }
+    QCOMPARE(committedIds.count(), ADD_GROUPS_NUM);
+    QCOMPARE(model.rowCount(), ADD_GROUPS_NUM);
+
+    QVERIFY(model.getGroups());
+    QCOMPARE(model.rowCount(), ADD_GROUPS_NUM);
+
+    for (int i = 0; i < ADD_GROUPS_NUM; i++) {
+        QVERIFY(groups[i].id() != -1);
+        QVERIFY(committedIds.contains(groups[i].id()));
+        QVERIFY(committedIds.contains(model.group(model.index(i, 0)).id()));
+    }
+}
+
 void GroupModelTest::cleanupTestCase()
 {
 //    deleteAll();
@@ -863,7 +903,7 @@ void GroupModelTest::resolveContact()
 
     // CONTACT RESOLVING WHEN ADDING A GROUP:
     QVERIFY(groupModel.addGroup(grp));
-    // Waiting for groupAdded signal.
+    // Waiting for groupsAdded signal.
     loop->exec();
     if (groupsCommitted.isEmpty())
         QVERIFY(waitSignal(groupsCommitted, 1000));
