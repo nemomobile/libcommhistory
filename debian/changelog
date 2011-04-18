@@ -1,3 +1,12 @@
+libcommhistory (1.1.1.11) unstable; urgency=low
+
+  * Fixes: NB#173277 - Brackets for Amount of calls are not cleared for
+    missed calls after dialed or received calls from same contact
+  * Fixes: NB#230841 - Possible memory leak could be seen in
+    commhistoryd +15948kB
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 18 Apr 2011 10:34:32 +0300
+
 libcommhistory (1.1.1.10) unstable; urgency=low
 
   * Don't update group remoteUid when new IM event is added
