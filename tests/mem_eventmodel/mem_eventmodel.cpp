@@ -83,11 +83,12 @@ void MemEventModelTest::addEvents()
 {
     MALLINFO_DUMP("start");
 
-    EventModel *model = new EventModel();
-
     MALLINFO_DUMP("model ready");
+    int mem=0;
+    int lastMem=0;
 
-    for (int i = 1; i < 100; i++) {
+    for (int i = 0; i < 100; i++) {
+        EventModel *model = new EventModel();
         Event e1;
 
         e1.setGroupId(group.id());
@@ -103,14 +104,24 @@ void MemEventModelTest::addEvents()
         QSignalSpy eventsCommitted(model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
 
         QVERIFY(waitSignal(eventsCommitted, WAIT_TIMEOUT));
+        waitWithDeletes(100);
+
+        delete model;
+
+        waitWithDeletes(100);
         MALLINFO_DUMP("query done");
+        struct mallinfo m = mallinfo();
+
+        if (i >= 50)
+            mem += m.uordblks - lastMem;
+        lastMem = m.uordblks;
     }
 
     QTest::qWait(CALM_TIMEOUT);
 
-    MALLINFO_DUMP("query done");
+    MALLINFO_DUMP("ALL DONE");
 
-    delete model;
+    qDebug() << "AVG LEAK" << mem/50;
 
     MALLINFO_DUMP("done");
 }

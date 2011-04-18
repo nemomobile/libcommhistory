@@ -37,6 +37,7 @@ class QueryRunner;
 class TrackerIO;
 class ContactListener;
 class CommittingTransaction;
+class UpdatesEmitter;
 
 class GroupModelPrivate: public QObject
 {
@@ -110,8 +111,6 @@ Q_SIGNALS:
     void groupsDeleted(const QList<int> &groupIds);
 
 public:
-    static uint modelSerial;
-
     EventModel::QueryMode queryMode;
     uint chunkSize;
     uint firstChunkSize;
@@ -132,6 +131,7 @@ public:
 
     QSharedPointer<ContactListener> contactListener;
     bool contactChangesEnabled;
+    QSharedPointer<UpdatesEmitter> emitter;
 };
 
 }

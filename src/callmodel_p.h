@@ -91,6 +91,7 @@ public:
     CallEvent::CallType eventType;
     QDateTime referenceTime;
     bool hasBeenFetched;
+    QSet<QString> countedUids;
 };
 
 }

@@ -28,7 +28,7 @@
 #include "queryrunner.h"
 #include "eventmodel.h"
 #include "eventmodel_p.h"
-#include "adaptor.h"
+#include "updatesemitter.h"
 #include "event.h"
 #include "eventtreeitem.h"
 #include "constants.h"
@@ -42,8 +42,6 @@ using namespace CommHistory;
 namespace {
     static const int defaultChunkSize = 50;
 }
-
-uint EventModelPrivate::modelSerial = 0;
 
 EventModelPrivate::EventModelPrivate(EventModel *model)
         : isInTreeMode(false)
@@ -65,11 +63,22 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
 {
     q_ptr = model;
     qRegisterMetaType<QList<CommHistory::Event> >();
-    new Adaptor(this);
-    if (!QDBusConnection::sessionBus().registerObject(
-            newObjectPath(), this)) {
-        qWarning() << __FUNCTION__ << ": error registering object";
-    }
+    // emit dbus signals
+    emitter = UpdatesEmitter::instance();
+    connect(this, SIGNAL(eventsAdded(const QList<CommHistory::Event>&)),
+            emitter.data(), SIGNAL(eventsAdded(const QList<CommHistory::Event>&)));
+    connect(this, SIGNAL(eventsUpdated(const QList<CommHistory::Event>&)),
+            emitter.data(), SIGNAL(eventsUpdated(const QList<CommHistory::Event>&)));
+    connect(this, SIGNAL(eventDeleted(int)),
+            emitter.data(), SIGNAL(eventDeleted(int)));
+    connect(this, SIGNAL(groupsUpdated(const QList<int>&)),
+            emitter.data(), SIGNAL(groupsUpdated(const QList<int>&)));
+    connect(this, SIGNAL(groupsUpdatedFull(const QList<CommHistory::Group>&)),
+            emitter.data(), SIGNAL(groupsUpdatedFull(const QList<CommHistory::Group>&)));
+    connect(this, SIGNAL(groupsDeleted(const QList<int>&)),
+            emitter.data(), SIGNAL(groupsDeleted(const QList<int>&)));
+
+    // listen to dbus signals
     QDBusConnection::sessionBus().connect(
         QString(), QString(), COMM_HISTORY_SERVICE_NAME, EVENTS_ADDED_SIGNAL,
         this, SLOT(eventsAddedSlot(const QList<CommHistory::Event> &)));
@@ -208,11 +217,6 @@ bool EventModelPrivate::fillModel(int start,
     q->endInsertRows();
 
     return false;
-}
-
-QString EventModelPrivate::newObjectPath()
-{
-    return QString(QLatin1String("/CommHistoryModel")) + QString::number(modelSerial++);
 }
 
 void EventModelPrivate::clearEvents()
