@@ -39,6 +39,7 @@ class QueryRunner;
 class ContactListener;
 class CommittingTransaction;
 class EventsQuery;
+class UpdatesEmitter;
 
 /*!
  * \class EventModelPrivate
@@ -125,7 +126,6 @@ public:
     virtual bool doAddEvent(Event &event);
     virtual bool doDeleteEvent(int id, Event &event);
 
-    QString newObjectPath();
     QModelIndex findEventRecursive(int id, EventTreeItem *parent) const;
 
     CommittingTransaction* commitTransaction(const QList<Event> &events);
@@ -176,8 +176,6 @@ public:
     QueryRunner *queryRunner;
     QueryRunner *partQueryRunner;
 
-    static uint modelSerial;
-
     Event::PropertySet propertyMask;
 
     QSharedPointer<ContactListener> contactListener;
@@ -188,6 +186,7 @@ public:
     QThread *bgThread;
 
     TrackerIO *m_pTracker;
+    QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
