@@ -1498,6 +1498,52 @@ void EventModelTest::testContactMatching()
     deleteTestContact(contactId);
 }
 
+void EventModelTest::testAddNonDigitRemoteId_data()
+{
+    QTest::addColumn<QString>("localId");
+    QTest::addColumn<QString>("remoteId");
+
+    QTest::newRow("vm") << RING_ACCOUNT << "voicemail";
+    QTest::newRow("space") << RING_ACCOUNT << "3 voicemail";
+}
+
+void EventModelTest::testAddNonDigitRemoteId()
+{
+    QFETCH(QString, localId);
+    QFETCH(QString, remoteId);
+
+    Group g;
+    addTestGroup(g, localId, remoteId);
+
+    EventModel model;
+    Group tg;
+    QVERIFY(model.trackerIO().getGroup(g.id(), tg));
+    QCOMPARE(tg.id(), g.id());
+    QCOMPARE(tg.localUid(), tg.localUid());
+    QCOMPARE(tg.remoteUids(), tg.remoteUids());
+
+    watcher.setModel(&model);
+    Event event;
+    event.setGroupId(g.id());
+    event.setType(Event::SMSEvent);
+    event.setDirection(Event::Inbound);
+    event.setStartTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
+    event.setEndTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
+    event.setLocalUid(localId);
+    event.setRemoteUid(remoteId);
+    event.setFreeText("you have a new voicemail");
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.addedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(compareEvents(watcher.lastAdded()[0], event));
+
+    Event tevent;
+    QVERIFY(model.trackerIO().getEvent(event.id(), tevent));
+    QVERIFY(compareEvents(event, tevent));
+}
+
 void EventModelTest::cleanupTestCase()
 {
 }
