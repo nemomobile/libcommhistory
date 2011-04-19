@@ -149,6 +149,10 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
 {
     GroupModel groupModel;
     groupModel.enableContactChanges(false);
+
+    bool isSms = options.contains("-sms");
+    bool isMms = options.contains("-mms");
+
     QString localUid = arguments.at(2);
     QString remoteUid = arguments.at(3);
     int groupId = -1;
@@ -162,9 +166,18 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         }
     }
 
+    // use predefined accounts for sms/mms
+    if (isSms) {
+        localUid = RING_ACCOUNT;
+    }
+    else if (isMms) {
+        localUid = MMS_ACCOUNT;
+    }
+
     if (!localUid.startsWith(TELEPATHY_ACCOUNT_PREFIX)) {
         localUid.prepend(TELEPATHY_ACCOUNT_PREFIX);
     }
+
 
     QDateTime startTime = QDateTime::currentDateTime();
     if (options.contains("-startTime")) {
@@ -209,8 +222,6 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         }
     }
 
-    bool isSms = options.contains("-sms");
-    bool isMms = options.contains("-mms");
 
     Event::EventDirection direction = Event::UnknownDirection;
     if (options.contains("-in"))
@@ -238,7 +249,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         if (isMms)
         {
             e.setType(Event::MMSEvent);
-            e.setLocalUid(MMS_ACCOUNT);
+            e.setLocalUid(localUid);
             e.setSubject(mmsSubject[qrand() % numMmsSubjects]);
             e.setMessageToken(QUuid::createUuid().toString());
 
@@ -288,7 +299,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         else if (isSms)
         {
             e.setType(Event::SMSEvent);
-            e.setLocalUid(RING_ACCOUNT);
+            e.setLocalUid(localUid);
             e.setMessageToken(QUuid::createUuid().toString());
         }
         else
