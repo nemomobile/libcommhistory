@@ -146,7 +146,9 @@ public:
     bool markAllRead();
 
     // reimp
-    // Override - call model works in sync mode.
+    /* NOTE: With streamed queries, event counts might be incorrect at
+     * chunk boundaries when sorting by time.
+     */
     virtual void setQueryMode( EventModel::QueryMode mode );
 
     virtual bool addEvent( Event &event );

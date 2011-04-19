@@ -738,11 +738,7 @@ CallModel::~CallModel()
 
 void CallModel::setQueryMode( EventModel::QueryMode mode )
 {
-    if (mode == EventModel::StreamedAsyncQuery) {
-        qWarning() << __PRETTY_FUNCTION__ << "CallModel can not use streamed query mode.";
-    } else {
-        EventModel::setQueryMode(mode);
-    }
+    EventModel::setQueryMode(mode);
 }
 
 bool CallModel::setFilter(CallModel::Sorting sortBy,
