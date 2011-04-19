@@ -407,7 +407,7 @@ void GroupModelPrivate::groupsAddedSlot(const QList<CommHistory::Group> &addedGr
                 || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
             g = group;
             addToModel(g);
-
+        } else {
             startContactListening();
             if (contactListener)
                 contactListener->resolveContact(g.localUid(),
