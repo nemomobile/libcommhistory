@@ -33,7 +33,7 @@ namespace CommHistory {
 #define EVENTS_UPDATED_SIGNAL      QLatin1String("eventsUpdated")
 #define EVENT_DELETED_SIGNAL       QLatin1String("eventDeleted")
 
-#define GROUP_ADDED_SIGNAL         QLatin1String("groupAdded")
+#define GROUPS_ADDED_SIGNAL        QLatin1String("groupsAdded")
 #define GROUPS_UPDATED_SIGNAL      QLatin1String("groupsUpdated")
 #define GROUPS_UPDATED_FULL_SIGNAL QLatin1String("groupsUpdatedFull")
 #define GROUPS_DELETED_SIGNAL      QLatin1String("groupsDeleted")

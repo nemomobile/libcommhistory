@@ -57,7 +57,17 @@ using namespace CommHistory;
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
 Q_GLOBAL_STATIC(TrackerIO, trackerIO)
-Q_DECLARE_METATYPE(QList<int>)
+
+namespace {
+    QString escapeForQSparql(const QString &string) {
+        QSparqlBinding binding;
+        binding.setValue(string);
+        return binding.toString();
+    }
+    QString encodeUri(const QUrl &uri) {
+        return QString::fromAscii(uri.toEncoded());
+    }
+}
 
 TrackerIOPrivate::TrackerIOPrivate(TrackerIO *parent)
     : q(parent),
@@ -142,23 +152,23 @@ QString TrackerIOPrivate::prepareMessagePartQuery(const QString &messageUri)
 }
 
 QString TrackerIOPrivate::prepareGroupQuery(const QString &localUid,
-                                             const QString &remoteUid,
-                                             int groupId)
+                                            const QString &remoteUid,
+                                            int groupId)
 {
     QString queryFormat(GROUP_QUERY);
     QStringList constraints;
     if (!remoteUid.isEmpty()) {
         QString number = normalizePhoneNumber(remoteUid);
         if (number.isEmpty()) {
-            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID \"%1\"]] ."))
-                          .arg(remoteUid);
+            constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasIMAddress [nco:imID %1]] ."))
+                          .arg(escapeForQSparql(remoteUid));
         } else {
             constraints << QString(LAT("?channel nmo:hasParticipant [nco:hasPhoneNumber [maemo:localPhoneNumber \"%1\"]] ."))
                           .arg(number.right(CommHistory::phoneNumberMatchLength()));
         }
     }
     if (!localUid.isEmpty()) {
-        constraints << QString(LAT("FILTER(nie:subject(?channel) = \"%1\") ")).arg(localUid);
+        constraints << QString(LAT("FILTER(nie:subject(?channel) = %1) ")).arg(escapeForQSparql(localUid));
     }
     if (groupId != -1)
         constraints << QString(LAT("FILTER(?channel = <%1>) ")).arg(Group::idToUrl(groupId).toString());
@@ -188,7 +198,7 @@ QString TrackerIOPrivate::findLocalContact(UpdateQuery &query,
         contact = m_contactCache[uri];
     } else {
         contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
-                  .arg(uri.toString());
+                  .arg(encodeUri(uri));
 
         m_contactCache.insert(uri, contact);
     }
@@ -248,7 +258,7 @@ void TrackerIOPrivate::addSIPContact(UpdateQuery &query,
                     "WHERE { ?number nco:phoneNumber \"%4\" }"))
         .arg(subject.toString())
         .arg(predicate)
-        .arg(sipAddressURI.toString())
+        .arg(encodeUri(sipAddressURI))
         .arg(phoneNumber);
 
     query.appendInsertion(contactInsert);
@@ -269,7 +279,7 @@ void TrackerIOPrivate::addIMContact(UpdateQuery &query,
         ensureIMAddress(query, imAddressURI, imID);
 
         contact = QString(LAT("[rdf:type nco:Contact; nco:hasIMAddress <%2>]"))
-            .arg(imAddressURI.toString());
+                  .arg(encodeUri(imAddressURI));
         m_contactCache.insert(imAddressURI, contact);
     }
 
@@ -290,7 +300,7 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
     QString contactInsert =
         QString(LAT("INSERT { <%1> %2 [ a nco:Contact ; nco:hasPhoneNumber ?number ] } "
                     "WHERE { ?number nco:phoneNumber \"%3\" }"))
-        .arg(subject.toString())
+        .arg(encodeUri(subject))
         .arg(predicate)
         .arg(phoneNumber);
 
@@ -310,7 +320,7 @@ void TrackerIOPrivate::removePhoneContact(UpdateQuery &query,
                             "?c a nco:Contact . "
                             "?c nco:hasPhoneNumber ?num . "
                             "?num maemo:localPhoneNumber \"%3\" . }"))
-        .arg(subject.toString())
+        .arg(encodeUri(subject))
         .arg(predicate)
         .arg(shortNumber);
 
@@ -829,13 +839,11 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
     writeCallProperties(query, event, false);
 
     QUrl channelUri = makeCallGroupURI(event);
-    QString localUri = QString(LAT("telepathy:%1")).arg(event.localUid());
-    QString eventDate(event.endTime().toUTC().toString(Qt::ISODate));
 
     query.insertionSilent(
         QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
         .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
-        .arg(channelUri.toString()));
+        .arg(encodeUri(channelUri)));
 
     // TODO: would it be cleaner to have all channel-related triples
     // inside the call group graph?
@@ -852,7 +860,7 @@ void TrackerIOPrivate::addCallEvent(UpdateQuery &query, Event &event)
         query.insertionSilent(
             QString(LAT("<%1> nmo:lastSuccessfulMessageDate "
                         "\"1970-01-01T00:00:00Z\"^^xsd:dateTime ."))
-            .arg(channelUri.toString()));
+            .arg(encodeUri(channelUri)));
     }
 
     query.insertion(eventSubject, "nmo:communicationChannel", channelUri);

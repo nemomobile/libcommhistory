@@ -38,7 +38,7 @@ class GroupModelTest : public QObject
 
 public slots:
     void eventsAddedSlot(const QList<CommHistory::Event> &);
-    void groupAddedSlot(CommHistory::Group group);
+    void groupsAddedSlot(const QList<CommHistory::Group> &);
     void groupsUpdatedSlot(const QList<int> &);
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &);
     void groupsDeletedSlot(const QList<int> &);
@@ -59,6 +59,7 @@ private slots:
     void resolveContact();
     void queryContacts();
     void changeRemoteUid();
+    void addMultipleGroups();
     void cleanupTestCase();
     void init();
     void cleanup();

@@ -134,13 +134,22 @@ public:
     Group group(const QModelIndex &index) const;
 
     /*!
-     * Add a new group. If successful, group.id() and group.isPermanent() are updated.
+     * Add a new group. If successful, group.id() is updated.
      *
      * \param group Group data to be inserted into the database.
      *
      * \return true if successful, otherwise false
      */
     bool addGroup(Group &group);
+
+    /*!
+     * Add new groups. If successful, group.id() is updated for added groups.
+     *
+     * \param groups Group data to be inserted into the database.
+     *
+     * \return true if successful, otherwise false
+     */
+    bool addGroups(QList<Group> &groups);
 
     /*!
      * Modifies a group. This will update a group with a matching id in

@@ -288,5 +288,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Grou
 
 Q_DECLARE_METATYPE(CommHistory::Group);
 Q_DECLARE_METATYPE(QList<CommHistory::Group>);
+Q_DECLARE_METATYPE(QList<int>)
 
 #endif
