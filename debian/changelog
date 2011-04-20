@@ -1,3 +1,11 @@
+libcommhistory (1.1.1.12) unstable; urgency=low
+
+  * Add GroupModel::addGroups()
+  * Fixes: NB#243422 - FT_UK: Message from voicemailbox not displayed in
+    messaging UI (H3G)
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 20 Apr 2011 11:34:38 +0300
+
 libcommhistory (1.1.1.11) unstable; urgency=low
 
   * Fixes: NB#173277 - Brackets for Amount of calls are not cleared for
