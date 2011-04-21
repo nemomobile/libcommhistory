@@ -266,17 +266,19 @@ void GroupModelPrivate::modelUpdatedSlot(bool successful)
 void GroupModelPrivate::executeQuery(const QString query)
 {
     isReady = false;
+    QString finalQuery(query);
     if (queryMode == EventModel::StreamedAsyncQuery) {
         queryRunner->setStreamedMode(true);
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
     } else {
-        // TODO: support this by query runner
-        //if (queryLimit) query.limit(queryLimit);
-        //if (queryOffset) query.offset(queryOffset);
+        if (queryLimit)
+            finalQuery.append(QLatin1String(" LIMIT ") + QString::number(queryLimit));
+        if (queryOffset)
+            finalQuery.append(QLatin1String(" OFFSET ") + QString::number(queryOffset));
     }
     qDebug() << Q_FUNC_INFO << this << queryRunner;
-    queryRunner->runGroupQuery(query);
+    queryRunner->runGroupQuery(finalQuery);
 
     if (queryMode == EventModel::SyncQuery) {
         QEventLoop loop;
