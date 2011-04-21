@@ -38,6 +38,7 @@ public:
 
     SingleEventModelPrivate(EventModel *model)
         : EventModelPrivate(model) {
+        queryLimit = 1;
     }
 
     bool acceptsEvent(const Event &event) const {
@@ -67,8 +68,6 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
     query.addPattern(QString(QLatin1String("FILTER(%2 = <%1>) ")).arg(uri.toString()))
             .variable(Event::Id);
 
-    query.addModifier(QLatin1String("LIMIT 1"));
-
     return d->executeQuery(query);
 }
 
@@ -97,7 +96,6 @@ bool SingleEventModel::getEventByTokens(const QString &token,
                          .arg(Group::idToUrl(groupId).toString()))
         .variable(Event::Id);
 
-    query.addModifier(QLatin1String("LIMIT 1"));
     query.setDistinct(true);
 
     return d->executeQuery(query);
