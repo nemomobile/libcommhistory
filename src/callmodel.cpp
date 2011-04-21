@@ -319,10 +319,13 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
             case CallModel::SortByTime  :
             {
                 int previousLastRow = eventRootItem->childCount() - 1;
+                EventTreeItem *previousLastItem = 0;
 
                 EventTreeItem *last = 0;
-                if (eventRootItem->childCount())
+                if (eventRootItem->childCount()) {
                     last = eventRootItem->child(previousLastRow);
+                    previousLastItem = last;
+                }
 
                 QList<EventTreeItem *> newItems;
 
@@ -340,7 +343,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                                 last->event().setEventCount(calculateEventCount(last));
                             countedUids.insert(last->event().remoteUid());
 
-                            if (eventMatchesFilter(last->event()))
+                            if (last != previousLastItem && eventMatchesFilter(last->event()))
                                 newItems.append(last);
                         }
 
@@ -350,7 +353,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                     }
                 }
 
-                if (last && eventMatchesFilter(last->event())) {
+                if (last && last != previousLastItem && eventMatchesFilter(last->event())) {
                     if (!countedUids.contains(last->event().remoteUid()))
                         last->event().setEventCount(calculateEventCount(last));
                     countedUids.insert(last->event().remoteUid());
@@ -360,8 +363,8 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 // update count for last item in the previous batch
                 if (!newItems.isEmpty()) {
                     if (previousLastRow != -1)
-                        emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(previousLastRow)),
-                                            q->createIndex(0, CallModel::NumberOfColumns - 1,
+                        emit q->dataChanged(q->createIndex(previousLastRow, 0, eventRootItem->child(previousLastRow)),
+                                            q->createIndex(previousLastRow, CallModel::NumberOfColumns - 1,
                                                            eventRootItem->child(previousLastRow)));
 
                     // insert the rest
@@ -735,11 +738,7 @@ CallModel::~CallModel()
 
 void CallModel::setQueryMode( EventModel::QueryMode mode )
 {
-    if (mode == EventModel::StreamedAsyncQuery) {
-        qWarning() << __PRETTY_FUNCTION__ << "CallModel can not use streamed query mode.";
-    } else {
-        EventModel::setQueryMode(mode);
-    }
+    EventModel::setQueryMode(mode);
 }
 
 bool CallModel::setFilter(CallModel::Sorting sortBy,
