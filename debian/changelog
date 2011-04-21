@@ -1,3 +1,11 @@
+libcommhistory (1.1.1.13) unstable; urgency=low
+
+  * Fixes: NB#248778 - call history crash when change the filtering mode frequently
+  * Re-enabled streaming async mode for CallModel (not fully supported,
+    some problems might occur with SortByTime).
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 21 Apr 2011 10:38:26 +0300
+
 libcommhistory (1.1.1.12) unstable; urgency=low
 
   * Add GroupModel::addGroups()
