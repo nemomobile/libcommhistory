@@ -185,8 +185,10 @@ bool EventModelPrivate::executeQuery(EventsQuery &query)
         queryRunner->setChunkSize(chunkSize);
         queryRunner->setFirstChunkSize(firstChunkSize);
     } else {
-        //if (queryLimit) query.limit(queryLimit);
-        //if (queryOffset) query.offset(queryOffset);
+        if (queryLimit)
+            query.addModifier(QLatin1String("LIMIT ") + QString::number(queryLimit));
+        if (queryOffset)
+            query.addModifier(QLatin1String("OFFSET ") + QString::number(queryOffset));
     }
     QString sparqlQuery = query.query();
     queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());

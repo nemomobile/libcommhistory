@@ -851,6 +851,33 @@ void CallModelTest::testMarkAllRead()
     QVERIFY(e2.isRead());
 }
 
+void CallModelTest::testLimit()
+{
+    CallModel model;
+    model.enableContactChanges(false);
+    model.setQueryMode(EventModel::SyncQuery);
+    model.setFilter(CallModel::SortByTime);
+
+    QVERIFY(model.getEvents());
+    QVERIFY(model.rowCount() > 1);
+
+    model.setLimit(1);
+
+    QVERIFY(model.getEvents());
+
+    QCOMPARE(model.rowCount(), 1);
+    Event e1 = model.event(model.index(0, 0));
+
+    model.setOffset(1);
+
+    QVERIFY(model.getEvents());
+
+    QCOMPARE(model.rowCount(), 1);
+    Event e2 = model.event(model.index(0, 0));
+
+    QVERIFY(e1.id() != e2.id());
+}
+
 void CallModelTest::cleanupTestCase()
 {
 }
