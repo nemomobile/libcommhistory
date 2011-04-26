@@ -729,6 +729,40 @@ void GroupModelTest::addMultipleGroups()
     }
 }
 
+void GroupModelTest::limitOffset()
+{
+    GroupModel model;
+    model.enableContactChanges(false);
+    QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
+
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    QCOMPARE(model.rowCount(), 4);
+
+    model.setLimit(2);
+
+    modelReady.clear();
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    QCOMPARE(model.rowCount(), 2);
+    QSet<int> headGroups;
+    headGroups.insert(model.group(model.index(0, 0)).id());
+    headGroups.insert(model.group(model.index(1, 0)).id());
+
+    model.setOffset(2);
+
+    modelReady.clear();
+    QVERIFY(model.getGroups());
+    QVERIFY(waitSignal(modelReady, 5000));
+
+    QCOMPARE(model.rowCount(), 2);
+
+    QVERIFY(!headGroups.contains(model.group(model.index(0, 0)).id()));
+    QVERIFY(!headGroups.contains(model.group(model.index(1, 0)).id()));
+}
+
 void GroupModelTest::cleanupTestCase()
 {
 //    deleteAll();
