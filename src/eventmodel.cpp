@@ -564,7 +564,7 @@ bool EventModel::modifyEvent(Event &event)
                      d,
                      "eventsUpdated",
                     Q_ARG(QList<CommHistory::Event>, events));
-        if (event.id() == -1
+        if (event.isValid()
             && event.groupId() != -1
             && !event.isDraft())
             t->addSignal(false,
@@ -602,7 +602,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
             return false;
         }
 
-        if (event.id() == -1
+        if (event.isValid()
             && event.groupId() != -1
             && !event.isDraft()
             && !modifiedGroups.contains(event.groupId())) {
