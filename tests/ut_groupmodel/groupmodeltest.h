@@ -60,6 +60,7 @@ private slots:
     void queryContacts();
     void changeRemoteUid();
     void addMultipleGroups();
+    void limitOffset();
     void cleanupTestCase();
     void init();
     void cleanup();

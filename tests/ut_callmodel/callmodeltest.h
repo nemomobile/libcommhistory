@@ -45,6 +45,7 @@ private slots:
     void testSortByContactUpdate();
     void testSortByTimeUpdate();
     void testSIPAddress();
+    void testLimit();
     void deleteAllCalls();
     void testMarkAllRead();
     void cleanupTestCase();
