@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.14) unstable; urgency=low
+
+  * Fixes: NB#243437 - Unread sync messages are not marked as unread
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Thu, 28 Apr 2011 10:57:40 +0300
+
 libcommhistory (1.1.1.13) unstable; urgency=low
 
   * Fixes: NB#248778 - call history crash when change the filtering mode frequently
