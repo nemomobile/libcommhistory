@@ -5,7 +5,8 @@ Maintainer: Alvi Hirvela  <alvi.hirvela@nokia.com>
 Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.6),
                libqtsparql-dev, doxygen, aegis-builder,
                libqtcontacts-dev, libtracker-sparql-dev,
-               libqtcontacts-extensions-tracker-dev
+               libqtcontacts-extensions-tracker-dev,
+               libcubi-0.1-dev
 Standards-Version: 3.7.2
 
 Package: libcommhistory0
