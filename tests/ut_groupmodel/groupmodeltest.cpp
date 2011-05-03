@@ -385,6 +385,24 @@ void GroupModelTest::getGroups()
     QCOMPARE(model.rowCount(), 2);
     QCOMPARE(listenerModel.rowCount(), 2);
 
+    /* filter out new group with hidden phone number */
+    group.setRemoteUids(QStringList() << QString(""));
+    group.setId(-1);
+    QVERIFY(model.addGroup(group));
+    groupsCommitted.clear();
+    loop->exec();
+    QVERIFY(waitSignal(groupsCommitted, 1000));
+    QVERIFY(groupsCommitted.first().at(1).toBool());
+    QCOMPARE(model.rowCount(), 2);
+    QCOMPARE(listenerModel.rowCount(), 2);
+
+    /* filter by hidden phone number */
+    modelReady.clear();
+    QVERIFY(model.getGroups(ACCOUNT1, ""));
+    QVERIFY(waitSignal(modelReady, 5000));
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.group(model.index(0, 0)).remoteUids().first(), QString(""));
+
     modelThread.quit();
     modelThread.wait(5000);
 }
@@ -1209,6 +1227,9 @@ void GroupModelTest::changeRemoteUid()
     }
     QVERIFY(oldContactFound);
     QVERIFY(newContactFound);
+
+    deleteTestContact(oldContactId);
+    deleteTestContact(newContactId);
 }
 
 QTEST_MAIN(GroupModelTest)

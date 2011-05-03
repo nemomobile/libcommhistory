@@ -24,7 +24,7 @@ include( ../../common-project-config.pri )
 include( ../../common-vars.pri )
 
 TARGET = model_example
-CONFIG += qdbus debug mobility qtsparql
+CONFIG += qdbus debug mobility qtsparql qtcontacts_extensions_tracker
 MOBILITY += contacts
 SOURCES += model_example.cpp
 

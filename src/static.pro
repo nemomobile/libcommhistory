@@ -24,7 +24,7 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 
 TEMPLATE  = lib
-CONFIG   += qdbus static mobility debug qtsparql
+CONFIG   += qdbus static mobility debug qtsparql qtcontacts_extensions_tracker
 PKGCONFIG += tracker-sparql-0.10
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION
