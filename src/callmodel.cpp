@@ -274,14 +274,14 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 // get the first event and save it as top level item
                 Event event = events.first();
                 topLevelItems.append(new EventTreeItem(event));
+                if (!event.contacts().isEmpty())
+                    contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
                 QList<CommHistory::Event> newEvents;
                 for (int i = 1; i < events.count(); i++) {
                     Event event = events.at(i);
-                    if (event.contactId() > 0) {
-                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                                            qMakePair(event.contactId(), event.contactName()));
-                    }
+                    if (!event.contacts().isEmpty())
+                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
                     bool found = false;
                     for (int i = 0; i < eventRootItem->childCount() && !found; i++) {
@@ -330,6 +330,9 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 QList<EventTreeItem *> newItems;
 
                 foreach (Event event, events) {
+                    if (!event.contacts().isEmpty())
+                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
+
                     if (last && last->event().eventCount() == -1
                         && belongToSameGroup(event, last->event())) {
                         // still filling last row with matching events
@@ -395,13 +398,10 @@ void CallModelPrivate::addToModel( Event &event )
             return EventModelPrivate::addToModel(event);
     }
 
-    if (event.contactId() > 0) {
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()),
-                            qMakePair(event.contactId(), event.contactName()));
+    if (!event.contacts().isEmpty()) {
+        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
     } else {
         if (!setContactFromCache(event)) {
-            // calls don't have the luxury of only one contact per
-            // conversation -> resolve unknowns and add to cache
             startContactListening();
             if (contactListener)
                 contactListener->resolveContact(event.localUid(), event.remoteUid());
