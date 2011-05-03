@@ -1,3 +1,10 @@
+libcommhistory (1.1.1.16) unstable; urgency=low
+
+  * Fixes: NB#244620 - commhistory-daemon should generate normalized phone number IRIs
+  * Fixes: NB#238200 - Call logs for ^XPrivate number^Y are removed from call history after changing the filter by mode.
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 03 May 2011 13:23:55 +0300
+
 libcommhistory (1.1.1.15) unstable; urgency=low
 
   * Support limit/offset for models
