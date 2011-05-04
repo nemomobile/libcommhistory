@@ -36,6 +36,7 @@ private slots:
     void testAddEvents();
     void testModifyEvent();
     void testDeleteEvent();
+    void testDeleteEventVCard();
     void testDeleteEventGroupUpdated();
     void testMessageToken();
     void testVCard();

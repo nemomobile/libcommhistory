@@ -22,6 +22,11 @@
 
 #include <QtTest/QtTest>
 
+#include <QSparqlConnection>
+#include <QSparqlResult>
+#include <QSparqlQuery>
+#include <QSparqlError>
+
 #include <time.h>
 #include "eventmodeltest.h"
 #include "eventmodel.h"
@@ -380,6 +385,81 @@ void EventModelTest::testDeleteEvent()
     QCOMPARE(watcher.committedCount(), 1);
     QCOMPARE(watcher.lastDeletedId(), event.id());
     QVERIFY(!model.trackerIO().getEvent(event.id(), event));
+}
+
+void EventModelTest::testDeleteEventVCard()
+{
+    const QString VCARD_FILE_1("VCARD_FILE_1");
+    const QString VCARD_LABEL_1("VCARD_LABEL_1");
+    const QString VCARD_FILE_2("VCARD_FILE_2");
+    const QString VCARD_LABEL_2("VCARD_LABEL_2");
+
+    EventModel model;
+    watcher.setModel(&model);
+
+    // test vcard resource deletion
+    Event event;
+    event.setType(Event::SMSEvent);
+    event.setDirection(Event::Inbound);
+    event.setGroupId(group1.id());
+    event.setStartTime(QDateTime::currentDateTime());
+    event.setEndTime(QDateTime::currentDateTime());
+    event.setLocalUid(RING_ACCOUNT);
+    event.setRemoteUid("555123456");
+    event.setFreeText("vcard test");
+    event.setFromVCard(VCARD_FILE_1, VCARD_LABEL_1);
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QVERIFY(event.id() != -1);
+
+    int event1Id = event.id();
+
+    event.setFromVCard(VCARD_FILE_2, VCARD_LABEL_2);
+    event.setId(-1);
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QVERIFY(event.id() != -1);
+
+    int event2Id = event.id();
+
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery fileNameQuery(QLatin1String("SELECT ?f {?f a nfo:FileDataObject; nfo:fileName ?:fileName}"));
+    fileNameQuery.bindValue("fileName", VCARD_FILE_1);
+
+    #define RUN_QUERY(query, resultSize) {\
+    QSparqlResult* result = conn->exec(query);\
+    result->waitForFinished();\
+    QVERIFY(!result->hasError());\
+    QCOMPARE(result->size(), resultSize);}
+
+    RUN_QUERY(fileNameQuery, 1);
+
+    fileNameQuery.bindValue("fileName", VCARD_FILE_2);
+
+    RUN_QUERY(fileNameQuery, 1);
+
+    QVERIFY(model.deleteEvent(event1Id));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(), event1Id);
+
+    fileNameQuery.bindValue("fileName", VCARD_FILE_1);
+    RUN_QUERY(fileNameQuery, 0);
+
+    fileNameQuery.bindValue("fileName", VCARD_FILE_2);
+    RUN_QUERY(fileNameQuery, 1);
+
+    QVERIFY(model.deleteEvent(event2Id));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(), event2Id);
+
+    fileNameQuery.bindValue("fileName", VCARD_FILE_2);
+    RUN_QUERY(fileNameQuery, 0);
 }
 
 void EventModelTest::testDeleteEventGroupUpdated()
