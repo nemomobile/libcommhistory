@@ -1353,6 +1353,10 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
             "} "
             "FILTER (!BOUND(?call)) "
             "}");
+    } else if (event.type() == Event::SMSEvent) {
+        query = LAT("DELETE {?vcardFile a rdfs:Resource} "
+                    "WHERE {?:uri nmo:fromVCard ?vcardFile}")
+                + query;
     }
 
     QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
