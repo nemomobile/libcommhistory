@@ -387,6 +387,14 @@ void EventModelTest::testDeleteEvent()
     QVERIFY(!model.trackerIO().getEvent(event.id(), event));
 }
 
+void EventModelTest::testDeleteEventVCard_data()
+{
+    QTest::addColumn<bool>("deleteGroups");
+
+    QTest::newRow("Delete events") << false;
+    QTest::newRow("Delete groups") << true;
+}
+
 void EventModelTest::testDeleteEventVCard()
 {
     const QString VCARD_FILE_1("VCARD_FILE_1");
@@ -394,14 +402,28 @@ void EventModelTest::testDeleteEventVCard()
     const QString VCARD_FILE_2("VCARD_FILE_2");
     const QString VCARD_LABEL_2("VCARD_LABEL_2");
 
+    QFETCH(bool, deleteGroups);
+
     EventModel model;
     watcher.setModel(&model);
+
+    int groupId1 = group1.id();
+    int groupId2 = groupId1;
+
+    if (deleteGroups) {
+        Group g1;
+        addTestGroup(g1,RING_ACCOUNT,QString("31415"));
+        Group g2;
+        addTestGroup(g2,RING_ACCOUNT,QString("18919"));
+        groupId1 = g1.id();
+        groupId2 = g2.id();
+    }
 
     // test vcard resource deletion
     Event event;
     event.setType(Event::SMSEvent);
     event.setDirection(Event::Inbound);
-    event.setGroupId(group1.id());
+    event.setGroupId(groupId1);
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setLocalUid(RING_ACCOUNT);
@@ -417,6 +439,7 @@ void EventModelTest::testDeleteEventVCard()
 
     event.setFromVCard(VCARD_FILE_2, VCARD_LABEL_2);
     event.setId(-1);
+    event.setGroupId(groupId2);
 
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
@@ -440,11 +463,21 @@ void EventModelTest::testDeleteEventVCard()
 
     RUN_QUERY(fileNameQuery, 1);
 
-    QVERIFY(model.deleteEvent(event1Id));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event1Id);
+    GroupModel groupModel;
+    QSignalSpy groupsCommitted(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
+
+    if (deleteGroups) {
+        groupModel.deleteGroups(QList<int>() << groupId1);
+        if (groupsCommitted.isEmpty())
+            QVERIFY(waitSignal(groupsCommitted, 1000));
+        QVERIFY(groupsCommitted.first().at(1).toBool());
+    } else {
+        QVERIFY(model.deleteEvent(event1Id));
+        watcher.waitForSignals();
+        QCOMPARE(watcher.deletedCount(), 1);
+        QCOMPARE(watcher.committedCount(), 1);
+        QCOMPARE(watcher.lastDeletedId(), event1Id);
+    }
 
     fileNameQuery.bindValue("fileName", VCARD_FILE_1);
     RUN_QUERY(fileNameQuery, 0);
@@ -452,20 +485,50 @@ void EventModelTest::testDeleteEventVCard()
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
     RUN_QUERY(fileNameQuery, 1);
 
-    QVERIFY(model.deleteEvent(event2Id));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event2Id);
+    if (deleteGroups) {
+        groupsCommitted.clear();
+        groupModel.deleteGroups(QList<int>() << groupId2);
+        if (groupsCommitted.isEmpty())
+            QVERIFY(waitSignal(groupsCommitted, 1000));
+        QVERIFY(groupsCommitted.first().at(1).toBool());
+    } else {
+        QVERIFY(model.deleteEvent(event2Id));
+        watcher.waitForSignals();
+        QCOMPARE(watcher.deletedCount(), 1);
+        QCOMPARE(watcher.committedCount(), 1);
+        QCOMPARE(watcher.lastDeletedId(), event2Id);
+    }
 
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
     RUN_QUERY(fileNameQuery, 0);
 }
 
+void EventModelTest::testDeleteEventMmsParts_data()
+{
+    QTest::addColumn<bool>("deleteGroups");
+
+    QTest::newRow("Delete events") << false;
+    QTest::newRow("Delete groups") << true;
+}
+
 void EventModelTest::testDeleteEventMmsParts()
 {
+    QFETCH(bool, deleteGroups);
+
     EventModel model;
     watcher.setModel(&model);
+
+    int groupId1 = group1.id();
+    int groupId2 = groupId1;
+
+    if (deleteGroups) {
+        Group g1;
+        addTestGroup(g1,RING_ACCOUNT,QString("15143"));
+        Group g2;
+        addTestGroup(g2,RING_ACCOUNT,QString("191828"));
+        groupId1 = g1.id();
+        groupId2 = g2.id();
+    }
 
     // test vcard resource deletion
     Event event;
@@ -476,7 +539,8 @@ void EventModelTest::testDeleteEventMmsParts()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setFreeText("mms1");
-    event.setGroupId(group1.id());
+    event.setGroupId(groupId1);
+    event.setMessageToken("mms1token");
 
     MessagePart part1;
     part1.setContentId("blahSmil");
@@ -517,6 +581,8 @@ void EventModelTest::testDeleteEventMmsParts()
     QStringList toList2;
     toList2 << "333" << "444" << "to2@mms.com";
     event.setToList(toList2);
+    event.setGroupId(groupId2);
+    event.setMessageToken("mms2token");
 
     QVERIFY(model.addEvent(event));
     watcher.waitForSignals();
@@ -565,11 +631,21 @@ void EventModelTest::testDeleteEventMmsParts()
     CHECK_CONTENT(part1, 1);
     CHECK_CONTENT(part3, 1);
 
-    QVERIFY(model.deleteEvent(event1Id));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event1Id);
+    GroupModel groupModel;
+    QSignalSpy groupsCommitted(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
+
+    if (deleteGroups) {
+        groupModel.deleteGroups(QList<int>() << groupId1);
+        if (groupsCommitted.isEmpty())
+            QVERIFY(waitSignal(groupsCommitted, 1000));
+        QVERIFY(groupsCommitted.first().at(1).toBool());
+    } else {
+        QVERIFY(model.deleteEvent(event1Id));
+        watcher.waitForSignals();
+        QCOMPARE(watcher.deletedCount(), 1);
+        QCOMPARE(watcher.committedCount(), 1);
+        QCOMPARE(watcher.lastDeletedId(), event1Id);
+    }
 
     headerQuery.bindValue("pattern", toList1.first());
     RUN_QUERY(headerQuery, 0);
@@ -585,11 +661,19 @@ void EventModelTest::testDeleteEventMmsParts()
     CHECK_CONTENT(part1, 0);
     CHECK_CONTENT(part3, 1);
 
-    QVERIFY(model.deleteEvent(event2Id));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event2Id);
+    if (deleteGroups) {
+        groupsCommitted.clear();
+        groupModel.deleteGroups(QList<int>() << groupId2);
+        if (groupsCommitted.isEmpty())
+            QVERIFY(waitSignal(groupsCommitted, 1000));
+        QVERIFY(groupsCommitted.first().at(1).toBool());
+    } else {
+        QVERIFY(model.deleteEvent(event2Id));
+        watcher.waitForSignals();
+        QCOMPARE(watcher.deletedCount(), 1);
+        QCOMPARE(watcher.committedCount(), 1);
+        QCOMPARE(watcher.lastDeletedId(), event2Id);
+    }
 
     headerQuery.bindValue("pattern", toList2.first());
     RUN_QUERY(headerQuery, 0);
