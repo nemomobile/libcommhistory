@@ -1340,8 +1340,15 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
 
     QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
 
-    // delete empty call groups
-    if (event.type() == Event::CallEvent) {
+    switch (event.type()) {
+    case Event::SMSEvent:
+        // delete vcard
+        query = LAT("DELETE {?vcardFile a rdfs:Resource} "
+                    "WHERE {?:uri nmo:fromVCard ?vcardFile}")
+                + query;
+        break;
+    case Event::CallEvent:
+        // delete empty call groups
         query += LAT(
             "DELETE { ?chan a rdfs:Resource } WHERE { "
             "GRAPH ?:graph { "
@@ -1353,10 +1360,20 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
             "} "
             "FILTER (!BOUND(?call)) "
             "}");
-    } else if (event.type() == Event::SMSEvent) {
-        query = LAT("DELETE {?vcardFile a rdfs:Resource} "
-                    "WHERE {?:uri nmo:fromVCard ?vcardFile}")
-                + query;
+        break;
+    case Event::MMSEvent:
+        // delete message parts and header
+        query = LAT("DELETE  {?part rdf:type rdfs:Resource}"
+                    "WHERE {?:uri nmo:mmsHasContent [nie:hasPart ?part]}"
+                    "DELETE {?content a rdfs:Resource} "
+                    "WHERE {?:uri nmo:mmsHasContent ?content}"
+                    "DELETE {?header a rdfs:Resource} "
+                    "WHERE {?:uri nmo:messageHeader ?header}")
+                    + query;
+        break;
+    default:
+        // nothing to be done for other event types
+        break;
     }
 
     QSparqlQuery deleteQuery(query, QSparqlQuery::DeleteStatement);
