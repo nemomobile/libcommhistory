@@ -1334,7 +1334,7 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
             connect(d->m_pTransaction,
                     SIGNAL(finished()),
                     d,
-                    SLOT(requestCountMmsEvents()),
+                    SLOT(requestMmsEventsCount()),
                     Qt::UniqueConnection);
     }
 
@@ -1712,7 +1712,7 @@ bool TrackerIO::deleteAllEvents(Event::EventType eventType)
             connect(d->m_pTransaction,
                     SIGNAL(finished()),
                     d,
-                    SLOT(requestCountMmsEvents()),
+                    SLOT(requestMmsEventsCount()),
                     Qt::UniqueConnection);
         break;
     default:
