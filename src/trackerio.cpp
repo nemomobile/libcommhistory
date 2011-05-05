@@ -1459,6 +1459,36 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
     }
 
     if (deleteMessages) {
+        // delete mms parts resources
+        update.deletion(QString(LAT("DELETE  {?part rdf:type rdfs:Resource}"
+                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                    "nmo:mmsHasContent [nie:hasPart ?part]; "
+                                    "nmo:communicationChannel ?channel "
+                                    "FILTER(?channel IN (%1))}"))
+                        .arg(groups.join(LAT(","))));
+
+        update.deletion(QString(LAT("DELETE {?content rdf:type rdfs:Resource}"
+                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                    "nmo:mmsHasContent ?content; "
+                                    "nmo:communicationChannel ?channel "
+                                    "FILTER(?channel IN (%1))}"))
+                        .arg(groups.join(LAT(","))));
+
+        update.deletion(QString(LAT("DELETE {?header rdf:type rdfs:Resource}"
+                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                    "nmo:messageHeader ?header; "
+                                    "nmo:communicationChannel ?channel "
+                                    "FILTER(?channel IN (%1))}"))
+                        .arg(groups.join(LAT(","))));
+
+        // delete vcard resources
+        update.deletion(QString(LAT("DELETE {?vcardFile rdf:type rdfs:Resource}"
+                                    "WHERE {?msg rdf:type nmo:SMSMessage; "
+                                    "nmo:fromVCard ?vcardFile; "
+                                    "nmo:communicationChannel ?channel "
+                                    "FILTER(?channel IN (%1))}"))
+                        .arg(groups.join(LAT(","))));
+
         update.deletion(QString(LAT("DELETE {?msg rdf:type rdfs:Resource}"
                                     "WHERE {?msg rdf:type nmo:Message; "
                                     "nmo:communicationChannel ?channel "
