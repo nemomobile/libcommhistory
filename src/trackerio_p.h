@@ -214,7 +214,8 @@ public:
     bool queryMmsTokensForGroups(QList<int> groupIds);
     bool doDeleteGroups(CommittingTransaction *transaction,
                         QList<int> groupIds,
-                        bool deleteMessages);
+                        bool deleteMessages,
+                        bool cleanMmsParts);
 
 public Q_SLOTS:
     void runNextTransaction();

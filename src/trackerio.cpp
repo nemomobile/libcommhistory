@@ -1448,7 +1448,8 @@ bool TrackerIOPrivate::queryMmsTokensForGroups(QList<int> groupIds)
 
 bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
                                       QList<int> groupIds,
-                                      bool deleteMessages)
+                                      bool deleteMessages,
+                                      bool cleanMmsParts)
 {
     qDebug() << Q_FUNC_INFO << groupIds << deleteMessages;
 
@@ -1459,28 +1460,29 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
     }
 
     if (deleteMessages) {
-        // delete mms parts resources
-        update.deletion(QString(LAT("DELETE  {?part rdf:type rdfs:Resource}"
-                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
-                                    "nmo:mmsHasContent [nie:hasPart ?part]; "
-                                    "nmo:communicationChannel ?channel "
-                                    "FILTER(?channel IN (%1))}"))
-                        .arg(groups.join(LAT(","))));
+        if (cleanMmsParts) {
+            // delete mms parts resources
+            update.deletion(QString(LAT("DELETE  {?part rdf:type rdfs:Resource}"
+                                        "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                        "nmo:mmsHasContent [nie:hasPart ?part]; "
+                                        "nmo:communicationChannel ?channel "
+                                        "FILTER(?channel IN (%1))}"))
+                            .arg(groups.join(LAT(","))));
 
-        update.deletion(QString(LAT("DELETE {?content rdf:type rdfs:Resource}"
-                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
-                                    "nmo:mmsHasContent ?content; "
-                                    "nmo:communicationChannel ?channel "
-                                    "FILTER(?channel IN (%1))}"))
-                        .arg(groups.join(LAT(","))));
+            update.deletion(QString(LAT("DELETE {?content rdf:type rdfs:Resource}"
+                                        "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                        "nmo:mmsHasContent ?content; "
+                                        "nmo:communicationChannel ?channel "
+                                        "FILTER(?channel IN (%1))}"))
+                            .arg(groups.join(LAT(","))));
 
-        update.deletion(QString(LAT("DELETE {?header rdf:type rdfs:Resource}"
-                                    "WHERE {?msg rdf:type nmo:MMSMessage; "
-                                    "nmo:messageHeader ?header; "
-                                    "nmo:communicationChannel ?channel "
-                                    "FILTER(?channel IN (%1))}"))
-                        .arg(groups.join(LAT(","))));
-
+            update.deletion(QString(LAT("DELETE {?header rdf:type rdfs:Resource}"
+                                        "WHERE {?msg rdf:type nmo:MMSMessage; "
+                                        "nmo:messageHeader ?header; "
+                                        "nmo:communicationChannel ?channel "
+                                        "FILTER(?channel IN (%1))}"))
+                            .arg(groups.join(LAT(","))));
+        }
         // delete vcard resources
         update.deletion(QString(LAT("DELETE {?vcardFile rdf:type rdfs:Resource}"
                                     "WHERE {?msg rdf:type nmo:SMSMessage; "
@@ -1527,6 +1529,7 @@ void TrackerIOPrivate::mmsTokensReady(CommittingTransaction *transaction,
     Q_ASSERT(transaction);
 
     QList<int> groupIds = arg.value<QList<int> >();
+    bool hasMms = false;
 
     while (result->next()) {
         QSparqlResultRow row = result->current();
@@ -1540,12 +1543,14 @@ void TrackerIOPrivate::mmsTokensReady(CommittingTransaction *transaction,
 
         if (!messageToken.isEmpty()) {
             m_mmsTokens.insert(messageToken);
+            hasMms = true;
         }
     }
 
     doDeleteGroups(transaction,
                    groupIds,
-                   true);
+                   true,
+                   hasMms);
 }
 
 bool TrackerIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
@@ -1562,7 +1567,7 @@ bool TrackerIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *
     if (deleteMessages)
         return d->queryMmsTokensForGroups(groupIds);
 
-    return d->doDeleteGroups(d->m_pTransaction, groupIds, deleteMessages);
+    return d->doDeleteGroups(d->m_pTransaction, groupIds, deleteMessages, false);
 }
 
 bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
