@@ -462,6 +462,145 @@ void EventModelTest::testDeleteEventVCard()
     RUN_QUERY(fileNameQuery, 0);
 }
 
+void EventModelTest::testDeleteEventMmsParts()
+{
+    EventModel model;
+    watcher.setModel(&model);
+
+    // test vcard resource deletion
+    Event event;
+    event.setLocalUid(RING_ACCOUNT);
+    event.setRemoteUid("0506661234");
+    event.setType(Event::MMSEvent);
+    event.setDirection(Event::Outbound);
+    event.setStartTime(QDateTime::currentDateTime());
+    event.setEndTime(QDateTime::currentDateTime());
+    event.setFreeText("mms1");
+    event.setGroupId(group1.id());
+
+    MessagePart part1;
+    part1.setContentId("blahSmil");
+    part1.setContentType("application/smil");
+    part1.setPlainTextContent("<smil>blah</smil>");
+
+    MessagePart part2;
+    part2.setContentId("catphoto");
+    part2.setContentType("image/jpeg");
+    part2.setContentSize(101000);
+    part2.setContentLocation("/home/user/.mms/msgid001/catphoto.jpg");
+
+    event.setMessageParts(QList<MessagePart>() << part1 << part2);
+
+    QStringList toList1;
+    toList1 << "111" << "222" << "to@mms.com";
+    event.setToList(toList1);
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QVERIFY(event.id() != -1);
+
+    int event1Id = event.id();
+
+    MessagePart part3;
+    part3.setContentId("text_slide2");
+    part3.setContentType("text/plain");
+    part3.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
+    MessagePart part4;
+    part4.setContentId("dogphoto");
+    part4.setContentType("image/jpeg");
+    part4.setContentSize(202000);
+    part4.setContentLocation("/home/user/.mms/msgid001/dogphoto.jpg");
+    event.setId(-1);
+
+    event.setMessageParts(QList<MessagePart>() << part3 << part4);
+
+    QStringList toList2;
+    toList2 << "333" << "444" << "to2@mms.com";
+    event.setToList(toList2);
+
+    QVERIFY(model.addEvent(event));
+    watcher.waitForSignals();
+    QVERIFY(event.id() != -1);
+
+    int event2Id = event.id();
+
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+
+    #define RUN_QUERY(query, resultSize) {\
+    QSparqlResult* result = conn->exec(query);\
+    result->waitForFinished();\
+    QVERIFY(!result->hasError());\
+    QCOMPARE(result->size(), resultSize);}
+
+    //check header
+    QSparqlQuery headerQuery(QLatin1String("SELECT ?v {?h a nmo:MessageHeader; "
+                                           "nmo:headerName \"x-mms-to\"; "
+                                           "nmo:headerValue ?v "
+                                           "FILTER(regex(?v, ?:pattern))}"));
+
+    headerQuery.bindValue("pattern", toList1.first());
+    RUN_QUERY(headerQuery, 1);
+
+    headerQuery.bindValue("pattern", toList2.first());
+    RUN_QUERY(headerQuery, 1);
+
+    //check parts
+    QSparqlQuery partsQuery(QLatin1String("SELECT ?a {?a a nmo:Attachment; "
+                                           "nmo:contentId ?:contentId}"));
+    #define CHECK_PART(part, result) {\
+    partsQuery.bindValue("contentId", part.contentId()); \
+    RUN_QUERY(partsQuery, result);}
+
+    CHECK_PART(part1, 1);
+    CHECK_PART(part2, 1);
+    CHECK_PART(part3, 1);
+    CHECK_PART(part4, 1);
+
+    //check content
+    QSparqlQuery contentQuery(QLatin1String("SELECT ?c {?c a nmo:Multipart; nie:hasPart [nmo:contentId ?:contentId]}"));
+    #define CHECK_CONTENT(part, result) {\
+    partsQuery.bindValue("contentId", part.contentId()); \
+    RUN_QUERY(partsQuery, result);}
+
+    CHECK_CONTENT(part1, 1);
+    CHECK_CONTENT(part3, 1);
+
+    QVERIFY(model.deleteEvent(event1Id));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(), event1Id);
+
+    headerQuery.bindValue("pattern", toList1.first());
+    RUN_QUERY(headerQuery, 0);
+
+    headerQuery.bindValue("pattern", toList2.first());
+    RUN_QUERY(headerQuery, 1);
+
+    CHECK_PART(part1, 0);
+    CHECK_PART(part2, 0);
+    CHECK_PART(part3, 1);
+    CHECK_PART(part4, 1);
+
+    CHECK_CONTENT(part1, 0);
+    CHECK_CONTENT(part3, 1);
+
+    QVERIFY(model.deleteEvent(event2Id));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.deletedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QCOMPARE(watcher.lastDeletedId(), event2Id);
+
+    headerQuery.bindValue("pattern", toList2.first());
+    RUN_QUERY(headerQuery, 0);
+
+    CHECK_PART(part3, 0);
+    CHECK_PART(part4, 0);
+
+    CHECK_CONTENT(part3, 0);
+}
+
+
 void EventModelTest::testDeleteEventGroupUpdated()
 {
     EventModel model;
