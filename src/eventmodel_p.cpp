@@ -231,12 +231,10 @@ void EventModelPrivate::clearEvents()
 void EventModelPrivate::addToModel(Event &event)
 {
     Q_Q(EventModel);
-    qDebug() << __PRETTY_FUNCTION__ << event.id();
-    qDebug() << __PRETTY_FUNCTION__ << event.toString();
+    qDebug() << Q_FUNC_INFO << event.toString();
 
     if (!event.contacts().isEmpty()) {
-        foreach (Event::Contact contact, event.contacts())
-            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
+        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
     } else {
         setContactFromCache(event);
     }
@@ -345,7 +343,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
         if (!event.contacts().isEmpty()) {
             foreach (Event::Contact contact, event.contacts())
-                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), contact);
+                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
         }
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
@@ -518,7 +516,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
             QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
             // if contact is not yet in cache, add it there
             if (!contactCache.contains(cacheKey))
-                contactCache.insert(cacheKey, newContact);
+                contactCache.insert(cacheKey, QList<Event::Contact>() << newContact);
 
             for (int i = 0; i < contacts.count(); i++)
                 // if contact is already resolved, change name to new one
@@ -569,25 +567,27 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
                                            const QList< QPair<QString,QString> > &contactAddresses)
 {
     // (local id, remote id) -> (contact id, name)
-    QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
+    QMutableMapIterator<QPair<QString,QString>, QList<Event::Contact> > i(contactCache);
+    Event::Contact contact(localId, contactName);
     while (i.hasNext()) {
 
         i.next();
         if (ContactListener::addressMatchesList(i.key().first,  // local id
                                                 i.key().second, // remote id
                                                 contactAddresses)) {
-
-            // address found in cache -> update
-            i.value().first = localId;      // contact id
-            i.value().second = contactName; // contact name
+            if (!i.value().contains(contact))
+                i.value().append(contact);
             break;
         }
+
+
         // address not found, but we've got the contact in the cache
         // -> contact was updated -> address removed
-        else if ((quint32)(i.value().first) == localId) {
-
+        else if (i.value().contains(contact)) {
             // delete our record since the address doesn't match anymore
-            i.remove();
+            i.value().removeOne(contact);
+            if (i.value().isEmpty())
+                i.remove();
             break;
         }
     }
@@ -597,12 +597,18 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
 
 void EventModelPrivate::slotContactRemoved(quint32 localId)
 {
-    QMutableMapIterator<QPair<QString,QString>, QPair<int, QString> > i(contactCache);
+    QMutableMapIterator<QPair<QString,QString>, QList<Event::Contact> > i(contactCache);
     while (i.hasNext()) {
-
         i.next();
         // contact has been removed -> delete it from cache
-        if ((quint32)(i.value().first) == localId)
+        QMutableListIterator<Event::Contact> contact(i.value());
+        while (contact.hasNext()) {
+            contact.next();
+            if ((quint32)(contact.value().first) == localId)
+                contact.remove();
+        }
+
+        if (i.value().isEmpty())
             i.remove();
     }
 
@@ -620,12 +626,12 @@ TrackerIO* EventModelPrivate::tracker()
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 {
-    Event::Contact contact = contactCache.value(qMakePair(event.localUid(),
-                                                          event.remoteUid()));
-    if (contact.first > 0) {
-        event.setContacts(QList<Event::Contact>() << contact);
+    QList<Event::Contact> contacts = contactCache.value(qMakePair(event.localUid(), event.remoteUid()));
+    if (!contacts.isEmpty()) {
+        event.setContacts(contacts);
         return true;
     }
+
     return false;
 }
 
