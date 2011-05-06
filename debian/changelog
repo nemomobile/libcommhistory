@@ -1,3 +1,11 @@
+libcommhistory (1.1.1.17) unstable; urgency=low
+
+  * Fixes: NB#251499 - Number matches to N contacts not shown in Call
+    history
+  * Fixes: NB#209190 - MMS parts are not cleaned from tracker
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 06 May 2011 09:55:04 +0300
+
 libcommhistory (1.1.1.16.2) unstable; urgency=low
 
   * Add workaround for missing dependecy in libqtcontacts-extensions-
