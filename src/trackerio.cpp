@@ -322,26 +322,6 @@ void TrackerIOPrivate::addPhoneContact(UpdateQuery &query,
     query.appendInsertion(contactInsert);
 }
 
-void TrackerIOPrivate::removePhoneContact(UpdateQuery &query,
-                                          const QUrl &subject,
-                                          const char *predicate,
-                                          const QString &phoneNumber,
-                                          PhoneNumberNormalizeFlags normalizeFlags)
-{
-    QString shortNumber = makeShortNumber(phoneNumber, normalizeFlags);
-    QString contactDelete =
-        QString(LAT("DELETE { <%1> %2 ?c } "
-                    "WHERE { <%1> %2 ?c . "
-                            "?c a nco:Contact . "
-                            "?c nco:hasPhoneNumber ?num . "
-                            "?num maemo:localPhoneNumber \"%3\" . }"))
-        .arg(encodeUri(subject))
-        .arg(predicate)
-        .arg(shortNumber);
-
-    query.deletion(contactDelete);
-}
-
 void TrackerIOPrivate::addRemoteContact(UpdateQuery &query,
                                         const QUrl &subject,
                                         const char *predicate,
@@ -906,8 +886,7 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
 
     QString phoneNumber = normalizePhoneNumber(event.remoteUid());
     if (!phoneNumber.isEmpty()) {
-        removePhoneContact(query, channelUrl, "nmo:hasParticipant",
-                           event.remoteUid(), NormalizeFlagRemovePunctuation);
+        query.deletion(channelUrl, "nmo:hasParticipant");
         addPhoneContact(query, channelUrl, "nmo:hasParticipant",
                         event.remoteUid(), NormalizeFlagRemovePunctuation);
     }
@@ -1028,8 +1007,6 @@ bool TrackerIO::addEvent(Event &event)
                            LAT("nie:DataObject"));
 
         if (!event.isDraft()) {
-            // TODO: add missing participants
-            //LiveNodes participants = channel->getHasParticipants();
             d->setChannel(query, event, event.groupId());
         }
     } else if (event.type() == Event::CallEvent) {

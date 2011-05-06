@@ -1161,6 +1161,7 @@ void GroupModelTest::changeRemoteUid()
     QVERIFY(groupModel.getGroups());
     QVERIFY(waitSignal(modelReady, 5000));
 
+    int numGroups = groupModel.rowCount();
     int groupsFound = 0;
     for (int i=0; i < groupModel.rowCount(); i++) {
         Group g = groupModel.group(groupModel.index(i, 0));
@@ -1212,6 +1213,7 @@ void GroupModelTest::changeRemoteUid()
 
     QVERIFY(groupModel.getGroups());
     QVERIFY(waitSignal(modelReady, 5000));
+    QCOMPARE(groupModel.rowCount(), numGroups);
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.remoteUids().size(), 1);
     QCOMPARE(group.remoteUids().first(), newRemoteUid);
