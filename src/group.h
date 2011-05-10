@@ -287,6 +287,9 @@ private:
 QDBusArgument &operator<<(QDBusArgument &argument, const CommHistory::Group &group);
 const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Group &group);
 
+LIBCOMMHISTORY_EXPORT QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group);
+LIBCOMMHISTORY_EXPORT QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group);
+
 Q_DECLARE_METATYPE(CommHistory::Group);
 Q_DECLARE_METATYPE(QList<CommHistory::Group>);
 Q_DECLARE_METATYPE(QList<int>)

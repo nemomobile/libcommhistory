@@ -140,6 +140,10 @@ void printUsage()
     std::cout << "                 deletegroup group-id"                                                                                                   << std::endl;
     std::cout << "                 deleteall"                                                                                                              << std::endl;
     std::cout << "                 markallcallsread"                                                                                                       << std::endl;
+    std::cout << "                 export [-group group-id] [-calls] [-groups] filename"
+                                    << std::endl;
+    std::cout << "                 import filename"
+                                    << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
     std::cout << "New events are of IM type and have random contents."                                                                                     << std::endl;
@@ -838,6 +842,186 @@ int doMarkAllCallsRead(const QStringList &arguments, const QVariantMap &options)
     return 0;
 }
 
+bool exportGroup(QDataStream &out, const Group &group)
+{
+    ConversationModel model;
+    model.enableContactChanges(false);
+    model.setQueryMode(EventModel::SyncQuery);
+    if (!model.getEvents(group.id())) {
+        qWarning() << "Error reading events from group" << group.id();
+        return false;
+    }
+
+    out << group << model.rowCount();
+    for (int i = 0; i < model.rowCount(); i++) {
+        Event event = model.event(model.index(i, 0));
+        out << event;
+    }
+
+    return true;
+}
+
+int doExport(const QStringList &arguments, const QVariantMap &options)
+{
+    QString fileName = arguments.at(2);
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qCritical() << "Unable to open file" << fileName << " for writing:" << file.errorString();
+        return -1;
+    }
+
+    // extremely sophisticated stream format:
+    // numberOfGroups
+    //   group 1
+    //   numberOfEvents in group 1
+    //   events
+    //   group 2
+    //   numberOfEvents in group 2
+    //   events of group 2
+    //   ...
+    // numberOfCalls
+    //   calls
+    QDataStream out(&file);
+    out.setVersion(QDataStream::Qt_4_7);
+
+    GroupModel groupModel;
+    groupModel.enableContactChanges(false);
+    groupModel.setQueryMode(EventModel::SyncQuery);
+
+    if (options.contains("-group")) {
+        bool ok = false;
+        int id = options.value("-group").toInt(&ok);
+        if (!ok) {
+            qCritical() << "Invalid group id";
+            return -1;
+        }
+
+        Group group;
+        if (!groupModel.trackerIO().getGroup(id, group)) {
+            qCritical() << "Error reading group" << id;
+            return -1;
+        }
+        out << 1;
+        exportGroup(out, group);
+    } else if (options.contains("-groups")) {
+        if (!groupModel.getGroups()) {
+            qCritical() << "Error reading groups";
+            return -1;
+        }
+
+        out << groupModel.rowCount();
+        for (int i = 0; i < groupModel.rowCount(); i++)
+            exportGroup(out, groupModel.group(groupModel.index(i, 0)));
+    } else {
+        out << 0;
+    }
+
+    if (options.contains("-calls")) {
+        CallModel callModel;
+        callModel.enableContactChanges(false);
+        callModel.setTreeMode(false);
+        callModel.setFilter(CallModel::SortByTime);
+        callModel.setQueryMode(EventModel::SyncQuery);
+        if (!callModel.getEvents()) {
+            qCritical() << "Error reading calls";
+            return -1;
+        }
+
+        out << callModel.rowCount();
+        for (int i = 0; i < callModel.rowCount(); i++)
+            out << callModel.event(callModel.index(i, 0));
+    } else {
+        out << 0;
+    }
+
+    return 0;
+}
+
+int doImport(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED(options);
+
+    QString fileName = arguments.at(2);
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qCritical() << "Unable to open file" << fileName << " for reading:" << file.errorString();
+        return -1;
+    }
+
+    QDataStream in(&file);
+    in.setVersion(QDataStream::Qt_4_7);
+
+    int totalEvents = 0;
+    int numGroups;
+    in >> numGroups;
+    if (numGroups) {
+        GroupModel groupModel;
+        groupModel.enableContactChanges(false);
+        groupModel.setQueryMode(EventModel::SyncQuery);
+        Catcher groupCatcher(&groupModel);
+        EventModel model;
+        Catcher eventCatcher(&model);
+
+        for (int i = 0; i < numGroups; i++) {
+            Group group;
+            in >> group;
+            int numEvents;
+            in >> numEvents;
+            bool ok = true;
+            if (!groupModel.addGroup(group)) {
+                qWarning() << "Error adding group ( local"
+                           << group.localUid() << ", remote" << group.remoteUids() << ")";
+                ok = false;
+            }
+            groupCatcher.waitCommit(0);
+
+            QList<Event> events;
+            for (int j = 0; j < numEvents; j++) {
+                Event event;
+                in >> event;
+                event.setGroupId(group.id());
+                events << event;
+            }
+
+            if (ok) {
+                if (!model.addEvents(events)) {
+                    qWarning() << "Error adding events for group" << group.id();
+                    continue;
+                }
+                eventCatcher.waitCommit(numEvents);
+                totalEvents += numEvents;
+            }
+        }
+    }
+
+    int numCalls;
+    in >> numCalls;
+    if (numCalls) {
+        EventModel model;
+        model.enableContactChanges(false);
+        model.setQueryMode(EventModel::SyncQuery);
+        Catcher catcher(&model);
+
+        QList<Event> events;
+        for (int i = 0; i < numCalls; i++) {
+            Event event;
+            in >> event;
+            events << event;
+        }
+        if (!model.addEvents(events)) {
+            qWarning() << "Error adding calls";
+        } else {
+            catcher.waitCommit(numCalls);
+        }
+    }
+
+    std::cout << "Imported " << numGroups << " conversations, "
+              << totalEvents << " messages, "
+              << numCalls << " calls" << std::endl;
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
@@ -891,6 +1075,10 @@ int main(int argc, char **argv)
         return doDeleteAll(args, options);
     } else if (args.at(1) == "markallcallsread") {
         return doMarkAllCallsRead(args, options);
+    } else if (args.at(1) == "export" && args.count() > 2) {
+        return doExport(args, options);
+    } else if (args.at(1) == "import") {
+        return doImport(args, options);
     } else {
         printUsage();
     }

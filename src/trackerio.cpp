@@ -476,13 +476,13 @@ void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &quer
             break;
         case Event::CharacterSet:
             query.insertion(event.url(),
-                            "nmo:characterSet",
+                            "nie:characterSet",
                             event.characterSet(),
                             modifyMode);
             break;
         case Event::Language:
             query.insertion(event.url(),
-                            "nmo:language",
+                            "nie:language",
                             event.language(),
                             modifyMode);
             break;

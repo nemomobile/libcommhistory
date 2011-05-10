@@ -520,6 +520,47 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     return argument;
 }
 
+QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group)
+{
+    stream << group.id() << group.localUid() << group.remoteUids()
+           << group.chatType() << group.chatName()
+           << group.lastEventId()
+           << group.lastMessageText() << group.lastVCardFileName()
+           << group.lastVCardLabel() << group.lastEventType()
+           << group.lastEventStatus() << group.lastModified();
+
+    return stream;
+}
+
+QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group)
+{
+    GroupPrivate p;
+    int type, status;
+    uint chatType;
+
+    stream >> p.id >> p.localUid >> p.remoteUids >> chatType
+           >> p.chatName >> p.lastEventId
+           >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
+           >> type >> status >> p.lastModified;
+
+    group.setId(p.id);
+    group.setLocalUid(p.localUid);
+    group.setRemoteUids(p.remoteUids);
+    group.setChatType((Group::ChatType)chatType);
+    group.setChatName(p.chatName);
+    group.setLastEventId(p.lastEventId);
+    group.setLastMessageText(p.lastMessageText);
+    group.setLastVCardFileName(p.lastVCardFileName);
+    group.setLastVCardLabel(p.lastVCardLabel);
+    group.setLastEventType((Event::EventType)type);
+    group.setLastEventStatus((Event::EventStatus)status);
+    group.setLastModified(p.lastModified);
+
+    group.resetModifiedProperties();
+
+    return stream;
+}
+
 QString Group::toString() const
 {
     QString contacts;
