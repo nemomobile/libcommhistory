@@ -26,6 +26,7 @@ include( ../tests.pri )
 
 TARGET = ut_callmodel
 DESTDIR = ../bin
+QT -= gui
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += callmodeltest.cpp

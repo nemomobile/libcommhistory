@@ -26,6 +26,7 @@ include( ../performance_tests.pri )
 
 TARGET = perf_callmodel
 DESTDIR = ../perf_bin
+QT -= gui
 CONFIG  += qtestlib qdbus mobility
 MOBILITY += contacts
 SOURCES += callmodelperftest.cpp
