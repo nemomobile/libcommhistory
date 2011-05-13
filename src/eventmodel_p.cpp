@@ -428,9 +428,15 @@ void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 
     foreach (const Event &event, events) {
         QModelIndex index = findEvent(event.id());
-        if (!index.isValid()) continue;
-
         Event e = event;
+
+        if (!index.isValid()) {
+            if (acceptsEvent(e))
+                addToModel(e);
+            else
+                continue;
+        }
+
         modifyInModel(e);
     }
 }
