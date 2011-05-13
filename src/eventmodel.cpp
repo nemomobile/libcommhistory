@@ -469,8 +469,19 @@ bool EventModel::addEvent(Event &event, bool toModelOnly)
             d->addToModel(event);
         }
 
-        d->commitTransaction(QList<Event>() << event);
-        emit d->eventsAdded(QList<Event>() << event);
+        QList<Event> events;
+        events << event;
+        CommittingTransaction *t = d->commitTransaction(events);
+
+        // signal localy initiated events right away
+        // and delay incoming events till they committed
+        if (event.direction() != Event::Outbound && t)
+            t->addSignal(false,
+                         d,
+                         "eventsAdded",
+                        Q_ARG(QList<CommHistory::Event>, events));
+        else
+            emit d->eventsAdded(events);
     }
     return true;
 }
@@ -524,8 +535,13 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
                 added.append(event);
             }
 
-            d->commitTransaction(added);
-            emit d->eventsAdded(added);
+            CommittingTransaction *t = d->commitTransaction(added);
+            if (t)
+                t->addSignal(false,
+                             d,
+                             "eventsAdded",
+                            Q_ARG(QList<CommHistory::Event>, added));
+
             added.clear();
         }
     }
