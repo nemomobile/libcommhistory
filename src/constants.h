@@ -38,13 +38,6 @@ namespace CommHistory {
 #define GROUPS_UPDATED_FULL_SIGNAL QLatin1String("groupsUpdatedFull")
 #define GROUPS_DELETED_SIGNAL      QLatin1String("groupsDeleted")
 
-#define DIVIDER_TODAY              QLatin1String("Today")
-#define DIVIDER_YESTERDAY          QLatin1String("Yesterday")
-#define DIVIDER_N_WEEKS_AGO        QLatin1String("%1 weeks ago")
-#define DIVIDER_N_MONTHS_AGO       QLatin1String("%1 months ago")
-#define DIVIDER_OLDER              QLatin1String("Older")
-
-
 } /* namespace CommHistory */
 
 #endif /* CONSTANTS_H */

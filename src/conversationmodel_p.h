@@ -37,14 +37,10 @@ public:
 
     ConversationModelPrivate(EventModel *model);
 
-    bool updateEventsRecursive(const QList<Event::Contact> &contacts,
-                               const QString &remoteUid,
-                               EventTreeItem *parent);
-    QModelIndex findParent(const Event &event);
+    void updateEvents(const QList<Event::Contact> &contacts,
+                      const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
     bool fillModel(int start, int end, QList<CommHistory::Event> events);
-    EventTreeItem* findDividerItem(const Event &divider);
-    EventTreeItem* findDivider(const Event &event);
 
 public Q_SLOTS:
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
