@@ -41,7 +41,6 @@ private slots:
     void addEvent();
     void modifyEvent();
     void deleteEvent();
-    void treeMode();
     void asyncMode();
     void sorting();
     void contacts_data();

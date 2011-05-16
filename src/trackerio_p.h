@@ -146,12 +146,6 @@ public:
                           PhoneNumberNormalizeFlags normalizeFlags
                           = NormalizeFlagRemovePunctuation);
 
-    void removePhoneContact(UpdateQuery &query,
-                            const QUrl &subject,
-                            const char *predicate,
-                            const QString &phoneNumber,
-                            PhoneNumberNormalizeFlags normalizeFlags);
-
     /*!
      * Helper for inserting and modifying common parts of nmo:Messages.
      *

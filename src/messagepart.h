@@ -89,6 +89,9 @@ LIBCOMMHISTORY_EXPORT QDBusArgument &operator<<(QDBusArgument &argument, const C
 LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argument,
                                 CommHistory::MessagePart &part);
 
+LIBCOMMHISTORY_EXPORT QDataStream &operator<<(QDataStream &stream, const CommHistory::MessagePart &part);
+LIBCOMMHISTORY_EXPORT QDataStream &operator>>(QDataStream &stream, CommHistory::MessagePart &part);
+
 Q_DECLARE_METATYPE(CommHistory::MessagePart);
 Q_DECLARE_METATYPE(QList<CommHistory::MessagePart>);
 

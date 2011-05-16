@@ -78,6 +78,33 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, MessagePart &part
     return argument;
 }
 
+QDataStream &operator<<(QDataStream &stream, const CommHistory::MessagePart &part)
+{
+    stream << part.uri() << part.contentId() << part.plainTextContent()
+           << part.contentType() << part.characterSet()
+           << part.contentSize() << part.contentLocation();
+
+    return stream;
+}
+
+QDataStream &operator>>(QDataStream &stream, CommHistory::MessagePart &part)
+{
+    MessagePartPrivate p;
+    stream >> p.uri >> p.contentId >> p.textContent
+           >> p.contentType >> p.characterSet
+           >> p.contentSize >> p.contentLocation;
+
+    part.setUri(p.uri);
+    part.setContentId(p.contentId);
+    part.setPlainTextContent(p.textContent);
+    part.setContentType(p.contentType);
+    part.setCharacterSet(p.characterSet);
+    part.setContentSize(p.contentSize);
+    part.setContentLocation(p.contentLocation);
+
+    return stream;
+}
+
 MessagePartPrivate::MessagePartPrivate() :
     uri(QString()),
     contentId(QString()),

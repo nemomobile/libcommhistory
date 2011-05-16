@@ -215,6 +215,82 @@ const QDBusArgument &operator>>(const QDBusArgument &argument,
     return argument;
 }
 
+QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
+{
+    stream << event.id() << event.type() << event.startTime()
+           << event.endTime() << event.direction()  << event.isDraft()
+           << event.isRead() << event.isMissedCall()
+           << event.isEmergencyCall() << event.status()
+           << event.bytesReceived() << event.localUid() << event.remoteUid()
+           << event.parentId() << event.freeText() << event.groupId()
+           << event.messageToken() << event.mmsId() << event.lastModified()
+           << event.fromVCardFileName() << event.fromVCardLabel()
+           << event.encoding() << event.characterSet() << event.language()
+           << event.isDeleted() << event.reportDelivery()
+           << event.contentLocation() << event.subject()
+           << event.messageParts() << event.toList() << event.ccList() << event.bccList()
+           << event.readStatus() << event.reportRead() << event.reportReadRequested()
+           << event.validityPeriod();
+
+    return stream;
+}
+
+QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
+{
+    EventPrivate p;
+    int type, direction, status, rstatus;
+    stream >> p.id >> type >> p.startTime >> p.endTime
+           >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
+           >> status >> p.bytesReceived >> p.localUid >> p.remoteUid
+           >> p.parentId >> p.freeText >> p.groupId
+           >> p.messageToken >> p.mmsId >>p.lastModified
+           >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
+           >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
+           >> p.messageParts >> p.toList >> p.ccList >> p.bccList
+           >> rstatus >> p.reportRead >> p.reportReadRequested
+           >> p.validityPeriod;
+
+    event.setId(p.id);
+    event.setType((Event::EventType)type);
+    event.setStartTime(p.startTime);
+    event.setEndTime(p.endTime);
+    event.setDirection((Event::EventDirection)direction);
+    event.setIsDraft( p.isDraft );
+    event.setIsRead(p.isRead);
+    event.setIsMissedCall( p.isMissedCall );
+    event.setIsEmergencyCall( p.isEmergencyCall );
+    event.setStatus((Event::EventStatus)status);
+    event.setBytesReceived(p.bytesReceived);
+    event.setLocalUid(p.localUid);
+    event.setRemoteUid(p.remoteUid);
+    event.setParentId(p.parentId);
+    event.setSubject(p.subject);
+    event.setFreeText(p.freeText);
+    event.setGroupId(p.groupId);
+    event.setMessageToken(p.messageToken);
+    event.setMmsId(p.mmsId);
+    event.setLastModified(p.lastModified);
+    event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
+    event.setEncoding(p.encoding);
+    event.setCharacterSet(p.charset);
+    event.setLanguage(p.language);
+    event.setDeleted(p.deleted);
+    event.setReportDelivery(p.reportDelivery);
+    event.setValidityPeriod(p.validityPeriod);
+    event.setContentLocation(p.contentLocation);
+    event.setMessageParts(p.messageParts);
+    event.setToList(p.toList);
+    event.setCcList(p.ccList);
+    event.setBccList(p.bccList);
+    event.setReadStatus((Event::EventReadStatus)rstatus);
+    event.setReportRead(p.reportRead);
+    event.setReportReadRequested(p.reportReadRequested);
+
+    event.resetModifiedProperties();
+
+    return stream;
+}
+
 EventPrivate::EventPrivate()
         : id(-1)
         , type(Event::UnknownType)

@@ -49,6 +49,7 @@ public:
     };
 
     void waitCommit(int numEvents = 1) {
+        count = 0;
         stop = false;
         while(count < numEvents || (numEvents == 0 && !stop)) {
             qDebug() << ".";

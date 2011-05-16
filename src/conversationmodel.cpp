@@ -65,9 +65,8 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
     foreach (Group g, groups) {
         if (g.id() == filterGroupId) {
             // update in memory events for contact info
-            updateEventsRecursive(g.contacts(),
-                                  g.remoteUids().first(),
-                                  eventRootItem);
+            updateEvents(g.contacts(),
+                         g.remoteUids().first());
             break;
         }
     }
@@ -75,69 +74,27 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
 
 // update contacts for all inbound events,
 // should be called only for p2p chats
-// return true to abort when an event already have the same contact id/name
-bool ConversationModelPrivate::updateEventsRecursive(const QList<Event::Contact> &contacts,
-                                                     const QString &remoteUid,
-                                                     EventTreeItem *parent)
+void ConversationModelPrivate::updateEvents(const QList<Event::Contact> &contacts,
+                                            const QString &remoteUid)
 {
     Q_Q(ConversationModel);
 
-    for (int row = 0; row < parent->childCount(); row++) {
-        Event &event = parent->eventAt(row);
+    for (int row = 0; row < eventRootItem->childCount(); row++) {
+        Event &event = eventRootItem->eventAt(row);
 
-        if (parent->child(row)->childCount()) {
-            if (updateEventsRecursive(contacts,
-                                      remoteUid,
-                                      parent->child(row)))
-                return true;
-        } else {
-            if (event.contacts() == contacts) {
-                // if we found event with same info, abort
-                return true;
-            } else if (event.direction() == Event::Inbound
-                       && event.remoteUid() == remoteUid) {
-                //update and continue
-                event.setContacts(contacts);
+        if (event.contacts() != contacts
+            && event.direction() == Event::Inbound
+            && event.remoteUid() == remoteUid) {
+            //update and continue
+            event.setContacts(contacts);
 
-                emit q->dataChanged(q->createIndex(row,
-                                                   EventModel::Contacts,
-                                                   parent->child(row)),
-                                    q->createIndex(row,
-                                                   EventModel::Contacts,
-                                                   parent->child(row)));
-            }
+            emit q->dataChanged(q->createIndex(row,
+                                               EventModel::Contacts,
+                                               eventRootItem->child(row)),
+                                q->createIndex(row,
+                                               EventModel::Contacts,
+                                               eventRootItem->child(row)));
         }
-    }
-    return false;
-}
-
-QModelIndex ConversationModelPrivate::findParent(const Event &event)
-{
-    qDebug() << __PRETTY_FUNCTION__;
-    Q_Q(ConversationModel);
-    // TODO: find the correct insertion spot by date
-    Q_UNUSED(event);
-    if (isInTreeMode) {
-        // check if the first branch is for today's events
-        QDateTime today = QDateTime::currentDateTime();
-        today.setTime(QTime(0, 0));
-        if (eventRootItem->childCount() &&
-            eventRootItem->eventAt(0).startTime() == today) {
-            return q->index(0, 0, QModelIndex());
-        }
-
-        // nope, insert branch
-        q->beginInsertRows(QModelIndex(), 0, 0);
-        Event divider;
-        divider.setStartTime(today);
-        divider.setEndTime(QDateTime::fromTime_t(UINT_MAX));
-        divider.setFreeText(DIVIDER_TODAY);
-        eventRootItem->prependChild(new EventTreeItem(divider, eventRootItem));
-        q->endInsertRows();
-
-        return q->index(0, 0, QModelIndex());
-    } else {
-        return QModelIndex();
     }
 }
 
@@ -174,121 +131,14 @@ bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::
 
     Q_Q(ConversationModel);
 
-    if (!isInTreeMode) {
-        q->beginInsertRows(QModelIndex(), q->rowCount(),
-                           q->rowCount() + events.count() - 1);
-        foreach (Event event, events) {
-            eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
-        }
-        q->endInsertRows();
-    } else {
-        QMap<EventTreeItem *, QList<Event> > branches;
-        foreach (Event event, events) {
-            EventTreeItem *parent = findDivider(event);
-            branches[parent].append(event);
-        }
-
-        QMapIterator<EventTreeItem *, QList<Event> > i(branches);
-        while (i.hasNext()) {
-            i.next();
-            EventTreeItem *parent = i.key();
-            q->beginInsertRows(q->createIndex(0, 0, parent),
-                               parent->childCount(),
-                               parent->childCount() + i.value().count() - 1);
-            foreach (Event e, i.value()) {
-                parent->appendChild(new EventTreeItem(e, parent));
-            }
-            q->endInsertRows();
-        }
+    q->beginInsertRows(QModelIndex(), q->rowCount(),
+                       q->rowCount() + events.count() - 1);
+    foreach (Event event, events) {
+        eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
     }
-
-    return true;
-}
-
-// Find, and create if necessary, the corresponding date divider node.
-EventTreeItem* ConversationModelPrivate::findDividerItem(const Event &divider)
-{
-    Q_Q(ConversationModel);
-    EventTreeItem *item = 0;
-
-    // if an exact match is found, set the item. Otherwise, stop at
-    // the row where we can insert the new divider.
-    int row;
-    for (row = 0; row < eventRootItem->childCount(); row++) {
-        if (eventRootItem->eventAt(row).startTime() == divider.startTime()) {
-            return eventRootItem->child(row);
-        }
-        if (divider.startTime() > eventRootItem->eventAt(row).startTime()) break;
-    }
-
-    q->beginInsertRows(QModelIndex(), row, row);
-    item = new EventTreeItem(divider, eventRootItem);
-    eventRootItem->insertChildAt(row, item);
     q->endInsertRows();
 
-    return item;
-}
-
-EventTreeItem* ConversationModelPrivate::findDivider(const Event &event)
-{
-    Event divider;
-
-    QDateTime today = QDateTime::currentDateTime();
-    today.setTime(QTime(0, 0));
-    if (event.endTime() >= today) {
-        divider.setStartTime(today);
-        divider.setEndTime(QDateTime::fromTime_t(UINT_MAX));
-        divider.setFreeText(DIVIDER_TODAY);
-        return findDividerItem(divider);
-    }
-
-    QDateTime yesterday = today.addDays(-1);
-    if (event.endTime() >= yesterday) {
-        divider.setStartTime(yesterday);
-        divider.setEndTime(today);
-        divider.setFreeText(DIVIDER_YESTERDAY);
-        return findDividerItem(divider);
-    }
-
-    for (int days = 2; days < 7; days++) {
-        QDateTime daysAgo = today.addDays(-days);
-        if (event.endTime() >= daysAgo) {
-            divider.setStartTime(daysAgo);
-            divider.setEndTime(daysAgo.addDays(1));
-            divider.setFreeText(daysAgo.date().toString(Qt::DefaultLocaleLongDate));
-            return findDividerItem(divider);
-        }
-    }
-
-    for (int weeks = 1; weeks < 4; weeks++) {
-        QDateTime weeksAgo = today.addDays(-7 * weeks);
-        if (event.endTime() >= weeksAgo) {
-            divider.setStartTime(weeksAgo);
-            divider.setEndTime(weeksAgo.addDays(7));
-            // TODO: l10n - set some field and let UI do the text?
-            divider.setFreeText(QString(DIVIDER_N_WEEKS_AGO).arg(weeks));
-            return findDividerItem(divider);
-        }
-    }
-
-    divider.setStartTime(today.addDays(-7 * 4));
-    divider.setEndTime(today.addDays(-7 * 3));
-    for (int months = 1; months < 6; months++) {
-        QDateTime monthsAgo = divider.startTime().addMonths(-months);
-        if (event.endTime() >= monthsAgo) {
-            divider.setStartTime(monthsAgo);
-            QDateTime end = divider.endTime().addMonths(-months);
-            divider.setEndTime(end);
-            // TODO: l10n - set some field and let UI do the text?
-            divider.setFreeText(QString(DIVIDER_N_MONTHS_AGO).arg(months));
-            return findDividerItem(divider);
-        }
-    }
-
-    divider.setStartTime(QDateTime::fromTime_t(0));
-    divider.setEndTime(divider.endTime().addMonths(-5));
-    divider.setFreeText(DIVIDER_OLDER);
-    return findDividerItem(divider);
+    return true;
 }
 
 ConversationModel::ConversationModel(QObject *parent)
