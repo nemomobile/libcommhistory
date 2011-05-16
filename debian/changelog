@@ -1,3 +1,12 @@
+libcommhistory (1.1.1.18) unstable; urgency=low
+
+  * Fixes: NB#253578 - Sending SMS to conversation with particular
+    content screws up the UI
+  * Add import/export commands to commhistory-tool
+  * Fix double nmo:hasParticipant problem
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 16 May 2011 15:09:37 +0300
+
 libcommhistory (1.1.1.17) unstable; urgency=low
 
   * Fixes: NB#251499 - Number matches to N contacts not shown in Call
