@@ -313,11 +313,20 @@ bool EventModelPrivate::doAddEvent( Event &event )
     return true;
 }
 
-bool EventModelPrivate::doDeleteEvent( int id, Event &event )
+bool EventModelPrivate::doDeleteEvent(int id, Event &event)
 {
-    // fetch event from database
-    if (!tracker()->getEvent(id, event)) {
-        return false;
+    QModelIndex index = findEvent(id);
+
+    // If event can be found already from the model then no need to fetch it from database:
+    if (index.isValid()) {
+        qDebug() << __PRETTY_FUNCTION__ << "Event " << id << " already present in model. No need to fetch from db.";
+        event = q_ptr->event(index);
+    } else {
+        qDebug() << __PRETTY_FUNCTION__ << "Event " << id << " not present in model. Need to fetch from db.";
+        // fetch event from database
+        if (!tracker()->getEvent(id, event)) {
+            return false;
+        }
     }
 
     // delete it
