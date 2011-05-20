@@ -25,6 +25,7 @@
 
 #include "eventmodel.h"
 #include "event.h"
+#include "common.h"
 #include <QEventLoop>
 #include <QList>
 
@@ -40,7 +41,7 @@ public:
     void setModel(CommHistory::EventModel *model);
     // -1 for minCommitted = don't care (for example status messages)
     void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
-    bool waitForModelReady(int msec);
+    bool waitForModelReady(int msec = WAIT_SIGNAL_TIMEOUT);
 
     int addedCount() { return m_addedCount; }
     int updatedCount() { return m_updatedCount; }
