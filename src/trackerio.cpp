@@ -896,6 +896,11 @@ void TrackerIOPrivate::doUpdateGroupTimestamps(CommittingTransaction *transactio
                                                QSparqlResult *result,
                                                QVariant arg)
 {
+    if (result && result->hasError()) {
+        qCritical() << result->lastError().message();
+        return;
+    }
+
     QString groupUri = arg.toString();
     qDebug() << Q_FUNC_INFO << groupUri;
 
@@ -933,7 +938,10 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                                              QSparqlResult *result,
                                              QVariant arg)
 {
-    Q_UNUSED(result);
+    if (result && result->hasError()) {
+        qCritical() << result->lastError().message();
+        return;
+    }
 
     Event event = qVariantValue<CommHistory::Event>(arg);
     qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
@@ -1965,7 +1973,7 @@ QSparqlConnection& TrackerIOPrivate::connection()
 bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnFinished)
 {
     if (result->hasError()) {
-        qWarning() << result->lastError().message();
+        qCritical() << result->lastError().message();
         if (destroyOnFinished)
             delete result;
     }
