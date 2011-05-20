@@ -57,7 +57,7 @@ void SingleEventModelTest::getEventByUri()
 
     QVERIFY(event.id() != -1);
     QVERIFY(model.getEventByUri(event.url()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -110,7 +110,7 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(mms2.id() != -1);
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", -1));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -118,7 +118,7 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -126,13 +126,13 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id() + 1));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 0);
 
     // Can match either to token or mms id:
     QVERIFY(model.getEventByTokens("messageTokenB1", "nonExistingMmsId", group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -140,12 +140,12 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("", "nonExistingMmsId", group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 0);
 
     QVERIFY(model.getEventByTokens("", "mmsId", group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -153,7 +153,7 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(mms, modelEvent));
 
     QVERIFY(model.getEventByTokens("", "mmsId", group2.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -161,7 +161,7 @@ void SingleEventModelTest::getEventByTokens()
     QVERIFY(compareEvents(mms2, modelEvent));
 
     QVERIFY(model.getEventByTokens("mmsMessageToken", "mmsId", group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -205,7 +205,7 @@ void SingleEventModelTest::contactMatching()
     QVERIFY(eventId != -1);
 
     QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     Event event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
     QCOMPARE(event.contactId(), 0);
@@ -218,7 +218,7 @@ void SingleEventModelTest::contactMatching()
                    localId);
 
     QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
     QCOMPARE(event.contactId(), 0);
@@ -226,7 +226,7 @@ void SingleEventModelTest::contactMatching()
     int contactId = addTestContact("Really Bad", remoteId, localId);
 
     QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
 
@@ -271,7 +271,7 @@ void SingleEventModelTest::updateStatus()
                                                       << CommHistory::Event::MmsId;
     model.setPropertyMask(props);
     QVERIFY(model.getEventByUri(event.url()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
 
@@ -288,7 +288,7 @@ void SingleEventModelTest::updateStatus()
 
     // init observer model with the same event and all properties
     QVERIFY(observer.getEventByUri(event.url()));
-    QVERIFY(watcherObserver.waitForModelReady(5000));
+    QVERIFY(watcherObserver.waitForModelReady());
 
     QCOMPARE(observer.rowCount(), 1);
 

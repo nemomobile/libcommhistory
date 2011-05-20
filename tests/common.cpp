@@ -110,7 +110,7 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
     QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QVERIFY(groupModel.addGroup(grp));
 
-    QVERIFY(waitSignal(ready, 1000));
+    QVERIFY(waitSignal(ready));
     QVERIFY(ready.first().at(1).toBool());
 }
 

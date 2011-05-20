@@ -107,7 +107,7 @@ void ConversationModelTest::getEvents()
     }
 
     QVERIFY(model.getEvents(group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 10);
     for (int i = 0; i < model.rowCount(); i++) {
@@ -131,46 +131,46 @@ void ConversationModelTest::getEvents()
 
     /* filtering by type */
     QVERIFY(model.setFilter(Event::IMEvent));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 6);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).type(), Event::IMEvent);
 
     QVERIFY(model.setFilter(Event::SMSEvent));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 4);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).type(), Event::SMSEvent);
 
     /* filtering by account */
     QVERIFY(model.setFilter(Event::UnknownType, ACCOUNT1));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 6);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).localUid(), ACCOUNT1);
 
     QVERIFY(model.setFilter(Event::UnknownType, ACCOUNT2));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 4);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).localUid(), ACCOUNT2);
 
     /* filtering by direction */
     QVERIFY(model.setFilter(Event::UnknownType, QString(), Event::Inbound));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 5);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).direction(), Event::Inbound);
 
     QVERIFY(model.setFilter(Event::UnknownType, QString(), Event::Outbound));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 5);
     for (int i = 0; i < model.rowCount(); i++)
         QCOMPARE(model.event(model.index(i, 0)).direction(), Event::Outbound);
 
     /* mixed filtering */
     QVERIFY(model.setFilter(Event::IMEvent, ACCOUNT1, Event::Outbound));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 2);
     for (int i = 0; i < model.rowCount(); i++) {
         QCOMPARE(model.event(model.index(i, 0)).type(), Event::IMEvent);
@@ -313,7 +313,7 @@ void ConversationModelTest::asyncMode()
     model.enableContactChanges(false);
     watcher.setModel(&model);
     QVERIFY(model.getEvents(group1.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 }
 
 void ConversationModelTest::sorting()
@@ -349,7 +349,7 @@ void ConversationModelTest::sorting()
 
     QVERIFY(conv.getEvents(group1.id()));
 
-    QVERIFY(waitSignal(rowsInserted, 5000));
+    QVERIFY(waitSignal(rowsInserted));
 
     QVERIFY(conv.rowCount() >= 5 );
 
@@ -396,7 +396,7 @@ void ConversationModelTest::contacts()
                  group.id(), "text", false, false, QDateTime::currentDateTime(), remoteId);
 
     QVERIFY(model.getEvents(group.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     Event event;
     event = model.event(model.index(0, 0));
@@ -410,14 +410,14 @@ void ConversationModelTest::contacts()
                    localId);
 
     QVERIFY(model.getEvents(group.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     event = model.event(model.index(0, 0));
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("ReallyUFunny", remoteId, localId);
     QVERIFY(model.getEvents(group.id()));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     event = model.event(model.index(0, 0));
     QCOMPARE(event.contactId(), contactId);
