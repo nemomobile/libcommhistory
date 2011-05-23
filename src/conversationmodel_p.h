@@ -41,15 +41,24 @@ public:
                       const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
     bool fillModel(int start, int end, QList<CommHistory::Event> events);
+    EventsQuery buildQuery() const;
+    bool isModelReady() const;
 
 public Q_SLOTS:
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
+    virtual void modelUpdatedSlot(bool successful);
+    void extraReceivedSlot(QList<CommHistory::Event> events, QVariantList extra);
 
 public:
     int filterGroupId;
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;
+    bool firstFetch;
+    uint eventsFilled;
+    uint lastEventTrackerId;
+
+    int activeQueries;
 };
 
 }
