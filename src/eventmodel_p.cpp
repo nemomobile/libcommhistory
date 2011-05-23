@@ -442,8 +442,8 @@ void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
         if (!index.isValid()) {
             if (acceptsEvent(e))
                 addToModel(e);
-            else
-                continue;
+
+            continue;
         }
 
         modifyInModel(e);
