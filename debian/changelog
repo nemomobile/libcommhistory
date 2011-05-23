@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.20) unstable; urgency=low
+
+  * Fixes: NB#258503 - [REG] Messages and conversations disappear from Conversational View and Conversations List
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 23 May 2011 14:25:45 +0300
+
 libcommhistory (1.1.1.19) unstable; urgency=low
 
   * Performance improved when deleting event: check if event is already in the model before trying db fetch.
