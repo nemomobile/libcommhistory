@@ -397,6 +397,7 @@ public:
     enum QueryPart {
         Patterns = 0,
         Modifiers,
+        Projections,
         NumberOfParts
     };
     struct {
@@ -444,13 +445,19 @@ EventsQuery& EventsQuery::addModifier(const QString &pattern)
     return *this;
 }
 
+EventsQuery& EventsQuery::addProjection(const QString &projection)
+{
+    d->addToPart(EventsQueryPrivate::Projections, projection);
+
+    return *this;
+}
+
 EventsQuery& EventsQuery::variable(Event::Property property)
 {
     d->referenceVariable(property);
 
     return *this;
 }
-
 
 void EventsQuery::setDistinct(bool distinct)
 {
@@ -514,6 +521,8 @@ QString EventsQuery::query() const
             }
         }
     }
+
+    projections << d->parts[EventsQueryPrivate::Projections].patterns;
 
     query << QLatin1String("SELECT");
     if (d->distinct)
