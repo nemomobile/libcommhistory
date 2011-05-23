@@ -27,6 +27,8 @@
 #include "event.h"
 #include "group.h"
 
+#include <QSignalSpy>
+
 using namespace CommHistory;
 
 const QString ACCOUNT1 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0";
@@ -38,6 +40,8 @@ const int IDLE_POLL_INTERVAL = 2000;
 
 /* System is considered idle when system load drops below this value */
 const double IDLE_TRESHOLD = 0.05; // 5%
+
+const int WAIT_SIGNAL_TIMEOUT = 5000;
 
 int addTestEvent(EventModel &model,
                  Event::EventType type,
@@ -63,8 +67,8 @@ void deleteSmsMsgs();
 QString randomMessage(int words);
 double getSystemLoad();
 void waitForIdle(int pollInterval = IDLE_POLL_INTERVAL);
-bool waitSignal(QSignalSpy &spy, int msec);
+bool waitSignal(QSignalSpy &spy, int msec = WAIT_SIGNAL_TIMEOUT);
 // wait and allow deferred deletes to be processed (http://bugreports.qt.nokia.com/browse/QTBUG-12575)
-void waitWithDeletes(int msec);
+void waitWithDeletes(int msec = WAIT_SIGNAL_TIMEOUT);
 
 #endif

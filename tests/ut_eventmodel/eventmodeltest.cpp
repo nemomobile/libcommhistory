@@ -469,7 +469,7 @@ void EventModelTest::testDeleteEventVCard()
     if (deleteGroups) {
         groupModel.deleteGroups(QList<int>() << groupId1);
         if (groupsCommitted.isEmpty())
-            QVERIFY(waitSignal(groupsCommitted, 1000));
+            QVERIFY(waitSignal(groupsCommitted));
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event1Id));
@@ -489,7 +489,7 @@ void EventModelTest::testDeleteEventVCard()
         groupsCommitted.clear();
         groupModel.deleteGroups(QList<int>() << groupId2);
         if (groupsCommitted.isEmpty())
-            QVERIFY(waitSignal(groupsCommitted, 1000));
+            QVERIFY(waitSignal(groupsCommitted));
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event2Id));
@@ -637,7 +637,7 @@ void EventModelTest::testDeleteEventMmsParts()
     if (deleteGroups) {
         groupModel.deleteGroups(QList<int>() << groupId1);
         if (groupsCommitted.isEmpty())
-            QVERIFY(waitSignal(groupsCommitted, 1000));
+            QVERIFY(waitSignal(groupsCommitted));
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event1Id));
@@ -665,7 +665,7 @@ void EventModelTest::testDeleteEventMmsParts()
         groupsCommitted.clear();
         groupModel.deleteGroups(QList<int>() << groupId2);
         if (groupsCommitted.isEmpty())
-            QVERIFY(waitSignal(groupsCommitted, 1000));
+            QVERIFY(waitSignal(groupsCommitted));
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event2Id));
@@ -1234,7 +1234,7 @@ void EventModelTest::testMessagePartsQuery()
 
     QVERIFY(convModel.getEvents(group.id()));
 
-    QVERIFY(waitSignal(modelReady, 5000));
+    QVERIFY(waitSignal(modelReady));
 
     QList<int> eventIds;
     for (int i = 0; i < convModel.rowCount(); i++) {
@@ -1579,7 +1579,7 @@ void EventModelTest::testStreaming()
         int firstInserted = -1;
 
         while (expectedEnd != lastInserted) {
-            QVERIFY(waitSignal(rowsInserted, 5000));
+            QVERIFY(waitSignal(rowsInserted));
 
             if (firstInserted == -1)
                 firstInserted = rowsInserted.first().at(1).toInt();
@@ -1617,7 +1617,7 @@ void EventModelTest::testStreaming()
     if (streamModel.canFetchMore(QModelIndex()))
         streamModel.fetchMore(QModelIndex());
 
-    QVERIFY(waitSignal(modelReady, 5000));
+    QVERIFY(waitSignal(modelReady));
     QVERIFY(!streamModel.canFetchMore(QModelIndex()));
     QCOMPARE(streamModel.rowCount(), total);
 

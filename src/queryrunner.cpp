@@ -175,17 +175,23 @@ void QueryRunner::startNextQueryIfReady()
 
         if (m_syncMode) {
             m_activeQuery.result = m_pTracker->d->connection().syncExec(m_activeQuery.query);
-
-            readData();
+            if (m_activeQuery.result->hasError())
+                finished();
+            else
+                readData();
         } else {
             m_activeQuery.result = m_pTracker->d->connection().exec(m_activeQuery.query);
 
-            connect(m_activeQuery.result.data(),
-                    SIGNAL(dataReady(int)),
-                    this, SLOT(dataReady(int)));
-            connect(m_activeQuery.result.data(),
-                    SIGNAL(finished()),
-                    this, SLOT(finished()));
+            if (m_activeQuery.result->hasError()) {
+                finished();
+            } else {
+                connect(m_activeQuery.result.data(),
+                        SIGNAL(dataReady(int)),
+                        this, SLOT(dataReady(int)));
+                connect(m_activeQuery.result.data(),
+                        SIGNAL(finished()),
+                        this, SLOT(finished()));
+            }
         }
     }
 }
@@ -345,13 +351,14 @@ void QueryRunner::finished()
     } else {
         // ignore if there is no query or not all data were sent yet
         if (m_activeQuery.result.isNull()
-            || (!m_activeQuery.result->isFinished()
-                || (!m_syncMode && lastReadPos < m_activeQuery.result->size() - 1)))
+            || (!m_activeQuery.result->hasError()
+                && (!m_activeQuery.result->isFinished()
+                    || (!m_syncMode && lastReadPos < m_activeQuery.result->size() - 1))))
             return;
 
         bool abort = m_activeQuery.result->hasError();
         if (abort) {
-            qWarning() << m_activeQuery.result->lastError().message();
+            qCritical() << m_activeQuery.result->lastError().message();
         } else {
             checkCanFetchMoreChange();
             {

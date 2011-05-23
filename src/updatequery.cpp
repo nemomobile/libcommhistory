@@ -116,7 +116,7 @@ void UpdateQuery::insertion(const QUrl &subject,
                             bool modify) {
     insertionRaw(subject,
                  predicate,
-                 LAT("\"") % object.toUTC().toString(Qt::ISODate) % LAT("Z\"^^xsd:dateTime"),
+                 LAT("\"") % object.toUTC().toString(Qt::ISODate) % LAT("\"^^xsd:dateTime"),
                  modify);
 }
 

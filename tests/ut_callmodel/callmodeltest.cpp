@@ -366,7 +366,7 @@ void CallModelTest::testDeleteEvent()
     // force change of sorting to SortByContact
     QVERIFY( model.setFilter( CallModel::SortByContact ) );
     QVERIFY( model.getEvents() );
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     /* by contact:
      * -----------
@@ -425,7 +425,7 @@ void CallModelTest::testDeleteEvent()
 
     // force change of sorting to SortByTime
     QVERIFY( model.setFilter( CallModel::SortByTime ) );
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     /* by time:
      * --------
@@ -503,7 +503,7 @@ void CallModelTest::testDeleteEvent()
 
     // force change of sorting to SortByContact
     QVERIFY( model.setFilter( CallModel::SortByContact ) );
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     /* by contact:
      * -----------
      * user1, dialed (0)***
@@ -582,7 +582,7 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     model.setTreeMode(false);
     QVERIFY(model.setFilter(CallModel::SortByTime,  CallEvent::DialedCallType, time));
     QVERIFY(model.getEvents());
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
 
     int numEventsRet = model.rowCount();
     QCOMPARE(numEventsRet, 3);
@@ -597,11 +597,11 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     QVERIFY(e3.direction() == Event::Outbound);
 
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::MissedCallType, time));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QVERIFY(model.rowCount() == 3);
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::ReceivedCallType, time));
     qDebug() << time;
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     for (int i = 0; i < model.rowCount(); i++) {
         qDebug() << model.event(model.index(i, 0)).toString();
     }
@@ -632,7 +632,7 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     //Trying to get events after 5 minutes after the  first event was added
     time = when.addSecs(60*5);
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::ReceivedCallType, time));
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QVERIFY(model.rowCount() == 0);
 
     qDebug() << "wait thread";
@@ -663,7 +663,7 @@ void CallModelTest::testSortByContactUpdate()
 
     QVERIFY(model.setFilter(CallModel::SortByContact));
     QVERIFY(model.getEvents());
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 1);
 
     Event e1 = model.event(model.index(0, 0));
@@ -728,7 +728,7 @@ void CallModelTest::testSortByTimeUpdate()
 
     QVERIFY(model.setFilter(CallModel::SortByTime, CallEvent::MissedCallType));
     QVERIFY(model.getEvents());
-    QVERIFY(watcher.waitForModelReady(5000));
+    QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 2);
 
     Event e1 = model.event(model.index(0, 0));
@@ -869,7 +869,7 @@ void CallModelTest::deleteAllCalls()
     QVERIFY(model.rowCount() > 0);
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
     QVERIFY(model.deleteAll());
-    waitSignal(eventsCommitted, 5000);
+    waitSignal(eventsCommitted);
 
     QCOMPARE(model.rowCount(), 0);
 
@@ -887,17 +887,17 @@ void CallModelTest::testMarkAllRead()
     int eventId1 = addTestEvent(callModel, Event::CallEvent, Event::Inbound, ACCOUNT1, group1.id(),
                                 "Mark all as read test 1", false, false,
                                 QDateTime::currentDateTime(), REMOTEUID1);
-    QVERIFY(waitSignal(eventsCommitted, 5000));
+    QVERIFY(waitSignal(eventsCommitted));
 
     eventsCommitted.clear();
     int eventId2 = addTestEvent(callModel, Event::CallEvent, Event::Inbound, ACCOUNT1, group1.id(),
                                 "Mark all as read test 2", false, false,
                                 QDateTime::currentDateTime(), REMOTEUID2);
-    QVERIFY(waitSignal(eventsCommitted, 5000));
+    QVERIFY(waitSignal(eventsCommitted));
 
     eventsCommitted.clear();
     QVERIFY(callModel.markAllRead());
-    waitSignal(eventsCommitted, 5000);
+    waitSignal(eventsCommitted);
 
     Event e1, e2;
     QVERIFY(callModel.trackerIO().getEvent(eventId1, e1));
