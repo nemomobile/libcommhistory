@@ -120,20 +120,20 @@ bool SyncSMSModel::getEvents()
 
     if (d->lastModified) {
         if (!d->dtTime.isNull()) { //get all last modified messages after time t1
-            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) <= \"%1Z\"^^xsd:dateTime)"))
+            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) <= \"%1\"^^xsd:dateTime)"))
                              .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
                     .variable(Event::Id);
-            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1Z\"^^xsd:dateTime)"))
+            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1\"^^xsd:dateTime)"))
                              .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
                     .variable(Event::Id);
         } else {
-            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1Z\"^^xsd:dateTime)"))
+            query.addPattern(QString(QLatin1String("FILTER(nie:contentLastModified(%2) > \"%1\"^^xsd:dateTime)"))
                              .arg(QDateTime::fromTime_t(0).toUTC().toString(Qt::ISODate)))
                     .variable(Event::Id);
         }
     } else {
         if (!d->dtTime.isNull()) { //get all messages after time t1(including modified)
-            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) > \"%1Z\"^^xsd:dateTime)"))
+            query.addPattern(QString(QLatin1String("FILTER(tracker:added(%2) > \"%1\"^^xsd:dateTime)"))
                              .arg(d->dtTime.toUTC().toString(Qt::ISODate)))
                     .variable(Event::Id);
         }

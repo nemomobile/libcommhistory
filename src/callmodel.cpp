@@ -796,7 +796,7 @@ bool CallModel::getEvents()
         }
 
         if (!d->referenceTime.isNull()) {
-            query.addPattern(QString(QLatin1String("FILTER (nmo:sentDate(%2) >= \"%1Z\"^^xsd:dateTime)"))
+            query.addPattern(QString(QLatin1String("FILTER (nmo:sentDate(%2) >= \"%1\"^^xsd:dateTime)"))
                              .arg(d->referenceTime.toUTC().toString(Qt::ISODate)))
                 .variable(Event::Id);
         }
