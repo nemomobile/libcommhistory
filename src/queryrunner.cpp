@@ -278,6 +278,7 @@ void QueryRunner::readData()
         checkCanFetchMoreChange();
         if (added) {
             emit eventsReceived(start, start + added - 1, events);
+            // TODO: add extra to eventsReceived on next break
             if (!extra.isEmpty())
                 emit eventsReceivedExtra(events, extra);
         }
