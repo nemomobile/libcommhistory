@@ -1,3 +1,10 @@
+libcommhistory (1.1.1.22) unstable; urgency=low
+
+  * Fixes: NB#253923 - COREWEB://usr/bin/commhistoryd
+    @CommHistory::GroupModelPrivate::commitTransaction
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Tue, 24 May 2011 11:12:30 +0300
+
 libcommhistory (1.1.1.21) unstable; urgency=low
 
   * Fixes: NB#257131 - Received SMS message is not visible in
