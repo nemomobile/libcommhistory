@@ -1662,7 +1662,10 @@ CommittingTransaction* TrackerIO::commit(bool isBlocking)
                         d, SLOT(syncTracker()));
             d->m_pendingTransactions.enqueue(d->m_pTransaction);
             d->runNextTransaction();
-            returnTransaction = d->m_pTransaction;
+            // if m_pTransaction is not in pending transactions,
+            // it's failed right away
+            if (d->m_pendingTransactions.contains(d->m_pTransaction))
+                returnTransaction = d->m_pTransaction;
         } else {
             qWarning() << Q_FUNC_INFO << "Empty transaction committing";
             delete d->m_pTransaction;
