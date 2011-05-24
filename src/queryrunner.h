@@ -80,6 +80,7 @@ public:
 
 Q_SIGNALS:
     void eventsReceived(int start, int end, QList<CommHistory::Event> events);
+    void eventsReceivedExtra(QList<CommHistory::Event> events, QVariantList extra);
     void groupsReceived(int start, int end, QList<CommHistory::Group> groups);
     void messagePartsReceived(int eventId, QList<CommHistory::MessagePart> parts);
     void resultsReceived(QSparqlResult *result);

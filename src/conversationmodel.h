@@ -85,6 +85,9 @@ public:
      */
     bool getEvents(int groupId);
 
+    virtual bool canFetchMore(const QModelIndex &parent) const;
+    virtual void fetchMore(const QModelIndex &parent);
+
 private:
     Q_DECLARE_PRIVATE(ConversationModel);
 

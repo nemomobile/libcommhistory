@@ -98,6 +98,14 @@ public:
      */
     QList<Event::Property> eventProperties() const;
 
+    /*!
+     * Add extra projection, available after event properties columns
+     * in the added order.
+     *
+     * \param projection statment with placeholders (%n) for variables
+     */
+    EventsQuery& addProjection(const QString &projection);
+
 private:
     friend class EventsQueryPrivate;
     EventsQueryPrivate * const d;

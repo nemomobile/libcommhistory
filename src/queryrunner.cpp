@@ -236,7 +236,7 @@ bool QueryRunner::reallyFetchMore(int pos)
 
 void QueryRunner::dataReady(int totalCount)
 {
-    qDebug() << Q_FUNC_INFO << totalCount;;
+    qDebug() << Q_FUNC_INFO << totalCount;
 
     if (!m_streamedMode || reallyFetchMore(lastReadPos))
         readData();
@@ -257,20 +257,31 @@ void QueryRunner::readData()
 
     if (m_activeQuery.queryType == EventQuery) {
         QList<Event> events;
+        QVariantList extra;
 
         while (m_activeQuery.result->next()) {
             Event event;
 
             m_activeQuery.fillEventFromModel(event);
             events.append(event);
+
+            int max = m_activeQuery.result->current().count();
+            for(int i = m_activeQuery.properties.size(); i < max; i++) {
+                extra.append(m_activeQuery.result->value(i));
+            }
+
             ++added;
             lastReadPos = m_activeQuery.result->pos();
             if (!reallyFetchMore(lastReadPos))
                 break;
         }
         checkCanFetchMoreChange();
-        if (added)
+        if (added) {
             emit eventsReceived(start, start + added - 1, events);
+            // TODO: add extra to eventsReceived on next break
+            if (!extra.isEmpty())
+                emit eventsReceivedExtra(events, extra);
+        }
     } else if (m_activeQuery.queryType == GroupQuery) {
         QList<Group> groups;
 

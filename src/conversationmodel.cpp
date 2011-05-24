@@ -28,6 +28,7 @@
 #include "conversationmodel_p.h"
 #include "constants.h"
 #include "eventsquery.h"
+#include "queryrunner.h"
 
 namespace {
 static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
@@ -45,6 +46,11 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
+            , firstFetch(true)
+            , eventsFilled(0)
+            , lastEventTrackerId(0)
+            , activeQueries(0)
+
 {
     contactChangesEnabled = true;
     QDBusConnection::sessionBus().connect(
@@ -138,7 +144,86 @@ bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::
     }
     q->endInsertRows();
 
+    eventsFilled += events.size();
+
     return true;
+}
+
+EventsQuery ConversationModelPrivate::buildQuery() const
+{
+    EventsQuery query(propertyMask);
+
+    if (!filterAccount.isEmpty()) {
+        query.addPattern(QString(QLatin1String("{%2 nmo:to [nco:hasContactMedium <telepathy:%1>]} "
+                                               "UNION "
+                                               "{%2 nmo:from [nco:hasContactMedium <telepathy:%1>]}"))
+                         .arg(filterAccount))
+                .variable(Event::Id);
+    }
+
+    if (filterType == Event::IMEvent) {
+        query.addPattern(QLatin1String("%1 rdf:type nmo:IMMessage ."))
+                        .variable(Event::Id);
+    } else if (filterType == Event::SMSEvent) {
+        query.addPattern(QLatin1String("%1 rdf:type nmo:SMSMessage ."))
+                        .variable(Event::Id);
+    }
+
+    if (filterDirection == Event::Outbound) {
+        query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
+                        .variable(Event::Id);
+    } else if (filterDirection == Event::Inbound) {
+        query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
+                         .variable(Event::Id);
+    }
+
+    query.addPattern(QLatin1String("%1 nmo:isDraft \"false\"; nmo:isDeleted \"false\" .")).variable(Event::Id);
+    query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
+                     .arg(Group::idToUrl(filterGroupId).toString()))
+            .variable(Event::Id);
+
+    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
+                     .variable(Event::EndTime)
+                     .variable(Event::Id);
+
+    return query;
+}
+
+void ConversationModelPrivate::modelUpdatedSlot(bool successful)
+{
+    if (queryMode == EventModel::StreamedAsyncQuery) {
+        activeQueries--;
+        isReady = isModelReady();
+
+        if (isReady) {
+            if (successful) {
+                if (messagePartsReady)
+                    emit modelReady(true);
+            } else {
+                emit modelReady(false);
+            }
+        }
+    } else{
+        EventModelPrivate::modelUpdatedSlot(successful);
+    }
+}
+
+void ConversationModelPrivate::extraReceivedSlot(QList<CommHistory::Event> events,
+                                                 QVariantList extra)
+{
+    Q_UNUSED(events);
+
+    if (!extra.isEmpty()) {
+        QVariant trackerId = extra.last();
+        if (trackerId.isValid())
+            lastEventTrackerId = trackerId.toInt();
+    }
+}
+
+bool ConversationModelPrivate::isModelReady() const
+{
+    return activeQueries == 0
+           && eventsFilled < (firstFetch ? firstChunkSize : chunkSize);
 }
 
 ConversationModel::ConversationModel(QObject *parent)
@@ -175,43 +260,64 @@ bool ConversationModel::getEvents(int groupId)
 
     reset();
     d->clearEvents();
+    EventsQuery query = d->buildQuery();
 
-    EventsQuery query(d->propertyMask);
+    if (d->queryMode == EventModel::StreamedAsyncQuery) {
+        d->isReady = false;
+        query.addModifier(QLatin1String("LIMIT ") + QString::number(d->firstChunkSize));
+        query.addProjection(QLatin1String("tracker:id(%1)")).variable(Event::Id);
 
-    if (!d->filterAccount.isEmpty()) {
-        query.addPattern(QString(QLatin1String("{%2 nmo:to [nco:hasContactMedium <telepathy:%1>]} "
-                                               "UNION "
-                                               "{%2 nmo:from [nco:hasContactMedium <telepathy:%1>]}"))
-                         .arg(d->filterAccount))
-                .variable(Event::Id);
+        d->queryRunner->enableQueue();
+
+        QString sparqlQuery = query.query();
+        d->queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
+        d->eventsFilled = 0;
+        d->firstFetch = true;
+        d->activeQueries = 1;
+
+        connect(d->queryRunner, SIGNAL(eventsReceivedExtra(QList<CommHistory::Event>,QVariantList)),
+                d, SLOT(extraReceivedSlot(QList<CommHistory::Event>,QVariantList)),
+                Qt::UniqueConnection);
+
+        d->queryRunner->startQueue();
+
+        return true;
     }
-
-    if (d->filterType == Event::IMEvent) {
-        query.addPattern(QLatin1String("%1 rdf:type nmo:IMMessage ."))
-                        .variable(Event::Id);
-    } else if (d->filterType == Event::SMSEvent) {
-        query.addPattern(QLatin1String("%1 rdf:type nmo:SMSMessage ."))
-                        .variable(Event::Id);
-    }
-
-    if (d->filterDirection == Event::Outbound) {
-        query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
-                        .variable(Event::Id);
-    } else if (d->filterDirection == Event::Inbound) {
-        query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
-                         .variable(Event::Id);
-    }
-
-    query.addPattern(QLatin1String("%1 nmo:isDraft \"false\"; nmo:isDeleted \"false\" .")).variable(Event::Id);
-    query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
-                     .arg(Group::idToUrl(groupId).toString()))
-            .variable(Event::Id);
-
-    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
-                     .variable(Event::EndTime)
-                     .variable(Event::Id);
 
     return d->executeQuery(query);
+}
+
+bool ConversationModel::canFetchMore(const QModelIndex &parent) const
+{
+    Q_UNUSED(parent);
+    Q_D(const ConversationModel);
+
+    return !d->isModelReady();
+}
+
+void ConversationModel::fetchMore(const QModelIndex &parent)
+{
+    Q_UNUSED(parent);
+    Q_D(ConversationModel);
+
+    EventsQuery query = d->buildQuery();
+
+    Event &event = d->eventRootItem->eventAt(d->eventRootItem->childCount() - 1);
+
+    query.addProjection(QLatin1String("tracker:id(%1)")).variable(Event::Id);
+    query.addPattern(QString(QLatin1String("FILTER (%3 < \"%1\"^^xsd:dateTime || (%3 = \"%1\"^^xsd:dateTime && tracker:id(%4) < %2))"))
+                     .arg(event.endTime().toUTC().toString(Qt::ISODate)).arg(d->lastEventTrackerId))
+        .variable(Event::EndTime)
+        .variable(Event::Id);
+    query.addModifier(QLatin1String("LIMIT ") + QString::number(d->chunkSize));
+
+    QString sparqlQuery = query.query();
+    d->queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
+    d->eventsFilled = 0;
+    d->firstFetch = false;
+    d->activeQueries++;
+
+    d->queryRunner->startQueue();
 }
 
 }
