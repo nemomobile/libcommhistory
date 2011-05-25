@@ -61,6 +61,7 @@ private slots:
     void changeRemoteUid();
     void addMultipleGroups();
     void limitOffset();
+    void noRemoteId();
     void cleanupTestCase();
     void init();
     void cleanup();
