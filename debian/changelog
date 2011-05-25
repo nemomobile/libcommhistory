@@ -1,8 +1,10 @@
-libcommhistory (1.1.1.23) UNRELEASED; urgency=low
+libcommhistory (1.1.1.23) unstable; urgency=low
 
   * Fixes: GroupModel's Groups contacts().count() returns 0 for newly created conversation threads
+  * Fixes: NB#258775 - messaging-ui crashed while opening MMS with an
+    image in MTBF.
 
- -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 25 May 2011 11:06:41 +0300
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 25 May 2011 15:46:50 +0300
 
 libcommhistory (1.1.1.22) unstable; urgency=low
 
