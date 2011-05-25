@@ -69,7 +69,7 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
         return;
 
     foreach (Group g, groups) {
-        if (g.id() == filterGroupId) {
+        if (g.id() == filterGroupId && !g.remoteUids().isEmpty()) {
             // update in memory events for contact info
             updateEvents(g.contacts(),
                          g.remoteUids().first());

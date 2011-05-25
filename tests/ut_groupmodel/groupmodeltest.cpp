@@ -149,7 +149,7 @@ void GroupModelTest::init()
 
 void GroupModelTest::cleanup()
 {
-    //QTest::qWait(1000);
+    QTest::qWait(1000);
 
     deleteAll();
     QDir mms_content(QDir::homePath() + QDir::separator() + mms_content_path);
@@ -1232,6 +1232,17 @@ void GroupModelTest::changeRemoteUid()
 
     deleteTestContact(oldContactId);
     deleteTestContact(newContactId);
+}
+
+void GroupModelTest::noRemoteId()
+{
+    GroupModel model;
+    model.enableContactChanges(false);
+    model.setQueryMode(EventModel::SyncQuery);
+    Group groupR;
+
+    groupR.setLocalUid(ACCOUNT1);
+    QVERIFY(!model.addGroup(groupR));
 }
 
 QTEST_MAIN(GroupModelTest)

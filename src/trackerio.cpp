@@ -1043,6 +1043,11 @@ bool TrackerIO::addGroup(Group &group)
         return false;
     }
 
+    if (group.remoteUids().isEmpty()) {
+        qWarning() << "No remote uid for group";
+        return false;
+    }
+
     group.setId(d->nextGroupId());
 
     qDebug() << __FUNCTION__ << group.url() << group.localUid() << group.remoteUids();

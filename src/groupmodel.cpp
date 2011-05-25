@@ -406,6 +406,7 @@ void GroupModelPrivate::groupsAddedSlot(const QList<CommHistory::Group> &addedGr
         // If the group has not been added to the model, add it.
         if (!g.isValid()
             && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
+            && !group.remoteUids().isEmpty()
             && (filterRemoteUid.isEmpty()
                 || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
             g = group;
@@ -414,7 +415,7 @@ void GroupModelPrivate::groupsAddedSlot(const QList<CommHistory::Group> &addedGr
         // Start contact resolving if we are interested listening contacts
         // and the contacts are not yet being resolved.
         startContactListening();
-        if (contactListener)
+        if (contactListener && !g.remoteUids().isEmpty())
             contactListener->resolveContact(g.localUid(),
                                             g.remoteUids().first());
     }
