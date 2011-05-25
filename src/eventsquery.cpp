@@ -215,21 +215,27 @@ QString functionForProperty(Event::Property p)
     case Event::ContactId:
         // join all contact matches
         func << QLatin1String(
-            "(SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), \"\\u001f\"), \"\\u001e\") "
-            "WHERE { "
-            "{"
-            "  ?target nco:hasIMAddress ?address . "
-            "  ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . "
-            "} UNION {"
-            "  ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . "
-            "  ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . "
-            "}"
+            "(SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", ?nicknames), \"\\u001e\"), \"\\u001c\")" \
+            "WHERE {" \
+            "  SELECT ?contact " \
+            "  (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), \"\\u001f\"), \"\\u001e\")" \
+            "  WHERE {" \
+            "    ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] . " \
+            "    ?addr nco:imNickname ?nickname . " \
+            "  }) AS ?nicknames " \
+            "  WHERE {" \
+            "  {" \
+            "    ?target nco:hasIMAddress ?address . " \
+            "    ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . " \
+            "  } UNION {" \
+            "    ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . " \
+            "    ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . " \
+            "  }}" \
             "}) AS ?contacts "
             );
         break;
     case Event::ContactName:
-        func << QLatin1String(
-            "(SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })");
+        func << QLatin1String("rdf:nil");
         break;
     case Event::FromVCardFileName:
     case Event::FromVCardLabel:

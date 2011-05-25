@@ -52,7 +52,7 @@ struct QueryResult {
     void fillMessagePartFromModel(MessagePart &part);
     void fillCallGroupFromModel(Event &event);
 
-    static void parseContacts(const QString &result, const QString &imNickname,
+    static void parseContacts(const QString &result, const QString &localUid,
                               QList<Event::Contact> &contacts);
 
     static QString buildContactName(const QString &firstName,
