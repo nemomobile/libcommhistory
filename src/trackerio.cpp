@@ -864,10 +864,15 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
 {
     QUrl channelUrl = Group::idToUrl(channelId);
 
-    query.insertion(channelUrl,
-                    "nmo:lastMessageDate",
-                    event.endTime(),
-                    true);
+    QString startTime = event.startTime().toUTC().toString(Qt::ISODate);
+    query.deletion(QString(LAT("DELETE {<%1> nmo:lastMessageDate ?d}"
+                               "WHERE {<%1> nmo:lastMessageDate ?d FILTER(?d < \"%2\"^^xsd:dateTime)}"))
+                   .arg(channelUrl.toString())
+                   .arg(startTime));
+    query.insertionSilent(QString(LAT("<%1> nmo:lastMessageDate \"%2\"^^xsd:dateTime . "))
+                          .arg(channelUrl.toString())
+                          .arg(startTime));
+
     query.insertion(channelUrl,
                     "nie:contentLastModified",
                     event.endTime(),
