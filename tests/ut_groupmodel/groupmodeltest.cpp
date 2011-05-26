@@ -1245,4 +1245,70 @@ void GroupModelTest::noRemoteId()
     QVERIFY(!model.addGroup(groupR));
 }
 
+void GroupModelTest::endTimeUpdate()
+{
+    GroupModel model;
+    EventModel eventModel;
+    model.enableContactChanges(false);
+    model.setQueryMode(EventModel::SyncQuery);
+
+    addTestGroup(group1, "endTimeUpdate", QString("td@localhost"));
+    QVERIFY(group1.id() != -1);
+
+    QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+
+    QSignalSpy groupUpdated(&model,
+                            SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
+
+    QDateTime latestDate = QDateTime::currentDateTime().addMonths(-1);
+    QDateTime oldDate = latestDate.addMonths(-1);
+
+    // add an event to each group to get them to show up in getGroups()
+    QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
+    addTestEvent(eventModel, Event::IMEvent, Event::Outbound, "endTimeUpdate",
+                 group1.id(), "latest event",
+                 false, false, latestDate);
+
+    QVERIFY(waitSignal(eventsCommitted));
+
+    if (groupUpdated.isEmpty())
+        QVERIFY(waitSignal(groupUpdated));
+    QTest::qWait(1000);
+
+    // verify run-time update
+    QVERIFY(!groupUpdated.isEmpty());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+
+    // and tracker update
+    modelReady.clear();
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+
+    // add an event to each group to get them to show up in getGroups()
+    eventsCommitted.clear();
+    addTestEvent(eventModel, Event::IMEvent, Event::Outbound, "endTimeUpdate",
+                 group1.id(), "old event",
+                 false, false, oldDate);
+
+    QVERIFY(waitSignal(eventsCommitted));
+
+    if (groupUpdated.isEmpty())
+        QVERIFY(waitSignal(groupUpdated));
+    QTest::qWait(1000);
+
+    // verify run-time update
+    QVERIFY(!groupUpdated.isEmpty());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+
+    // and tracker update
+    modelReady.clear();
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+
+}
+
 QTEST_MAIN(GroupModelTest)
