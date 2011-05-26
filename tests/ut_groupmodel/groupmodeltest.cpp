@@ -1267,9 +1267,9 @@ void GroupModelTest::endTimeUpdate()
 
     // add an event to each group to get them to show up in getGroups()
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
-    addTestEvent(eventModel, Event::IMEvent, Event::Outbound, "endTimeUpdate",
-                 group1.id(), "latest event",
-                 false, false, latestDate);
+    int latestEventId = addTestEvent(eventModel, Event::IMEvent, Event::Outbound, "endTimeUpdate",
+                                     group1.id(), "latest event",
+                                     false, false, latestDate);
 
     QVERIFY(waitSignal(eventsCommitted));
 
@@ -1308,6 +1308,31 @@ void GroupModelTest::endTimeUpdate()
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+
+    // check group updates on modify event
+    Event event;
+    QVERIFY(model.trackerIO().getEvent(latestEventId, event));
+    QDateTime latestestDate = event.startTime().addDays(5);
+    event.setStartTime(latestestDate);
+
+    eventsCommitted.clear();
+    eventModel.modifyEvent(event);
+
+    QVERIFY(waitSignal(eventsCommitted));
+    modelReady.clear();
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestestDate.toTime_t());
+
+    // check group updates on delete event
+    eventsCommitted.clear();
+    eventModel.deleteEvent(latestEventId);
+
+    QVERIFY(waitSignal(eventsCommitted));
+    modelReady.clear();
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.toTime_t());
 
 }
 
