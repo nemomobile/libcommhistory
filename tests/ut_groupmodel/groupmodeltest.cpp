@@ -1279,13 +1279,15 @@ void GroupModelTest::endTimeUpdate()
 
     // verify run-time update
     QVERIFY(!groupUpdated.isEmpty());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
 
     // and tracker update
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
 
     // add an event to each group to get them to show up in getGroups()
     eventsCommitted.clear();
@@ -1301,19 +1303,24 @@ void GroupModelTest::endTimeUpdate()
 
     // verify run-time update
     QVERIFY(!groupUpdated.isEmpty());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
 
     // and tracker update
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
 
     // check group updates on modify event
     Event event;
     QVERIFY(model.trackerIO().getEvent(latestEventId, event));
     QDateTime latestestDate = event.startTime().addDays(5);
     event.setStartTime(latestestDate);
+    event.setEndTime(latestestDate.addSecs(100));
 
     eventsCommitted.clear();
     eventModel.modifyEvent(event);
@@ -1322,7 +1329,9 @@ void GroupModelTest::endTimeUpdate()
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestestDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestestDate.addSecs(100).toTime_t());
 
     // check group updates on delete event
     eventsCommitted.clear();
@@ -1332,8 +1341,8 @@ void GroupModelTest::endTimeUpdate()
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.toTime_t());
-
+    QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), oldDate.toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.addSecs(100).toTime_t());
 }
 
 QTEST_MAIN(GroupModelTest)

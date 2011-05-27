@@ -70,7 +70,7 @@ int addTestEvent(EventModel &model,
     event.setDirection(direction);
     event.setGroupId(groupId);
     event.setStartTime(when);
-    event.setEndTime(when);
+    event.setEndTime(when.addSecs(100));
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
         event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
