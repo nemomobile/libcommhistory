@@ -62,6 +62,7 @@ private slots:
     void addMultipleGroups();
     void limitOffset();
     void noRemoteId();
+    void endTimeUpdate();
     void cleanupTestCase();
     void init();
     void cleanup();

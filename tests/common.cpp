@@ -225,11 +225,11 @@ bool compareEvents(Event &e1, Event &e2)
         return false;
     }
     if (e1.startTime().toTime_t() != e2.startTime().toTime_t()) {
-        qWarning() << Q_FUNC_INFO << "startTime:" << e1.startTime() << e2.startTime();
+        qWarning() << Q_FUNC_INFO << "startTime:" << e1.startTime().toString() << e2.startTime().toString();
         return false;
     }
     if (e1.endTime().toTime_t() != e2.endTime().toTime_t()) {
-        qWarning() << Q_FUNC_INFO << "endTime:" << e1.endTime() << e2.endTime();
+        qWarning() << Q_FUNC_INFO << "endTime:" << e1.endTime().toString() << e2.endTime().toString();
         return false;
     }
     if (e1.isDraft() != e2.isDraft()) {

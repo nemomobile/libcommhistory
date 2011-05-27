@@ -864,10 +864,15 @@ void TrackerIOPrivate::setChannel(UpdateQuery &query, Event &event, int channelI
 {
     QUrl channelUrl = Group::idToUrl(channelId);
 
-    query.insertion(channelUrl,
-                    "nmo:lastMessageDate",
-                    event.endTime(),
-                    true);
+    QString startTime = event.startTime().toUTC().toString(Qt::ISODate);
+    query.deletion(QString(LAT("DELETE {<%1> nmo:lastMessageDate ?d}"
+                               "WHERE {<%1> nmo:lastMessageDate ?d FILTER(?d < \"%2\"^^xsd:dateTime)}"))
+                   .arg(channelUrl.toString())
+                   .arg(startTime));
+    query.insertionSilent(QString(LAT("<%1> nmo:lastMessageDate \"%2\"^^xsd:dateTime . "))
+                          .arg(channelUrl.toString())
+                          .arg(startTime));
+
     query.insertion(channelUrl,
                     "nie:contentLastModified",
                     event.endTime(),
@@ -951,34 +956,29 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
     QDateTime lastMessageDate;
     QDateTime lastSuccessfulMessageDate;
     QString groupUri;
-    QString timeProperty;
     if (event.type() == Event::CallEvent) {
         groupUri = makeCallGroupURI(event);
-        timeProperty = QLatin1String("nmo:sentDate");
     } else {
         groupUri = Group::idToUrl(event.groupId()).toString();
-        timeProperty = QLatin1String("nmo:receivedDate");
     }
 
     if (groupUri.isEmpty()) return;
 
     // get last message time
-    QString timestampQuery =
-        QString(LAT("SELECT "
+    QSparqlQuery query(
+                LAT("SELECT "
                     "(SELECT ?lastDate { ?lastMessage nmo:communicationChannel ?channel ; "
-                    "   %1 ?lastDate . } ORDER BY DESC(?lastDate)) "
+                    "   nmo:sentDate ?lastDate . } ORDER BY DESC(?lastDate) DESC(tracker:id(?lastMessage)))"
                     "(SELECT ?lastSuccessfulDate { "
                     " ?lastMessage nmo:communicationChannel ?channel ; "
-                    " %1 ?lastSuccessfulDate . "
+                    " nmo:sentDate ?lastSuccessfulDate . "
                     " FILTER(nmo:isSent(?lastMessage) = true || "
                     "   nmo:isAnswered(?lastMessage) = true) "
-                    "} ORDER BY DESC(?lastSuccessfulDate)) "
+                    "} ORDER BY DESC(?lastSuccessfulDate) DESC(tracker:id(?lastMessage)))"
                     "WHERE { "
                     " ?channel a nmo:CommunicationChannel . "
-                    " FILTER(?channel = ?:channel) }"))
-        .arg(timeProperty);
+                    " FILTER(?channel = ?:channel) }"));
 
-    QSparqlQuery query(timestampQuery);
     query.bindValue(LAT("channel"), QUrl(groupUri));
 
     addToTransactionOrRunQuery(transaction,
