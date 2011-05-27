@@ -1,3 +1,10 @@
+libcommhistory (1.1.1.24) unstable; urgency=low
+
+  * Fixes: NB#252413 - Previous day messages are not shown under correct
+    label after sync
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Fri, 27 May 2011 11:38:45 +0300
+
 libcommhistory (1.1.1.23) unstable; urgency=low
 
   * Fixes: GroupModel's Groups contacts().count() returns 0 for newly created conversation threads
