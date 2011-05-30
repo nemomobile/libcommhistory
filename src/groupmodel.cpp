@@ -207,7 +207,8 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
                     return;
                 }
             } else {
-                newGroup = group;
+                g.copyValidProperties(group);
+                newGroup = g;
             }
 
             // preserve contact info if necessary
@@ -879,6 +880,8 @@ bool GroupModel::addGroups(QList<Group> &groups)
 
 bool GroupModel::modifyGroup(Group &group)
 {
+    qDebug() << Q_FUNC_INFO << group.id();
+
     d->tracker()->transaction();
 
     if (group.id() == -1) {

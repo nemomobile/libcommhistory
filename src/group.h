@@ -278,6 +278,8 @@ public:
 
     QString toString() const;
 
+    void copyValidProperties(const Group &other);
+
 private:
     QSharedDataPointer<GroupPrivate> d;
 };
