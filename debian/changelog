@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.26) unstable; urgency=low
+
+  * Fixes: NB#248452 - Contact name is not shown in Call history, when made Skype call to a phone number
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 30 May 2011 10:29:45 +0300
+
 libcommhistory (1.1.1.25) unstable; urgency=low
 
   * Revert back event end time to group end time
