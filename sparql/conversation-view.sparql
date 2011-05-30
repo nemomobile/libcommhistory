@@ -32,17 +32,24 @@ SELECT
  nmo:reportDelivery(?message)
  nmo:validityPeriod(?message)
  nie:generator(?message)
- (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact)), "\u001f"), "\u001e")
+ (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), "\u001d", ?nicknames), "\u001e"), "\u001c")
   WHERE {
-  {
-    ?target nco:hasIMAddress ?address .
-    ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] .
-  } UNION {
-    ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] .
-    ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] .
-  }}
- ) AS ?contacts
- (SELECT ?nickname { ?target nco:hasIMAddress [ nco:imNickname ?nickname ] })
+    SELECT ?contact
+    (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), "\u001f"), "\u001e")
+     WHERE {
+       ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] .
+       ?addr nco:imNickname ?nickname .
+     }) AS ?nicknames
+    WHERE {
+    {
+      ?target nco:hasIMAddress ?address .
+      ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] .
+    } UNION {
+      ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] .
+      ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] .
+    }}
+ }) AS ?contacts
+ rdf:nil
  nmo:reportReadStatus(?message)
  nmo:sentWithReportRead(?message)
  nmo:mustAnswerReportRead(?message)

@@ -241,8 +241,7 @@ void QueryResult::fillEventFromModel(Event &event)
     if (properties.contains(Event::ContactId)) {
         QList<Event::Contact> contacts;
         parseContacts(RESULT_INDEX2(Event::ContactId).toString(),
-                      RESULT_INDEX2(Event::ContactName).toString(),
-                      contacts);
+                      eventToFill.localUid(), contacts);
         eventToFill.setContacts(contacts);
     }
 
@@ -285,8 +284,7 @@ void QueryResult::fillGroupFromModel(Group &group)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(Group::ContactId).toString(),
-                  result->value(Group::ContactName).toString(),
-                  contacts);
+                  groupToFill.localUid(), contacts);
     groupToFill.setContacts(contacts);
 
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
@@ -364,8 +362,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(CallGroupColumnContacts).toString(),
-                  result->value(CallGroupColumnIMNickname).toString(),
-                  contacts);
+                  eventToFill.localUid(), contacts);
     eventToFill.setContacts(contacts);
 
     eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
@@ -373,26 +370,62 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     event = eventToFill;
 }
 
-void QueryResult::parseContacts(const QString &result, const QString &imNickname,
+void QueryResult::parseContacts(const QString &result, const QString &localUid,
                                 QList<Event::Contact> &contacts)
 {
-    QStringList contactStringList = result.split('\x1e', QString::SkipEmptyParts);
-    if (contactStringList.isEmpty() && imNickname != QString()) {
-        Event::Contact contact(0, imNickname);
-        contacts << contact;
-        return;
-    }
+    /*
+     * Query result format:
+     * result      ::= contact (1C contact)*
+     * contact     ::= namePart 1D (nickPart)?
+     * namePart    ::= contactID (1E firstName)? (1E lastName)? 1E
+     * nickPart    ::= 1E nickContact (1E nickContact)*
+     * nickContact ::= imAddress 1F nickname
+     * imAddress   ::= 'telepathy:' imAccountPath '!' remoteUid
+     */
 
+    // first split each contact to separate string
+    QStringList contactStringList = result.split('\x1c', QString::SkipEmptyParts);
     foreach (QString contactString, contactStringList) {
-        QStringList contactInfo = contactString.split('\x1f');
+        // split contact to namePart and nickPart
+        QStringList contactPartList = contactString.split('\x1d', QString::SkipEmptyParts);
+
+        // get nickname
+        QString nickname;
+        if (contactPartList.size() > 1) {
+            // split nickPart to separate nickContacts
+            QStringList nickList = contactPartList[1].split('\x1e', QString::SkipEmptyParts);
+            foreach (QString nickContact, nickList) {
+                // split nickContact to imAddress and nickname
+                QStringList imPartList = nickContact.split('\x1f', QString::SkipEmptyParts);
+                if (imPartList.size() < 2)
+                    continue;
+
+                // get nickname from part that matches localUid
+                if (imPartList[0].contains(localUid)) {
+                    nickname = imPartList[1];
+                    break;
+                }
+
+                // if localUid doesn't match to any imAddress (for example in call/SMS case),
+                // first nickname in the list is used
+                if (nickname.isEmpty()) {
+                    nickname = imPartList[1];
+                }
+            }
+        }
+
+        // split namePart to contact id, first name and last name
+        QStringList namePartList = contactPartList[0].split('\x1e', QString::SkipEmptyParts);
         QString firstName, lastName;
-        if (contactInfo.size() >= 2)
-            firstName = contactInfo[1];
-        if (contactInfo.size() >= 3)
-            lastName = contactInfo[2];
+        if (namePartList.size() >= 2)
+            firstName = namePartList[1];
+        if (namePartList.size() >= 3)
+            lastName = namePartList[2];
+
+        // create contact
         Event::Contact contact;
-        contact.first = contactInfo[0].toInt();
-        contact.second = buildContactName(firstName, lastName, imNickname);
+        contact.first = namePartList[0].toInt();
+        contact.second = buildContactName(firstName, lastName, nickname);
         if (!contacts.contains(contact))
             contacts << contact;
     }
