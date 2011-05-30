@@ -824,30 +824,41 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             d->tracker()->rollback();
             return false;
         }
-        if (group.lastEventId() == event.id()) {
-            if (event.modifiedProperties().contains(Event::Status))
+        if (group.lastEventId() == event.id()
+            || event.endTime() > group.endTime()) {
+            Event::PropertySet modified;
+            if (group.lastEventId() == event.id()) {
+                modified = event.modifiedProperties();
+            } else {
+                group.setLastEventId(event.id());
+                modified = Event::allProperties();
+            }
+
+            if (modified.contains(Event::Status))
                 group.setLastEventStatus(event.status());
             group.setLastEventType(event.type());
             //text might be changed in case of MMS
-            if (event.modifiedProperties().contains(Event::FreeText)
-                || event.modifiedProperties().contains(Event::Subject)) {
+            if (modified.contains(Event::FreeText)
+                || modified.contains(Event::Subject)) {
                 if(event.type() == Event::MMSEvent) {
                     group.setLastMessageText(event.subject().isEmpty() ? event.freeText() : event.subject());
                 } else {
                     group.setLastMessageText(event.freeText());
                 }
             }
-            if (event.modifiedProperties().contains(Event::IsRead)
+            if (modified.contains(Event::IsRead)
                 && event.isRead()) {
                 group.setUnreadMessages(qMax(group.unreadMessages() - 1, 0));
             }
-            if (event.modifiedProperties().contains(Event::FromVCardFileName)
-                || event.modifiedProperties().contains(Event::FromVCardLabel)) {
+            if (modified.contains(Event::FromVCardFileName)
+                || modified.contains(Event::FromVCardLabel)) {
                 group.setLastVCardFileName(event.fromVCardFileName());
                 group.setLastVCardLabel(event.fromVCardLabel());
             }
-            if (event.modifiedProperties().contains(Event::StartTime))
+            if (modified.contains(Event::StartTime))
                 group.setStartTime(event.startTime());
+            if (modified.contains(Event::EndTime))
+                group.setEndTime(event.endTime());
         }
     }
 
