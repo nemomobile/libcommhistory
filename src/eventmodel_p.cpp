@@ -264,12 +264,27 @@ void EventModelPrivate::modifyInModel(Event &event)
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
         Event oldEvent = item->event();
+        QDateTime oldTime = oldEvent.endTime();
         oldEvent.copyValidProperties(event);
         item->setEvent(oldEvent);
-        QModelIndex bottom = q->createIndex(index.row(),
-                                            EventModel::NumberOfColumns - 1,
-                                            index.internalPointer());
-        emit q->dataChanged(index, bottom);
+
+        // move event if endTime has changed
+        if (index.row() > 0 && oldTime < event.endTime()) {
+            EventTreeItem *parent = item->parent();
+            if (!parent)
+                parent = eventRootItem;
+            // TODO: beginMoveRows if/when view supports it
+            q->beginRemoveRows(index, index.row(), index.row());
+            q->endRemoveRows();
+            q->beginInsertRows(index, 0, 0);
+            parent->moveChild(index.row(), 0);
+            q->endInsertRows();
+        } else {
+            QModelIndex bottom = q->createIndex(index.row(),
+                                                EventModel::NumberOfColumns - 1,
+                                                index.internalPointer());
+            emit q->dataChanged(index, bottom);
+        }
     }
 }
 
