@@ -956,18 +956,21 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
     QDateTime lastMessageDate;
     QDateTime lastSuccessfulMessageDate;
     QString groupUri;
+    QString timeProperty;
     if (event.type() == Event::CallEvent) {
         groupUri = makeCallGroupURI(event);
+        timeProperty = QLatin1String("nmo:sentDate");
     } else {
         groupUri = Group::idToUrl(event.groupId()).toString();
+        timeProperty = QLatin1String("nmo:receivedDate");
     }
 
     if (groupUri.isEmpty()) return;
 
     // get last message time
-    QSparqlQuery query(
-                LAT("SELECT "
-                    "(SELECT nmo:receivedDate(?lastMessage) { ?lastMessage nmo:communicationChannel ?channel ; "
+    QString timestampQuery =
+        QString(LAT("SELECT "
+                    "(SELECT %1(?lastMessage) { ?lastMessage nmo:communicationChannel ?channel ; "
                     "   nmo:sentDate ?lastDate . } ORDER BY DESC(?lastDate) DESC(tracker:id(?lastMessage)))"
                     "(SELECT ?lastSuccessfulDate { "
                     " ?lastMessage nmo:communicationChannel ?channel ; "
@@ -977,8 +980,10 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                     "} ORDER BY DESC(?lastSuccessfulDate) DESC(tracker:id(?lastMessage)))"
                     "WHERE { "
                     " ?channel a nmo:CommunicationChannel . "
-                    " FILTER(?channel = ?:channel) }"));
+                    " FILTER(?channel = ?:channel) }"))
+        .arg(timeProperty);
 
+    QSparqlQuery query(timestampQuery);
     query.bindValue(LAT("channel"), QUrl(groupUri));
 
     addToTransactionOrRunQuery(transaction,
