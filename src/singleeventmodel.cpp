@@ -39,12 +39,42 @@ public:
     SingleEventModelPrivate(EventModel *model)
         : EventModelPrivate(model) {
         queryLimit = 1;
+        clearUrl();
+        clearTokens();
     }
 
     bool acceptsEvent(const Event &event) const {
-        Q_UNUSED(event);
-        return false;
+
+        // If the urls match, we'll accept
+        if (!m_url.isEmpty() && m_url == event.url()) {
+            return true;
+        }
+
+        // If the m_groupId is valid and the m_groupId doesn't
+        // match events group id, don't accept the event
+        if (m_groupId != -1 && m_groupId != event.groupId()) {
+            return false;
+        }
+
+        // Accept the event if message tokens or mmsIds match
+        return (!m_token.isEmpty() && m_token == event.messageToken()) ||
+               (!m_mmsId.isEmpty() && m_mmsId == event.mmsId());
     }
+
+    void clearUrl() {
+        m_url.clear();
+    }
+
+    void clearTokens() {
+        m_token.clear();
+        m_mmsId.clear();
+        m_groupId = -1;
+    }
+
+    QUrl m_url;
+    QString m_token;
+    QString m_mmsId;
+    int m_groupId;
 };
 
 SingleEventModel::SingleEventModel(QObject *parent)
@@ -62,6 +92,9 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
 
     reset();
     d->clearEvents();
+    d->clearTokens();
+
+    d->m_url = uri;
 
     EventsQuery query(d->propertyMask);
 
@@ -71,6 +104,7 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
     return d->executeQuery(query);
 }
 
+
 bool SingleEventModel::getEventByTokens(const QString &token,
                                         const QString &mmsId,
                                         int groupId)
@@ -79,6 +113,11 @@ bool SingleEventModel::getEventByTokens(const QString &token,
 
     reset();
     d->clearEvents();
+    d->clearUrl();
+
+    d->m_token = token;
+    d->m_mmsId = mmsId;
+    d->m_groupId = groupId;
 
     EventsQuery query(d->propertyMask);
 
