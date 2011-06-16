@@ -704,6 +704,24 @@ void CallModelTest::testSortByContactUpdate()
     QVERIFY(e1.isMissedCall());
     QCOMPARE(e1.remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 2);
+
+    // add call to the other contact...
+    addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(10), REMOTEUID2);
+    watcher.waitForSignals(1, 1);
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.eventCount(), 1);
+    QCOMPARE(e1.direction(), Event::Outbound);
+    QCOMPARE(e1.remoteUid(), REMOTEUID2);
+
+    // ...and a missed call to the first -> move to top and increase event count
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(15), REMOTEUID1);
+    watcher.waitForSignals(1, 1);
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.eventCount(), 3);
 }
 
 void CallModelTest::testSortByTimeUpdate()
