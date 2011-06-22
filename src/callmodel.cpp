@@ -348,6 +348,10 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
 
                             if (last != previousLastItem && eventMatchesFilter(last->event()))
                                 newItems.append(last);
+                            else {
+                                delete last;
+                                last = 0;
+                            }
                         }
 
                         event.setEventCount(-1);
@@ -361,6 +365,8 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                         last->event().setEventCount(calculateEventCount(last));
                     countedUids.insert(last->event().remoteUid());
                     newItems.append(last);
+                } else {
+                    delete last;
                 }
 
                 // update count for last item in the previous batch
