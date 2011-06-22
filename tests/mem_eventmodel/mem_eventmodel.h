@@ -37,6 +37,8 @@ private slots:
     void modifyEvent();
     void deleteEvent();
 
+    void callSetFilter();
+
     void cleanupTestCase();
 };
 
