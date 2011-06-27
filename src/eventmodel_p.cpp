@@ -590,11 +590,24 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
         if (ContactListener::addressMatchesList(i.key().first,  // local id
                                                 i.key().second, // remote id
                                                 contactAddresses)) {
-            if (!i.value().contains(contact))
-                i.value().append(contact);
-            break;
-        }
+            QList<Event::Contact> cacheContacts = i.value();
+            QMutableListIterator<Event::Contact> cIter(cacheContacts);
+            bool found = false;
+            while (cIter.hasNext() && !found) {
+                cIter.next();
+                if (cIter.value().first == contact.first) {
+                    // change name for existing contact
+                    cIter.value().second = contact.second;
+                    found = true;
+                }
+            }
+            if (!found) {
+                // add new contact to key
+                cacheContacts << contact;
+            }
 
+            i.setValue(cacheContacts);
+        }
 
         // address not found, but we've got the contact in the cache
         // -> contact was updated -> address removed
