@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.29) unstable; urgency=low
+
+  * Fixes: NB#254743 - Call history view:multiple contacts dialog is shown when a call is received from modified contact
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 27 Jun 2011 12:31:40 +0300
+
 libcommhistory (1.1.1.28) unstable; urgency=low
 
   * Fixes: NB#261782 - Possible memory leak in call-history
