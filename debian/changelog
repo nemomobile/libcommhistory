@@ -1,3 +1,10 @@
+libcommhistory (1.1.1.30) unstable; urgency=low
+
+  * Fixes: NB#269380 - random call history crashes in below mentioned
+    scenario
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Wed, 29 Jun 2011 14:44:22 +0300
+
 libcommhistory (1.1.1.29) unstable; urgency=low
 
   * Fixes: NB#254743 - Call history view:multiple contacts dialog is shown when a call is received from modified contact
