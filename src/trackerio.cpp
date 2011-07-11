@@ -993,6 +993,54 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                                QVariant(groupUri));
 }
 
+void TrackerIO::recreateIds()
+{
+    qDebug() << Q_FUNC_INFO;
+
+    // Read max event/group ids from tracker and reset IdSource.
+
+    QSparqlQuery query("SELECT ?m { ?m a nmo:Message. FILTER(REGEX(?m, \"^(message|call):\")) } ORDER BY DESC(tracker:id(?m)) LIMIT 1");
+    QSparqlResult *result = d->connection().syncExec(query);
+    if (result->hasError()) {
+        qCritical() << Q_FUNC_INFO << "Error querying message ids";
+        delete result;
+        return;
+    }
+
+    int maxMessageId = 0;
+    int len = QString(QLatin1String("message:")).length();
+    if (result->first()) {
+        bool ok = false;
+        int id = result->value(0).toString().mid(len).toInt(&ok);
+        if (ok)
+            maxMessageId = id;
+    }
+    delete result;
+
+    QSparqlQuery groupQuery("SELECT ?c { ?c a nmo:CommunicationChannel. FILTER(REGEX(?c, \"^conversation:\")) } ORDER BY DESC(tracker:id(?c)) LIMIT 1");
+    result = d->connection().syncExec(groupQuery);
+    if (result->hasError()) {
+        qCritical() << Q_FUNC_INFO << "Error querying group ids";
+        delete result;
+        return;
+    }
+
+    int maxGroupId = 0;
+    len = QString(QLatin1String("conversation:")).length();
+    if (result->first()) {
+        bool ok = false;
+        int id = result->value(0).toString().mid(len).toInt(&ok);
+        if (ok)
+            maxGroupId = id;
+    }
+    delete result;
+
+    d->m_IdSource.setNextEventId(maxMessageId + 1);
+    d->m_IdSource.setNextGroupId(maxGroupId + 1);
+
+    qDebug() << Q_FUNC_INFO << "max event id =" << maxMessageId << ", group id =" << maxGroupId;
+}
+
 bool TrackerIO::addEvent(Event &event)
 {
     UpdateQuery query;

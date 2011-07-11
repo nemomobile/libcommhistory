@@ -257,6 +257,10 @@ public:
      */
     void rollback();
 
+    /*!
+     * Do NOT call this unless you know what you are doing.
+     */
+    void recreateIds();
 
 private:
     friend class TrackerIOPrivate;

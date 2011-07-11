@@ -107,6 +107,26 @@ int IdSource::nextGroupId()
     return nextId;
 }
 
+void IdSource::setNextEventId(int eventId)
+{
+    if (openSharedMemory()) {
+        IdSourceData *ids = lockSharedData();
+        ids->lastEventId = eventId;
+        save(ids);
+        m_IdSource.unlock();
+    }
+}
+
+void IdSource::setNextGroupId(int groupId)
+{
+    if (openSharedMemory()) {
+        IdSourceData *ids = lockSharedData();
+        ids->lastGroupId = groupId;
+        save(ids);
+        m_IdSource.unlock();
+    }
+}
+
 bool IdSource::openSharedMemory()
 {
     if (!m_IdSource.isAttached()) {
