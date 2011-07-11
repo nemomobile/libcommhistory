@@ -1,3 +1,9 @@
+libcommhistory (1.1.1.31) unstable; urgency=low
+
+  * Fixes: NB#270581 - Received or sent SMS/IM messages are visible in wrong conversation threads
+
+ -- Alvi Hirvela <alvi.hirvela@nokia.com>  Mon, 11 Jul 2011 13:59:44 +0300
+
 libcommhistory (1.1.1.30) unstable; urgency=low
 
   * Fixes: NB#269380 - random call history crashes in below mentioned
