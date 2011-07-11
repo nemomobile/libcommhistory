@@ -42,6 +42,9 @@ public:
     int nextEventId();
     int nextGroupId();
 
+    void setNextEventId(int eventId);
+    void setNextGroupId(int groupId);
+
 private:
     bool openSharedMemory();
     void save(IdSourceData *data);
