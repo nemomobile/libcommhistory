@@ -46,11 +46,11 @@ LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number,
     if (flags & NormalizeFlagRemovePunctuation) {
         result.remove(QRegExp("[()\\-\\. ]"));
         // check for invalid characters
-        if (result.indexOf(QRegExp("[^0-9#\\*\\+XxWwPp]")) != -1) {
+        if (result.indexOf(QRegExp("[^\\d#\\*\\+XxWwPp]")) != -1) {
             return QString();
         }
     } else {
-        if (result.indexOf(QRegExp("[^()\\-\\. 0-9#\\*\\+XxWwPp]")) != -1) {
+        if (result.indexOf(QRegExp("[^()\\-\\. \\d#\\*\\+XxWwPp]")) != -1) {
             return QString();
         }
     }
@@ -114,6 +114,13 @@ LIBCOMMHISTORY_EXPORT QString makeShortNumber(const QString &number,
         if (normalized != normalizedWithString) {
             QString dialString = normalizedWithString.mid(normalized.length());
             shortNumber.append(dialString);
+        }
+    }
+
+    for (int i = 0; i < shortNumber.length(); i++) {
+        int value = shortNumber.at(i).digitValue();
+        if (value != -1) {
+            shortNumber.replace(i, 1, QLatin1Char('0' + value));
         }
     }
 
