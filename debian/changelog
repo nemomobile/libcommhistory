@@ -588,7 +588,7 @@ libcommhistory (1.0.33.2) unstable; urgency=low
 
   * Fixes: NB#188158 - Wrong message is opening when try to open SMS
 
- -- Alexander Shalamov <alexander.shalamov@nokia.com>  Thu, 02 Sep 2010 09:51:00 +0300
+ -- Reto Zingg <reto.zingg@nokia.com>  Thu, 02 Sep 2010 09:51:00 +0300
 
 libcommhistory (1.0.33.1) unstable; urgency=low
 
