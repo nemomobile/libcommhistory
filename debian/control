@@ -1,7 +1,7 @@
 Source: libcommhistory
 Section: devel
 Priority: optional
-Maintainer: Alvi Hirvela  <alvi.hirvela@nokia.com>
+Maintainer: Reto Zingg <reto.zingg@nokia.com>
 Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.6),
                libqtsparql-dev, doxygen, aegis-builder,
                libqtcontacts-dev, libtracker-sparql-dev,
