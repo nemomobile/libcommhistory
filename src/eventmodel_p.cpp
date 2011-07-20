@@ -366,8 +366,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         }
 
         if (!event.contacts().isEmpty()) {
-            foreach (Event::Contact contact, event.contacts())
-                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
+            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
         }
 
         if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
