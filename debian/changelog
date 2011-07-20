@@ -1,3 +1,17 @@
+libcommhistory (1.2.0.0) unstable; urgency=low
+
+  * Fixes: NB#250678 - resend failed mms - failed again - conversation
+    still display as last week
+  * Fixes: NB#250696 - conversational view is not refreshed after
+    resending failed mms msg
+  * Fixes: NB#257389 - Recovering the pass code: Information banner of
+    Message sent qtn_devicelock_messagesent does not appear
+  * Fixes: NB#265099 - Lastname-Firstname order problem
+  * Fixes: NB#272201 - Conversations List - Conversations are not listed
+    according to timestamps
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Wed, 20 Jul 2011 16:38:48 +0300
+
 libcommhistory (1.1.1.33) unstable; urgency=low
 
   * Changed maintainer.
