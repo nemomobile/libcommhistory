@@ -1343,6 +1343,41 @@ void GroupModelTest::endTimeUpdate()
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), oldDate.toTime_t());
     QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.addSecs(100).toTime_t());
+
+    // add overlapping event with send time older than oldDate but the newest received time
+    // the event should not be picked up as the last event because of the old send time
+    Event olEvent;
+    olEvent.setType(Event::IMEvent);
+    olEvent.setDirection(Event::Outbound);
+    olEvent.setGroupId(group1.id());
+    olEvent.setStartTime(oldDate.addDays(-10));
+    olEvent.setEndTime(QDateTime::currentDateTime());
+    olEvent.setLocalUid("endTimeUpdate");
+    olEvent.setRemoteUid("td@localhost");
+    olEvent.setFreeText("long in delivery message");
+
+    eventsCommitted.clear();
+    eventModel.addEvent(olEvent);
+
+    QVERIFY(waitSignal(eventsCommitted));
+
+    if (groupUpdated.isEmpty())
+        QVERIFY(waitSignal(groupUpdated));
+    QTest::qWait(1000);
+
+    // verify run-time update
+    QVERIFY(!groupUpdated.isEmpty());
+    QVERIFY(model.group(model.index(0, 0)).lastEventId() != olEvent.id());
+    QVERIFY(model.group(model.index(0, 0)).startTime().toTime_t() != olEvent.startTime().toTime_t());
+    QVERIFY(model.group(model.index(0, 0)).endTime().toTime_t() != olEvent.endTime().toTime_t());
+
+    // and tracker update
+    modelReady.clear();
+    QVERIFY(model.getGroups("endTimeUpdate"));
+    QVERIFY(waitSignal(modelReady));
+    QVERIFY(model.group(model.index(0, 0)).lastEventId() != olEvent.id());
+    QVERIFY(model.group(model.index(0, 0)).startTime().toTime_t() != olEvent.startTime().toTime_t());
+    QVERIFY(model.group(model.index(0, 0)).endTime().toTime_t() != olEvent.endTime().toTime_t());
 }
 
 QTEST_MAIN(GroupModelTest)
