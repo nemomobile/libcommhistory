@@ -95,8 +95,7 @@ void UpdateQuery::insertionRaw(const QUrl &subject,
                                const char *predicate,
                                const QString &object,
                                bool modify) {
-    if (modify)
-        deletion(subject, predicate);
+    Q_UNUSED(modify); // was in use with separate deletes
 
     insertions.insertMulti(subject, LAT(predicate) % LAT(" ") % object);
 }
@@ -177,7 +176,7 @@ QString UpdateQuery::query()
               << LAT("}");
 
     if (!insertions.isEmpty()) {
-        query << LAT("INSERT {");
+        query << LAT("INSERT OR REPLACE {");
         copyReverse(insertions.values(QUrl()), query);
 
         foreach (QUrl subject, insertions.uniqueKeys()) {
