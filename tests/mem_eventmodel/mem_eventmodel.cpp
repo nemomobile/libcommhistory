@@ -24,6 +24,7 @@
 #include <time.h>
 #include <malloc.h>
 #include "eventmodel.h"
+#include "callmodel.h"
 #include "common.h"
 
 #include "mem_eventmodel.h"
@@ -185,6 +186,36 @@ void MemEventModelTest::deleteEvent()
     QTest::qWait(CALM_TIMEOUT);
 
     delete model;
+}
+
+void MemEventModelTest::callSetFilter()
+{
+    MALLINFO_DUMP("start");
+
+    CallModel *model = new CallModel();
+    model->enableContactChanges(false);
+    QSignalSpy ready(model, SIGNAL(modelReady(bool)));
+
+    model->getEvents();
+    ready.clear();
+    QVERIFY(waitSignal(ready, WAIT_TIMEOUT));
+
+    for(int i = 0; i < 5; i++) {
+
+        if (i&1)
+            model->setFilter(CallModel::SortByTime, CommHistory::CallEvent::MissedCallType);
+        else
+            model->setFilter(CallModel::SortByContact, CommHistory::CallEvent::UnknownCallType);
+        ready.clear();
+        QVERIFY(waitSignal(ready, WAIT_TIMEOUT));
+        QTest::qWait(100);
+
+        MALLINFO_DUMP("get");
+    }
+    delete model;
+    MALLINFO_DUMP("del");
+    QTest::qWait(CALM_TIMEOUT);
+    MALLINFO_DUMP("don");
 }
 
 void MemEventModelTest::cleanupTestCase()

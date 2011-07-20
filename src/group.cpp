@@ -586,3 +586,74 @@ QString Group::toString() const
                    .arg(d->startTime.toString())
                    .arg(d->endTime.toString());
 }
+
+void Group::copyValidProperties(const Group &other)
+{
+    foreach(Property p, other.validProperties()) {
+        switch (p) {
+        case Id:
+            setId(other.id());
+            break;
+        case LocalUid:
+            setLocalUid(other.localUid());
+            break;
+        case RemoteUids:
+            setRemoteUids(other.remoteUids());
+            break;
+        case Type:
+            setChatType(other.chatType());
+            break;
+        case ChatName:
+            setChatName(other.chatName());
+            break;
+        case EndTime:
+            setEndTime(other.endTime());
+            break;
+        case TotalMessages:
+            setTotalMessages(other.totalMessages());
+            break;
+        case UnreadMessages:
+            setUnreadMessages(other.unreadMessages());
+            break;
+        case SentMessages:
+            setSentMessages(other.sentMessages());
+            break;
+        case LastEventId:
+            setLastEventId(other.lastEventId());
+            break;
+        case ContactId:
+            setContactId(other.contactId());
+            break;
+        case ContactName:
+            setContactName(other.contactName());
+            break;
+        case LastMessageText:
+            setLastMessageText(other.lastMessageText());
+            break;
+        case LastVCardFileName:
+            setLastVCardFileName(other.lastVCardFileName());
+            break;
+        case LastVCardLabel:
+            setLastVCardLabel(other.lastVCardLabel());
+            break;
+        case LastEventType:
+            setLastEventType(other.lastEventType());
+            break;
+        case LastEventStatus:
+            setLastEventStatus(other.lastEventStatus());
+            break;
+        case LastModified:
+            setLastModified(other.lastModified());
+            break;
+        case StartTime:
+            setStartTime(other.startTime());
+            break;
+        case Contacts:
+            setContacts(other.contacts());
+            break;
+        default:
+            qCritical() << "Unknown group property";
+            Q_ASSERT(false);
+        }
+    }
+}

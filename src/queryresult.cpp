@@ -24,6 +24,7 @@
 
 #include "queryresult.h"
 
+#include <QSettings>
 using namespace CommHistory;
 
 // used for filling data from tracker result rows
@@ -69,6 +70,15 @@ QString parseRemoteUid(const QString &remoteUid)
 
     return result;
 }
+
+QString getAddresbookNameOrder()
+{
+    QSettings addressBookSettings(QSettings::IniFormat, QSettings::UserScope,
+                                  LAT("Nokia"), LAT("Contacts"));
+    return addressBookSettings.value(LAT("nameOrder")).toString();
+}
+
+bool isLastNameFirst = getAddresbookNameOrder() == LAT("last-first");
 
 }
 
@@ -448,11 +458,19 @@ QString QueryResult::buildContactName(const QString &firstName,
     if (firstName.isEmpty() && lastName.isEmpty())
         return imNickname;
 
-    QString name = firstName;
-    if (!lastName.isEmpty()) {
+    QString name, lname;
+    if (isLastNameFirst)  {
+        name = lastName;
+        lname = firstName;
+    } else {
+        name = firstName;
+        lname = lastName;
+    }
+
+    if (!lname.isEmpty()) {
         if (!name.isEmpty())
             name.append(' ');
-        name.append(lastName);
+        name.append(lname);
     }
 
     return name;

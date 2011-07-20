@@ -207,7 +207,8 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
                     return;
                 }
             } else {
-                newGroup = group;
+                g.copyValidProperties(group);
+                newGroup = g;
             }
 
             // preserve contact info if necessary
@@ -315,7 +316,7 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
 
         sortNeeded = sortNeeded || !g.endTime().isValid();
 
-        if (event.endTime() >= g.endTime()) {
+        if (event.startTime() >= g.startTime()) {
             qDebug() << __PRETTY_FUNCTION__ << ": updating group" << g.id();
             g.setLastEventId(event.id());
             if(event.type() == Event::MMSEvent) {
@@ -879,6 +880,8 @@ bool GroupModel::addGroups(QList<Group> &groups)
 
 bool GroupModel::modifyGroup(Group &group)
 {
+    qDebug() << Q_FUNC_INFO << group.id();
+
     d->tracker()->transaction();
 
     if (group.id() == -1) {

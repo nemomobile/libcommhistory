@@ -69,7 +69,7 @@ public:
      *
      * \param token, message token or empty string
      * \param mmsId, mms id or empty string
-     * \param groupId
+     * \param groupId, valid group id or -1 to ignore
      *
      * \return true if successful, otherwise false
      */

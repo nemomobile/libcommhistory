@@ -430,24 +430,21 @@ void CallModelPrivate::addToModel( Event &event )
             if (matchingRow != -1) {
                 EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
 
+                if (matchingItem->event().direction() == event.direction()
+                    && matchingItem->event().isMissedCall() == event.isMissedCall())
+                    event.setEventCount(matchingItem->event().eventCount() + 1);
+                else
+                    event.setEventCount(1);
+
+                matchingItem->setEvent(event);
+
                 if (matchingRow == 0) {
                     // already at the top, update row
-                    if (matchingItem->event().direction() == event.direction()
-                        && matchingItem->event().isMissedCall() == event.isMissedCall())
-                        event.setEventCount(matchingItem->event().eventCount() + 1);
-                    else
-                        event.setEventCount(1);
-
-                    matchingItem->setEvent(event);
-
                     emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(0)),
                                         q->createIndex(0, CallModel::NumberOfColumns - 1,
                                                        eventRootItem->child(0)));
                 } else {
-                    // update row and move to top
-                    event.setEventCount(1);
-                    matchingItem->setEvent(event);
-
+                    // move to top
                     emit q->layoutAboutToBeChanged();
                     eventRootItem->moveChild(matchingRow, 0);
                     emit q->layoutChanged();
