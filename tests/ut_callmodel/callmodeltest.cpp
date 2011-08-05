@@ -710,7 +710,7 @@ void CallModelTest::testSortByContactUpdate()
     watcher.waitForSignals(1, 1);
     QCOMPARE(model.rowCount(), 2);
     e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.eventCount(), 1);
+    QCOMPARE(e1.eventCount(), 2);
     QCOMPARE(e1.direction(), Event::Outbound);
     QCOMPARE(e1.remoteUid(), REMOTEUID2);
 
