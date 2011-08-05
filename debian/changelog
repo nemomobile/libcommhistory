@@ -1,3 +1,9 @@
+libcommhistory (1.2.0.1) unstable; urgency=low
+
+  * Fix callmodel test
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Fri, 05 Jul 2011 13:56:22 +0300
+
 libcommhistory (1.2.0.0) unstable; urgency=low
 
   * Fixes: NB#250678 - resend failed mms - failed again - conversation
