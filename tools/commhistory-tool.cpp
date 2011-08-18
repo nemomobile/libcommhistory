@@ -658,10 +658,13 @@ int doIsRead(const QStringList &arguments, const QVariantMap &options)
 
 
     event.setIsRead(isRead);
+
+    Catcher c(&model);
     if (!model.modifyEvent(event)) {
         qCritical() << "Error updating event" << event.id();
         return -1;
     }
+    c.waitCommit();
 
     return 0;
 }

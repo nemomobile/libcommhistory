@@ -210,6 +210,15 @@ public:
     bool markAsReadGroup(int groupId);
 
     /*!
+     * Mark all calls in the same call group as read
+     *
+     * \param event Call event
+     *
+     * \return true if successful, otherwise false
+     */
+    bool markAsReadCallGroup(Event &event);
+
+    /*!
      * Mark messages as read
      *
      * \param eventIds list of events to mark

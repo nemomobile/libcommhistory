@@ -870,8 +870,64 @@ bool CallModel::addEvent( Event &event )
 
 bool CallModel::modifyEvent( Event &event )
 {
-    qWarning() << __PRETTY_FUNCTION__ << "Specific behaviour has not been implemented yet.";
-    return EventModel::modifyEvent( event );
+    Q_D(CallModel);
+
+    if (!d->isInTreeMode || !event.modifiedProperties().contains(Event::IsRead)) {
+        return EventModel::modifyEvent(event);
+    }
+
+    if (event.id() == -1) {
+        qWarning() << Q_FUNC_INFO << "Event id not set";
+        return false;
+    }
+
+    qDebug() << Q_FUNC_INFO << "setting isRead for call group";
+    // isRead has changed, modify the event and set isRead for nested events
+    bool isRead = event.isRead();
+
+    d->tracker()->transaction(d->syncOnCommit);
+
+    if (event.lastModified() == QDateTime::fromTime_t(0)) {
+         event.setLastModified(QDateTime::currentDateTime());
+    }
+
+    if (!d->tracker()->modifyEvent(event)) {
+        d->tracker()->rollback();
+        return false;
+    }
+
+    QList<Event> events;
+    events << event;
+
+    if (d->sortBy == SortByContact) {
+        d->tracker()->markAsReadCallGroup(event);
+    } else {
+        QModelIndex index = d->findEvent(event.id());
+        if (index.isValid()) {
+            EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
+            if (item) {
+                // child 0 = event
+                for (int i = 1; i < item->childCount(); i++) {
+                    item->child(i)->event().setIsRead(isRead);
+                    if (!d->tracker()->modifyEvent(item->child(i)->event())) {
+                        d->tracker()->rollback();
+                        return false;
+                    }
+                    events << item->child(i)->event();
+                }
+            }
+        }
+    }
+
+    CommittingTransaction *t = d->commitTransaction(events);
+    if (t) {
+        t->addSignal(false,
+                     d,
+                     "eventsUpdated",
+                    Q_ARG(QList<CommHistory::Event>, events));
+    }
+
+    return t != 0;
 }
 
 bool CallModel::deleteEvent( int id )

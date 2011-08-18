@@ -211,6 +211,8 @@ public:
                         bool deleteMessages,
                         bool cleanMmsParts);
 
+    bool markGroupAsRead(const QString &channelIRI);
+
 public Q_SLOTS:
     void runNextTransaction();
     /*!

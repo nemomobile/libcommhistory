@@ -692,6 +692,7 @@ void CallModelTest::testSortByContactUpdate()
     watcher.waitForSignals(1, 1);
     QCOMPARE(model.rowCount(), 2);
     e1 = model.event(model.index(0, 0));
+    int firstMissedId = e1.id();
     QVERIFY(e1.isMissedCall());
     QCOMPARE(e1.remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 1);
@@ -704,6 +705,14 @@ void CallModelTest::testSortByContactUpdate()
     QVERIFY(e1.isMissedCall());
     QCOMPARE(e1.remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 2);
+
+    // mark latest missed call as read, the first should also be marked
+    Event e = model.event(model.index(0, 0));
+    e.setIsRead(true);
+    QVERIFY(model.modifyEvent(e));
+    watcher.waitForSignals(1);
+    QVERIFY(model.trackerIO().getEvent(firstMissedId, e));
+    QVERIFY(e.isRead());
 
     // add call to the other contact...
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(10), REMOTEUID2);
@@ -775,6 +784,7 @@ void CallModelTest::testSortByTimeUpdate()
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(5), REMOTEUID1);
     watcher.waitForSignals(1, 1);
     e1 = model.event(model.index(0, 0));
+    int firstMissedId = e1.id();
     QCOMPARE(e1.eventCount(), 1);
     QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 1);
 
@@ -791,6 +801,14 @@ void CallModelTest::testSortByTimeUpdate()
     QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
     QCOMPARE(model2.rowCount(), 3);
     QCOMPARE(model2.event(model.index(0, 0)).eventCount(), 2);
+
+    // mark latest missed call as read, the first should also be marked
+    Event e = model.event(model.index(0, 0));
+    e.setIsRead(true);
+    QVERIFY(model.modifyEvent(e));
+    watcher.waitForSignals(2);
+    QVERIFY(model.trackerIO().getEvent(firstMissedId, e));
+    QVERIFY(e.isRead());
 }
 
 void CallModelTest::testSIPAddress()
