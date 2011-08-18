@@ -998,6 +998,24 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
                                QVariant(groupUri));
 }
 
+bool TrackerIOPrivate::markGroupAsRead(const QString &channelIRI)
+{
+    QSparqlQuery query(LAT(
+            "DELETE {?msg nmo:isRead ?r; nie:contentLastModified ?d}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:channel;"
+                   "nmo:isRead ?r; nie:contentLastModified ?d}"
+            "INSERT {?msg nmo:isRead ?:read; nie:contentLastModified ?:date}"
+            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:channel}"),
+                       QSparqlQuery::InsertStatement);
+
+    query.bindValue(LAT("channel"), channelIRI);
+    query.bindValue(LAT("read"), true);
+    //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
+    query.bindValue(LAT("date"), QDateTime::currentDateTime());
+
+    return addToTransactionOrRunQuery(m_pTransaction, query);
+}
+
 void TrackerIO::recreateIds()
 {
     qDebug() << Q_FUNC_INFO;
@@ -1646,20 +1664,12 @@ bool TrackerIO::totalEventsInGroup(int groupId, int &totalEvents)
 
 bool TrackerIO::markAsReadGroup(int groupId)
 {
-    QSparqlQuery query(LAT(
-            "DELETE {?msg nmo:isRead ?r; nie:contentLastModified ?d}"
-            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation;"
-                   "nmo:isRead ?r; nie:contentLastModified ?d}"
-            "INSERT {?msg nmo:isRead ?:read; nie:contentLastModified ?:date}"
-            "WHERE {?msg rdf:type nmo:Message; nmo:communicationChannel ?:conversation}"),
-                       QSparqlQuery::InsertStatement);
+    return d->markGroupAsRead(Group::idToUrl(groupId).toString());
+}
 
-    query.bindValue(LAT("conversation"), Group::idToUrl(groupId));
-    query.bindValue(LAT("read"), true);
-    //Need to update the contentModifiedTime as well so that NOS gets update with the updated time
-    query.bindValue(LAT("date"), QDateTime::currentDateTime());
-
-    return d->handleQuery(query);
+bool TrackerIO::markAsReadCallGroup(Event &event)
+{
+    return d->markGroupAsRead(d->makeCallGroupURI(event));
 }
 
 bool TrackerIO::markAsReadAll(Event::EventType eventType)
