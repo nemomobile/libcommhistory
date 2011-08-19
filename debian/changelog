@@ -1,3 +1,9 @@
+libcommhistory (1.2.0.2) unstable; urgency=low
+
+  * Fixes: NB#262470 - Not all calls marked as read in the call UI have nmo:isRead property set to true
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Fri, 19 Aug 2011 13:33:15 +0300
+
 libcommhistory (1.2.0.1) unstable; urgency=low
 
   * Fix callmodel test
