@@ -1,3 +1,10 @@
+libcommhistory (1.3.0.0) unstable; urgency=low
+
+  * Reset conversation model when its group deleted
+  * Handle marking events as unread (for edited message)
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Mon, 05 Sep 2011 14:23:26 +0300
+
 libcommhistory (1.2.0.2) unstable; urgency=low
 
   * Fixes: NB#262470 - Not all calls marked as read in the call UI have nmo:isRead property set to true
