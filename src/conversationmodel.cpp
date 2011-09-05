@@ -56,6 +56,9 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
     QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", "groupsUpdatedFull",
         this, SLOT(groupsUpdatedFullSlot(const QList<CommHistory::Group> &)));
+    QDBusConnection::sessionBus().connect(
+        QString(), QString(), "com.nokia.commhistory", GROUPS_DELETED_SIGNAL,
+        this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;
 }
@@ -75,6 +78,17 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
                          g.remoteUids().first());
             break;
         }
+    }
+}
+
+void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds) {
+    Q_Q(ConversationModel);
+
+    if (filterGroupId != -1
+        && groupIds.contains(filterGroupId)) {
+        q->beginResetModel();
+        clearEvents();
+        q->endResetModel();
     }
 }
 
