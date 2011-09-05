@@ -766,6 +766,14 @@ void TrackerIOPrivate::addIMEvent(UpdateQuery &query, Event &event)
                            localContact);
         addIMContact(query, eventSubject, "nmo:from", event.localUid(), event.remoteUid());
     }
+
+    if (event.isAction())
+        query.insertion(event.url(),
+                        "nmo:isAnswered", // TODO: reuse isAnswered ontology property cause
+                                          // it's not possible to add proper ontology property now
+                        event.isAction(),
+                        false);
+
     writeCommonProperties(query, event, false);
 }
 

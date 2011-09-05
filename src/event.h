@@ -146,6 +146,7 @@ public:
         MmsId,
         To,
         Contacts,
+        IsAction,
         //
         NumProperties
     };
@@ -320,6 +321,9 @@ public:
     QStringList ccList() const;
     QStringList bccList() const;
 
+    // Action chat messages (e.g. "/me is happy"), supported only for IMEvent
+    bool isAction() const;
+
     //\\//\\// S E T - A C C E S S O R S //\\//\\//
     void setId(int id);
 
@@ -410,6 +414,8 @@ public:
     void setCcList(const QStringList &ccList);
 
     void setBccList(const QStringList &bccList);
+
+    void setIsAction(bool isAction);
 
     QString toString() const;
 

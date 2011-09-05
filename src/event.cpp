@@ -87,6 +87,8 @@ public:
     QStringList bccList;
     Event::EventReadStatus readStatus;
 
+    bool isAction;
+
     Event::PropertySet validProperties;
     Event::PropertySet modifiedProperties;
 };
@@ -115,7 +117,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.contentLocation() << event.subject()
              << event.messageParts() << event.toList() << event.ccList() << event.bccList()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
-             << event.validityPeriod();
+             << event.validityPeriod() << event.isAction();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -141,7 +143,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
              >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts >> p.toList >> p.ccList >> p.bccList
              >> rstatus >> p.reportRead >> p.reportReadRequested
-             >> p.validityPeriod;
+             >> p.validityPeriod >> p.isAction;
 
     //read valid properties
     argument.beginArray();
@@ -190,6 +192,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setReadStatus((Event::EventReadStatus)rstatus);
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
+    event.setIsAction(p.isAction);
 
     event.setValidProperties(p.validProperties);
     event.resetModifiedProperties();
@@ -230,7 +233,7 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
            << event.contentLocation() << event.subject()
            << event.messageParts() << event.toList() << event.ccList() << event.bccList()
            << event.readStatus() << event.reportRead() << event.reportReadRequested()
-           << event.validityPeriod();
+           << event.validityPeriod() << event.isAction();
 
     return stream;
 }
@@ -248,7 +251,7 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
            >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
            >> p.messageParts >> p.toList >> p.ccList >> p.bccList
            >> rstatus >> p.reportRead >> p.reportReadRequested
-           >> p.validityPeriod;
+           >> p.validityPeriod >> p.isAction;
 
     event.setId(p.id);
     event.setType((Event::EventType)type);
@@ -285,6 +288,7 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setReadStatus((Event::EventReadStatus)rstatus);
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
+    event.setIsAction(p.isAction);
 
     event.resetModifiedProperties();
 
@@ -310,6 +314,7 @@ EventPrivate::EventPrivate()
         , reportReadRequested(false)
         , validityPeriod(0)
         , readStatus(Event::UnknownReadStatus)
+        , isAction(false)
 {
     lastModified = QDateTime::fromTime_t(0);
 }
@@ -354,6 +359,7 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , ccList(other.ccList)
         , bccList(other.bccList)
         , readStatus(other.readStatus)
+        , isAction(other.isAction)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
 {
@@ -650,6 +656,11 @@ QString Event::contentLocation() const
     return d->contentLocation;
 }
 
+bool Event::isAction() const
+{
+    return d->isAction;
+}
+
 void Event::setValidProperties(const Event::PropertySet &properties)
 {
     d->validProperties = properties;
@@ -915,6 +926,12 @@ void Event::setReportRead(bool reportRequested)
     d->propertyChanged(Event::ReportRead);
 }
 
+void Event::setIsAction(bool isAction)
+{
+    d->isAction = isAction;
+    d->propertyChanged(Event::IsAction);
+}
+
 QString Event::toString() const
 {
     QString contacts;
@@ -952,6 +969,7 @@ QString Event::toString() const
                    QString::number(eventCount())      % QChar('|') %
                    QString::number(status())          % QChar('|') %
                    QString::number(reportDelivery())  % QChar('|') %
+                   QString::number(isAction())        % QChar('|') %
                    QString::number(messageParts().count()));
 }
 
@@ -1069,6 +1087,9 @@ void Event::copyValidProperties(const Event &other)
             break;
         case To:
             setToList(other.toList());
+            break;
+        case IsAction:
+            setIsAction(other.isAction());
             break;
         default:
             qCritical() << "Unknown event property";
