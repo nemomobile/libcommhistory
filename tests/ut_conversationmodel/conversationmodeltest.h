@@ -45,6 +45,7 @@ private slots:
     void sorting();
     void contacts_data();
     void contacts();
+    void reset();
     void cleanupTestCase();
 };
 

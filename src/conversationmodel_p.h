@@ -48,6 +48,7 @@ public Q_SLOTS:
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
     virtual void modelUpdatedSlot(bool successful);
     void extraReceivedSlot(QList<CommHistory::Event> events, QVariantList extra);
+    void groupsDeletedSlot(const QList<int> &groupIds);
 
 public:
     int filterGroupId;

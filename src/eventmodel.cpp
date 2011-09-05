@@ -846,9 +846,11 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
                     group.setLastMessageText(event.freeText());
                 }
             }
-            if (modified.contains(Event::IsRead)
-                && event.isRead()) {
-                group.setUnreadMessages(qMax(group.unreadMessages() - 1, 0));
+            if (modified.contains(Event::IsRead)) {
+                if (event.isRead())
+                    group.setUnreadMessages(qMax(group.unreadMessages() - 1, 0));
+                else
+                    group.setUnreadMessages(group.unreadMessages() + 1);
             }
             if (modified.contains(Event::FromVCardFileName)
                 || modified.contains(Event::FromVCardLabel)) {

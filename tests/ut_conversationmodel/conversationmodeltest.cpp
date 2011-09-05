@@ -427,6 +427,25 @@ void ConversationModelTest::contacts()
     deleteTestContact(contactId);
 }
 
+void ConversationModelTest::reset() {
+    ConversationModel conv;
+    conv.enableContactChanges(false);
+    watcher.setModel(&conv);
+
+    QVERIFY(conv.getEvents(group1.id()));
+
+    QVERIFY(watcher.waitForModelReady());
+
+    QVERIFY(conv.rowCount() >= 5 );
+
+    QSignalSpy modelReset(&conv, SIGNAL(modelReset()));
+    GroupModel groups;
+    groups.deleteGroups(QList<int>() << group1.id());
+    if (modelReset.isEmpty())
+       QVERIFY(waitSignal(modelReset));
+    QCOMPARE(conv.rowCount(), 0);
+}
+
 void ConversationModelTest::cleanupTestCase()
 {
 //    deleteAll();
