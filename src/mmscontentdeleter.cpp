@@ -113,14 +113,16 @@ void MmsContentDeleter::doDeleteContent(const QString &path)
     QFileInfo entry(path);
     if (!entry.exists())
     {
-        qDebug() << "[MMS-DELETER] Path" << path << " does not exists.";
+        qWarning() << "[MMS-DELETER] Path" << path << " does not exists.";
         return;
     }
 
     QDir parent = entry.dir();
     if (entry.isFile())
     {
-        parent.remove(entry.fileName());
+        if (!parent.remove(entry.absoluteFilePath())) {
+            qCritical() << "[MMS-DELETER] Can't delete file" << entry.absoluteFilePath();
+        }
     }
     else if (entry.isDir())
     {
@@ -139,15 +141,19 @@ void MmsContentDeleter::doDeleteContent(const QString &path)
         {
             doDeleteContent(fi.absoluteFilePath());
         }
-        parent.rmdir(entry.fileName());
+        if (!parent.rmdir(entry.absoluteFilePath())) {
+            qCritical() << "[MMS-DELETER] Can't delete dir" << entry.absoluteFilePath();
+        }
     }
     else if (entry.isSymLink())
     {
-        parent.remove(entry.fileName());
+        if (!parent.remove(entry.absoluteFilePath())) {
+            qCritical() << "[MMS-DELETER] Can't delete symlink" << entry.absoluteFilePath();
+        }
     }
     else
     {
-        qWarning() << "Unknow fs entry" << entry.absoluteFilePath() << entry.fileName();
+        qCritical() << "Unknow fs entry" << entry.absoluteFilePath() << entry.fileName();
     }
 }
 
