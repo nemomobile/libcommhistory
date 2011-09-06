@@ -1,3 +1,11 @@
+libcommhistory (1.2.0.3) unstable; urgency=low
+
+  * Fixes: NB#276451 - Skype Contacts to which you recently communicated
+    from DUT are still shown in in Contact list after the Skype account
+    is Disabled/Deleted
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Tue, 06 Sep 2011 15:26:05 +0300
+
 libcommhistory (1.2.0.2) unstable; urgency=low
 
   * Fixes: NB#262470 - Not all calls marked as read in the call UI have nmo:isRead property set to true
