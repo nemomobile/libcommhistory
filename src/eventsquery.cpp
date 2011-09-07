@@ -68,7 +68,8 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "reportReadRequested",
                                  "mmsId",
                                  "mmsTo",
-                                 "contacts"};
+                                 "contacts",
+                                 "isAction"};
 
 const int VARIABLE_NAMES_SIZE = sizeof(VARIABLE_NAMES)/sizeof(VARIABLE_NAMES[0]);
 
@@ -98,6 +99,7 @@ QLatin1String ontologyProperty(Event::Property p)
     case Event::IsRead:
         return QLatin1String("nmo:isRead");
     case Event::IsMissedCall:
+    case Event::IsAction: //TODO
         return QLatin1String("nmo:isAnswered");
     case Event::IsEmergencyCall:
         return QLatin1String("nmo:isEmergency");
@@ -199,6 +201,7 @@ QString functionForProperty(Event::Property p)
     case Event::ReportReadRequested:
     case Event::ReadStatus:
     case Event::MmsId:
+    case Event::IsAction:
         func << ontologyProperty(p)
              << "("
              << eventPropertyName(Event::Id)
@@ -308,6 +311,7 @@ QString patternForProperty(Event::Property p)
     case Event::IsDeleted:
     case Event::ReportDelivery:
     case Event::ValidityPeriod:
+    case Event::IsAction:
         pattern << eventPropertyName(Event::Id)
                 << ontologyProperty(p)
                 << eventPropertyName(p)

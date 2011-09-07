@@ -213,8 +213,12 @@ void TrackerIOPrivate::ensureIMAddress(UpdateQuery &query,
                                        const QUrl &imAddressURI,
                                        const QString &imID)
 {
-    query.insertionRaw(imAddressURI, "rdf:type", LAT("nco:IMAddress"));
-    query.insertion(imAddressURI, "nco:imID", imID);
+    QString imAddressInsert =
+            QString(LAT("INSERT SILENT {<%1> a nco:IMAddress ; "
+                                            "nco:imID \"%2\"}"))
+            .arg(encodeUri(imAddressURI))
+            .arg(imID);
+    query.appendInsertion(imAddressInsert);
 }
 
 void TrackerIOPrivate::ensurePhoneNumber(UpdateQuery &query,
@@ -762,6 +766,14 @@ void TrackerIOPrivate::addIMEvent(UpdateQuery &query, Event &event)
                            localContact);
         addIMContact(query, eventSubject, "nmo:from", event.localUid(), event.remoteUid());
     }
+
+    if (event.isAction())
+        query.insertion(event.url(),
+                        "nmo:isAnswered", // TODO: reuse isAnswered ontology property cause
+                                          // it's not possible to add proper ontology property now
+                        event.isAction(),
+                        false);
+
     writeCommonProperties(query, event, false);
 }
 

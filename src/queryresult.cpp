@@ -245,6 +245,10 @@ void QueryResult::fillEventFromModel(Event &event)
         eventToFill.setStatus(Event::SendingStatus);
     }
 
+    if (eventToFill.type() == Event::IMEvent) {
+        eventToFill.setIsAction(RESULT_INDEX2(Event::IsAction).toBool());
+    }
+
     // TODO: what to do with the contact id and nickname columns if
     // Event::ContactId and Event::ContactName are replaced with
     // Event::Contacts?
@@ -454,7 +458,6 @@ QString QueryResult::buildContactName(const QString &firstName,
                                       const QString &lastName,
                                       const QString &imNickname)
 {
-    qDebug() << Q_FUNC_INFO << firstName << lastName << imNickname;
     if (firstName.isEmpty() && lastName.isEmpty())
         return imNickname;
 

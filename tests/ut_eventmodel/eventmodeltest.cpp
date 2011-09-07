@@ -136,8 +136,17 @@ void EventModelTest::testAddEvent()
     QCOMPARE(watcher.committedCount(), 1);
     QVERIFY(compareEvents(watcher.lastAdded()[0], im));
 
-    // TODO: sync with tracker?
+    im.setIsAction(true);
+    im.setId(-1);
+    QVERIFY(model.addEvent(im));
+    watcher.waitForSignals();
     Event event;
+    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(event, im));
+    QCOMPARE(event.isAction(), im.isAction());
+
+
+    // TODO: sync with tracker?
     QVERIFY(model.trackerIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(event, im));
 
