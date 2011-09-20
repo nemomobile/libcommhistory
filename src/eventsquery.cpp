@@ -218,7 +218,7 @@ QString functionForProperty(Event::Property p)
     case Event::ContactId:
         // join all contact matches
         func << QLatin1String(
-            "(SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", ?nicknames), \"\\u001e\"), \"\\u001c\")" \
+            "(SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", fn:concat(\"\\u001f\", nco:nickname(?contact)), ?nicknames), \"\\u001e\"), \"\\u001c\")" \
             "WHERE {" \
             "  SELECT ?contact " \
             "  (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), \"\\u001f\"), \"\\u001e\")" \
