@@ -513,6 +513,14 @@ void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &quer
                             event.reportReadRequested(),
                             modifyMode);
             break;
+        case Event::Headers:
+            if (modifyMode) {
+                query.resourceDeletion(event.url(),
+                                       "nmo:messageHeader");
+            }
+            addMessageHeaders(query, event);
+            break;
+
         default:; // do nothing
         }
     }
@@ -601,28 +609,6 @@ void TrackerIOPrivate::writeMMSProperties(UpdateQuery &query,
                                        "nmo:mmsHasContent");
             }
             addMessageParts(query, event);
-            break;
-        case Event::To:
-            if (modifyMode)
-                query.resourceDeletion(event.url(),
-                                       "nmo:messageHeader");
-
-            // Store To list in message header x-mms-to
-            if (!event.toList().isEmpty()) {
-                QUrl header(QString(LAT("_:header")));
-                query.insertionRaw(header,
-                                   "rdf:type",
-                                   LAT("nmo:MessageHeader"));
-                query.insertion(header,
-                                "nmo:headerName",
-                                LAT("x-mms-to"));
-                query.insertion(header,
-                                "nmo:headerValue",
-                                event.toList().join("\x1e"));
-                query.insertion(event.url(),
-                                "nmo:messageHeader",
-                                header);
-            }
             break;
         case Event::Cc:
             if (modifyMode)
@@ -741,6 +727,32 @@ void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
                             "nmo:hasAttachment",
                             part);
         }
+    }
+}
+
+void TrackerIOPrivate::addMessageHeaders(UpdateQuery &query, Event &event)
+{
+    QUrl eventSubject(event.url());
+
+    int num = 0;
+    QHashIterator<QString, QString> i(event.headers());
+    while (i.hasNext()) {
+        i.next();
+
+        QUrl header(QString(LAT("_:header%1")).arg(num++));
+        query.insertionRaw(header,
+                           "rdf:type",
+                           LAT("nmo:MessageHeader"));
+
+        query.insertion(eventSubject,
+                        "nmo:messageHeader",
+                        header);
+        query.insertion(header,
+                        "nmo:headerName",
+                        i.key());
+        query.insertion(header,
+                        "nmo:headerValue",
+                        i.value());
     }
 }
 
@@ -1416,7 +1428,9 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
                     Qt::UniqueConnection);
     }
 
-    QString query(LAT("DELETE {?:uri a rdfs:Resource}"));
+    QString query(LAT("DELETE {?header a rdfs:Resource}"
+                      "WHERE {?:uri nmo:messageHeader ?header}"
+                      "DELETE {?:uri a rdfs:Resource}"));
 
     switch (event.type()) {
     case Event::SMSEvent:
@@ -1444,9 +1458,7 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
         query = LAT("DELETE  {?part rdf:type rdfs:Resource}"
                     "WHERE {?:uri nmo:mmsHasContent [nie:hasPart ?part]}"
                     "DELETE {?content a rdfs:Resource} "
-                    "WHERE {?:uri nmo:mmsHasContent ?content}"
-                    "DELETE {?header a rdfs:Resource} "
-                    "WHERE {?:uri nmo:messageHeader ?header}")
+                    "WHERE {?:uri nmo:mmsHasContent ?content}")
                     + query;
         break;
     default:

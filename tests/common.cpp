@@ -278,6 +278,14 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "status:" << e1.status() << e2.status();
         return false;
     }
+    if (e1.headers() != e2.headers()) {
+        qWarning() << Q_FUNC_INFO << "headers:" << e1.headers() << e2.headers();
+        return false;
+    }
+    if (e1.toList() != e2.toList()) {
+        qWarning() << Q_FUNC_INFO << "toList:" << e1.toList() << e2.toList();
+        return false;
+    }
 
 //    QCOMPARE(e1.messageToken(), e2.messageToken());
     return true;

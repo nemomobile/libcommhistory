@@ -144,9 +144,10 @@ public:
         ReportRead,
         ReportReadRequested,
         MmsId,
-        To,
+        To, // TODO: remove, wrapped into Headers
         Contacts,
         IsAction,
+        Headers,
         //
         NumProperties
     };
@@ -317,12 +318,18 @@ public:
     // NOTE: Cc and Bcc will not be initialized in a getEvents() model
     // query. You have to fetch the full event data with getEvent() to
     // access these properties.
+    // toList() is a convenience method for getting the "x-mms-to"
+    // header contents; also available from headers() with addresses
+    // separated by \x1e.
     QStringList toList() const;
     QStringList ccList() const;
     QStringList bccList() const;
 
     // Action chat messages (e.g. "/me is happy"), supported only for IMEvent
     bool isAction() const;
+
+    // Optional message headers, key/value.
+    QHash<QString, QString> headers() const;
 
     //\\//\\// S E T - A C C E S S O R S //\\//\\//
     void setId(int id);
@@ -409,13 +416,16 @@ public:
 
     void addMessagePart(const MessagePart &part);
 
-    void setToList(const QStringList &ccList);
+    // Convenience method for setting the "x-mms-to" header.
+    void setToList(const QStringList &toList);
 
     void setCcList(const QStringList &ccList);
 
     void setBccList(const QStringList &bccList);
 
     void setIsAction(bool isAction);
+
+    void setHeaders(const QHash<QString, QString> &headers);
 
     QString toString() const;
 

@@ -69,7 +69,8 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "mmsId",
                                  "mmsTo",
                                  "contacts",
-                                 "isAction"};
+                                 "isAction",
+                                 "headers"};
 
 const int VARIABLE_NAMES_SIZE = sizeof(VARIABLE_NAMES)/sizeof(VARIABLE_NAMES[0]);
 
@@ -158,6 +159,9 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:mustAnswerReportRead");
     case Event::MmsId:
         return QLatin1String("nmo:mmsId");
+    case Event::To:
+    case Event::Headers:
+        return QLatin1String("nmo:messageHeader");
     default:
         qCritical() << Q_FUNC_INFO << "Invalid ontology property for " << p;
         Q_ASSERT(false);
@@ -259,17 +263,21 @@ QString functionForProperty(Event::Property p)
              .arg(eventPropertyName(Event::Id))
              .arg(ontologyProperty(p));
         break;
-    case Event::To:
-        func << QString(QLatin1String(
-                "(SELECT %1 {"
-                "%2 nmo:messageHeader [nmo:headerName \"x-mms-to\"; nmo:headerValue %1]})"))
-                .arg(eventPropertyName(Event::To))
-                .arg(eventPropertyName(Event::Id));
-        break;
     case Event::MessageParts:
         //return eventPropertyName(Event::Id);
         break;
     case Event::Contacts:
+        break;
+    case Event::To:
+        break;
+    case Event::Headers:
+        func << QString(QLatin1String(
+                "(SELECT GROUP_CONCAT(fn:string-join((nmo:headerName(?header), nmo:headerValue(?header)), \"\\u001d\"), \"\\u001f\") " \
+                "WHERE { " \
+                "%1 %2 ?header " \
+                "})"))
+                .arg(eventPropertyName(Event::Id))
+                .arg(ontologyProperty(p));
         break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;
@@ -344,6 +352,8 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::Contacts:
         break;
+    case Event::Headers:
+        break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;
         Q_ASSERT(false);
@@ -395,6 +405,13 @@ public:
         // to handle missing status, type is needed as well
         if (finalProperties.contains(Event::Status))
             finalProperties.insert(Event::Type);
+
+        // x-mms-to: is included in headers
+        if (finalProperties.contains(Event::To)
+            || finalProperties.contains(Event::Headers)) {
+            finalProperties -= Event::To;
+            finalProperties.insert(Event::Headers);
+        }
 
         variables = finalProperties.toList();
     }

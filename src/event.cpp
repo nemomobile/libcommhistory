@@ -82,12 +82,13 @@ public:
     QString contentLocation;
     QString subject;
     QList<MessagePart> messageParts;
-    QStringList toList;
     QStringList ccList;
     QStringList bccList;
     Event::EventReadStatus readStatus;
 
     bool isAction;
+
+    QHash<QString, QString> headers;
 
     Event::PropertySet validProperties;
     Event::PropertySet modifiedProperties;
@@ -115,9 +116,9 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.encoding() << event.characterSet() << event.language()
              << event.isDeleted() << event.reportDelivery()
              << event.contentLocation() << event.subject()
-             << event.messageParts() << event.toList() << event.ccList() << event.bccList()
+             << event.messageParts() << event.ccList() << event.bccList()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
-             << event.validityPeriod() << event.isAction();
+             << event.validityPeriod() << event.isAction() << event.headers();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -141,9 +142,9 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
              >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
-             >> p.messageParts >> p.toList >> p.ccList >> p.bccList
+             >> p.messageParts >> p.ccList >> p.bccList
              >> rstatus >> p.reportRead >> p.reportReadRequested
-             >> p.validityPeriod >> p.isAction;
+             >> p.validityPeriod >> p.isAction >> p.headers;
 
     //read valid properties
     argument.beginArray();
@@ -186,13 +187,13 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
     event.setMessageParts(p.messageParts);
-    event.setToList(p.toList);
     event.setCcList(p.ccList);
     event.setBccList(p.bccList);
     event.setReadStatus((Event::EventReadStatus)rstatus);
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
     event.setIsAction(p.isAction);
+    event.setHeaders(p.headers);
 
     event.setValidProperties(p.validProperties);
     event.resetModifiedProperties();
@@ -231,9 +232,9 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
            << event.encoding() << event.characterSet() << event.language()
            << event.isDeleted() << event.reportDelivery()
            << event.contentLocation() << event.subject()
-           << event.messageParts() << event.toList() << event.ccList() << event.bccList()
+           << event.messageParts() << event.ccList() << event.bccList()
            << event.readStatus() << event.reportRead() << event.reportReadRequested()
-           << event.validityPeriod() << event.isAction();
+           << event.validityPeriod() << event.isAction() << event.headers();
 
     return stream;
 }
@@ -249,9 +250,9 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
            >> p.messageToken >> p.mmsId >>p.lastModified
            >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
            >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
-           >> p.messageParts >> p.toList >> p.ccList >> p.bccList
+           >> p.messageParts >> p.ccList >> p.bccList
            >> rstatus >> p.reportRead >> p.reportReadRequested
-           >> p.validityPeriod >> p.isAction;
+           >> p.validityPeriod >> p.isAction >> p.headers;
 
     event.setId(p.id);
     event.setType((Event::EventType)type);
@@ -282,13 +283,13 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
     event.setMessageParts(p.messageParts);
-    event.setToList(p.toList);
     event.setCcList(p.ccList);
     event.setBccList(p.bccList);
     event.setReadStatus((Event::EventReadStatus)rstatus);
     event.setReportRead(p.reportRead);
     event.setReportReadRequested(p.reportReadRequested);
     event.setIsAction(p.isAction);
+    event.setHeaders(p.headers);
 
     event.resetModifiedProperties();
 
@@ -355,11 +356,11 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , contentLocation(other.contentLocation)
         , subject(other.subject)
         , messageParts(other.messageParts)
-        , toList(other.toList)
         , ccList(other.ccList)
         , bccList(other.bccList)
         , readStatus(other.readStatus)
         , isAction(other.isAction)
+        , headers(other.headers)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
 {
@@ -583,7 +584,7 @@ QList<MessagePart> Event::messageParts() const
 
 QStringList Event::toList() const
 {
-    return d->toList;
+    return d->headers.value(QLatin1String("x-mms-to")).split("\x1e", QString::SkipEmptyParts);
 }
 
 QStringList Event::ccList() const
@@ -659,6 +660,11 @@ QString Event::contentLocation() const
 bool Event::isAction() const
 {
     return d->isAction;
+}
+
+QHash<QString, QString> Event::headers() const
+{
+    return d->headers;
 }
 
 void Event::setValidProperties(const Event::PropertySet &properties)
@@ -892,8 +898,12 @@ void Event::addMessagePart(const MessagePart &part)
 
 void Event::setToList(const QStringList &toList)
 {
-    d->toList = toList;
-    d->propertyChanged(Event::To);
+    if (toList.isEmpty()) {
+        d->headers.remove(QLatin1String("x-mms-to"));
+    } else {
+        d->headers.insert(QLatin1String("x-mms-to"), toList.join("\x1e"));
+    }
+    d->propertyChanged(Event::Headers);
 }
 
 void Event::setCcList(const QStringList &ccList)
@@ -932,6 +942,12 @@ void Event::setIsAction(bool isAction)
     d->propertyChanged(Event::IsAction);
 }
 
+void Event::setHeaders(const QHash<QString, QString> &headers)
+{
+    d->headers = headers;
+    d->propertyChanged(Event::Headers);
+}
+
 QString Event::toString() const
 {
     QString contacts;
@@ -944,6 +960,18 @@ QString Event::toString() const
         }
 
         contacts = contactList.join(QChar(';'));
+    }
+
+    QString headers;
+    if (!d->headers.isEmpty()) {
+        QStringList headerList;
+        QHashIterator<QString, QString> i(d->headers);
+        while (i.hasNext()) {
+            i.next();
+            headerList.append(QString("%1=%2").arg(i.key()).arg(i.value()));
+        }
+
+        headers = headerList.join(QChar(';'));
     }
 
     return QString(QString::number(id())              % QChar('|') %
@@ -970,7 +998,8 @@ QString Event::toString() const
                    QString::number(status())          % QChar('|') %
                    QString::number(reportDelivery())  % QChar('|') %
                    QString::number(isAction())        % QChar('|') %
-                   QString::number(messageParts().count()));
+                   QString::number(messageParts().count()) % QChar('|') %
+                   headers);
 }
 
 void Event::copyValidProperties(const Event &other)
@@ -1085,11 +1114,12 @@ void Event::copyValidProperties(const Event &other)
         case MmsId:
             setMmsId(other.mmsId());
             break;
-        case To:
-            setToList(other.toList());
-            break;
         case IsAction:
             setIsAction(other.isAction());
+            break;
+        case To:
+        case Headers:
+            setHeaders(other.headers());
             break;
         default:
             qCritical() << "Unknown event property";

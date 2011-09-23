@@ -161,6 +161,8 @@ public:
     void writeCallProperties(UpdateQuery &query, Event &event, bool modifyMode);
 
     void addMessageParts(UpdateQuery &query, Event &event);
+    void addMessageHeaders(UpdateQuery &query, Event &event);
+
     /*!
      * Sets the group for the event into tracker.
      *

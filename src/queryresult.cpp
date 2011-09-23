@@ -213,8 +213,12 @@ void QueryResult::fillEventFromModel(Event &event)
             eventToFill.setBccList(RESULT_INDEX2(Event::Bcc).toString().split('\x1e', QString::SkipEmptyParts));
             break;
         case Event::To:
-            eventToFill.setToList(RESULT_INDEX2(Event::To).toString().split('\x1e', QString::SkipEmptyParts));
+        case Event::Headers: {
+            QHash<QString, QString> headers;
+            parseHeaders(RESULT_INDEX2(Event::Headers).toString(), headers);
+            eventToFill.setHeaders(headers);
             break;
+        }
         default:
             break;// handle below
         }
@@ -382,6 +386,21 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
 
     event = eventToFill;
+}
+
+void QueryResult::parseHeaders(const QString &result,
+                               QHash<QString, QString> &headers)
+{
+    /* Header format:
+     * key1 1D value1 1F key2 1D value2 1F ...
+     */
+
+    QStringList headerList = result.split("\x1f", QString::SkipEmptyParts);
+    foreach (QString header, headerList) {
+        QStringList keyValue = header.split("\x1d");
+        if (keyValue.isEmpty() || keyValue[0].isEmpty()) continue;
+        headers.insert(keyValue[0], keyValue[1]);
+    }
 }
 
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
