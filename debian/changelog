@@ -1,3 +1,10 @@
+libcommhistory (1.3.1) unstable; urgency=low
+
+  * Fixes: NB#283138 - libcommhistory fails to respect local nickname
+  * Added support for message headers (Event::Headers property).
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Mon, 26 Sep 2011 12:22:32 +0300
+
 libcommhistory (1.3.0.2) unstable; urgency=low
 
   * Add IsAction property to Event to support action messages
