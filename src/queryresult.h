@@ -52,6 +52,9 @@ struct QueryResult {
     void fillMessagePartFromModel(MessagePart &part);
     void fillCallGroupFromModel(Event &event);
 
+    static void parseHeaders(const QString &result,
+                             QHash<QString, QString> &headers);
+
     static void parseContacts(const QString &result, const QString &localUid,
                               QList<Event::Contact> &contacts);
 

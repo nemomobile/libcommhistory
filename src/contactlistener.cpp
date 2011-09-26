@@ -158,7 +158,8 @@ void ContactListener::slotStartContactRequest()
         for (int i = 0; i < REQUEST_BATCH_SIZE && !m_PendingUnresolvedContacts.isEmpty(); i++) {
             QPair<QString,QString> contact = m_PendingUnresolvedContacts.takeFirst();
 
-            QString number = CommHistory::normalizePhoneNumber(contact.second);
+            QString number = CommHistory::normalizePhoneNumber(contact.second,
+                                                               NormalizeFlagKeepDialString);
             if (number.isEmpty()) {
                 QContactDetailFilter filterLocal;
                 filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
@@ -172,7 +173,7 @@ void ContactListener::slotStartContactRequest()
 
                 filter = addContactFilter(filter, filterLocal & filterRemote);
             } else {
-                filter = addContactFilter(filter, QContactPhoneNumber::match(contact.second));
+                filter = addContactFilter(filter, QContactPhoneNumber::match(number));
             }
         }
         request = buildRequest(filter);

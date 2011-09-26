@@ -213,8 +213,12 @@ void QueryResult::fillEventFromModel(Event &event)
             eventToFill.setBccList(RESULT_INDEX2(Event::Bcc).toString().split('\x1e', QString::SkipEmptyParts));
             break;
         case Event::To:
-            eventToFill.setToList(RESULT_INDEX2(Event::To).toString().split('\x1e', QString::SkipEmptyParts));
+        case Event::Headers: {
+            QHash<QString, QString> headers;
+            parseHeaders(RESULT_INDEX2(Event::Headers).toString(), headers);
+            eventToFill.setHeaders(headers);
             break;
+        }
         default:
             break;// handle below
         }
@@ -384,6 +388,21 @@ void QueryResult::fillCallGroupFromModel(Event &event)
     event = eventToFill;
 }
 
+void QueryResult::parseHeaders(const QString &result,
+                               QHash<QString, QString> &headers)
+{
+    /* Header format:
+     * key1 1D value1 1F key2 1D value2 1F ...
+     */
+
+    QStringList headerList = result.split("\x1f", QString::SkipEmptyParts);
+    foreach (QString header, headerList) {
+        QStringList keyValue = header.split("\x1d");
+        if (keyValue.isEmpty() || keyValue[0].isEmpty()) continue;
+        headers.insert(keyValue[0], keyValue[1]);
+    }
+}
+
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
                                 QList<Event::Contact> &contacts)
 {
@@ -408,22 +427,33 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
         if (contactPartList.size() > 1) {
             // split nickPart to separate nickContacts
             QStringList nickList = contactPartList[1].split('\x1e', QString::SkipEmptyParts);
-            foreach (QString nickContact, nickList) {
-                // split nickContact to imAddress and nickname
-                QStringList imPartList = nickContact.split('\x1f', QString::SkipEmptyParts);
-                if (imPartList.size() < 2)
-                    continue;
 
-                // get nickname from part that matches localUid
-                if (imPartList[0].contains(localUid)) {
-                    nickname = imPartList[1];
-                    break;
+            // first nickContact is the contact-specific nickname (nco:nickname)
+            if (!nickList.isEmpty()) {
+                QStringList nicknameList = nickList.takeFirst().split('\x1f');
+                if (nicknameList.size() > 1 && !nicknameList[1].isEmpty()) {
+                    nickname = nicknameList[1];
                 }
+            }
 
-                // if localUid doesn't match to any imAddress (for example in call/SMS case),
-                // first nickname in the list is used
-                if (nickname.isEmpty()) {
-                    nickname = imPartList[1];
+            if (nickname.isEmpty()) {
+                foreach (QString nickContact, nickList) {
+                    // split nickContact to imAddress and nickname
+                    QStringList imPartList = nickContact.split('\x1f', QString::SkipEmptyParts);
+                    if (imPartList.size() < 2)
+                        continue;
+
+                    // get nickname from part that matches localUid
+                    if (imPartList[0].contains(localUid)) {
+                        nickname = imPartList[1];
+                        break;
+                    }
+
+                    // if localUid doesn't match to any imAddress (for example in call/SMS case),
+                    // first nickname in the list is used
+                    if (nickname.isEmpty()) {
+                        nickname = imPartList[1];
+                    }
                 }
             }
         }

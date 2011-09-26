@@ -210,6 +210,11 @@ void EventModelTest::testAddEvents()
     e1.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     e1.setRemoteUid("td@localhost");
     e1.setFreeText("addEvents 1");
+    QHash<QString, QString> headers1;
+    headers1.insert("header1_1", "value1_1");
+    headers1.insert("header1_2", "value1_2");
+    headers1.insert("x-mms-to", "foo@bar");
+    e1.setHeaders(headers1);
 
     e2.setGroupId(group1.id());
     e2.setType(Event::IMEvent);
@@ -219,6 +224,11 @@ void EventModelTest::testAddEvents()
     e2.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
     e2.setRemoteUid("td@localhost");
     e2.setFreeText("addEvents 2");
+    QHash<QString, QString> headers2;
+    headers2.insert("header2_1", "value2_1");
+    headers2.insert("header2_2", "value2_2");
+    headers2.insert("x-mms-to", "mms@internet");
+    e2.setHeaders(headers2);
 
     events << e1 << e2;
     QVERIFY(model.addEvents(events));
@@ -334,6 +344,26 @@ void EventModelTest::testModifyEvent()
     QCOMPARE(watcher.committedCount(), 0);
     //
     im.setId(imId);
+
+    // headers
+    QHash<QString, QString> headers;
+    headers.insert("header1", "value1");
+    headers.insert("header2", "value2");
+    headers.insert("x-mms-to", "foo@bar");
+    im.setHeaders(headers);
+    QVERIFY(model.modifyEvent(im));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.updatedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+
+    im.resetModifiedProperties();
+    im.setToList(QStringList() << "to1" << "to2");
+    QVERIFY(model.modifyEvent(im));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.updatedCount(), 1);
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
 
     // call properties
     call.resetModifiedProperties();
