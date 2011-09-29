@@ -88,7 +88,10 @@ void ContactListener::init()
     qDebug() << Q_FUNC_INFO;
 
     if (!m_ContactManager) {
-        m_ContactManager = new QContactManager(CONTACT_STORAGE_TYPE);
+        QMap<QString,QString> params;
+        params["contact-types"] = QLatin1String("contact");
+        params["omit-presence-changes"] = QLatin1String(""); // value ignored
+        m_ContactManager = new QContactManager(CONTACT_STORAGE_TYPE, params);
         m_ContactManager->setParent(this);
         connect(m_ContactManager, SIGNAL(contactsAdded(const QList<QContactLocalId> &)),
                 this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
