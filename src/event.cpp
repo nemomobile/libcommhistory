@@ -997,6 +997,8 @@ void Event::copyValidProperties(const Event &other)
         case RemoteUid:
             setRemoteUid(other.remoteUid());
             break;
+        case ContactId:
+        case ContactName:
         case Contacts:
             setContacts(other.contacts());
             break;
