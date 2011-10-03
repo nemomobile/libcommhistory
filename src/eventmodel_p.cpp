@@ -274,11 +274,9 @@ void EventModelPrivate::modifyInModel(Event &event)
             if (!parent)
                 parent = eventRootItem;
             // TODO: beginMoveRows if/when view supports it
-            q->beginRemoveRows(index, index.row(), index.row());
-            q->endRemoveRows();
-            q->beginInsertRows(index, 0, 0);
+            emit q->layoutAboutToBeChanged();
             parent->moveChild(index.row(), 0);
-            q->endInsertRows();
+            emit q->layoutChanged();
         } else {
             QModelIndex bottom = q->createIndex(index.row(),
                                                 EventModel::NumberOfColumns - 1,
