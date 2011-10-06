@@ -49,7 +49,7 @@
 "      ?_total_sent_messages_1 nmo:isDeleted false ." \
 "  })" \
 "  ?_lastMessage " \
-"  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", fn:concat(\"\\u001f\", nco:nickname(?contact)), ?nicknames), \"\\u001e\"), \"\\u001c\")" \
+"  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", fn:concat(nco:nickname(?contact), \"\\u001d\"), ?nicknames), \"\\u001e\"), \"\\u001c\")" \
 "  WHERE {" \
 "    SELECT ?contact " \
 "    (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), \"\\u001f\"), \"\\u001e\")" \
@@ -119,7 +119,7 @@
 "  nmo:isEmergency(?lastCall)" \
 "  nmo:isRead(?lastCall)" \
 "  nie:contentLastModified(?lastCall)" \
-"  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", fn:concat(\"\\u001f\", nco:nickname(?contact)), ?nicknames), \"\\u001e\"), \"\\u001c\")" \
+"  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), \"\\u001d\", fn:concat(nco:nickname(?contact), \"\\u001d\"), ?nicknames), \"\\u001e\"), \"\\u001c\")" \
 "  WHERE {" \
 "    SELECT ?contact " \
 "    (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), \"\\u001f\"), \"\\u001e\")" \
