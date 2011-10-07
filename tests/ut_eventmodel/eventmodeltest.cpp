@@ -925,6 +925,13 @@ void EventModelTest::testDeliveryStatus()
     QVERIFY(model.trackerIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::TemporarilyFailedStatus);
 
+    event.setStatus(Event::TemporarilyFailedOfflineStatus);
+    QVERIFY(model.modifyEvent(event));
+    watcher.waitForSignals();
+    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(e.status() == Event::TemporarilyFailedOfflineStatus);
+
     event.setStatus(Event::PermanentlyFailedStatus);
     QVERIFY(model.modifyEvent(event));
     watcher.waitForSignals();

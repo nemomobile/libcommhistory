@@ -421,6 +421,8 @@ void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &quer
                 status = LAT(NMO_ "delivery-status-delivered");
             } else if (event.status() == Event::TemporarilyFailedStatus) {
                 status = LAT(NMO_ "delivery-status-temporarily-failed");
+            } else if (event.status() == Event::TemporarilyFailedOfflineStatus) {
+                status = LAT(NMO_ "delivery-status-temporarily-failed-offline");
             } else if (event.status() == Event::PermanentlyFailedStatus) {
                 status = LAT(NMO_ "delivery-status-permanently-failed");
             }

@@ -96,7 +96,8 @@ public:
         // deprecate FailedStatus
         FailedStatus,
         TemporarilyFailedStatus = FailedStatus,
-        PermanentlyFailedStatus
+        PermanentlyFailedStatus,
+        TemporarilyFailedOfflineStatus
     };
 
     enum EventReadStatus {

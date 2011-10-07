@@ -48,6 +48,8 @@ Event::EventStatus nmoStatusToEventStatus(const QString &status)
          return Event::DeliveredStatus;
     else if (status == LAT(NMO_ "delivery-status-temporarily-failed"))
         return Event::TemporarilyFailedStatus;
+    else if (status == LAT(NMO_ "delivery-status-temporarily-failed-offline"))
+        return Event::TemporarilyFailedOfflineStatus;
     else if(status == LAT(NMO_ "delivery-status-permanently-failed"))
             return Event::PermanentlyFailedStatus;
 
