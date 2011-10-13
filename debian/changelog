@@ -1,7 +1,7 @@
 libcommhistory (1.2.0.4) unstable; urgency=low
 
   * Fixes: NB#286311 - Missed call not shown in recent calls (PR1.1 clone)
-  * Fixes: NB#286129 - Missed call disappears from call history when another missed call occurs
+  * Addresses: NB#286129 - Missed call disappears from call history when another missed call occurs
 
  -- Reto Zingg <reto.zingg@nokia.com>  Wed, 12 Oct 2011 14:33:03 +0300
 
