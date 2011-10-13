@@ -1,7 +1,13 @@
+libcommhistory (1.2.1.0) unstable; urgency=low
+
+  * for pr1.1.1 integration purpose.
+
+ -- Subramanian Girish <ext-girish.1.subramanian@nokia.com>  Thu, 13 Oct 2011 15:21:18 +0300
+
 libcommhistory (1.2.0.4) unstable; urgency=low
 
-  * Fixes: NB#286083 - Missed call not shown in recent calls
-  * Fixes: NB#286129 - Missed call disappears from call history when another missed call occurs
+  * Fixes: NB#286312 - Missed call not shown in recent calls (PR1.1.1 clone)
+  * Addresses: NB#286129 - Missed call disappears from call history when another missed call occurs
 
  -- Reto Zingg <reto.zingg@nokia.com>  Wed, 12 Oct 2011 14:33:03 +0300
 
