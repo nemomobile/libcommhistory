@@ -126,7 +126,14 @@ QString TrackerIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
         callGroupRemoteId = makeShortNumber(event.remoteUid(), NormalizeFlagKeepDialString);
     }
 
-    return QString(LAT("callgroup:%1!%2")).arg(event.localUid()).arg(callGroupRemoteId);
+    QString videoSuffix;
+    if (event.isVideoCall())
+        videoSuffix = "!video";
+
+    return QString(LAT("callgroup:%1!%2%3"))
+        .arg(event.localUid())
+        .arg(callGroupRemoteId)
+        .arg(videoSuffix);
 }
 
 QString TrackerIOPrivate::prepareMessagePartQuery(const QString &messageUri)

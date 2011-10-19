@@ -387,6 +387,9 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 
     eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
 
+    if (result->value(CallGroupColumnChannel).toString().endsWith("!video"))
+        eventToFill.setIsVideoCall(true);
+
     event = eventToFill;
 }
 

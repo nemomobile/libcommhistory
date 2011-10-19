@@ -28,6 +28,9 @@
 
 #include <QStringBuilder>
 
+#define MMS_TO_HEADER QLatin1String("x-mms-to")
+#define VIDEO_CALL_HEADER QLatin1String("x-video")
+
 namespace CommHistory {
 
 class EventPrivate : public QSharedData
@@ -507,6 +510,17 @@ bool Event::isEmergencyCall() const
     return d->isEmergencyCall;
 }
 
+bool Event::isVideoCall() const
+{
+    bool isVideo = false;
+
+    QString header = d->headers.value(VIDEO_CALL_HEADER).toLower();
+    if (header == "true" || header == "1" || header == "yes")
+        isVideo = true;
+
+    return isVideo;
+}
+
 Event::EventStatus Event::status() const
 {
     return d->status;
@@ -584,7 +598,7 @@ QList<MessagePart> Event::messageParts() const
 
 QStringList Event::toList() const
 {
-    return d->headers.value(QLatin1String("x-mms-to")).split("\x1e", QString::SkipEmptyParts);
+    return d->headers.value(MMS_TO_HEADER).split("\x1e", QString::SkipEmptyParts);
 }
 
 QStringList Event::ccList() const
@@ -739,7 +753,18 @@ void Event::setIsMissedCall( bool isMissed )
 void Event::setIsEmergencyCall( bool isEmergency )
 {
     d->isEmergencyCall = isEmergency;
-    d->validProperties += Event::IsEmergencyCall;
+    d->propertyChanged(Event::IsEmergencyCall);
+}
+
+void Event::setIsVideoCall( bool isVideo )
+{
+    if (!isVideo) {
+        d->headers.remove(VIDEO_CALL_HEADER);
+    } else {
+        d->headers.insert(VIDEO_CALL_HEADER, "true");
+    }
+    d->propertyChanged(Event::Headers);
+    d->propertyChanged(Event::IsVideoCall);
 }
 
 void Event::setStatus( Event::EventStatus status )
@@ -899,9 +924,9 @@ void Event::addMessagePart(const MessagePart &part)
 void Event::setToList(const QStringList &toList)
 {
     if (toList.isEmpty()) {
-        d->headers.remove(QLatin1String("x-mms-to"));
+        d->headers.remove(MMS_TO_HEADER);
     } else {
-        d->headers.insert(QLatin1String("x-mms-to"), toList.join("\x1e"));
+        d->headers.insert(MMS_TO_HEADER, toList.join("\x1e"));
     }
     d->propertyChanged(Event::Headers);
 }

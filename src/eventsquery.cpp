@@ -70,7 +70,8 @@ const char * VARIABLE_NAMES[] = {"message",
                                  "mmsTo",
                                  "contacts",
                                  "isAction",
-                                 "headers"};
+                                 "headers",
+                                 "isVideoCall"};
 
 const int VARIABLE_NAMES_SIZE = sizeof(VARIABLE_NAMES)/sizeof(VARIABLE_NAMES[0]);
 
@@ -161,6 +162,7 @@ QLatin1String ontologyProperty(Event::Property p)
         return QLatin1String("nmo:mmsId");
     case Event::To:
     case Event::Headers:
+    case Event::IsVideoCall:
         return QLatin1String("nmo:messageHeader");
     default:
         qCritical() << Q_FUNC_INFO << "Invalid ontology property for " << p;
@@ -287,6 +289,8 @@ QString functionForProperty(Event::Property p)
                 .arg(eventPropertyName(Event::Id))
                 .arg(ontologyProperty(p));
         break;
+    case Event::IsVideoCall:
+        break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;
         Q_ASSERT(false);
@@ -362,6 +366,8 @@ QString patternForProperty(Event::Property p)
         break;
     case Event::Headers:
         break;
+    case Event::IsVideoCall:
+        break;
     default:
         qCritical() << Q_FUNC_INFO << "Unhandled property for " << p;
         Q_ASSERT(false);
@@ -414,10 +420,12 @@ public:
         if (finalProperties.contains(Event::Status))
             finalProperties.insert(Event::Type);
 
-        // x-mms-to: is included in headers
+        // x-mms-to: and isVideoCall are included in headers
         if (finalProperties.contains(Event::To)
+            || finalProperties.contains(Event::IsVideoCall)
             || finalProperties.contains(Event::Headers)) {
             finalProperties -= Event::To;
+            finalProperties -= Event::IsVideoCall;
             finalProperties.insert(Event::Headers);
         }
 

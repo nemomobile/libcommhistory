@@ -248,6 +248,10 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "isEmergencyCall:" << e1.isEmergencyCall() << e2.isEmergencyCall();
         return false;
     }
+    if (e1.type() == Event::CallEvent && e1.isVideoCall() != e2.isVideoCall()) {
+        qWarning() << Q_FUNC_INFO << "isVideoCall:" << e1.isVideoCall() << e2.isVideoCall();
+        return false;
+    }
 //    QCOMPARE(e1.bytesSent(), e2.bytesSent());
 //    QCOMPARE(e1.bytesReceived(), e2.bytesReceived());
     if (e1.localUid() != e2.localUid()) {
