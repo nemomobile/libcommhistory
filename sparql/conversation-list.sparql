@@ -24,11 +24,19 @@ SELECT ?channel
       ?_total_sent_messages_1 nmo:isSent true .
       ?_total_sent_messages_1 nmo:isDeleted false .
   })
-  ?_lastMessage 
-  (SELECT GROUP_CONCAT(fn:string-join((tracker:id(?contact), nco:nameGiven(?contact), nco:nameFamily(?contact), "\u001d", fn:concat(nco:nickname(?contact), "\u001d"), ?nicknames), "\u001e"), "\u001c")
+  ?_lastMessage
+  (SELECT GROUP_CONCAT(
+    fn:concat(tracker:id(?contact), "\u001e",
+              tracker:coalesce(nco:nameGiven(?contact), ""), "\u001e",
+              tracker:coalesce(nco:nameFamily(?contact), ""),
+              "\u001d",
+              tracker:coalesce(nco:nickname(?contact), ""),
+              "\u001d",
+              tracker:coalesce(?nicknames, "")),
+    "\u001c")
    WHERE {
      SELECT ?contact
-     (SELECT GROUP_CONCAT(fn:string-join((?addr, ?nickname), "\u001f"), "\u001e")
+     (SELECT GROUP_CONCAT(fn:string-join((nco:imID(?addr), ?nickname), "\u001f"), "\u001e")
       WHERE {
         ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] .
         ?addr nco:imNickname ?nickname .
