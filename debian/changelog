@@ -1,3 +1,9 @@
+libcommhistory (1.3.6) unstable; urgency=low
+
+  * Fixes: NB#287549 - call-history continuously crashes after SSU update to 30.2011.42-4
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Fri, 21 Oct 2011 14:12:57 +0300
+
 libcommhistory (1.3.5) unstable; urgency=low
 
   * Fixes: NB#285213 - Device local contact nickname should have higher or configurable priority for contact label
