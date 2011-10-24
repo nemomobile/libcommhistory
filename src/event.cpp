@@ -1145,6 +1145,7 @@ void Event::copyValidProperties(const Event &other)
             setIsAction(other.isAction());
             break;
         case To:
+        case IsVideoCall:
         case Headers:
             setHeaders(other.headers());
             break;

@@ -46,6 +46,8 @@ public:
 
     void executeGroupedQuery(const QString &query);
 
+    void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
+
     void modelUpdatedSlot(bool successful);
 
     bool eventMatchesFilter( const Event &event ) const;
@@ -92,6 +94,7 @@ public:
     QDateTime referenceTime;
     bool hasBeenFetched;
     QSet<QString> countedUids;
+    QSet<QString> updatedGroups;
 };
 
 }

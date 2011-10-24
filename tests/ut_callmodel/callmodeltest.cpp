@@ -970,6 +970,87 @@ void CallModelTest::testLimit()
     QVERIFY(e1.id() != e2.id());
 }
 
+void CallModelTest::testModifyEvent()
+{
+    Event e1, e2, e3;
+
+    deleteAll();
+
+    CallModel model;
+    model.enableContactChanges(false);
+    watcher.setModel(&model);
+
+    /*
+     * user1, received
+     * user1, dialed
+     * user2, missed
+     * user1, received
+     * -> displayed as
+     * user1, received
+     * user2, missed
+     */
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when, REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(1), REMOTEUID2);
+    addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(2), REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(3), REMOTEUID1);
+    watcher.waitForSignals(4, 4);
+
+    QVERIFY(model.setFilter(CallModel::SortByContact));
+    QVERIFY(model.getEvents());
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(model.rowCount(), 2);
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.direction(), Event::Inbound);
+    e2 = model.event(model.index(1, 0));
+    QCOMPARE(e2.remoteUid(), REMOTEUID2);
+    QCOMPARE(e2.direction(), Event::Inbound);
+
+    /*
+     * upgrade latest user1 call to video:
+     * user1, received, video
+     * user1, dialed
+     * user2, missed
+     */
+    e1.setIsVideoCall(true);
+    QSignalSpy spy(&model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
+    QVERIFY(model.modifyEvent(e1));
+    watcher.waitForSignals();
+    QVERIFY(waitSignal(spy, 2000));
+
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.direction(), Event::Inbound);
+    QCOMPARE(e1.isVideoCall(), true);
+    e2 = model.event(model.index(1, 0));
+    QCOMPARE(e2.remoteUid(), REMOTEUID1);
+    QCOMPARE(e2.direction(), Event::Outbound);
+    QCOMPARE(e2.isVideoCall(), false);
+    e3 = model.event(model.index(2, 0));
+    QCOMPARE(e3.remoteUid(), REMOTEUID2);
+    QCOMPARE(e3.direction(), Event::Inbound);
+    QCOMPARE(e3.isVideoCall(), false);
+
+    /*
+     * downgrade back to audio:
+     * user1, received
+     * user2, missed
+     */
+    e1.setIsVideoCall(false);
+    spy.clear();
+    QVERIFY(model.modifyEvent(e1));
+    watcher.waitForSignals();
+    QVERIFY(waitSignal(spy, 2000));
+
+    e1 = model.event(model.index(0, 0));
+    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.direction(), Event::Inbound);
+    e2 = model.event(model.index(1, 0));
+    QCOMPARE(e2.remoteUid(), REMOTEUID2);
+    QCOMPARE(e2.direction(), Event::Inbound);
+}
+
 void CallModelTest::cleanupTestCase()
 {
 }

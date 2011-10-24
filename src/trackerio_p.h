@@ -32,6 +32,7 @@
 #include <QQueue>
 #include <QThread>
 #include <QThreadStorage>
+#include <QStringList>
 
 #include "idsource.h"
 #include "event.h"
@@ -89,8 +90,9 @@ public:
 
     /*!
      * Create query for calls grouped by contacts.
+     * Optionally restrict to specific call groups.
      */
-    static QString prepareGroupedCallQuery();
+    static QString prepareGroupedCallQuery(const QStringList &channels = QStringList());
 
     /*!
      * Return IMContact node as blank anonymous SPARQL string

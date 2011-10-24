@@ -179,9 +179,24 @@
 "    }" \
 "    ?channel nmo:lastMessageDate ?lastDate ." \
 "    ?channel nmo:hasParticipant ?part ." \
+"    %1 " \
 "  }" \
 "  ORDER BY DESC(?lastDate)" \
 "}" \
 )
+
+#define DELETE_EMPTY_CALL_GROUPS_QUERY QLatin1String( \
+"DELETE { ?chan a rdfs:Resource } WHERE { " \
+"  GRAPH <commhistory:call-channels> { " \
+"    ?chan a nmo:CommunicationChannel . " \
+"  } " \
+"  OPTIONAL { " \
+"    ?call a nmo:Call ; " \
+"    nmo:communicationChannel ?chan . " \
+"  } " \
+"  FILTER (!BOUND(?call)) " \
+"}" \
+)
+
 
 #endif

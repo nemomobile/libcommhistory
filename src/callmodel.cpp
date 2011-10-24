@@ -139,17 +139,112 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
     return true;
 }
 
+void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events)
+{
+    Q_Q( CallModel );
+
+    qDebug() << Q_FUNC_INFO << start << end << events.count();
+
+    if (sortBy != CallModel::SortByContact || updatedGroups.isEmpty())
+        return EventModelPrivate::eventsReceivedSlot(start, end, events);
+
+    // reimp from EventModelPrivate, for video calls
+
+    // Here we should usually get one or two result rows, one for the
+    // video call group and one for the corresponding audio call group.
+    QMutableListIterator<Event> i(events);
+    while (i.hasNext()) {
+        Event event = i.next();
+
+        bool replaced = false;
+        QModelIndex index;
+        for (int row = 0; row < eventRootItem->childCount(); row++) {
+            if (belongToSameGroup(eventRootItem->eventAt(row), event)
+                || eventRootItem->eventAt(row).id() == event.id()) {
+                qDebug() << "replacing row" << row;
+                replaced = true;
+                index = q->createIndex(row, 0, eventRootItem->child(row));
+
+                eventRootItem->child(row)->setEvent(event);
+                QModelIndex bottom = q->createIndex(row,
+                                                    EventModel::NumberOfColumns - 1,
+                                                    eventRootItem->child(row));
+                emit q->dataChanged(index, bottom);
+                updatedGroups.remove(TrackerIOPrivate::makeCallGroupURI(event));
+
+                // if we had an audio and video call group for the same
+                // contact and the latest audio call gets upgraded (or
+                // vice versa), there may now be two rows for the same
+                // group, so we have to remove the other one.
+                for (int dupe = index.row() + 1; dupe < eventRootItem->childCount(); dupe++) {
+                    Event e = eventRootItem->eventAt(dupe);
+                    if (belongToSameGroup(e, event)) {
+                        qDebug() << Q_FUNC_INFO << "remove" << dupe << e.toString();
+                        emit q->beginRemoveRows(QModelIndex(), dupe, dupe);
+                        eventRootItem->removeAt(dupe);
+                        emit q->endRemoveRows();
+                        break;
+                    }
+                }
+            }
+            end--;
+            i.remove();
+            break;
+        }
+
+        if (!replaced) {
+            // didn't find an old row to overwrite -> insert new row in the appropriate spot
+            if (!event.contacts().isEmpty()) {
+                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
+            }
+
+            int row;
+            for (row = 0; row < eventRootItem->childCount(); row++) {
+                if (eventRootItem->child(row)->event().startTime() <= event.startTime())
+                    break;
+            }
+
+            q->beginInsertRows(QModelIndex(), row, row);
+            eventRootItem->insertChildAt(row, new EventTreeItem(event, eventRootItem));
+            q->endInsertRows();
+
+            updatedGroups.remove(TrackerIOPrivate::makeCallGroupURI(event));
+        }
+    }
+
+    if (!updatedGroups.isEmpty()) {
+        qDebug() << Q_FUNC_INFO << "remaining call groups:" << updatedGroups;
+        // no results for call group means it has been emptied, remove from list
+        foreach (QString group, updatedGroups.values()) {
+            for (int row = 0; row < eventRootItem->childCount(); row++) {
+                if (TrackerIOPrivate::makeCallGroupURI(eventRootItem->eventAt(row)) == group) {
+                    qDebug() << Q_FUNC_INFO << "remove" << row << eventRootItem->eventAt(row).toString();
+                    emit q->beginRemoveRows(QModelIndex(), row, row);
+                    eventRootItem->removeAt(row);
+                    emit q->endRemoveRows();
+                    break;
+                }
+            }
+        }
+    }
+
+
+
+}
+
 void CallModelPrivate::modelUpdatedSlot( bool successful )
 {
     EventModelPrivate::modelUpdatedSlot(successful);
     countedUids.clear();
+    updatedGroups.clear();
 }
 
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
 {
     if (sortBy == CallModel::SortByContact
         && remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
-        && e1.localUid() == e2.localUid())
+        && e1.localUid() == e2.localUid()
+        && e1.isVideoCall() == e2.isVideoCall())
     {
         return true;
     }
@@ -157,7 +252,8 @@ bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
              && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
                  && e1.localUid() == e2.localUid()
                  && e1.direction() == e2.direction()
-                 && e1.isMissedCall() == e2.isMissedCall()))
+                 && e1.isMissedCall() == e2.isMissedCall()
+                 && e1.isVideoCall() == e2.isVideoCall()))
     {
         return true;
     }
@@ -531,9 +627,57 @@ void CallModelPrivate::eventsAddedSlot( const QList<Event> &events )
 
 void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
 {
+    Q_Q(CallModel);
+
     // TODO regrouping of events might occur =(
-    qWarning() << __PRETTY_FUNCTION__ << "Specific behaviour has not been implemented yet.";
-    EventModelPrivate::eventsUpdatedSlot( events );
+
+    // reimp from EventModelPrivate, plus additional isVideoCall processing
+    foreach (const Event &event, events) {
+        qDebug() << Q_FUNC_INFO << "updated" << event.toString();
+        QModelIndex index = findEvent(event.id());
+        Event e = event;
+
+        if (!index.isValid()) {
+            if (acceptsEvent(e))
+                addToModel(e);
+
+            continue;
+        }
+
+        EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
+        if (item) {
+            Event oldEvent = item->event();
+            if (oldEvent.isVideoCall() != event.isVideoCall()) {
+                // Video call status up/downgraded; refetch both video-
+                // and non-video-versions for the call group and process
+                // the results in eventsReceived
+                updatedGroups.insert(TrackerIOPrivate::makeCallGroupURI(oldEvent));
+                updatedGroups.insert(TrackerIOPrivate::makeCallGroupURI(event));
+            } else {
+                modifyInModel(e);
+            }
+        }
+    }
+
+    qDebug() << Q_FUNC_INFO << "updatedGroups" << updatedGroups;
+
+    if (!updatedGroups.isEmpty()) {
+        if (sortBy == CallModel::SortByTime) {
+            /*
+             * *** TODO ***
+             * Optimizing this would require a lot of tweaking to handle
+             * split/merged/added/deleted rows. No time to do this right
+             * now, so just force a refetch.
+             */
+            if (hasBeenFetched) {
+                q->getEvents();
+                return;
+            }
+        }
+
+        QString query = TrackerIOPrivate::prepareGroupedCallQuery(updatedGroups.toList());
+        executeGroupedQuery(query);
+    }
 }
 
 QModelIndex CallModelPrivate::findEvent( int id ) const
@@ -772,6 +916,7 @@ bool CallModel::getEvents()
     d->clearEvents();
     endResetModel();
     d->countedUids.clear();
+    d->updatedGroups.clear();
 
     if (d->sortBy == SortByContact) {
         QString query = TrackerIOPrivate::prepareGroupedCallQuery();

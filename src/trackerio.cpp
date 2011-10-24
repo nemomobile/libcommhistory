@@ -186,10 +186,22 @@ QString TrackerIOPrivate::prepareGroupQuery(const QString &localUid,
     return queryFormat.arg(constraints.join(LAT(" ")));
 }
 
-QString TrackerIOPrivate::prepareGroupedCallQuery()
+QString TrackerIOPrivate::prepareGroupedCallQuery(const QStringList &channels)
 {
+    QString query;
     QString queryFormat(GROUPED_CALL_QUERY);
-    return queryFormat;
+    if (channels.isEmpty()) {
+        query = queryFormat.arg(QString());
+    } else {
+        QStringList channelList;
+        foreach (QString channel, channels)
+            channelList.append(QString(LAT("<%1>")).arg(channel));
+        query = queryFormat.arg(QString(LAT("FILTER(?channel IN (%1))"))
+                                .arg(channelList.join(LAT(","))));
+        qDebug() << Q_FUNC_INFO << query;
+    }
+
+    return query;
 }
 
 QUrl TrackerIOPrivate::uriForIMAddress(const QString &account, const QString &remoteUid)
@@ -662,6 +674,32 @@ void TrackerIOPrivate::writeCallProperties(UpdateQuery &query, Event &event, boo
                     "nmo:duration",
                     (int)(event.endTime().toTime_t() - event.startTime().toTime_t()),
                     modifyMode);
+
+    if (modifyMode && event.modifiedProperties().contains(Event::IsVideoCall)) {
+        qDebug() << Q_FUNC_INFO << "modifying isVideoCall";
+        // move call to the video/non-video group
+        QUrl channelUri = makeCallGroupURI(event);
+        query.insertionSilent(
+            QString(LAT("GRAPH <%1> { <%2> a nmo:CommunicationChannel }"))
+            .arg(COMMHISTORY_GRAPH_CALL_CHANNEL)
+            .arg(encodeUri(channelUri)));
+
+        query.deletion(channelUri, "nmo:hasParticipant");
+        addRemoteContact(query, channelUri, "nmo:hasParticipant", event.localUid(), event.remoteUid(),
+                         NormalizeFlagKeepDialString);
+
+        query.insertion(event.url(), "nmo:communicationChannel", makeCallGroupURI(event), true);
+
+        // ugh. appendInsertion just appends the raw statement, so it
+        // works for deletions as well
+        query.appendInsertion(DELETE_EMPTY_CALL_GROUPS_QUERY);
+
+        Event oldEvent = event;
+        oldEvent.setIsVideoCall(!event.isVideoCall());
+        handleQuery(QSparqlQuery(query.query(), QSparqlQuery::InsertStatement),
+                    this, "updateGroupTimestamps",
+                    QVariant::fromValue(oldEvent));
+    }
 }
 
 void TrackerIOPrivate::addMessageParts(UpdateQuery &query, Event &event)
@@ -1449,18 +1487,7 @@ bool TrackerIO::deleteEvent(Event &event, QThread *backgroundThread)
                 + query;
         break;
     case Event::CallEvent:
-        // delete empty call groups
-        query += LAT(
-            "DELETE { ?chan a rdfs:Resource } WHERE { "
-            "GRAPH ?:graph { "
-            "?chan a nmo:CommunicationChannel . "
-            "} "
-            "OPTIONAL { "
-            "?call a nmo:Call ; "
-            "nmo:communicationChannel ?chan . "
-            "} "
-            "FILTER (!BOUND(?call)) "
-            "}");
+        query += DELETE_EMPTY_CALL_GROUPS_QUERY;
         break;
     case Event::MMSEvent:
         // delete message parts and header
