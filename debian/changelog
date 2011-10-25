@@ -1,3 +1,10 @@
+libcommhistory (1.3.7) unstable; urgency=low
+
+  * Added video calls: Event::IsVideoCall, commhistory-tool isvideo.
+  * Fixes: NB#286551 - [TASK] Logging video calls
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Tue, 25 Oct 2011 13:54:39 +0300
+
 libcommhistory (1.3.6) unstable; urgency=low
 
   * Fixes: NB#287549 - call-history continuously crashes after SSU update to 30.2011.42-4
