@@ -48,6 +48,7 @@ private slots:
     void testLimit();
     void deleteAllCalls();
     void testMarkAllRead();
+    void testModifyEvent();
     void cleanupTestCase();
 
 private:

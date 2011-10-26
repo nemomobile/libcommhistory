@@ -149,6 +149,9 @@ public:
         Contacts,
         IsAction,
         Headers,
+        // separate property for tracking updates, even though
+        // isVideoCall is handled as a header for now
+        IsVideoCall,
         //
         NumProperties
     };
@@ -245,6 +248,8 @@ public:
     bool isMissedCall() const;
 
     bool isEmergencyCall() const;
+
+    bool isVideoCall() const;
 
     Event::EventStatus status() const;
 
@@ -350,6 +355,8 @@ public:
     void setIsMissedCall( bool isMissed );
 
     void setIsEmergencyCall( bool isEmergency );
+
+    void setIsVideoCall( bool isVideo );
 
     void setStatus(Event::EventStatus status);
 

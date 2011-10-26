@@ -134,6 +134,7 @@ void printUsage()
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
     std::cout << "                 addClass0"                                                                                                              << std::endl;
     std::cout << "                 isread event-id {1|0}"                                                                                                  << std::endl;
+    std::cout << "                 isvideo event-id {1|0}"                                                                                                 << std::endl;
     std::cout << "                 reportdelivery event-id {1|0}"                                                                                          << std::endl;
     std::cout << "                 setstatus event-id {unknown|sent|sending|delivered|temporarilyfailed|permanentlyfailed}"                                << std::endl;
     std::cout << "                 delete event-id"                                                                                                        << std::endl;
@@ -669,6 +670,46 @@ int doIsRead(const QStringList &arguments, const QVariantMap &options)
     return 0;
 }
 
+int doIsVideo(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED(options);
+
+    bool ok = false;
+    int id = arguments.at(2).toInt(&ok);
+    if (!ok) {
+        qCritical() << "Invalid event id";
+        return -1;
+    }
+    bool isVideo = true;
+    if (arguments.count() > 3) {
+        if (arguments.at(3).toUInt() != 0 ||
+            arguments.at(3).startsWith("t")) {
+            isVideo = true;
+        } else {
+            isVideo = false;
+        }
+    }
+
+    CallModel model;
+    Event event;
+    if (!model.trackerIO().getEvent(id, event)) {
+        qCritical() << "Error getting event" << id;
+        return -1;
+    }
+
+
+    event.setIsVideoCall(isVideo);
+
+    Catcher c(&model);
+    if (!model.modifyEvent(event)) {
+        qCritical() << "Error updating event" << event.id();
+        return -1;
+    }
+    c.waitCommit();
+
+    return 0;
+}
+
 int doReportDelivery(const QStringList &arguments, const QVariantMap &options)
 {
     Q_UNUSED(options);
@@ -1060,6 +1101,8 @@ int main(int argc, char **argv)
         return doListGroups(args, options);
     } else if (args.at(1) == "isread" && args.count() > 2) {
         return doIsRead(args, options);
+    } else if (args.at(1) == "isvideo" && args.count() > 2) {
+        return doIsVideo(args, options);
     } else if (args.at(1) == "reportdelivery" && args.count() > 2) {
         return doReportDelivery(args, options);
     } else if (args.at(1) == "setstatus" &&

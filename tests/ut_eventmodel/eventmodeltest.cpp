@@ -369,6 +369,7 @@ void EventModelTest::testModifyEvent()
     call.resetModifiedProperties();
     call.setIsMissedCall(true);
     call.setIsEmergencyCall(true);
+    call.setIsVideoCall(true);
 
     QVERIFY(model.modifyEvent(call));
     watcher.waitForSignals();
