@@ -1,3 +1,9 @@
+libcommhistory (1.3.9) unstable; urgency=low
+
+  * Reverted Event::IsVideoCall property due to API/ABI break (Event::NumProperties).
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Mon, 31 Oct 2011 14:35:59 +0200
+
 libcommhistory (1.3.8) unstable; urgency=low
 
   * Fixes: NB#284161 - Messages itemId is not preserved and checked when adding messages in libmsgsyncif which results in duplicate SMS
