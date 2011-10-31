@@ -675,8 +675,8 @@ void TrackerIOPrivate::writeCallProperties(UpdateQuery &query, Event &event, boo
                     (int)(event.endTime().toTime_t() - event.startTime().toTime_t()),
                     modifyMode);
 
-    if (modifyMode && event.modifiedProperties().contains(Event::IsVideoCall)) {
-        qDebug() << Q_FUNC_INFO << "modifying isVideoCall";
+    if (modifyMode && event.modifiedProperties().contains(Event::Headers)) {
+        qDebug() << Q_FUNC_INFO << "headers modified";
         // move call to the video/non-video group
         QUrl channelUri = makeCallGroupURI(event);
         query.insertionSilent(

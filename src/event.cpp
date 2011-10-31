@@ -764,7 +764,6 @@ void Event::setIsVideoCall( bool isVideo )
         d->headers.insert(VIDEO_CALL_HEADER, "true");
     }
     d->propertyChanged(Event::Headers);
-    d->propertyChanged(Event::IsVideoCall);
 }
 
 void Event::setStatus( Event::EventStatus status )
@@ -1145,7 +1144,6 @@ void Event::copyValidProperties(const Event &other)
             setIsAction(other.isAction());
             break;
         case To:
-        case IsVideoCall:
         case Headers:
             setHeaders(other.headers());
             break;
