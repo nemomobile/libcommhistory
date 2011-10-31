@@ -83,6 +83,11 @@ public:
       */
     void setSyncSmsFilter(const SyncSMSFilter& filter);
 
+    /*!
+     * \reimp from EventModel
+     */
+    bool addEvents(QList<Event> &events, bool toModelOnly = false);
+
 private:
     Q_DECLARE_PRIVATE(SyncSMSModel);
 };

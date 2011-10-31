@@ -113,7 +113,6 @@ void SyncModelTest::addSmsEvents()
     QVERIFY(e.isRead() == read);
     QVERIFY(e.localUid() == "121");
     QVERIFY(e.remoteUid() == "122");
-
 }
 
 void SyncModelTest::readAddedSmsEventsFromConvModel()
@@ -162,13 +161,65 @@ void SyncModelTest::addModifyGetSingleSmsEvents()
     evaluateModel(model, QStringList() << "Msg A");
 }
 
+void SyncModelTest::addEventsCheckTokens()
+{
+    SyncSMSModel model;
+
+    // add two batches worth of events (25 + 5)
+    QList<Event> events;
+    for (int i = 0; i < 30; i++) {
+        Event e;
+        e.setType(Event::SMSEvent);
+        e.setParentId(4098);
+        e.setDirection(Event::Inbound);
+        e.setGroupId(group.id());
+        e.setStartTime(QDateTime::currentDateTime());
+        e.setEndTime(QDateTime::currentDateTime());
+        e.setLocalUid("localUid");
+        e.setRemoteUid("012345678");
+        e.setFreeText(QString("test") + QString::number(i));
+        e.setIsRead(true);
+        e.setMessageToken(QString("token") + QString::number(i));
+
+        events.append(e);
+    }
+
+    QSignalSpy spy(&model, SIGNAL(eventsCommitted(QList<CommHistory::Event>, bool)));
+    QTime timer;
+    QVERIFY(model.addEvents(events));
+    timer.start();
+    while (timer.elapsed() < 2000 && spy.count() < 2)
+        QCoreApplication::processEvents();
+    QCOMPARE(spy.count(), 2);
+    QList<Event> result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());
+    QCOMPARE(result.count(), 25);
+    QCOMPARE(spy.first().at(1).toBool(), true);
+    result = qVariantValue<QList<CommHistory::Event> >(spy.at(1).first());
+    QCOMPARE(result.count(), 5);
+    QCOMPARE(spy.at(1).at(1).toBool(), true);
+
+    // try to add duplicates
+    QList<Event> badEvents;
+    for (int i = 0; i < 5; i++)
+        badEvents.append(events.at(i));
+    spy.clear();
+    QVERIFY(model.addEvents(badEvents));
+    timer.start();
+    while (timer.elapsed() < 2000 && spy.count() < 1)
+        QCoreApplication::processEvents();
+    QCOMPARE(spy.count(), 1);
+    result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());
+    QCOMPARE(result.count(), 5);
+    QCOMPARE(spy.first().at(1).toBool(), false);
+}
+
 void SyncModelTest::cleanupTestCase()
 {
 }
 
 //Private functions
-bool  SyncModelTest::addEvent( int parentId, int groupId, const QDateTime& sentReceivedTime,
-                               const QString& localId, const QString& remoteId, const QString& text, bool read)
+bool SyncModelTest::addEvent(int parentId, int groupId, const QDateTime& sentReceivedTime,
+                             const QString& localId, const QString& remoteId, const QString& text, bool read)
 {
     EventModel model;
     watcher.setModel(&model);

@@ -271,6 +271,11 @@ public:
      */
     void recreateIds();
 
+    /*!
+     * Get the ongoing transaction.
+     */
+    CommittingTransaction *currentTransaction() const;
+
 private:
     friend class TrackerIOPrivate;
     friend class QueryRunner;

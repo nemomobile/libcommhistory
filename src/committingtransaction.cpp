@@ -89,21 +89,6 @@ bool CommittingTransactionPrivate::runNextQuery()
     return true;
 }
 
-void CommittingTransactionPrivate::addQuery(const QSparqlQuery &query,
-                                            QObject *caller,
-                                            const char *callback,
-                                            QVariant argument)
-{
-    CommittingTransactionPrivate::PendingQuery *p = new CommittingTransactionPrivate::PendingQuery;
-    p->query = query;
-    p->result = 0;
-    p->caller = caller;
-    p->callback = callback;
-    p->argument = argument;
-
-    pendingQueries.append(p);
-}
-
 bool CommittingTransactionPrivate::isEmpty() const
 {
     return pendingQueries.isEmpty();
@@ -164,7 +149,7 @@ void CommittingTransactionPrivate::finished()
     handleCallbacks(query);
     delete query;
 
-    if (!pendingQueries.isEmpty()) {
+    if (!aborted && !pendingQueries.isEmpty()) {
         QTimer::singleShot(0, this, SLOT(runNextQuery()));
         return;
     }
@@ -217,7 +202,8 @@ bool CommittingTransaction::run(QSparqlConnection &connection, bool isBlocking)
         return d->runNextQuery();
 
     d->started = true;
-    while (d->pendingQueries.isEmpty()) {
+    d->aborted = false;
+    while (d->pendingQueries.isEmpty() && !d->aborted) {
         CommittingTransactionPrivate::PendingQuery *query = d->pendingQueries.first();
         query->result = connection.exec(query->query);
         if (query->result->hasError()) {
@@ -242,6 +228,12 @@ bool CommittingTransaction::run(QSparqlConnection &connection, bool isBlocking)
     return true;
 }
 
+void CommittingTransaction::abort(bool isError)
+{
+    d->aborted = true;
+    d->error = isError;
+}
+
 bool CommittingTransaction::isRunning() const
 {
     return d->started;
@@ -250,6 +242,21 @@ bool CommittingTransaction::isRunning() const
 bool CommittingTransaction::isFinished() const
 {
     return d->started && d->pendingQueries.isEmpty();
+}
+
+void CommittingTransaction::addQuery(const QSparqlQuery &query,
+                                     QObject *caller,
+                                     const char *callback,
+                                     QVariant argument)
+{
+    CommittingTransactionPrivate::PendingQuery *p = new CommittingTransactionPrivate::PendingQuery;
+    p->query = query;
+    p->result = 0;
+    p->caller = caller;
+    p->callback = callback;
+    p->argument = argument;
+
+    d->pendingQueries.append(p);
 }
 
 } // namespace CommHistory

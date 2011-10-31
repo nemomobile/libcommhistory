@@ -13,6 +13,7 @@ HEADERS += trackerio.h \
            draftmodel.h \
            smsinboxmodel.h \
            syncsmsmodel.h \
+           syncsmsmodel_p.h \
            outboxmodel.h \
            groupmodel.h \
            groupmodel_p.h \

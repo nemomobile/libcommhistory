@@ -1641,7 +1641,7 @@ bool TrackerIOPrivate::doDeleteGroups(CommittingTransaction *transaction,
     }
 
     if (transaction) {
-        transaction->d->addQuery(query);
+        transaction->addQuery(query);
         return true;
     }
 
@@ -1854,6 +1854,11 @@ void TrackerIO::rollback()
     d->m_mmsTokens.clear(); // Clear cache to avoid deletion after rollback
     delete d->m_pTransaction;
     d->m_pTransaction = 0;
+}
+
+CommittingTransaction *TrackerIO::currentTransaction() const
+{
+    return d->m_pTransaction;
 }
 
 bool TrackerIO::deleteAllEvents(Event::EventType eventType)
@@ -2126,7 +2131,7 @@ bool TrackerIOPrivate::addToTransactionOrRunQuery(CommittingTransaction *transac
     bool result = true;
 
     if (transaction) {
-        transaction->d->addQuery(query, caller, callback, argument);
+        transaction->addQuery(query, caller, callback, argument);
     } else {
         QSparqlResult *sResult = connection().exec(query);
         result = runBlockedQuery(sResult);
