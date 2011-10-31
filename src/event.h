@@ -149,9 +149,6 @@ public:
         Contacts,
         IsAction,
         Headers,
-        // separate property for tracking updates, even though
-        // isVideoCall is handled as a header for now
-        IsVideoCall,
         //
         NumProperties
     };
