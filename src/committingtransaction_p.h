@@ -62,17 +62,6 @@ public:
 
     CommittingTransaction *q;
 
-    /*!
-     * Add query to be executed within the transaction, with an optional callback.
-     * The callback slot will be called after the query has finished and must
-     * have the signature (CommittingTransaction *t, QSparqlResult *result,
-     * QVariant arg). The result is deleted by the transaction.
-     */
-    void addQuery(const QSparqlQuery &query,
-                  QObject *caller = 0,
-                  const char *callback = 0,
-                  QVariant arg = QVariant());
-
     bool isEmpty() const;
 
     void handleCallbacks(PendingQuery *query);
@@ -104,6 +93,7 @@ private:
     QList<PendingQuery *> pendingQueries;
     bool error;
     bool started;
+    bool aborted;
 
     friend class CommittingTransaction;
 };

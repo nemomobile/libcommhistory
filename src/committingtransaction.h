@@ -27,6 +27,7 @@
 #include <QVariant>
 
 class QSparqlConnection;
+class QSparqlQuery;
 
 #include "libcommhistoryexport.h"
 
@@ -62,6 +63,19 @@ public:
 
     bool isRunning() const;
     bool isFinished() const;
+
+    void abort(bool isError = true);
+
+    /*!
+     * Add query to be executed within the transaction, with an optional callback.
+     * The callback slot will be called after the query has finished and must
+     * have the signature (CommittingTransaction *t, QSparqlResult *result,
+     * QVariant arg). The result is deleted by the transaction.
+     */
+    void addQuery(const QSparqlQuery &query,
+                  QObject *caller = 0,
+                  const char *callback = 0,
+                  QVariant arg = QVariant());
 
 Q_SIGNALS:
     void finished();

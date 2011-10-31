@@ -225,7 +225,6 @@ Q_SIGNALS:
 
     void modelReady(bool successful);
     void eventsCommitted(const QList<CommHistory::Event> &events, bool successful);
-
 };
 
 }

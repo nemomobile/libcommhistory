@@ -20,41 +20,46 @@
 **
 ******************************************************************************/
 
-#ifndef DRAFTMODELTEST_H
-#define DRAFTMODELTEST_H
+#ifndef COMMHISTORY_SYNCSMSMODEL_P_H
+#define COMMHISTORY_SYNCSMSMODEL_P_H
 
-#include <QObject>
-#include <QStringList>
-#include <QList>
-#include "event.h"
+#include <QVariant>
+
 #include "syncsmsmodel.h"
+#include "eventmodel_p.h"
+
+class CommittingTransaction;
+class QSparqlResult;
+
+namespace CommHistory
+{
 
 using namespace CommHistory;
 
-class SyncModelTest : public QObject
+class SyncSMSModelPrivate : public EventModelPrivate
 {
     Q_OBJECT
+    Q_DECLARE_PUBLIC(SyncSMSModel);
 
-private slots:
-    void init();
-    void initTestCase();
-    void addSmsEvents_data();
-    void addSmsEvents();
-    void addModifyGetSingleSmsEvents();
-    void readAddedSmsEventsFromConvModel();
-    void addEventsCheckTokens();
-    void cleanupTestCase();
+public:
+    SyncSMSModelPrivate(EventModel *model,
+                        int _parentId,
+                        QDateTime _dtTime,
+                        bool _lastModified);
 
-private:
-    bool addEvent(int parentId, int groupId, const QDateTime& sentReceivedTime,
-                  const QString& localId, const QString& remoteId,
-                  const QString& text, bool read);
-    bool modifyEvent(int itemId, int parentId, int groupId, const QDateTime &lastModTime,
-                     const QString& localId, const QString& remoteId, const QString& text, bool read);
-    void evaluateModel(const SyncSMSModel &model, const QStringList &expectedListMsgs);
-    int numAddedEvents;
-    int itemId;
+    bool acceptsEvent(const Event &event) const;
 
+public Q_SLOTS:
+    void checkTokens(CommittingTransaction *transaction,
+                     QSparqlResult *result,
+                     QVariant arg);
+
+public:
+    QDateTime dtTime;
+    int parentId;
+    bool lastModified;
 };
+
+}
 
 #endif
