@@ -52,9 +52,10 @@ public:
     };
 
     CommittingTransactionPrivate(CommittingTransaction *parent) :
-            q(parent),
-            error(false),
-            started(false)
+        q(parent),
+        error(false),
+        started(false),
+        aborted(false)
     {
     }
 
