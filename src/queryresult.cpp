@@ -23,6 +23,7 @@
 #include "group.h"
 
 #include "queryresult.h"
+#include "contactlistener.h"
 
 #include <QSettings>
 using namespace CommHistory;
@@ -435,7 +436,7 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
             contactNickname = contactPartList[1];
         }
 
-        if (contactNickname.isEmpty() && contactPartList.size() > 2) {
+        if (contactPartList.size() > 2) {
             // split nickPart to separate nickContacts
             QStringList nickList = contactPartList[2].split('\x1e', QString::SkipEmptyParts);
 
@@ -464,16 +465,12 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
         if (!namePartList.isEmpty()) {
             contact.first = namePartList[0].toInt();
 
-            if (!contactNickname.isEmpty()) {
-                contact.second = contactNickname;
-            } else {
-                QString firstName, lastName;
-                if (namePartList.size() >= 2)
-                    firstName = namePartList[1];
-                if (namePartList.size() >= 3)
-                    lastName = namePartList[2];
-                contact.second = buildContactName(firstName, lastName, imNickname);
-            }
+            QString firstName, lastName;
+            if (namePartList.size() >= 2)
+                firstName = namePartList[1];
+            if (namePartList.size() >= 3)
+                lastName = namePartList[2];
+            contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
 
             if (!contacts.contains(contact))
                 contacts << contact;
@@ -481,35 +478,45 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
     }
 }
 
-QString QueryResult::buildContactName(const QString &names)
-{
-    QStringList parsed = names.split('\x1e');
-    if (parsed.size() == 3)
-        return buildContactName(parsed[0], parsed[1], parsed[2]);
-
-    return QString();
-}
-
 QString QueryResult::buildContactName(const QString &firstName,
                                       const QString &lastName,
+                                      const QString &contactNickname,
                                       const QString &imNickname)
 {
-    if (firstName.isEmpty() && lastName.isEmpty())
-        return imNickname;
+    QString name;
 
-    QString name, lname;
-    if (isLastNameFirst)  {
-        name = lastName;
-        lname = firstName;
-    } else {
-        name = firstName;
-        lname = lastName;
+    QString realName;
+    if (!firstName.isEmpty() || !lastName.isEmpty()) {
+        QString lname;
+        if (ContactListener::instance()->isLastNameFirst())  {
+            realName = lastName;
+            lname = firstName;
+        } else {
+            realName = firstName;
+            lname = lastName;
+        }
+
+        if (!lname.isEmpty()) {
+            if (!realName.isEmpty())
+                realName.append(' ');
+            realName.append(lname);
+        }
     }
 
-    if (!lname.isEmpty()) {
-        if (!name.isEmpty())
-            name.append(' ');
-        name.append(lname);
+    if (ContactListener::instance()->preferNickname()) {
+        if (!contactNickname.isEmpty())
+            name = contactNickname;
+        else if (!realName.isEmpty())
+            name = realName;
+        else
+            name = imNickname;
+    } else {
+        if (!realName.isEmpty())
+            name = realName;
+        else if (!imNickname.isEmpty())
+            name = imNickname;
+        else
+            name = contactNickname;
     }
 
     return name;

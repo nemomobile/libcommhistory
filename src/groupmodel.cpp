@@ -594,6 +594,15 @@ void GroupModelPrivate::slotContactRemoved(quint32 localId)
     }
 }
 
+void GroupModelPrivate::slotContactSettingsChanged(const QHash<QString, QVariant> &changedSettings)
+{
+    Q_UNUSED(changedSettings);
+    Q_Q(GroupModel);
+
+    if (!groups.isEmpty())
+        q->getGroups(filterLocalUid, filterRemoteUid);
+}
+
 void GroupModelPrivate::startContactListening()
 {
     if (contactChangesEnabled && !contactListener) {
@@ -606,6 +615,11 @@ void GroupModelPrivate::startContactListening()
                 SIGNAL(contactRemoved(quint32)),
                 this,
                 SLOT(slotContactRemoved(quint32)));
+
+        connect(contactListener.data(),
+                SIGNAL(contactSettingsChanged(const QHash<QString, QVariant> &)),
+                this,
+                SLOT(slotContactSettingsChanged(const QHash<QString, QVariant> &)));
     }
 }
 
@@ -916,8 +930,9 @@ bool GroupModel::getGroups(const QString &localUid,
     d->filterRemoteUid = remoteUid;
 
     if (!d->groups.isEmpty()) {
-        reset();
+        beginResetModel();
         d->groups.clear();
+        endResetModel();
     }
 
     QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(localUid, remoteUid));

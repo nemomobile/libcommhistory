@@ -95,6 +95,8 @@ public Q_SLOTS:
 
     void slotContactRemoved(quint32 localId);
 
+    void slotContactSettingsChanged(const QHash<QString, QVariant> &changedSettings);
+
 Q_SIGNALS:
     void groupsAdded(const QList<CommHistory::Group> &groups);
 

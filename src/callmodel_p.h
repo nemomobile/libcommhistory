@@ -87,6 +87,7 @@ public:
 public Q_SLOTS:
     void slotAllCallsDeleted(int unused);
     void doDeleteCallGroup(QSparqlResult *result);
+    void contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings);
 
 public:
     CallModel::Sorting sortBy;

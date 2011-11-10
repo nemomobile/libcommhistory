@@ -237,6 +237,14 @@ void CallModelPrivate::modelUpdatedSlot( bool successful )
     EventModelPrivate::modelUpdatedSlot(successful);
     countedUids.clear();
     updatedGroups.clear();
+
+    if (contactChangesEnabled && contactListener) {
+        connect(contactListener.data(),
+                SIGNAL(contactSettingsChanged(const QHash<QString, QVariant> &)),
+                this,
+                SLOT(contactSettingsChangedSlot(const QHash<QString, QVariant> &)),
+                Qt::UniqueConnection);
+    }
 }
 
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
@@ -856,6 +864,15 @@ void CallModelPrivate::slotAllCallsDeleted(int unused)
     q->beginResetModel();
     clearEvents();
     q->endResetModel();
+}
+
+void CallModelPrivate::contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings)
+{
+    Q_UNUSED(changedSettings);
+    Q_Q(CallModel);
+
+    if (hasBeenFetched)
+        q->getEvents();
 }
 
 /* ************************************************************************** *

@@ -60,8 +60,9 @@ bool SMSInboxModel::getEvents()
 {
     Q_D(SMSInboxModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
 
     EventsQuery query(d->propertyMask);
 

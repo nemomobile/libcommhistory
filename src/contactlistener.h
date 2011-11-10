@@ -32,6 +32,7 @@
 
 // contacts
 #include <qcontact.h>
+#include <qtcontacts-tracker/settings.h>
 
 QTM_USE_NAMESPACE
 
@@ -64,17 +65,25 @@ public:
     void resolveContact(const QString &localUid,
                         const QString &remoteUid);
 
+    /**
+     * Get address book settings.
+     */
+    bool isLastNameFirst();
+    bool preferNickname();
+
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,
                         const QList< QPair<QString,QString> > &contactAddresses);
     void contactRemoved(quint32 localId);
+    void contactSettingsChanged(const QHash<QString, QVariant> &changedSettings);
 
 private Q_SLOTS:
     void slotContactsUpdated(const QList<QContactLocalId> &contactIds);
     void slotContactsRemoved(const QList<QContactLocalId> &contactIds);
     void slotStartContactRequest();
     void slotResultsAvailable();
+    void slotSettingsChanged(const QHash<QString, QVariant> &changedSettings);
 
 private:
     ContactListener(QObject *parent = 0);
@@ -90,6 +99,7 @@ private:
     QPointer<QContactManager> m_ContactManager;
     QList<QContactLocalId> m_PendingContactIds;
     QList<QPair<QString,QString> > m_PendingUnresolvedContacts;
+    QPointer<QctSettings> m_Settings;
 };
 
 }

@@ -91,8 +91,9 @@ bool UnreadEventsModel::getEvents(bool includeSentEvents)
 {
     Q_D(UnreadEventsModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
 
     EventsQuery query(d->propertyMask);
 

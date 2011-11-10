@@ -60,8 +60,8 @@ struct QueryResult {
 
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,
+                                    const QString &contactNickname,
                                     const QString &imNickname);
-    static QString buildContactName(const QString &names);
 
     // columns for message part query
     enum {
