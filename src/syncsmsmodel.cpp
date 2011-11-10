@@ -157,8 +157,9 @@ bool SyncSMSModel::getEvents()
 {
     Q_D(SyncSMSModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
 
     EventsQuery query(d->propertyMask);
 

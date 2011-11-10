@@ -32,6 +32,8 @@
 #include <QContactId>
 #include <QContactName>
 #include <QContactDisplayLabel>
+#include <qtcontacts-tracker/settings.h>
+#include <qtcontacts-tracker/customdetails.h>
 
 #include "commonutils.h"
 
@@ -99,6 +101,12 @@ void ContactListener::init()
                 this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
         connect(m_ContactManager, SIGNAL(contactsRemoved(const QList<QContactLocalId> &)),
                 this, SLOT(slotContactsRemoved(const QList<QContactLocalId> &)));
+    }
+
+    if (!m_Settings) {
+        m_Settings = new QctSettings(this);
+        connect(m_Settings, SIGNAL(valuesChanged(const QHash<QString, QVariant> &)),
+                this, SLOT(slotSettingsChanged(const QHash<QString, QVariant> &)));
     }
 
     m_ContactTimer.setSingleShot(true);
@@ -268,4 +276,27 @@ void ContactListener::startRequestOrTimer()
         && (m_PendingContactIds.size() + m_PendingUnresolvedContacts.size()) == 1)
         slotStartContactRequest();
     m_ContactTimer.start();
+}
+
+void ContactListener::slotSettingsChanged(const QHash<QString, QVariant> &changedSettings)
+{
+    qDebug() << Q_FUNC_INFO << changedSettings;
+
+    foreach (const QString &setting, changedSettings.keys()) {
+        if (setting == QctSettings::NameOrderKey
+            || setting == QctSettings::PreferNicknameKey) {
+            emit contactSettingsChanged(changedSettings);
+            break;
+        }
+    }
+}
+
+bool ContactListener::isLastNameFirst()
+{
+    return (m_Settings->nameOrder() == QContactDisplayLabel__FieldOrderLastName);
+}
+
+bool ContactListener::preferNickname()
+{
+    return m_Settings->preferNickname();
 }

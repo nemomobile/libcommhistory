@@ -90,9 +90,10 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
 {
     Q_D(SingleEventModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
     d->clearTokens();
+    endResetModel();
 
     d->m_url = uri;
 
@@ -111,9 +112,10 @@ bool SingleEventModel::getEventByTokens(const QString &token,
 {
     Q_D(SingleEventModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
     d->clearUrl();
+    endResetModel();
 
     d->m_token = token;
     d->m_mmsId = mmsId;

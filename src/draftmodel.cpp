@@ -57,8 +57,9 @@ bool DraftModel::getEvents()
 {
     Q_D(DraftModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
 
     EventsQuery query(d->propertyMask);
 

@@ -29,6 +29,7 @@
 #include "constants.h"
 #include "eventsquery.h"
 #include "queryrunner.h"
+#include "contactlistener.h"
 
 namespace {
 static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
@@ -220,6 +221,14 @@ void ConversationModelPrivate::modelUpdatedSlot(bool successful)
     } else{
         EventModelPrivate::modelUpdatedSlot(successful);
     }
+
+    if (contactChangesEnabled && contactListener) {
+        connect(contactListener.data(),
+                SIGNAL(contactSettingsChanged(const QHash<QString, QVariant> &)),
+                this,
+                SLOT(contactSettingsChangedSlot(const QHash<QString, QVariant> &)),
+                Qt::UniqueConnection);
+    }
 }
 
 void ConversationModelPrivate::extraReceivedSlot(QList<CommHistory::Event> events,
@@ -238,6 +247,15 @@ bool ConversationModelPrivate::isModelReady() const
 {
     return activeQueries == 0
            && eventsFilled < (firstFetch ? firstChunkSize : chunkSize);
+}
+
+void ConversationModelPrivate::contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings)
+{
+    Q_UNUSED(changedSettings);
+    Q_Q(ConversationModel);
+
+    if (filterGroupId != -1)
+        q->getEvents(filterGroupId);
 }
 
 ConversationModel::ConversationModel(QObject *parent)
@@ -272,8 +290,10 @@ bool ConversationModel::getEvents(int groupId)
 
     d->filterGroupId = groupId;
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
+
     EventsQuery query = d->buildQuery();
 
     if (d->queryMode == EventModel::StreamedAsyncQuery) {

@@ -49,6 +49,7 @@ public Q_SLOTS:
     virtual void modelUpdatedSlot(bool successful);
     void extraReceivedSlot(QList<CommHistory::Event> events, QVariantList extra);
     void groupsDeletedSlot(const QList<int> &groupIds);
+    void contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings);
 
 public:
     int filterGroupId;

@@ -65,8 +65,9 @@ bool OutboxModel::getEvents()
 {
     Q_D(OutboxModel);
 
-    reset();
+    beginResetModel();
     d->clearEvents();
+    endResetModel();
 
     EventsQuery query(d->propertyMask);
 
