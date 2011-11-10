@@ -1,3 +1,10 @@
+libcommhistory (1.3.11) unstable; urgency=low
+
+  * Fixes: NB#289758 - entries in call-history are listed by nickname only
+  * Fixes: NB#289760 - messages are listed by nickname only
+
+ -- Reto Zingg <reto.zingg@nokia.com>  Thu, 10 Nov 2011 15:03:02 +0200
+
 libcommhistory (1.3.10) unstable; urgency=low
 
   * Fixes: NB#288894 - Call history is not updated for missed/received calls
