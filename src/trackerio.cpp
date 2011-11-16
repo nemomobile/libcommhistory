@@ -522,6 +522,7 @@ void TrackerIOPrivate::TrackerIOPrivate::writeCommonProperties(UpdateQuery &quer
                             "nmo:reportDelivery",
                             event.reportDelivery(),
                             modifyMode);
+            break;
         case Event::ReportRead:
             query.insertion(event.url(),
                             "nmo:sentWithReportRead",
@@ -1027,7 +1028,8 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
     Event event = qVariantValue<CommHistory::Event>(arg);
     qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
 
-    if (event.type() != Event::CallEvent && event.groupId() == -1) return;
+    if ((event.type() != Event::CallEvent && event.groupId() == -1)
+        || (event.localUid().isEmpty() && event.remoteUid().isEmpty())) return;
 
     QDateTime lastMessageDate;
     QDateTime lastSuccessfulMessageDate;
@@ -2113,13 +2115,14 @@ QSparqlConnection& TrackerIOPrivate::connection()
 
 bool TrackerIOPrivate::checkPendingResult(QSparqlResult *result, bool destroyOnFinished)
 {
-    if (result->hasError()) {
+    bool error = result->hasError();
+    if (error) {
         qCritical() << result->lastError().message();
         if (destroyOnFinished)
             delete result;
     }
 
-    return !result->hasError();
+    return !error;
 }
 
 bool TrackerIOPrivate::addToTransactionOrRunQuery(CommittingTransaction *transaction,
