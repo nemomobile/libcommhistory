@@ -186,10 +186,8 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
                         break;
                     }
                 }
+                break;
             }
-            end--;
-            i.remove();
-            break;
         }
 
         if (!replaced) {
@@ -227,9 +225,6 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
             }
         }
     }
-
-
-
 }
 
 void CallModelPrivate::modelUpdatedSlot( bool successful )
