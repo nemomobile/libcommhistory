@@ -375,7 +375,8 @@ public:
     EventsQueryPrivate(EventsQuery *parent,
                        const Event::PropertySet &propertySet) :
             q(parent),
-            distinct(false)
+            distinct(false),
+            lastAdded(Patterns)
     {
         Event::PropertySet finalProperties(propertySet);
 

@@ -55,7 +55,6 @@ public:
     bool isMissedCall;
     bool isEmergencyCall;
     Event::EventStatus status;
-    int bytesSent;
     int bytesReceived;
 
     QString localUid;  /* telepathy account */
@@ -1035,6 +1034,7 @@ void Event::copyValidProperties(const Event &other)
             break;
         case Type:
             setType(other.type());
+            break;
         case StartTime:
             setStartTime(other.startTime());
             break;

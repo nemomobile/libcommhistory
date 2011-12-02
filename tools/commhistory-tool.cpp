@@ -1068,66 +1068,72 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
 
 int main(int argc, char **argv)
 {
-    QCoreApplication app(argc, argv);
+    try {
+        QCoreApplication app(argc, argv);
 
-    optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n";
+        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n";
 
-    QStringList args = app.arguments();
-    QVariantMap options = parseOptions(args);
+        QStringList args = app.arguments();
+        QVariantMap options = parseOptions(args);
 
-    if (args.count() < 2) {
-        printUsage();
-        exit(0);
+        if (args.count() < 2) {
+            printUsage();
+            exit(0);
+        }
+
+        if (args.at(1) == "add" && args.count() > 3) {
+            return doAdd(args, options);
+        } else if (args.at(1) == "addcall" && args.count() >= 3) {
+            return doAddCall( args, options );
+        } else if (args.at(1) == "addVCard") {
+            return doAddVCard(args, options);
+        } else if (args.at(1) == "addClass0") {
+            return doAddClass0(args, options);
+        } else if (args.at(1) == "listcalls" &&
+                   (args.count() == 2 ||
+                    (args.count() == 3 && (args.at(2) == "bycontact" ||
+                                           args.at(2) == "bytime"    ||
+                                           args.at(2) == "bytype"    ||
+                                           args.at(2) == "byservice")))) {
+            return doListCalls(args, options);
+        } else if (args.at(1) == "list") {
+            return doList(args, options);
+        } else if (args.at(1) == "listgroups") {
+            return doListGroups(args, options);
+        } else if (args.at(1) == "isread" && args.count() > 2) {
+            return doIsRead(args, options);
+        } else if (args.at(1) == "isvideo" && args.count() > 2) {
+            return doIsVideo(args, options);
+        } else if (args.at(1) == "reportdelivery" && args.count() > 2) {
+            return doReportDelivery(args, options);
+        } else if (args.at(1) == "setstatus" &&
+                   (args.count() == 4 && (args.at(3) == "unknown"   ||
+                                          args.at(3) == "sending"   ||
+                                          args.at(3) == "sent"      ||
+                                          args.at(3) == "delivered" ||
+                                          args.at(3) == "temporarilyfailed" ||
+                                          args.at(3) == "permanentlyfailed"))) {
+            return doSetStatus( args, options );
+        } else if (args.at(1) == "delete" && args.count() > 2) {
+            return doDelete(args, options);
+        } else if (args.at(1) == "deletegroup" && args.count() > 2) {
+            return doDeleteGroup(args, options);
+        } else if (args.at(1) == "deleteall") {
+            return doDeleteAll(args, options);
+        } else if (args.at(1) == "markallcallsread") {
+            return doMarkAllCallsRead(args, options);
+        } else if (args.at(1) == "export" && args.count() > 2) {
+            return doExport(args, options);
+        } else if (args.at(1) == "import") {
+            return doImport(args, options);
+        } else {
+            printUsage();
+        }
+
+        return 0;
+
+    } catch (std::bad_alloc &ba) {
+        std::cerr << "Bad alloc exception: " << ba.what() << std::endl;
+        return 1;
     }
-
-    if (args.at(1) == "add" && args.count() > 3) {
-        return doAdd(args, options);
-    } else if (args.at(1) == "addcall" && args.count() >= 3) {
-        return doAddCall( args, options );
-    } else if (args.at(1) == "addVCard") {
-        return doAddVCard(args, options);
-    } else if (args.at(1) == "addClass0") {
-        return doAddClass0(args, options);
-    } else if (args.at(1) == "listcalls" &&
-               (args.count() == 2 ||
-                (args.count() == 3 && (args.at(2) == "bycontact" ||
-                                       args.at(2) == "bytime"    ||
-                                       args.at(2) == "bytype"    ||
-                                       args.at(2) == "byservice")))) {
-        return doListCalls(args, options);
-    } else if (args.at(1) == "list") {
-        return doList(args, options);
-    } else if (args.at(1) == "listgroups") {
-        return doListGroups(args, options);
-    } else if (args.at(1) == "isread" && args.count() > 2) {
-        return doIsRead(args, options);
-    } else if (args.at(1) == "isvideo" && args.count() > 2) {
-        return doIsVideo(args, options);
-    } else if (args.at(1) == "reportdelivery" && args.count() > 2) {
-        return doReportDelivery(args, options);
-    } else if (args.at(1) == "setstatus" &&
-               (args.count() == 4 && (args.at(3) == "unknown"   ||
-                                      args.at(3) == "sending"   ||
-                                      args.at(3) == "sent"      ||
-                                      args.at(3) == "delivered" ||
-                                      args.at(3) == "temporarilyfailed" ||
-                                      args.at(3) == "permanentlyfailed"))) {
-        return doSetStatus( args, options );
-    } else if (args.at(1) == "delete" && args.count() > 2) {
-        return doDelete(args, options);
-    } else if (args.at(1) == "deletegroup" && args.count() > 2) {
-        return doDeleteGroup(args, options);
-    } else if (args.at(1) == "deleteall") {
-        return doDeleteAll(args, options);
-    } else if (args.at(1) == "markallcallsread") {
-        return doMarkAllCallsRead(args, options);
-    } else if (args.at(1) == "export" && args.count() > 2) {
-        return doExport(args, options);
-    } else if (args.at(1) == "import") {
-        return doImport(args, options);
-    } else {
-        printUsage();
-    }
-
-    return 0;
 }

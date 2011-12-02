@@ -47,6 +47,8 @@ struct QueryResult {
     int eventId;
     QList<Event::Property> properties;
 
+    QueryResult() : eventId(0) {}
+
     void fillEventFromModel(Event &event);
     void fillGroupFromModel(Group &group);
     void fillMessagePartFromModel(MessagePart &part);
