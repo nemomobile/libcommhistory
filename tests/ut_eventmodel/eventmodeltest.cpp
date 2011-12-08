@@ -1002,6 +1002,7 @@ void EventModelTest::testMessageParts()
     QList<MessagePart> parts;
 
     MessagePart part1;
+    part1.setContentId("smil");
     part1.setContentType("application/smil");
     part1.setPlainTextContent("<smil>blah</smil>");
     MessagePart part2;
@@ -1065,6 +1066,17 @@ void EventModelTest::testMessageParts()
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
         QVERIFY(parts.indexOf(part) >= 0);
+
+    // delete leftovers
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QSparqlQuery deletePartsQuery(QLatin1String("DELETE {?a a rdfs:Resource} WHERE {"
+                                                "{?a nmo:contentId \"smil\"} UNION "
+                                                "{?a nmo:contentId \"dogphoto\"} UNION "
+                                                "{?a nmo:contentId \"text_slide1\"} }"),
+                                  QSparqlQuery::InsertStatement);
+    QSparqlResult* result = conn->exec(deletePartsQuery);
+    result->waitForFinished();
+    QVERIFY(!result->hasError());
 }
 
 void EventModelTest::testDeleteMessageParts()

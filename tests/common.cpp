@@ -34,6 +34,7 @@
 
 #include "eventmodel.h"
 #include "groupmodel.h"
+#include "callmodel.h"
 #include "event.h"
 #include "common.h"
 #include "trackerio.h"
@@ -299,20 +300,27 @@ void deleteAll()
 {
     qDebug() << __FUNCTION__ << "- Deleting all";
 
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String(
-            "DELETE {?n a rdfs:Resource}"
-            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                "nmo:Attachment,"
-                                                "nmo:Multipart,"
-                                                "nmo:CommunicationChannel,"
-                                                "nco:IMAddress,"
-                                                "nco:PhoneNumber))}"),
-                       QSparqlQuery::DeleteStatement);
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
-    if (result->hasError())
-        qDebug() << result->lastError().message();
+    GroupModel groupModel;
+    groupModel.enableContactChanges(false);
+    groupModel.setQueryMode(EventModel::SyncQuery);
+    if (!groupModel.getGroups()) {
+        qCritical() << Q_FUNC_INFO << "getGroups failed";
+        return;
+    }
+
+    if (!groupModel.deleteAll())
+        qCritical() << Q_FUNC_INFO << "deleteAll failed";
+
+    CallModel callModel;
+    callModel.enableContactChanges(false);
+    callModel.setQueryMode(EventModel::SyncQuery);
+    if (!callModel.getEvents(CallModel::SortByContact)) {
+        qCritical() << Q_FUNC_INFO << "callModel::getEvents failed";
+        return;
+    }
+
+    if (!callModel.deleteAll())
+        qCritical() << Q_FUNC_INFO << "callModel::deleteAll failed";
 }
 
 void deleteSmsMsgs()

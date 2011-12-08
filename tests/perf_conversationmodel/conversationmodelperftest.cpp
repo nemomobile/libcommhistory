@@ -79,6 +79,8 @@ void ConversationModelPerfTest::getEvents()
     QFETCH(int, contacts);
     QFETCH(int, limit);
 
+    qRegisterMetaType<QModelIndex>("QModelIndex");
+
     QDateTime startTime = QDateTime::currentDateTime();
 
     addTestGroups( group1, group2 );
