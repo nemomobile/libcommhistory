@@ -783,7 +783,7 @@ void GroupModelTest::limitOffset()
 
 void GroupModelTest::cleanupTestCase()
 {
-//    deleteAll();
+    deleteAll();
 }
 
 int addTestMms (EventModel &model,

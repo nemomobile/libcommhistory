@@ -113,7 +113,7 @@ void SMSInboxModelTest::addEvent()
 
 void SMSInboxModelTest::cleanupTestCase()
 {
-//    deleteAll();
+    deleteAll();
 }
 
 QTEST_MAIN(SMSInboxModelTest)

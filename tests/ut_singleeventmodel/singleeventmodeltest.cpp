@@ -313,6 +313,7 @@ void SingleEventModelTest::updateStatus()
 
 void SingleEventModelTest::cleanupTestCase()
 {
+    deleteAll();
 }
 
 QTEST_MAIN(SingleEventModelTest)

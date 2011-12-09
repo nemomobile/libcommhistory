@@ -1908,6 +1908,7 @@ void EventModelTest::testAddNonDigitRemoteId()
 
 void EventModelTest::cleanupTestCase()
 {
+    deleteAll();
 }
 
 QTEST_MAIN(EventModelTest)

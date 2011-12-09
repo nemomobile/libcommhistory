@@ -91,6 +91,7 @@ void ConversationModelPerfTest::getEvents()
     #endif
 
     EventModel addModel;
+    addModel.enableContactChanges(false);
     QDateTime when = QDateTime::currentDateTime();
     QList<QString> remoteUids;
 
@@ -176,6 +177,7 @@ void ConversationModelPerfTest::getEvents()
     for(int i = 0; i < iterations; i++) {
 
         ConversationModel fetchModel;
+        fetchModel.enableContactChanges(false);
         bool result = false;
 
         QSignalSpy rowsInserted(&fetchModel, SIGNAL(rowsInserted(const QModelIndex &, int, int)));

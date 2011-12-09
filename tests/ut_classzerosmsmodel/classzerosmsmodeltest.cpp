@@ -107,6 +107,7 @@ void ClassZeroSMSModelTest::deleteEvents()
 void ClassZeroSMSModelTest::cleanupTestCase()
 {
     QProcess::execute("pkill messaging-ui");
+    deleteAll();
 }
 
 QTEST_MAIN(ClassZeroSMSModelTest)

@@ -1053,6 +1053,7 @@ void CallModelTest::testModifyEvent()
 
 void CallModelTest::cleanupTestCase()
 {
+    deleteAll();
 }
 
 QTEST_MAIN(CallModelTest)

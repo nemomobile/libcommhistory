@@ -115,7 +115,7 @@ void OutboxModelTest::addEvent()
 
 void OutboxModelTest::cleanupTestCase()
 {
-//    deleteAll();
+    deleteAll();
 }
 
 QTEST_MAIN(OutboxModelTest)
