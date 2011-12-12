@@ -61,6 +61,7 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid);
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid=QString());
 void modifyTestContact(int id, const QString &name);
 void deleteTestContact(int id);
+void cleanUpTestContacts();
 bool compareEvents(Event &e1, Event &e2);
 void deleteAll();
 void deleteSmsMsgs();

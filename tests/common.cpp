@@ -119,10 +119,11 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
     QString addContact("INSERT { "
+                       " GRAPH <commhistory-tests> { "
                        " %1 "
                        " %2 a nco:PersonContact ; "
                        " nco:hasAffiliation _:foo ; "
-                       " nco:nameFamily \"%3\" . }");
+                       " nco:nameFamily \"%3\" . } }");
 
     QString addAffiliation("_:foo a nco:Affiliation; ");
 
@@ -130,15 +131,15 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     QString normal = CommHistory::normalizePhoneNumber(remoteUid);
     if (normal.isEmpty()) {
         QString uri = QString("telepathy:%1!%2").arg(localUid).arg(remoteUid);
-        addressQuery = QString("INSERT { <%1> a nco:IMAddress }").arg(uri);
+        addressQuery = QString("INSERT { GRAPH <commhistory-tests> { <%1> a nco:IMAddress } }").arg(uri);
         addAffiliation += QString("nco:hasIMAddress <%1> .").arg(uri);
     } else {
         QString shortNumber = makeShortNumber(remoteUid);
         QString phoneIRI = qctMakePhoneNumberIri(remoteUid);
         addressQuery =
-            QString("INSERT SILENT { <%1> a nco:PhoneNumber ; "
+            QString("INSERT SILENT { GRAPH <commhistory-tests> { <%1> a nco:PhoneNumber ; "
                     "nco:phoneNumber \"%2\" ; "
-                    "maemo:localPhoneNumber \"%3\" . }")
+                    "maemo:localPhoneNumber \"%3\" . } }")
             .arg(phoneIRI)
             .arg(remoteUid)
             .arg(shortNumber);
@@ -185,7 +186,7 @@ void modifyTestContact(int id, const QString &name)
         return;
     }
 
-    QString addContact("INSERT { ?c nco:nameFamily \"%2\" } "
+    QString addContact("INSERT { GRAPH <commhistory-tests> { ?c nco:nameFamily \"%2\" } } "
                        "WHERE {?c a nco:PersonContact . FILTER(tracker:id(?c) = %1) }");
     QScopedPointer<QSparqlResult> result2(conn->exec(QSparqlQuery(addContact.arg(id).arg(name),
                                                                   QSparqlQuery::InsertStatement)));
@@ -211,6 +212,20 @@ void deleteTestContact(int id)
     result->waitForFinished();
     if (result->hasError()) {
         qWarning() << "error deleting contact:" << result->lastError().message();
+        return;
+    }
+}
+
+void cleanUpTestContacts()
+{
+    qDebug() << Q_FUNC_INFO;
+    QString query("DELETE { ?r a rdfs:Resource } WHERE { GRAPH <commhistory-tests> { ?r a rdfs:Resource } }");
+    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query,
+                                                                 QSparqlQuery::DeleteStatement)));
+    result->waitForFinished();
+    if (result->hasError()) {
+        qWarning() << "error deleting contacts:" << result->lastError().message();
         return;
     }
 }
@@ -299,6 +314,8 @@ bool compareEvents(Event &e1, Event &e2)
 void deleteAll()
 {
     qDebug() << __FUNCTION__ << "- Deleting all";
+
+    cleanUpTestContacts();
 
     GroupModel groupModel;
     groupModel.enableContactChanges(false);

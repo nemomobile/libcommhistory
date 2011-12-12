@@ -179,4 +179,9 @@ void UnreadEventModelTest::markAsRead()
     QVERIFY(model.rowCount() == 0);
 }
 
+void UnreadEventModelTest::cleanupTestCase()
+{
+    deleteAll();
+}
+
 QTEST_MAIN(UnreadEventModelTest)

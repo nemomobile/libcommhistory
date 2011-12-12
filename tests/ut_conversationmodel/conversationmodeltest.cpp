@@ -416,6 +416,10 @@ void ConversationModelTest::contacts()
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("ReallyUFunny", remoteId, localId);
+    QTime timer;
+    timer.start();
+    while (timer.elapsed() < 1000)
+        QCoreApplication::processEvents();
     QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady());
 
@@ -448,7 +452,7 @@ void ConversationModelTest::reset() {
 
 void ConversationModelTest::cleanupTestCase()
 {
-//    deleteAll();
+    deleteAll();
 }
 
 QTEST_MAIN(ConversationModelTest)

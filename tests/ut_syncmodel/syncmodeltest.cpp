@@ -215,6 +215,7 @@ void SyncModelTest::addEventsCheckTokens()
 
 void SyncModelTest::cleanupTestCase()
 {
+    deleteAll();
 }
 
 //Private functions

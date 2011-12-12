@@ -184,6 +184,7 @@ void ConversationModelPerfTest::getEvents()
             fetchModel.setQueryMode(EventModel::SyncQuery);
         } else {
             fetchModel.setQueryMode(EventModel::StreamedAsyncQuery);
+            fetchModel.setFirstChunkSize(limit);
             fetchModel.setChunkSize(limit);
         }
 

@@ -179,6 +179,8 @@ bool EventModelPrivate::executeQuery(EventsQuery &query)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
+    startContactListening();
+
     isReady = false;
     if (queryMode == EventModel::StreamedAsyncQuery) {
         queryRunner->setStreamedMode(true);
@@ -682,10 +684,12 @@ void EventModelPrivate::startContactListening()
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
                 this,
-                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
+                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                Qt::UniqueConnection);
         connect(contactListener.data(),
                 SIGNAL(contactRemoved(quint32)),
                 this,
-                SLOT(slotContactRemoved(quint32)));
+                SLOT(slotContactRemoved(quint32)),
+                Qt::UniqueConnection);
     }
 }

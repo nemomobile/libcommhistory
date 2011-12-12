@@ -81,6 +81,8 @@ void CallModelPrivate::executeGroupedQuery(const QString &query)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
+    startContactListening();
+
     isReady = false;
     if (queryMode == EventModel::StreamedAsyncQuery) {
         queryRunner->setStreamedMode(true);
