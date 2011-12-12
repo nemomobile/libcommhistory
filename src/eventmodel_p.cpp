@@ -91,8 +91,6 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
 
     resetQueryRunners();
     eventRootItem = new EventTreeItem(Event());
-
-    contactListener = ContactListener::instance();
 }
 
 EventModelPrivate::~EventModelPrivate()
@@ -180,6 +178,8 @@ QModelIndex EventModelPrivate::findParent(const Event &event)
 bool EventModelPrivate::executeQuery(EventsQuery &query)
 {
     qDebug() << __PRETTY_FUNCTION__;
+
+    startContactListening();
 
     isReady = false;
     if (queryMode == EventModel::StreamedAsyncQuery) {
@@ -679,7 +679,8 @@ bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 
 void EventModelPrivate::startContactListening()
 {
-    if (contactChangesEnabled && contactListener) {
+    if (contactChangesEnabled && !contactListener) {
+        contactListener = ContactListener::instance();
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
                 this,

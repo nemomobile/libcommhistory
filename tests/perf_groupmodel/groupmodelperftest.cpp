@@ -76,7 +76,6 @@ void GroupModelPerfTest::getGroups()
     #endif
 
     GroupModel addModel;
-    addModel.enableContactChanges(false);
     QDateTime when = QDateTime::currentDateTime();
     QList<Group> groupList;
 
@@ -164,7 +163,6 @@ void GroupModelPerfTest::getGroups()
     for(int i = 0; i < iterations; i++) {
 
         GroupModel fetchModel;
-        fetchModel.enableContactChanges(false);
         bool result = false;
 
         fetchModel.setQueryMode(EventModel::SyncQuery);

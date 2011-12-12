@@ -76,7 +76,6 @@ void CallModelPerfTest::getEvents()
 
 
     EventModel addModel;
-    addModel.enableContactChanges(false);
     QDateTime when = QDateTime::currentDateTime();
     QList<QString> remoteUids;
 
@@ -170,7 +169,6 @@ void CallModelPerfTest::getEvents()
     for(int i = 0; i < iterations; i++) {
 
         CallModel fetchModel;
-        fetchModel.enableContactChanges(false);
         bool result = false;
 
         fetchModel.setQueryMode(EventModel::SyncQuery);

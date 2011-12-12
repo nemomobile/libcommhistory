@@ -297,6 +297,8 @@ bool ConversationModel::getEvents(int groupId)
     EventsQuery query = d->buildQuery();
 
     if (d->queryMode == EventModel::StreamedAsyncQuery) {
+        d->startContactListening();
+
         d->isReady = false;
         query.addModifier(QLatin1String("LIMIT ") + QString::number(d->firstChunkSize));
         query.addProjection(QLatin1String("tracker:id(%1)")).variable(Event::Id);
