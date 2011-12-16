@@ -188,7 +188,7 @@ void SyncModelTest::addEventsCheckTokens()
     QTime timer;
     QVERIFY(model.addEvents(events));
     timer.start();
-    while (timer.elapsed() < 2000 && spy.count() < 2)
+    while (timer.elapsed() < 4000 && spy.count() < 2)
         QCoreApplication::processEvents();
     QCOMPARE(spy.count(), 2);
     QList<Event> result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());
@@ -205,7 +205,7 @@ void SyncModelTest::addEventsCheckTokens()
     spy.clear();
     QVERIFY(model.addEvents(badEvents));
     timer.start();
-    while (timer.elapsed() < 2000 && spy.count() < 1)
+    while (timer.elapsed() < 4000 && spy.count() < 1)
         QCoreApplication::processEvents();
     QCOMPARE(spy.count(), 1);
     result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());

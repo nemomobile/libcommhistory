@@ -149,7 +149,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
     QSparqlQuery insertQuery(query, QSparqlQuery::InsertStatement);
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QScopedPointer<QSparqlResult> result(conn->exec(insertQuery));
+    QScopedPointer<QSparqlResult> result(conn->syncExec(insertQuery));
     result->waitForFinished();
     if (result->hasError()) {
         qWarning() << "error inserting address:" << result->lastError().message();
@@ -158,7 +158,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     query = QString("SELECT tracker:id(?c) WHERE { ?c a nco:PersonContact. FILTER(?c = %1) }")
         .arg(contactUri);
-    result.reset(conn->exec(QSparqlQuery(query)));
+    result.reset(conn->syncExec(QSparqlQuery(query)));
     result->waitForFinished();
     if (result->hasError() || !result->first()) {
         qWarning() << "error getting id of inserted contact:" << result->lastError().message();
