@@ -511,6 +511,7 @@ void GroupModelTest::deleteGroups()
     Event event;
     int messageId = 0;
 
+    qRegisterMetaType<QModelIndex>("QModelIndex");
     QSignalSpy groupsCommitted(&deleterModel, SIGNAL(groupsCommitted(QList<int>,bool)));
 
     groupModel.enableContactChanges(false);
@@ -757,8 +758,15 @@ void GroupModelTest::limitOffset()
     QVERIFY(waitSignal(modelReady));
 
     QCOMPARE(model.rowCount(), 4);
+    for (int i = 0; i < 4; i++)
+        qDebug() << model.group(model.index(i, 0)).id();
 
     model.setLimit(2);
+
+    QTime timer;
+    timer.start();
+    while (timer.elapsed() < 2000)
+        QCoreApplication::processEvents();
 
     modelReady.clear();
     QVERIFY(model.getGroups());
@@ -769,13 +777,26 @@ void GroupModelTest::limitOffset()
     headGroups.insert(model.group(model.index(0, 0)).id());
     headGroups.insert(model.group(model.index(1, 0)).id());
 
+    qDebug() << model.group(model.index(0, 0)).toString();
+    qDebug() << model.group(model.index(1, 0)).toString();
+
     model.setOffset(2);
+
+    timer.start();
+    while (timer.elapsed() < 2000)
+        QCoreApplication::processEvents();
 
     modelReady.clear();
     QVERIFY(model.getGroups());
     QVERIFY(waitSignal(modelReady));
 
     QCOMPARE(model.rowCount(), 2);
+
+    if (headGroups.contains(model.group(model.index(0, 0)).id())
+        || headGroups.contains(model.group(model.index(1, 0)).id())) {
+        qDebug() << model.group(model.index(0, 0)).toString();
+        qDebug() << model.group(model.index(1, 0)).toString();
+    }
 
     QVERIFY(!headGroups.contains(model.group(model.index(0, 0)).id()));
     QVERIFY(!headGroups.contains(model.group(model.index(1, 0)).id()));
@@ -945,7 +966,10 @@ void GroupModelTest::resolveContact()
     QString contactName = QString("Test Contact 123");
 //    int contactId = addTestContact(contactName, phoneNumber);
     addTestContact(contactName, phoneNumber);
-    QTest::qWait(1000);
+    QTime timer;
+    timer.start();
+    while (timer.elapsed() < 2000)
+        QCoreApplication::processEvents();
 
     Group grp;
     grp.setLocalUid(RING_ACCOUNT);
@@ -1025,6 +1049,11 @@ void GroupModelTest::queryContacts()
 
     QVERIFY(model.getGroups());
     QVERIFY(waitSignal(modelReady));
+    if (model.rowCount() != 6) {
+        for (int i = 0; i < model.rowCount(); i++) {
+            qDebug() << model.group(model.index(i, 0)).toString();
+        }
+    }
     QCOMPARE(model.rowCount(), 6);
 
     for (int i=0; i < model.rowCount(); i++) {
@@ -1151,7 +1180,12 @@ void GroupModelTest::changeRemoteUid()
     // Add two contacts with matching numbers
     int oldContactId = addTestContact("OldContact", oldRemoteUid, RING_ACCOUNT);
     int newContactId = addTestContact("NewContact", newRemoteUid, RING_ACCOUNT);
-    QTest::qWait(1000);
+    qDebug() << "******************** oldContactId" << oldContactId << "new" << newContactId;
+
+    QTime timer;
+    timer.start();
+    while (timer.elapsed() < 2000)
+        QCoreApplication::processEvents();
 
     GroupModel groupModel;
     groupModel.enableContactChanges(false);
@@ -1199,7 +1233,10 @@ void GroupModelTest::changeRemoteUid()
                  QDateTime::currentDateTime(), newRemoteUid);
     QVERIFY(waitSignal(groupUpdated));
 
-    QTest::qWait(1000);
+    timer.start();
+    while (timer.elapsed() < 2000)
+        QCoreApplication::processEvents();
+
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.remoteUids().size(), 1);
     QCOMPARE(group.remoteUids().first(), newRemoteUid);
