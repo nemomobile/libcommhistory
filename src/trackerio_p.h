@@ -90,9 +90,10 @@ public:
 
     /*!
      * Create query for calls grouped by contacts.
-     * Optionally restrict to specific call groups.
+     * Optionally restrict to specific call groups or audio-only calls.
      */
-    static QString prepareGroupedCallQuery(const QStringList &channels = QStringList());
+    static QString prepareGroupedCallQuery(const QStringList &channels = QStringList(),
+                                           bool includeVideoCalls = true);
 
     /*!
      * Return IMContact node as blank anonymous SPARQL string

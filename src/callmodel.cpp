@@ -70,6 +70,7 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
         : EventModelPrivate( model )
         , sortBy( CallModel::SortByContact )
         , eventType( CallEvent::UnknownCallType )
+        , videoCallsEnabled( true )
         , referenceTime( QDateTime() )
         , hasBeenFetched( false )
 {
@@ -129,6 +130,9 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
     {
         return false;
     }
+
+    if (!videoCallsEnabled && event.isVideoCall())
+        return false;
 
     if(!referenceTime.isNull() && (event.startTime() < referenceTime)) // a reference Time is already set, so any further event addition should be beyond that
     {
@@ -680,7 +684,8 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
             }
         }
 
-        QString query = TrackerIOPrivate::prepareGroupedCallQuery(updatedGroups.toList());
+        QString query = TrackerIOPrivate::prepareGroupedCallQuery(updatedGroups.toList(),
+                                                                  videoCallsEnabled);
         executeGroupedQuery(query);
     }
 }
@@ -920,6 +925,15 @@ bool CallModel::setFilter(CallModel::Sorting sortBy,
     return true;
 }
 
+void CallModel::enableVideoCalls(bool enabled)
+{
+    Q_D(CallModel);
+
+    d->videoCallsEnabled = enabled;
+    if (d->hasBeenFetched)
+        getEvents();
+}
+
 bool CallModel::getEvents()
 {
     Q_D(CallModel);
@@ -933,7 +947,8 @@ bool CallModel::getEvents()
     d->updatedGroups.clear();
 
     if (d->sortBy == SortByContact) {
-        QString query = TrackerIOPrivate::prepareGroupedCallQuery();
+        QString query = TrackerIOPrivate::prepareGroupedCallQuery(QStringList(),
+                                                                  d->videoCallsEnabled);
         d->executeGroupedQuery(query);
         return true;
     }
@@ -964,10 +979,16 @@ bool CallModel::getEvents()
         }
     }
 
+    if (!d->videoCallsEnabled) {
+        query.addPattern(QString(QLatin1String("FILTER(!REGEX(nmo:communicationChannel(%2), \"!video$\"))")))
+            .variable(Event::Id);
+    }
+
     query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
                      .variable(Event::StartTime)
                      .variable(Event::Id);
 
+    qDebug() << Q_FUNC_INFO << query.query();
     return d->executeQuery(query);
 }
 

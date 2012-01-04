@@ -186,20 +186,27 @@ QString TrackerIOPrivate::prepareGroupQuery(const QString &localUid,
     return queryFormat.arg(constraints.join(LAT(" ")));
 }
 
-QString TrackerIOPrivate::prepareGroupedCallQuery(const QStringList &channels)
+QString TrackerIOPrivate::prepareGroupedCallQuery(const QStringList &channels,
+                                                  bool includeVideoCalls)
 {
     QString query;
     QString queryFormat(GROUPED_CALL_QUERY);
-    if (channels.isEmpty()) {
-        query = queryFormat.arg(QString());
-    } else {
+    QString filters;
+
+    if (!channels.isEmpty()) {
         QStringList channelList;
         foreach (QString channel, channels)
             channelList.append(QString(LAT("<%1>")).arg(channel));
-        query = queryFormat.arg(QString(LAT("FILTER(?channel IN (%1))"))
-                                .arg(channelList.join(LAT(","))));
-        qDebug() << Q_FUNC_INFO << query;
+
+        filters += QString(LAT("FILTER(?channel IN (%1))")).arg(channelList.join(LAT(",")));
     }
+
+    if (!includeVideoCalls)
+        filters += LAT(" FILTER(!REGEX(?channel, \"!video$\"))");
+
+    query = queryFormat.arg(filters);
+
+    qDebug() << Q_FUNC_INFO << query;
 
     return query;
 }

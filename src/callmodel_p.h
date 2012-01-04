@@ -92,6 +92,7 @@ public Q_SLOTS:
 public:
     CallModel::Sorting sortBy;
     CallEvent::CallType eventType;
+    bool videoCallsEnabled;
     QDateTime referenceTime;
     bool hasBeenFetched;
     QSet<QString> countedUids;

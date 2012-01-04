@@ -106,6 +106,15 @@ public:
                    const QDateTime &referenceTime = QDateTime());
 
     /*!
+     * If set to false, video calls are filtered out of the model.
+     * Defaults to true. Changing this setting with a ready model
+     * results in a new query as with setFilter().
+     *
+     * \param enabled If true, show video calls.
+     */
+    void enableVideoCalls(bool enabled);
+
+    /*!
      * \brief Resets model and fetch call events.
      *
      * \return true if successful; false, otherwise.

@@ -128,7 +128,7 @@ void printUsage()
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
     std::cout << "                 listdrafts"                                                                                                             << std::endl;
-    std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
+    std::cout << "                 listcalls [-novideo] [{bycontact|bytime|bytype|byservice}]"                                                             << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
@@ -615,6 +615,10 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
     }
 
     model.setFilter(sorting);
+
+    if (options.contains("-novideo"))
+        model.enableVideoCalls(false);
+
     if ( !model.getEvents() )
     {
         qCritical() << "Error fetching events";
