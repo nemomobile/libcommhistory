@@ -1,0 +1,65 @@
+Source: libcommhistory
+Section: devel
+Priority: optional
+Maintainer: Reto Zingg <reto.zingg@nokia.com>
+Build-Depends: debhelper (>= 5), libqt4-dev (>= 4.6),
+               libqtsparql-dev, doxygen, aegis-builder,
+               libqtcontacts-dev, libtracker-sparql-dev,
+               libqtcontacts-extensions-tracker-dev,
+               libcubi-0.1-dev
+Standards-Version: 3.7.2
+
+Package: libcommhistory0
+Architecture: any
+Priority: optional
+Depends: ${shlibs:Depends}, ${misc:Depends}, libqtsparql-tracker-direct
+Description: Messaging event database API
+ Library for accessing the messaging (IM, SMS and call) history database.
+
+Package: libcommhistory-dbg
+Architecture: any
+Section: devel
+Priority: extra
+Depends: libcommhistory0 (= ${binary:Version})
+Description: Debug symbols for libcommhistory0
+ Debug version of the commhistory library.
+
+Package: libcommhistory-dev
+Architecture: any
+Priority: extra
+Section: devel
+Depends: libcommhistory0 (= ${binary:Version}), libqt4-dev (>= 4.5),
+         libqtsparql-dev, libtracker-sparql-dev
+Description: Development files for libcommhistory0
+ Headers and static libraries for the commhistory library.
+
+Package: libcommhistory-doc
+Architecture: all
+Section: doc
+Priority: optional
+Description: Documentation for libcommhistory0
+ Doxygen-generated HTML documentation for the commhistory library.
+
+Package: libcommhistory-tests
+XB-Maemo-CI-Packages: libcommhistory0
+XB-Maemo-CI-Stage: staging, acceptance
+Architecture: any
+Section: devel
+Priority: extra
+Depends: ci-testing, ${shlibs:Depends}, ${misc:Depends}
+Description: Unit Test files for libcommhistory
+
+Package: libcommhistory-performance-tests
+XB-Maemo-CI-Packages: libcommhistory0
+Architecture: any
+Section: devel
+Priority: extra
+Depends: ci-testing, ${shlibs:Depends}, ${misc:Depends}
+Description: Performances tests for libcommhistory
+
+Package: commhistory-utils
+Architecture: any
+Section: devel
+Priority: extra
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: commhistory-tool

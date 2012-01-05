@@ -1,0 +1,19 @@
+<aegis>
+  <request>
+    <credential name="TrackerReadAccess"/>
+    <credential name="TrackerWriteAccess"/>
+    <credential name="GRP::metadata-users"/>
+    <for path="/usr/share/libcommhistory-tests/ut_conversationmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_callmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_outboxmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_classzerosmsmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_smsinboxmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_eventmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_syncmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_draftmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_unreadeventsmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_groupmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_singleeventmodel"/>
+    <for path="/usr/share/libcommhistory-tests/ut_eventsquery"/>
+  </request>
+</aegis>
