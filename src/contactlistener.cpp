@@ -218,18 +218,20 @@ void ContactListener::slotResultsAvailable()
     qDebug() << Q_FUNC_INFO << request->contacts().size() << "contacts";
 
     foreach (QContact contact, request->contacts()) {
-        QList< QPair<QString,QString> > addresses;
-        foreach (QContactOnlineAccount account,
-                 contact.details(QContactOnlineAccount::DefinitionName)) {
-            addresses += qMakePair(account.value(QLatin1String("AccountPath")),
-                                   account.accountUri());
-        }
-        foreach (QContactPhoneNumber phoneNumber,
-                 contact.details(QContactPhoneNumber::DefinitionName)) {
-            addresses += qMakePair(QString(), phoneNumber.number());
-        }
+        if (contact.localId() != m_ContactManager->selfContactId()) {
+            QList< QPair<QString,QString> > addresses;
+            foreach (QContactOnlineAccount account,
+                     contact.details(QContactOnlineAccount::DefinitionName)) {
+                addresses += qMakePair(account.value(QLatin1String("AccountPath")),
+                                       account.accountUri());
+            }
+            foreach (QContactPhoneNumber phoneNumber,
+                     contact.details(QContactPhoneNumber::DefinitionName)) {
+                addresses += qMakePair(QString(), phoneNumber.number());
+            }
 
-        emit contactUpdated(contact.localId(), contact.displayLabel(), addresses);
+            emit contactUpdated(contact.localId(), contact.displayLabel(), addresses);
+        } // if
     }
 
     request->deleteLater();
