@@ -219,8 +219,6 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
 
             groups.replace(row, newGroup);
 
-            emit q->dataChanged(q->index(row, 0),
-                                q->index(row, GroupModel::NumberOfColumns - 1));
 
             // don't sort if it's the first group or last message date
             // hasn't changed
@@ -229,6 +227,9 @@ void GroupModelPrivate::modifyInModel(Group &group, bool query)
                 qSort(groups.begin(), groups.end(), groupLessThan);
                 emit q->layoutChanged();
             }
+
+            emit q->dataChanged(q->index(row, 0),
+                                q->index(row, GroupModel::NumberOfColumns - 1));
 
             qDebug() << __PRETTY_FUNCTION__ << ": updated" << newGroup.toString();
             break;
@@ -381,15 +382,16 @@ void GroupModelPrivate::eventsAddedSlot(const QList<Event> &events)
         changedRows.append(row);
     }
 
-    foreach (int row, changedRows) {
-        emit q->dataChanged(q->index(row, 0),
-                            q->index(row, GroupModel::NumberOfColumns - 1));
-    }
 
     if (sortNeeded) {
         emit q->layoutAboutToBeChanged();
         qSort(groups.begin(), groups.end(), groupLessThan);
         emit q->layoutChanged();
+    }
+
+    foreach (int row, changedRows) {
+        emit q->dataChanged(q->index(row, 0),
+                            q->index(row, GroupModel::NumberOfColumns - 1));
     }
 }
 
