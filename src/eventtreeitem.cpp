@@ -79,6 +79,7 @@ EventTreeItem *EventTreeItem::child(int row)
 
 Event &EventTreeItem::eventAt(int row)
 {
+    Q_ASSERT(row >= 0 && row < children.count());
     return children.value(row)->event();
 }
 
