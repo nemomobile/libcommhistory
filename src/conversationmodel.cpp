@@ -336,6 +336,9 @@ void ConversationModel::fetchMore(const QModelIndex &parent)
     Q_UNUSED(parent);
     Q_D(ConversationModel);
 
+    if (!d->isModelReady() || d->eventRootItem->childCount() < 1)
+        return;
+
     EventsQuery query = d->buildQuery();
 
     Event &event = d->eventRootItem->eventAt(d->eventRootItem->childCount() - 1);
