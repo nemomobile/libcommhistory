@@ -629,6 +629,26 @@ GroupModel::GroupModel(QObject *parent)
     : QAbstractTableModel(parent),
       d(new GroupModelPrivate(this))
 {
+    QHash<int,QByteArray> roles = roleNames();
+    roles[BaseRole + GroupId] = "groupId";
+    roles[BaseRole + LocalUid] = "localUid";
+    roles[BaseRole + RemoteUids] = "remoteUids";
+    roles[BaseRole + ChatName] = "chatName";
+    roles[BaseRole + EndTime] = "endTime";
+    roles[BaseRole + TotalMessages] = "totalMessages";
+    roles[BaseRole + UnreadMessages] = "unreadMessages";
+    roles[BaseRole + SentMessages] = "sentMessages";
+    roles[BaseRole + LastEventId] = "lastEventId";
+    roles[BaseRole + Contacts] = "contacts";
+    roles[BaseRole + LastMessageText] = "lastMessageText";
+    roles[BaseRole + LastVCardFileName] = "lastVCardFileName";
+    roles[BaseRole + LastVCardLabel] = "lastVCardLabel";
+    roles[BaseRole + LastEventType] = "lastEventType";
+    roles[BaseRole + LastEventStatus] = "lastEventStatus";
+    roles[BaseRole + IsPermanent] = "isPermanent";
+    roles[BaseRole + LastModified] = "lastModified";
+    roles[BaseRole + StartTime] = "startTime";
+    setRoleNames(roles);
 }
 
 GroupModel::~GroupModel()
@@ -677,13 +697,7 @@ int GroupModel::columnCount(const QModelIndex &parent) const
 
 QVariant GroupModel::data(const QModelIndex &index, int role) const
 {
-    Q_UNUSED(role);
-
-    if (!index.isValid()) {
-        return QVariant();
-    }
-
-    if (index.row() >= d->groups.count() || index.row() < 0) {
+    if (!index.isValid() || index.row() > d->groups.count() || index.row() < 0) {
         return QVariant();
     }
 
@@ -693,8 +707,14 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         return QVariant::fromValue(group);
     }
 
+    int column = index.column();
+    if (role >= BaseRole) {
+        column = role - BaseRole;
+        role = Qt::DisplayRole;
+    }
+
     QVariant var;
-    switch (index.column()) {
+    switch (column) {
         case GroupId:
             var = QVariant::fromValue(group.id());
             break;
@@ -747,7 +767,7 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(group.startTime());
             break;
         default:
-            qDebug() << "Group::data: invalid column id??" << index.column();
+            qDebug() << "Group::data: invalid column id??" << column;
             break;
     }
 
