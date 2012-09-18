@@ -25,6 +25,7 @@
 TEMPLATE  = subdirs
 CONFIG   += ordered
 SUBDIRS   = src   \
+            declarative \
             tools \
             tests
 
