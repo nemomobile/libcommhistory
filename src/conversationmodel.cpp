@@ -336,7 +336,8 @@ void ConversationModel::fetchMore(const QModelIndex &parent)
     Q_UNUSED(parent);
     Q_D(ConversationModel);
 
-    if (!d->isModelReady() || d->eventRootItem->childCount() < 1)
+    // isModelReady() is true when there are no more events to request
+    if (d->isModelReady() || d->eventRootItem->childCount() < 1)
         return;
 
     EventsQuery query = d->buildQuery();
