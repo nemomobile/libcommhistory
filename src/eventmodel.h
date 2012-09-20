@@ -62,6 +62,14 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
 
     Q_ENUMS(QueryMode)
 
+    Q_PROPERTY(bool treeMode READ isTree WRITE setTreeMode)
+    Q_PROPERTY(QueryMode queryMode READ queryMode WRITE setQueryMode)
+    Q_PROPERTY(uint chunkSize READ chunkSize WRITE setChunkSize)
+    Q_PROPERTY(uint firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
+    Q_PROPERTY(int limit READ limit WRITE setLimit)
+    Q_PROPERTY(int offset READ offset WRITE setOffset)
+    Q_PROPERTY(bool syncMode READ syncMode WRITE setSyncMode)
+
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
 
@@ -91,6 +99,10 @@ public:
         Language,
         IsDeleted,
         NumberOfColumns
+    };
+
+    enum {
+        BaseRole = Qt::UserRole + 1000
     };
 
     /*!
@@ -376,6 +388,8 @@ protected:
 
 private:
     Q_DECLARE_PRIVATE(EventModel);
+
+    void setupRoles();
 };
 
 }

@@ -44,6 +44,8 @@ EventModel::EventModel(QObject *parent)
     connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
+
+    setupRoles();
 }
 
 EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
@@ -52,11 +54,43 @@ EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
     connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
+
+    setupRoles();
 }
 
 EventModel::~EventModel()
 {
     delete d_ptr;
+}
+
+void EventModel::setupRoles()
+{
+    QHash<int,QByteArray> roles = roleNames();
+    roles[BaseRole + EventId] = "eventId";
+    roles[BaseRole + EventType] = "eventType";
+    roles[BaseRole + StartTime] = "startTime";
+    roles[BaseRole + EndTime] = "endTime";
+    roles[BaseRole + Direction] = "direction";
+    roles[BaseRole + IsDraft] = "isDraft";
+    roles[BaseRole + IsRead] = "isRead";
+    roles[BaseRole + IsMissedCall] = "isMissedCall";
+    roles[BaseRole + Status] = "status";
+    roles[BaseRole + BytesReceived] = "bytesReceived";
+    roles[BaseRole + LocalUid] = "localUid";
+    roles[BaseRole + RemoteUid] = "remoteUid";
+    roles[BaseRole + Contacts] = "contacts";
+    roles[BaseRole + FreeText] = "freeText";
+    roles[BaseRole + GroupId] = "groupId";
+    roles[BaseRole + MessageToken] = "messageToken";
+    roles[BaseRole + LastModified] = "lastModified";
+    roles[BaseRole + EventCount] = "eventCount";
+    roles[BaseRole + FromVCardFileName] = "fromVCardFileName";
+    roles[BaseRole + FromVCardLabel] = "fromVCardLabel";
+    roles[BaseRole + Encoding] = "encoding";
+    roles[BaseRole + Charset] = "charset";
+    roles[BaseRole + Language] = "language";
+    roles[BaseRole + IsDeleted] = "isDeleted";
+    setRoleNames(roles);
 }
 
 void EventModel::setPropertyMask(const Event::PropertySet &properties)
@@ -204,8 +238,14 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         return QVariant::fromValue(event);
     }
 
+    int column = index.column();
+    if (role >= BaseRole) {
+        column = role - BaseRole;
+        role = Qt::DisplayRole;
+    }
+
     QVariant var;
-    switch (index.column()) {
+    switch (column) {
         case EventId:
             var = QVariant::fromValue(event.id());
             break;
@@ -279,7 +319,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(event.isDeleted());
             break;
         default:
-            qDebug() << __PRETTY_FUNCTION__ << ": invalid column id??" << index.column();
+            qDebug() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
             var = QVariant();
             break;
     }
