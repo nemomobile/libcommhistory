@@ -648,6 +648,7 @@ GroupModel::GroupModel(QObject *parent)
     roles[BaseRole + IsPermanent] = "isPermanent";
     roles[BaseRole + LastModified] = "lastModified";
     roles[BaseRole + StartTime] = "startTime";
+    roles[ContactIdsRole] = "contactIds";
     setRoleNames(roles);
 }
 
@@ -705,6 +706,12 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
 
     if (role == GroupRole) {
         return QVariant::fromValue(group);
+    } else if (role == ContactIdsRole) {
+        QList<int> ids;
+        ids.reserve(group.contacts().size());
+        foreach (const Event::Contact &c, group.contacts())
+            ids.append(c.first);
+        return QVariant::fromValue(ids);
     }
 
     int column = index.column();

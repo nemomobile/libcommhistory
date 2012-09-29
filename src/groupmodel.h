@@ -76,6 +76,7 @@ public:
 
     enum Role {
         GroupRole = Qt::UserRole,
+        ContactIdsRole,
         BaseRole = Qt::UserRole + 1000
     };
 
