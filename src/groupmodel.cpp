@@ -252,8 +252,6 @@ void GroupModelPrivate::groupsReceivedSlot(int start,
                            q->rowCount() + result.count() - 1);
         groups.append(result);
         q->endInsertRows();
-
-        startContactListening();
     }
 }
 
@@ -963,6 +961,8 @@ bool GroupModel::getGroups(const QString &localUid,
         d->groups.clear();
         endResetModel();
     }
+
+    d->startContactListening();
 
     QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(localUid, remoteUid));
     d->executeQuery(query.preparedQueryText());
