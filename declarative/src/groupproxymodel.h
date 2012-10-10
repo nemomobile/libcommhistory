@@ -28,41 +28,39 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtDeclarative>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExtensionPlugin>
-#include "constants.h"
-#include "groupobject.h"
-#include "eventmodel.h"
-#include "callproxymodel.h"
-#include "groupproxymodel.h"
-#include "conversationmodel.h"
+#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+#include <QIdentityProxyModel>
+
+class GroupObject;
+
+namespace CommHistory {
+    class GroupModel;
+}
+
+class GroupProxyModel : public QIdentityProxyModel
 {
+    Q_OBJECT
+
 public:
-    virtual ~CommHistoryPlugin() { }
+    GroupProxyModel(QObject *parent = 0);
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
+    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
+    virtual void setSourceModel(QAbstractItemModel *sourceModel);
+    void setSourceModel(QObject *model)
     {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
+        setSourceModel(qobject_cast<QAbstractItemModel*>(model));
     }
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
+    Q_INVOKABLE GroupObject *group(int row);
+    Q_INVOKABLE GroupObject *groupById(int id);
 
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<CommHistory::ConversationModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
-    }
+signals:
+    void sourceModelChanged();
+
+private:
+    CommHistory::GroupModel *groupModel;
 };
 
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
-
+#endif

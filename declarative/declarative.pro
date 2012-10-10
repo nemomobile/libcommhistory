@@ -10,10 +10,14 @@ LIBS += -L../src \
 INCLUDEPATH += ../src 
 
 SOURCES += src/plugin.cpp \
-    src/callproxymodel.cpp
+    src/callproxymodel.cpp \
+    src/groupobject.cpp \
+    src/qmlgroupmodel.cpp
 
 HEADERS += src/constants.h \
-    src/callproxymodel.h
+    src/callproxymodel.h \
+    src/groupobject.h \
+    src/qmlgroupmodel.h
 
 # do not edit below here, move this to a shared .pri?
 TEMPLATE = lib

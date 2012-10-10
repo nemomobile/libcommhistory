@@ -28,41 +28,62 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtDeclarative>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExtensionPlugin>
-#include "constants.h"
-#include "groupobject.h"
-#include "eventmodel.h"
-#include "callproxymodel.h"
 #include "groupproxymodel.h"
-#include "conversationmodel.h"
+#include "groupobject.h"
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+#include "groupmodel.h"
+
+using namespace CommHistory;
+
+GroupProxyModel::GroupProxyModel(QObject *parent)
+    : QIdentityProxyModel(parent)
 {
-public:
-    virtual ~CommHistoryPlugin() { }
+}
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
+void GroupProxyModel::setSourceModel(QAbstractItemModel *model)
+{
+    if (model == sourceModel())
+        return;
+
+    GroupModel *g = qobject_cast<GroupModel*>(model);
+    if (model && !g) {
+        qWarning() << Q_FUNC_INFO << "Model must be a CommHistory::GroupModel";
+        model = 0;
     }
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
+    groupModel = g;
+    QIdentityProxyModel::setSourceModel(model);
+    emit sourceModelChanged();
+}
 
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<CommHistory::ConversationModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
+GroupObject *GroupProxyModel::group(int row)
+{
+    if (!groupModel) {
+        qWarning() << Q_FUNC_INFO << "No group model instance";
+        return 0;
     }
-};
 
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
+    Group g = groupModel->group(mapToSource(index(row, 0)));
+    if (!g.isValid())
+        return 0;
+
+    // Should we keep a list and return the same instances? 
+    return new GroupObject(g, this);
+}
+
+GroupObject *GroupProxyModel::groupById(int id)
+{
+    if (!groupModel) {
+        qWarning() << Q_FUNC_INFO << "No group model instance";
+        return 0;
+    }
+
+    for (int r = 0; r < groupModel->rowCount(); r++) {
+        Group g = groupModel->group(groupModel->index(r, 0));
+        if (g.isValid() && g.id() == id)
+            return new GroupObject(g, this);
+    }
+
+    return 0;
+}
 
