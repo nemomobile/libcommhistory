@@ -35,6 +35,7 @@
 #include "constants.h"
 #include "eventmodel.h"
 #include "groupmodel.h"
+#include "callmodel.h"
 #include "conversationmodel.h"
 
 class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
@@ -56,6 +57,7 @@ public:
         qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
         qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
         qmlRegisterType<CommHistory::GroupModel>(uri, 1, 0, "CommGroupModel");
+        qmlRegisterType<CommHistory::CallModel>(uri, 1, 0, "CommCallModel");
         qmlRegisterType<CommHistory::ConversationModel>(uri, 1, 0, "CommConversationModel");
     }
 };
