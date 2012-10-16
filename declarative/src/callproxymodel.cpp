@@ -9,17 +9,13 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     this->setSourceModel(m_source);
     this->setDynamicSortFilter(true);
 
+    this->setRoleNames(m_source->roleNames());
+
     if(!m_source->getEvents())
     {
         qWarning() << "getEvents() failed on CommHistory::CallModel";
         return;
     }
-}
-
-QVariant CallProxyModel::data(const QModelIndex &index, int role) const
-{
-    // Reformat role to access column members by subtracting UserRole offset.
-    return QSortFilterProxyModel::data(this->index(index.row(), role - Qt::UserRole), role);
 }
 
 void CallProxyModel::setSortRole(int role)

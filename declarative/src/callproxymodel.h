@@ -108,8 +108,6 @@ public:
 
     explicit CallProxyModel(QObject *parent = 0);
 
-    QVariant data(const QModelIndex &index, int role) const;
-
 public Q_SLOTS:
     void getEvents();
     void setSortRole(int role);
