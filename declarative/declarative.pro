@@ -9,9 +9,11 @@ LIBS += -L../src \
     ../src/libcommhistory.so
 INCLUDEPATH += ../src 
 
-SOURCES += src/plugin.cpp
+SOURCES += src/plugin.cpp \
+    src/callproxymodel.cpp
 
-HEADERS += src/constants.h
+HEADERS += src/constants.h \
+    src/callproxymodel.h
 
 # do not edit below here, move this to a shared .pri?
 TEMPLATE = lib
