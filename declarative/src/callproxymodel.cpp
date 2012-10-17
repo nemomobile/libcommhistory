@@ -25,6 +25,6 @@ void CallProxyModel::setSortRole(int role)
 
 void CallProxyModel::setFilterRole(int role)
 {
-    QSortFilterProxyModel::setFilterKeyColumn(role - Qt::UserRole);
+    QSortFilterProxyModel::setFilterKeyColumn(role - CommHistory::EventModel::BaseRole);
     QSortFilterProxyModel::setFilterRole(role);
 }
