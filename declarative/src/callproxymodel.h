@@ -46,7 +46,7 @@ class CallProxyModel : public QSortFilterProxyModel
 
 public:
     enum EventRole {
-        EventIdRole = Qt::UserRole,
+        EventIdRole = CommHistory::EventModel::BaseRole,
         EventTypeRole,
         StartTimeRole,
         EndTimeRole,
