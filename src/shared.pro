@@ -42,7 +42,7 @@ CONFIG  += qdbus \
            qtsparql \
            qtcontacts_extensions_tracker
 MOBILITY += contacts
-PKGCONFIG += tracker-sparql-0.10
+PKGCONFIG += tracker-sparql-0.14
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
 
