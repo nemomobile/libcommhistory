@@ -1,4 +1,5 @@
 #include "callproxymodel.h"
+#include "event.h"
 
 CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
@@ -27,4 +28,13 @@ void CallProxyModel::setFilterRole(int role)
 {
     QSortFilterProxyModel::setFilterKeyColumn(role - CommHistory::EventModel::BaseRole);
     QSortFilterProxyModel::setFilterRole(role);
+}
+
+void CallProxyModel::deleteAt(int index)
+{
+    QModelIndex sourceIndex = mapToSource(CallProxyModel::index(index, 0));
+    CommHistory::Event event = m_source->event(sourceIndex);
+
+    if (event.isValid())
+        m_source->deleteEvent(event);
 }
