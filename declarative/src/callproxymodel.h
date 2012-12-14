@@ -113,6 +113,8 @@ public Q_SLOTS:
     void setSortRole(int role);
     void setFilterRole(int role);
 
+    void deleteAt(int index);
+
 private:
     CommHistory::CallModel *m_source;
 };
