@@ -30,6 +30,7 @@
 
 #include "groupobject.h"
 #include "groupmodel.h"
+#include "groupproxymodel.h"
 
 using namespace CommHistory;
 
@@ -38,75 +39,67 @@ GroupObject::GroupObject(QObject *parent)
 {
 }
 
-GroupObject::GroupObject(const Group &group, QAbstractItemModel *parent)
+GroupObject::GroupObject(const Group &group, GroupProxyModel *parent)
     : QObject(parent), Group(group), model(parent)
 {
-    connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
-            SLOT(modelDataChanged(QModelIndex,QModelIndex)));
-    connect(model, SIGNAL(rowsRemoved(QModelIndex,int,int)),
-            SLOT(modelRowsRemoved(QModelIndex,int,int)));
 }
 
-void GroupObject::modelDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+GroupObject::~GroupObject()
 {
-    Q_ASSERT(topLeft.parent() == bottomRight.parent());
-
-    for (int r = topLeft.row(); r <= bottomRight.row(); r++) {
-        const Group &g = model->index(r, 0, topLeft.parent()).data(GroupModel::GroupRole).value<Group>();
-
-        if (g.id() != id())
-            continue;
-
-        Group old(static_cast<Group&>(*this));
-        Group::operator=(g);
-
-        if (old.localUid() != localUid())
-            emit localUidChanged();
-        if (old.remoteUids() != remoteUids())
-            emit remoteUidsChanged();
-        if (old.chatType() != chatType())
-            emit chatTypeChanged();
-        if (old.chatName() != chatName())
-            emit chatNameChanged();
-        if (old.startTime() != startTime())
-            emit startTimeChanged();
-        if (old.endTime() != endTime())
-            emit endTimeChanged();
-        if (old.totalMessages() != totalMessages())
-            emit totalMessagesChanged();
-        if (old.unreadMessages() != unreadMessages())
-            emit unreadMessagesChanged();
-        if (old.sentMessages() != sentMessages())
-            emit sentMessagesChanged();
-        if (old.lastEventId() != lastEventId())
-            emit lastEventIdChanged();
-        if (old.contacts() != contacts())
-            emit contactsChanged();
-        if (old.lastMessageText() != lastMessageText())
-            emit lastMessageTextChanged();
-        if (old.lastVCardFileName() != lastVCardFileName())
-            emit lastVCardFileNameChanged();
-        if (old.lastVCardLabel() != lastVCardLabel())
-            emit lastVCardLabelChanged();
-        if (old.lastEventStatus() != lastEventStatus())
-            emit lastEventStatusChanged();
-        if (old.lastModified() != lastModified())
-            emit lastModifiedChanged();
-
-        break;
-    }
 }
 
-void GroupObject::modelRowsRemoved(const QModelIndex &parent, int start, int end)
+bool GroupObject::markAsRead()
 {
-    for (int r = start; r <= end; r++) {
-        QModelIndex index = model->index(r, GroupModel::GroupId, parent);
-        if (index.data().toInt() != id())
-            continue;
-
-        qDebug() << Q_FUNC_INFO << "group removed";
-        emit groupRemoved();
-        break;
+    if (!model || !model->groupModel()) {
+        qWarning() << "org.nemomobile.commhistory: GroupObject has no model";
+        return false;
     }
+
+    return model->groupModel()->markAsReadGroup(id());
+}
+
+void GroupObject::updateGroup(const Group &g)
+{
+    Group old(static_cast<Group&>(*this));
+    Group::operator=(g);
+
+    if (old.localUid() != localUid())
+        emit localUidChanged();
+    if (old.remoteUids() != remoteUids())
+        emit remoteUidsChanged();
+    if (old.chatType() != chatType())
+        emit chatTypeChanged();
+    if (old.chatName() != chatName())
+        emit chatNameChanged();
+    if (old.startTime() != startTime())
+        emit startTimeChanged();
+    if (old.endTime() != endTime())
+        emit endTimeChanged();
+    if (old.totalMessages() != totalMessages())
+        emit totalMessagesChanged();
+    if (old.unreadMessages() != unreadMessages())
+        emit unreadMessagesChanged();
+    if (old.sentMessages() != sentMessages())
+        emit sentMessagesChanged();
+    if (old.lastEventId() != lastEventId())
+        emit lastEventIdChanged();
+    if (old.contacts() != contacts())
+        emit contactsChanged();
+    if (old.lastMessageText() != lastMessageText())
+        emit lastMessageTextChanged();
+    if (old.lastVCardFileName() != lastVCardFileName())
+        emit lastVCardFileNameChanged();
+    if (old.lastVCardLabel() != lastVCardLabel())
+        emit lastVCardLabelChanged();
+    if (old.lastEventStatus() != lastEventStatus())
+        emit lastEventStatusChanged();
+    if (old.lastModified() != lastModified())
+        emit lastModifiedChanged();
+}
+
+void GroupObject::removeGroup()
+{
+    qDebug() << Q_FUNC_INFO << "group removed";
+    emit groupRemoved();
 }
 

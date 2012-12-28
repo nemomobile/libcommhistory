@@ -32,6 +32,7 @@
 #define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
 
 #include <QIdentityProxyModel>
+#include <QHash>
 
 class GroupObject;
 
@@ -48,10 +49,12 @@ public:
 
     Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
     virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *model)
+    void setSourceModel(QObject *m)
     {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(model));
+        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
     }
+
+    CommHistory::GroupModel *groupModel() const { return model; }
 
     Q_INVOKABLE GroupObject *group(int row);
     Q_INVOKABLE GroupObject *groupById(int id);
@@ -59,8 +62,13 @@ public:
 signals:
     void sourceModelChanged();
 
+private slots:
+    void sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
+    void sourceRowsRemoved(const QModelIndex &parent, int start, int end);
+
 private:
-    CommHistory::GroupModel *groupModel;
+    CommHistory::GroupModel *model;
+    QHash<int,GroupObject*> groupObjects;
 };
 
 #endif
