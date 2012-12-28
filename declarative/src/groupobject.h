@@ -34,7 +34,7 @@
 #include <QObject>
 #include "group.h"
 
-class QAbstractItemModel;
+class GroupProxyModel;
 class QModelIndex;
 
 class GroupObject : public QObject, CommHistory::Group
@@ -44,7 +44,8 @@ class GroupObject : public QObject, CommHistory::Group
 
 public:
     GroupObject(QObject *parent = 0);
-    GroupObject(const CommHistory::Group &group, QAbstractItemModel *parent = 0);
+    GroupObject(const CommHistory::Group &group, GroupProxyModel *parent = 0);
+    virtual ~GroupObject();
 
     Q_PROPERTY(bool isValid READ isValid CONSTANT);
     Q_PROPERTY(int id READ id CONSTANT);
@@ -90,6 +91,9 @@ public:
     using Group::contactId;
     using Group::contactName;
 
+    void updateGroup(const CommHistory::Group &group);
+    void removeGroup();
+
 signals:
     void localUidChanged();
     void remoteUidsChanged();
@@ -111,12 +115,8 @@ signals:
 
     void groupRemoved();
 
-private slots:
-    void modelDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
-    void modelRowsRemoved(const QModelIndex &parent, int start, int end);
-
 private:
-    QAbstractItemModel *model;
+    GroupProxyModel *model;
 };
 
 #endif

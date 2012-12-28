@@ -40,50 +40,103 @@ GroupProxyModel::GroupProxyModel(QObject *parent)
 {
 }
 
-void GroupProxyModel::setSourceModel(QAbstractItemModel *model)
+void GroupProxyModel::setSourceModel(QAbstractItemModel *m)
 {
-    if (model == sourceModel())
+    if (m == sourceModel())
         return;
 
-    GroupModel *g = qobject_cast<GroupModel*>(model);
+    GroupModel *g = qobject_cast<GroupModel*>(m);
     if (model && !g) {
         qWarning() << Q_FUNC_INFO << "Model must be a CommHistory::GroupModel";
-        model = 0;
+        m = 0;
     }
 
-    groupModel = g;
+    if (model)
+        disconnect(model, 0, this, 0);
+
+    model = g;
     QIdentityProxyModel::setSourceModel(model);
+
+    connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
+            SLOT(sourceDataChanged(QModelIndex,QModelIndex)));
+    connect(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
+            SLOT(sourceRowsRemoved(QModelIndex,int,int)));
+
     emit sourceModelChanged();
 }
 
 GroupObject *GroupProxyModel::group(int row)
 {
-    if (!groupModel) {
+    if (!model) {
         qWarning() << Q_FUNC_INFO << "No group model instance";
         return 0;
     }
 
-    Group g = groupModel->group(mapToSource(index(row, 0)));
+    Group g = model->group(mapToSource(index(row, 0)));
     if (!g.isValid())
         return 0;
 
-    // Should we keep a list and return the same instances? 
-    return new GroupObject(g, this);
+    GroupObject *re = groupObjects.value(g.id());
+    if (!re) {
+        re = new GroupObject(g, this);
+        groupObjects.insert(g.id(), re);
+    }
+
+    return re;
 }
 
 GroupObject *GroupProxyModel::groupById(int id)
 {
-    if (!groupModel) {
+    if (!model) {
         qWarning() << Q_FUNC_INFO << "No group model instance";
         return 0;
     }
 
-    for (int r = 0; r < groupModel->rowCount(); r++) {
-        Group g = groupModel->group(groupModel->index(r, 0));
-        if (g.isValid() && g.id() == id)
-            return new GroupObject(g, this);
+    GroupObject *re = groupObjects.value(id);
+    if (re)
+        return re;
+
+    for (int r = 0; r < model->rowCount(); r++) {
+        Group g = model->group(model->index(r, 0));
+        if (!g.isValid() || g.id() != id)
+            continue;
+
+        re = new GroupObject(g, this);
+        groupObjects.insert(g.id(), re);
+        break;
     }
 
-    return 0;
+    return re;
+}
+
+void GroupProxyModel::sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
+{
+    Q_ASSERT(topLeft.parent() == bottomRight.parent());
+
+    for (int r = topLeft.row(); r <= bottomRight.row(); r++) {
+        const Group &g = model->group(model->index(r, 0));
+
+        GroupObject *obj = groupObjects.value(g.id());
+        if (!obj)
+            continue;
+
+        obj->updateGroup(g);
+    }
+}
+
+void GroupProxyModel::sourceRowsRemoved(const QModelIndex &parent, int start, int end)
+{
+    Q_UNUSED(parent);
+
+    for (int r = start; r <= end; r++) {
+        const Group &g = model->group(model->index(r, 0));
+        GroupObject *obj = groupObjects.value(g.id());
+        if (!obj)
+            continue;
+
+        obj->removeGroup();
+        obj->deleteLater();
+        groupObjects.remove(g.id());
+    }
 }
 
