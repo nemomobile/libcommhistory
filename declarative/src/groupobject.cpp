@@ -48,7 +48,15 @@ GroupObject::~GroupObject()
 {
 }
 
+bool GroupObject::markAsRead()
+{
+    if (!model || !model->groupModel()) {
+        qWarning() << "org.nemomobile.commhistory: GroupObject has no model";
+        return false;
+    }
 
+    return model->groupModel()->markAsReadGroup(id());
+}
 
 void GroupObject::updateGroup(const Group &g)
 {

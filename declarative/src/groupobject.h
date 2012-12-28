@@ -91,6 +91,8 @@ public:
     using Group::contactId;
     using Group::contactName;
 
+    Q_INVOKABLE bool markAsRead();
+
     void updateGroup(const CommHistory::Group &group);
     void removeGroup();
 
