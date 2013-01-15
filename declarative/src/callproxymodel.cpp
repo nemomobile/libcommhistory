@@ -38,3 +38,8 @@ void CallProxyModel::deleteAt(int index)
     if (event.isValid())
         m_source->deleteEvent(event);
 }
+
+bool CallProxyModel::markAllRead()
+{
+    return m_source->markAllRead();
+}

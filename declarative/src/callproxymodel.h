@@ -115,6 +115,8 @@ public Q_SLOTS:
 
     void deleteAt(int index);
 
+    bool markAllRead();
+
 private:
     CommHistory::CallModel *m_source;
 };
