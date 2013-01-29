@@ -59,6 +59,9 @@ void GroupProxyModel::setSourceModel(QAbstractItemModel *m)
 
     connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
             SLOT(sourceDataChanged(QModelIndex,QModelIndex)));
+    connect(model, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)),
+            SLOT(sourceRowsMoved()));
+    connect(model, SIGNAL(layoutChanged()), SLOT(sourceRowsMoved()));
     connect(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
             SLOT(sourceRowsRemoved(QModelIndex,int,int)));
 
@@ -122,6 +125,11 @@ void GroupProxyModel::sourceDataChanged(const QModelIndex &topLeft, const QModel
 
         obj->updateGroup(g);
     }
+}
+
+void GroupProxyModel::sourceRowsMoved()
+{
+    sourceDataChanged(model->index(0, 0), model->index(model->rowCount()-1, model->columnCount()-1));
 }
 
 void GroupProxyModel::sourceRowsRemoved(const QModelIndex &parent, int start, int end)
