@@ -65,6 +65,7 @@ signals:
 private slots:
     void sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
     void sourceRowsRemoved(const QModelIndex &parent, int start, int end);
+    void sourceRowsMoved();
 
 private:
     CommHistory::GroupModel *model;
