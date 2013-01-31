@@ -65,7 +65,33 @@ void GroupProxyModel::setSourceModel(QAbstractItemModel *m)
     connect(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
             SLOT(sourceRowsRemoved(QModelIndex,int,int)));
 
+    QHash<int,QByteArray> roles = model->roleNames();
+    roles[WeekdaySectionRole] = "weekdaySection";
+    setRoleNames(roles);
+
     emit sourceModelChanged();
+}
+
+QVariant GroupProxyModel::data(const QModelIndex &idx, int role) const
+{
+    if (!idx.isValid())
+        return QVariant();
+
+    if (role == WeekdaySectionRole) {
+        Group g = model->group(mapToSource(idx));
+        QDateTime dateTime = g.endTime();
+
+        // Return the date for the past week, and group all older items together under an
+        // arbitrary older date
+        const int daysDiff = QDate::currentDate().toJulianDay() - dateTime.date().toJulianDay();
+        if (daysDiff < 7)
+            return dateTime.date();
+
+        // Arbitrary static date for older items..
+        return QDate(2000, 1, 1);
+    }
+
+    return QIdentityProxyModel::data(idx, role);
 }
 
 GroupObject *GroupProxyModel::group(int row)

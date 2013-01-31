@@ -45,6 +45,10 @@ class GroupProxyModel : public QIdentityProxyModel
     Q_OBJECT
 
 public:
+    enum {
+        WeekdaySectionRole = Qt::UserRole + 2000
+    };
+
     GroupProxyModel(QObject *parent = 0);
 
     Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
@@ -58,6 +62,8 @@ public:
 
     Q_INVOKABLE GroupObject *group(int row);
     Q_INVOKABLE GroupObject *groupById(int id);
+
+    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
 signals:
     void sourceModelChanged();
