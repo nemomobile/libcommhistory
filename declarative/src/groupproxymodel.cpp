@@ -79,7 +79,7 @@ QVariant GroupProxyModel::data(const QModelIndex &idx, int role) const
 
     if (role == WeekdaySectionRole) {
         Group g = model->group(mapToSource(idx));
-        QDateTime dateTime = g.endTime();
+        QDateTime dateTime = g.endTime().toLocalTime();
 
         // Return the date for the past week, and group all older items together under an
         // arbitrary older date
