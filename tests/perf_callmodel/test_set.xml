@@ -1,6 +1,5 @@
 <set description="libcommhistory-performance-tests:perf_callmodel" name="perf_callmodel">
-                <case description="libcommhistory-performance-tests:perf_callmodel:" name="callmodel" level="Component" type="Performance" timeout="2500">
-			<step expected_result="0">su -l user -c /usr/share/libcommhistory-performance-tests/perf_callmodel </step>
-                 </case>
-                 <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
+    <case description="libcommhistory-performance-tests:perf_callmodel:" name="callmodel" level="Component" type="Performance" timeout="2500">
+        <step expected_result="0">/opt/tests/libcommhistory-performance-tests/perf_callmodel</step>
+    </case>
 </set>
