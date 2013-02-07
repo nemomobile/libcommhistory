@@ -37,6 +37,6 @@ DEFINES += PERF_BATCH_SIZE=25
 !include( ../common-installs-config.pri ) : \
     error( "Unable to include common-installs-config.pri!" )
 # override default path for tests
-target.path = $${INSTALL_PREFIX}/share/libcommhistory-performance-tests
+target.path = /opt/tests/$${PROJECT_NAME}-performance-tests
 # End of File
 

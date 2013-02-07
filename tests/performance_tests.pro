@@ -48,5 +48,5 @@ QMAKE_CLEAN += $${OUT_PWD}/perf_bin/tests.xml
          error( "Unable to include common-installs-config.pri!" )
 perftests.files = $${OUT_PWD}/perf_bin/* \
                   run_all_performance_tests.sh
-perftests.path  = $${INSTALL_PREFIX}/share/$${PROJECT_NAME}-performance-tests
+perftests.path  = /opt/tests/$${PROJECT_NAME}-performance-tests
 INSTALLS += perftests

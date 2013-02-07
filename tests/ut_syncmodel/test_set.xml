@@ -1,6 +1,5 @@
 <set description="libcommhistory-tests:ut_syncmodel" name="ut_syncmodel">
-                <case description="libcommhistory-tests:ut_syncmodel:" name="syncmodel" level="Component" type="Functional">
-			<step expected_result="0">su -l user -c /usr/share/libcommhistory-tests/ut_syncmodel </step>
-                 </case>
-                 <environments><scratchbox>true</scratchbox><hardware>true</hardware></environments>
+    <case description="libcommhistory-tests:ut_syncmodel:" name="syncmodel" level="Component" type="Functional">
+        <step expected_result="0">/opt/tests/libcommhistory-unit-tests/ut_syncmodel</step>
+    </case>
 </set>
