@@ -1,0 +1,114 @@
+/******************************************************************************
+**
+** This file is part of libcommhistory.
+**
+** Copyright (C) 2013 Jolla Ltd.
+** Contact: John Brooks <john.brooks@jollamobile.com>
+**
+** This library is free software; you can redistribute it and/or modify it
+** under the terms of the GNU Lesser General Public License version 2.1 as
+** published by the Free Software Foundation.
+**
+** This library is distributed in the hope that it will be useful, but
+** WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+** or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
+** License for more details.
+**
+** You should have received a copy of the GNU Lesser General Public License
+** along with this library; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+**
+******************************************************************************/
+
+#ifndef COMMHISTORY_CONTACTGROUP_H
+#define COMMHISTORY_CONTACTGROUP_H
+
+#include <QObject>
+
+#include "libcommhistoryexport.h"
+#include "groupobject.h"
+
+namespace CommHistory {
+
+class ContactGroupPrivate;
+
+class LIBCOMMHISTORY_EXPORT ContactGroup : public QObject
+{
+    Q_OBJECT
+
+public:
+    ContactGroup(QObject *parent = 0);
+
+    /* Properties */
+    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged);
+    QList<int> contactIds() const;
+
+    Q_PROPERTY(QList<QString> contactNames READ contactNames NOTIFY contactsChanged);
+    QList<QString> contactNames() const;
+
+    Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged);
+    QDateTime startTime() const;
+
+    Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged);
+    QDateTime endTime() const;
+
+    Q_PROPERTY(int totalMessages READ totalMessages NOTIFY totalMessagesChanged);
+    int totalMessages() const;
+
+    Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged);
+    int unreadMessages() const;
+
+    Q_PROPERTY(int sentMessages READ sentMessages NOTIFY sentMessagesChanged);
+    int sentMessages() const;
+
+    Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventChanged);
+    int lastEventId() const;
+
+    Q_PROPERTY(GroupObject* lastEventGroup READ lastEventGroup NOTIFY lastEventChanged);
+    GroupObject *lastEventGroup() const;
+
+    Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastEventChanged);
+    QString lastMessageText() const;
+
+    Q_PROPERTY(QString lastVCardFileName READ lastVCardFileName NOTIFY lastEventChanged);
+    QString lastVCardFileName() const;
+
+    Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastEventChanged);
+    QString lastVCardLabel() const;
+
+    Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventChanged);
+    int lastEventType() const;
+
+    Q_PROPERTY(int lastEventStatus READ lastEventType NOTIFY lastEventChanged);
+    int lastEventStatus() const;
+
+    Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
+    QDateTime lastModified() const;
+ 
+    Q_PROPERTY(QList<GroupObject*> groups READ groups NOTIFY groupsChanged);
+    QList<GroupObject*> groups() const;
+
+public slots:
+    void addGroup(GroupObject *group);
+    bool removeGroup(GroupObject *group);
+    void updateGroup(GroupObject *group);
+
+signals:
+    void contactsChanged();
+    void startTimeChanged();
+    void endTimeChanged();
+    void totalMessagesChanged();
+    void unreadMessagesChanged();
+    void sentMessagesChanged();
+    void lastEventChanged();
+    void lastModifiedChanged();
+    void groupsChanged();
+
+private:
+    Q_DECLARE_PRIVATE(ContactGroup);
+    ContactGroupPrivate *d_ptr;
+};
+
+}
+
+#endif
