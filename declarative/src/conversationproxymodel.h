@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,43 +29,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtDeclarative>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExtensionPlugin>
-#include "constants.h"
-#include "groupobject.h"
-#include "eventmodel.h"
-#include "contactgroupmodel.h"
-#include "callproxymodel.h"
-#include "groupproxymodel.h"
-#include "conversationproxymodel.h"
+#ifndef COMMHISTORY_DECLARATIVE_CONVERSATIONPROXYMODEL_H
+#define COMMHISTORY_DECLARATIVE_CONVERSATIONPROXYMODEL_H
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+#include <QIdentityProxyModel>
+#include <QHash>
+#include "conversationmodel.h"
+#include "contactgroup.h"
+
+class ConversationProxyModel : public CommHistory::ConversationModel
 {
+    Q_OBJECT
+
 public:
-    virtual ~CommHistoryPlugin() { }
+    ConversationProxyModel(QObject *parent = 0);
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
-    }
+    Q_PROPERTY(QObject* contactGroup READ contactGroup WRITE setContactGroup NOTIFY contactGroupChanged)
+    CommHistory::ContactGroup *contactGroup() const { return m_contactGroup; }
+    void setContactGroup(QObject *group);
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
+public slots:
+    void updateContactGroup();
 
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
-        qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
-    }
+signals:
+    void contactGroupChanged();
+
+private:
+    CommHistory::ContactGroup *m_contactGroup;
 };
 
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
-
+#endif
