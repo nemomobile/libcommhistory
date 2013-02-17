@@ -43,7 +43,6 @@ namespace CommHistory {
 
 ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             : EventModelPrivate(model)
-            , filterGroupId(-1)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
@@ -68,34 +67,40 @@ void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Gr
 {
     qDebug() << Q_FUNC_INFO;
     if (filterDirection == Event::Outbound
-        || filterGroupId == -1
+        || filterGroupIds.isEmpty()
         || !propertyMask.contains(Event::Contacts))
         return;
 
     foreach (Group g, groups) {
-        if (g.id() == filterGroupId && !g.remoteUids().isEmpty()) {
+        if (filterGroupIds.contains(g.id()) && !g.remoteUids().isEmpty()) {
             // update in memory events for contact info
-            updateEvents(g.contacts(),
+            updateEvents(g, g.contacts(),
                          g.remoteUids().first());
             break;
         }
     }
 }
 
-void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds) {
+void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
+{
     Q_Q(ConversationModel);
+    bool changed = false;
 
-    if (filterGroupId != -1
-        && groupIds.contains(filterGroupId)) {
-        q->beginResetModel();
-        clearEvents();
-        q->endResetModel();
+    foreach (int group, groupIds) {
+        if (filterGroupIds.remove(group))
+            changed = true;
     }
+
+    // XXX This could be more efficient by removing events from this group without
+    // refreshing others
+    if (changed)
+        q->getEvents(filterGroupIds.toList());
 }
 
 // update contacts for all inbound events,
 // should be called only for p2p chats
-void ConversationModelPrivate::updateEvents(const QList<Event::Contact> &contacts,
+void ConversationModelPrivate::updateEvents(const Group &group,
+                                            const QList<Event::Contact> &contacts,
                                             const QString &remoteUid)
 {
     Q_Q(ConversationModel);
@@ -103,12 +108,14 @@ void ConversationModelPrivate::updateEvents(const QList<Event::Contact> &contact
     for (int row = 0; row < eventRootItem->childCount(); row++) {
         Event &event = eventRootItem->eventAt(row);
 
-        if (event.contacts() != contacts
+        if (event.groupId() == group.id()
+            && event.contacts() != contacts
             && event.direction() == Event::Inbound
             && event.remoteUid() == remoteUid) {
             //update and continue
             event.setContacts(contacts);
 
+            // XXX This would be more efficient by merging ranges..
             emit q->dataChanged(q->createIndex(row,
                                                EventModel::Contacts,
                                                eventRootItem->child(row)),
@@ -125,8 +132,8 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     if ((event.type() != Event::IMEvent
          && event.type() != Event::SMSEvent
          && event.type() != Event::MMSEvent
-         && event.type() != Event::StatusMessageEvent) ||
-        filterGroupId == -1) return false;
+         && event.type() != Event::StatusMessageEvent))
+        return false;
 
     if (filterType != Event::UnknownType &&
         event.type() != filterType) return false;
@@ -137,7 +144,7 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     if (filterDirection != Event::UnknownDirection &&
         event.direction() != filterDirection) return false;
 
-    if (filterGroupId != event.groupId()) return false;
+    if (!filterGroupIds.contains(event.groupId())) return false;
 
     qDebug() << __PRETTY_FUNCTION__ << ": true";
     return true;
@@ -193,13 +200,18 @@ EventsQuery ConversationModelPrivate::buildQuery() const
     }
 
     query.addPattern(QLatin1String("%1 nmo:isDraft \"false\"; nmo:isDeleted \"false\" .")).variable(Event::Id);
-    query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
-                     .arg(Group::idToUrl(filterGroupId).toString()))
-            .variable(Event::Id);
 
-    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
+    QStringList ids;
+    foreach (int id, filterGroupIds)
+        ids.append(QString(QLatin1String("<%1>")).arg(Group::idToUrl(id).toString()));
+    
+    query.addPattern(QString(QLatin1String("FILTER(%2 IN (%1)) ."))
+                     .arg(ids.join(QLatin1String(",")))).variable(Event::GroupId);
+
+    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2)) DESC(tracker:id(%3))")
                      .variable(Event::EndTime)
-                     .variable(Event::Id);
+                     .variable(Event::Id)
+                     .variable(Event::GroupId);
 
     return query;
 }
@@ -254,8 +266,8 @@ void ConversationModelPrivate::contactSettingsChangedSlot(const QHash<QString, Q
     Q_UNUSED(changedSettings);
     Q_Q(ConversationModel);
 
-    if (filterGroupId != -1)
-        q->getEvents(filterGroupId);
+    if (!filterGroupIds.isEmpty())
+        q->getEvents(filterGroupIds.toList());
 }
 
 ConversationModel::ConversationModel(QObject *parent)
@@ -277,8 +289,8 @@ bool ConversationModel::setFilter(Event::EventType type,
     d->filterAccount = account;
     d->filterDirection = direction;
 
-    if (d->filterGroupId != -1) {
-        return getEvents(d->filterGroupId);
+    if (!d->filterGroupIds.isEmpty()) {
+        return getEvents(d->filterGroupIds.toList());
     }
 
     return true;
@@ -286,13 +298,21 @@ bool ConversationModel::setFilter(Event::EventType type,
 
 bool ConversationModel::getEvents(int groupId)
 {
+    return getEvents(QList<int>() << groupId);
+}
+
+bool ConversationModel::getEvents(QList<int> groupIds)
+{
     Q_D(ConversationModel);
 
-    d->filterGroupId = groupId;
+    d->filterGroupIds = QSet<int>::fromList(groupIds);
 
     beginResetModel();
     d->clearEvents();
     endResetModel();
+
+    if (groupIds.isEmpty())
+        return true;
 
     EventsQuery query = d->buildQuery();
 

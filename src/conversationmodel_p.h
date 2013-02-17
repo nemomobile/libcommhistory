@@ -26,6 +26,7 @@
 #include "eventmodel_p.h"
 #include "conversationmodel.h"
 #include "group.h"
+#include <QSet>
 
 namespace CommHistory
 {
@@ -37,7 +38,8 @@ public:
 
     ConversationModelPrivate(EventModel *model);
 
-    void updateEvents(const QList<Event::Contact> &contacts,
+    void updateEvents(const Group &group,
+                      const QList<Event::Contact> &contacts,
                       const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
     bool fillModel(int start, int end, QList<CommHistory::Event> events);
@@ -52,7 +54,7 @@ public Q_SLOTS:
     void contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings);
 
 public:
-    int filterGroupId;
+    QSet<int> filterGroupIds;
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;

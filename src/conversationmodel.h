@@ -34,7 +34,7 @@ class ConversationModelPrivate;
 /*!
  * \class ConversationModel
  *
- * Model for accessing a single conversation. Initialize with
+ * Model for accessing conversations. Initialize with
  * getEvents(). Use setFilter() to filter the visible messages.
  *
  * Tracking contact changes is enabled by default; call
@@ -84,6 +84,13 @@ public:
      * \return true if successful, otherwise false
      */
     bool getEvents(int groupId);
+    /*!
+     * Reset model to events from the specified groups.
+     *
+     * \param groupIds List of valid group IDs
+     * \return true if successful, otherwise false
+     */
+    bool getEvents(QList<int> groupIds);
 
     virtual bool canFetchMore(const QModelIndex &parent) const;
     virtual void fetchMore(const QModelIndex &parent);
