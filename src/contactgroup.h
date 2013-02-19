@@ -93,6 +93,8 @@ public slots:
     bool removeGroup(GroupObject *group);
     void updateGroup(GroupObject *group);
 
+    bool markAsRead();
+
 signals:
     void contactsChanged();
     void startTimeChanged();

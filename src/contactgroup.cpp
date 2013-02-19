@@ -21,6 +21,8 @@
 ******************************************************************************/
 
 #include "contactgroup.h"
+#include "trackerio.h"
+#include "updatesemitter.h"
 
 namespace CommHistory {
 
@@ -252,5 +254,37 @@ QList<GroupObject*> ContactGroup::groups() const
 {
     Q_D(const ContactGroup);
     return d->groups;
+}
+
+bool ContactGroup::markAsRead() 
+{
+    Q_D(ContactGroup);
+
+    qDebug() << Q_FUNC_INFO;
+    if (d->groups.isEmpty() || !unreadMessages())
+        return true;
+
+    TrackerIO *tracker = TrackerIO::instance();
+    tracker->transaction();
+
+    foreach (GroupObject *group, d->groups) {
+        if (group->unreadMessages() && !tracker->markAsReadGroup(group->id())) {
+            tracker->rollback();
+            return false;
+        }
+    }
+
+    tracker->commit();
+
+    QList<Group> updated;
+    foreach (GroupObject *group, d->groups) {
+        if (group->unreadMessages()) {
+            group->setUnreadMessages(0);
+            updated.append(group->toGroup());
+        }
+    }
+
+    emit UpdatesEmitter::instance()->groupsUpdatedFull(updated);
+    return true;
 }
 
