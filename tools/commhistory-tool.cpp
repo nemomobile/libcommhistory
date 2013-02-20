@@ -129,7 +129,7 @@ void printUsage()
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
     std::cout << "                 listdrafts"                                                                                                             << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
-    std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] local-uid remote-uid" << std::endl;
+    std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
     std::cout << "                 addClass0"                                                                                                              << std::endl;
@@ -227,6 +227,10 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         }
     }
 
+    QString messageText;
+    if (options.contains("-text")) {
+        messageText = options.value("-text").toString();
+    }
 
     Event::EventDirection direction = Event::UnknownDirection;
     if (options.contains("-in"))
@@ -327,7 +331,8 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         } else {
             e.setRemoteUid(remoteUid);
         }
-        e.setFreeText(textContent[qrand() % numTextContents]);
+
+        e.setFreeText(messageText.isNull() ? textContent[qrand() % numTextContents] : messageText);
 
         events.append(e);
     }
@@ -1071,7 +1076,7 @@ int main(int argc, char **argv)
     try {
         QCoreApplication app(argc, argv);
 
-        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n";
+        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text";
 
         QStringList args = app.arguments();
         QVariantMap options = parseOptions(args);
