@@ -113,4 +113,6 @@ private:
 
 }
 
+Q_DECLARE_METATYPE(CommHistory::ContactGroup*)
+
 #endif

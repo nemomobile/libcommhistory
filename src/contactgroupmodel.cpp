@@ -361,12 +361,9 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
     return var;
 }
 
-QList<GroupObject*> ContactGroupModel::groups(const QModelIndex &index) const
+ContactGroup *ContactGroupModel::at(const QModelIndex &index) const
 {
-    ContactGroup *g = d->items.value(index.row());
-    if (g)
-        return g->groups();
-    return QList<GroupObject*>();
+    return d->items.value(index.row());
 }
 
 bool ContactGroupModel::canFetchMore(const QModelIndex &parent) const

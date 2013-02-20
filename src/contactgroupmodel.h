@@ -99,7 +99,8 @@ public:
      * \param index Model index.
      * \return group
      */
-    QList<GroupObject*> groups(const QModelIndex &index) const;
+    ContactGroup *at(const QModelIndex &index) const;
+    Q_INVOKABLE QObject *at(int row) const { return at(index(row, 0)); }
 
     /* reimp */
     virtual bool canFetchMore(const QModelIndex &parent) const;
