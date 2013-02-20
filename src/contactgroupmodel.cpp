@@ -76,7 +76,7 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
             int index = indexForContacts(group->contactIds());
 
             if (index < 0) {
-                ContactGroup *item = new ContactGroup;
+                ContactGroup *item = new ContactGroup(this);
                 index = items.size();
                 items.append(item);
             }
@@ -124,7 +124,7 @@ void ContactGroupModelPrivate::groupAdded(GroupObject *group)
     int index = indexForContacts(group->contactIds());
 
     if (index < 0) {
-        ContactGroup *item = new ContactGroup;
+        ContactGroup *item = new ContactGroup(this);
         item->addGroup(group);
 
         for (index = 0; index < items.size(); index++) {
