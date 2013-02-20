@@ -228,6 +228,7 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
       d(new ContactGroupModelPrivate(this))
 {
     qRegisterMetaType<QList<CommHistory::GroupObject*> >();
+    qRegisterMetaType<CommHistory::GroupObject*>();
 
     QHash<int,QByteArray> roles;
     roles[ContactGroupRole] = "contactGroup";

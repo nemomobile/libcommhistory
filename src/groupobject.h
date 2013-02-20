@@ -322,5 +322,6 @@ private:
 }
 
 Q_DECLARE_METATYPE(QList<CommHistory::GroupObject*>)
+Q_DECLARE_METATYPE(CommHistory::GroupObject*)
 
 #endif

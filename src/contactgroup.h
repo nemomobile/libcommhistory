@@ -43,8 +43,8 @@ public:
     Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged);
     QList<int> contactIds() const;
 
-    Q_PROPERTY(QList<QString> contactNames READ contactNames NOTIFY contactsChanged);
-    QList<QString> contactNames() const;
+    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged);
+    QStringList contactNames() const;
 
     Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged);
     QDateTime startTime() const;
@@ -85,8 +85,9 @@ public:
     Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
     QDateTime lastModified() const;
  
-    Q_PROPERTY(QList<GroupObject*> groups READ groups NOTIFY groupsChanged);
+    Q_PROPERTY(QObjectList groups READ groupObjects NOTIFY groupsChanged);
     QList<GroupObject*> groups() const;
+    QObjectList groupObjects() const;
 
 public slots:
     void addGroup(GroupObject *group);

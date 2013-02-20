@@ -166,7 +166,7 @@ QList<int> ContactGroup::contactIds() const
     return d->contactIds;
 }
 
-QList<QString> ContactGroup::contactNames() const
+QStringList ContactGroup::contactNames() const
 {
     Q_D(const ContactGroup);
     return d->contactNames;
@@ -254,6 +254,16 @@ QList<GroupObject*> ContactGroup::groups() const
 {
     Q_D(const ContactGroup);
     return d->groups;
+}
+
+QObjectList ContactGroup::groupObjects() const
+{
+    Q_D(const ContactGroup);
+    QObjectList l;
+    l.reserve(d->groups.size());
+    foreach (GroupObject *o, d->groups)
+        l.append(o);
+    return l;
 }
 
 bool ContactGroup::markAsRead() 
