@@ -33,6 +33,7 @@
 #define COMMHISTORY_DECLARATIVE_DECLARATIVEGROUPMANAGER_H
 
 #include "groupmanager.h"
+#include "sharedbackgroundthread.h"
 
 class DeclarativeGroupManager : public CommHistory::GroupManager
 {
@@ -51,6 +52,9 @@ public slots:
 
 signals:
     void backgroundThreadChanged();
+
+private:
+    QSharedPointer<QThread> threadInstance;
 };
 
 #endif

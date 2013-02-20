@@ -30,7 +30,7 @@
  */
 
 #include "declarativegroupmanager.h"
-#include <QThread>
+#include "sharedbackgroundthread.h"
 #include <QTimer>
 
 using namespace CommHistory;
@@ -43,12 +43,6 @@ DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
 
 DeclarativeGroupManager::~DeclarativeGroupManager()
 {
-    QThread *thread = backgroundThread();
-    if (thread->parent() == this) {
-        connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-        thread->setParent(0);
-        thread->quit();
-    }
 }
 
 void DeclarativeGroupManager::reload()
@@ -62,16 +56,11 @@ void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
         return;
 
     if (enabled) {
-        QThread *thread = new QThread(this);
-        thread->start();
-        setBackgroundThread(thread);
+        threadInstance = getSharedBackgroundThread();
+        setBackgroundThread(threadInstance.data());
     } else {
-        QThread *thread = backgroundThread();
         setBackgroundThread(0);
-        if (thread->parent() == this) {
-            connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-            thread->quit();
-        }
+        threadInstance.clear();
     }
 
     emit backgroundThreadChanged();

@@ -29,40 +29,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_CONVERSATIONPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_CONVERSATIONPROXYMODEL_H
+#ifndef SHAREDBACKGROUNDTHREAD_H
+#define SHAREDBACKGROUNDTHREAD_H
 
-#include <QIdentityProxyModel>
-#include <QHash>
-#include "conversationmodel.h"
-#include "sharedbackgroundthread.h"
-#include "contactgroup.h"
+#include <QSharedPointer>
+#include <QThread>
 
-class ConversationProxyModel : public CommHistory::ConversationModel
-{
-    Q_OBJECT
-
-public:
-    ConversationProxyModel(QObject *parent = 0);
-
-    Q_PROPERTY(QObject* contactGroup READ contactGroup WRITE setContactGroup NOTIFY contactGroupChanged)
-    CommHistory::ContactGroup *contactGroup() const { return m_contactGroup; }
-    void setContactGroup(QObject *group);
-
-    Q_PROPERTY(bool useBackgroundThread READ useBackgroundThread WRITE setUseBackgroundThread NOTIFY backgroundThreadChanged)
-    bool useBackgroundThread() { return backgroundThread() != 0; }
-    void setUseBackgroundThread(bool on);
-
-public slots:
-    void reload();
-
-signals:
-    void contactGroupChanged();
-    void backgroundThreadChanged();
-
-private:
-    CommHistory::ContactGroup *m_contactGroup;
-    QSharedPointer<QThread> threadInstance;
-};
+QSharedPointer<QThread> getSharedBackgroundThread();
 
 #endif
+

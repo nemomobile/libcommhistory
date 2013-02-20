@@ -30,12 +30,35 @@
  */
 
 #include "conversationproxymodel.h"
+#include "sharedbackgroundthread.h"
+#include <QTimer>
 
 using namespace CommHistory;
 
 ConversationProxyModel::ConversationProxyModel(QObject *parent)
     : ConversationModel(parent), m_contactGroup(0)
 {
+    // Defaults
+    setQueryMode(EventModel::StreamedAsyncQuery);
+    setFirstChunkSize(25);
+    setChunkSize(50);
+    setTreeMode(false);
+}
+
+void ConversationProxyModel::setUseBackgroundThread(bool enabled)
+{
+    if (enabled == useBackgroundThread())
+        return;
+
+    if (enabled) {
+        threadInstance = getSharedBackgroundThread();
+        setBackgroundThread(threadInstance.data());
+    } else {
+        setBackgroundThread(0);
+        threadInstance.clear();
+    }
+
+    emit backgroundThreadChanged();
 }
 
 void ConversationProxyModel::setContactGroup(QObject *o)
@@ -45,21 +68,22 @@ void ConversationProxyModel::setContactGroup(QObject *o)
         return;
 
     if (m_contactGroup)
-        disconnect(m_contactGroup, SIGNAL(groupsChanged()), this, SLOT(updateContactGroup()));
+        disconnect(m_contactGroup, SIGNAL(groupsChanged()), this, SLOT(reload()));
 
     m_contactGroup = g;
 
-    if (m_contactGroup) {
-        connect(m_contactGroup, SIGNAL(groupsChanged()), SLOT(updateContactGroup()));
-        updateContactGroup();
-    } else
-        getEvents(QList<int>());
+    if (m_contactGroup)
+        connect(m_contactGroup, SIGNAL(groupsChanged()), SLOT(reload()));
+
+    QTimer::singleShot(0, this, SLOT(reload()));
 }
 
-void ConversationProxyModel::updateContactGroup()
+void ConversationProxyModel::reload()
 {
-    if (!m_contactGroup)
+    if (!m_contactGroup) {
+        getEvents(QList<int>());
         return;
+    }
 
     QList<GroupObject*> groups = m_contactGroup->groups();
     QList<int> groupIds;
