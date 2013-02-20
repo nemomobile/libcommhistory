@@ -52,40 +52,50 @@ public:
     GroupManager(QObject *parent = 0);
     virtual ~GroupManager();
 
+    Q_PROPERTY(CommHistory::EventModel::QueryMode queryMode READ queryMode WRITE setQueryMode)
+    EventModel::QueryMode queryMode() const;
     /*!
      * Set query mode. See EventModel::setQueryMode().
      */
     void setQueryMode(EventModel::QueryMode mode);
 
+    Q_PROPERTY(int chunkSize READ chunkSize WRITE setChunkSize)
+    int chunkSize() const;
     /*!
      * Set chunk size (number of groups to fetch) for asynchronous and
      * streamed queries.
      *
      * \param size Chunk size.
      */
-    virtual void setChunkSize(uint size);
+    void setChunkSize(int size);
 
+    Q_PROPERTY(int firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
+    int firstChunkSize() const;
     /*!
      * Set the size of first chunk (number of groups to fetch) for asynchronous
      * and streamed queries.
      *
      * \param size First chunk size.
      */
-    void setFirstChunkSize(uint size);
+    void setFirstChunkSize(int size);
 
+    Q_PROPERTY(int limit READ limit WRITE setLimit)
+    int limit() const;
     /*!
      * Set number of groups to fetch in the next query.
      *
      * \param limit Query limit.
      */
-    virtual void setLimit(int limit);
+    void setLimit(int limit);
 
+    Q_PROPERTY(int offset READ offset WRITE setOffset)
+    int offset() const;
     /*!
      * Set offset for the next query.
      *
      * \param offset Query offset.
      */
-    virtual void setOffset(int offset);
+    void setOffset(int offset);
 
     /*!
      * Convenience method for getting the group data without QVariant casts.
@@ -154,12 +164,8 @@ public:
      */
     bool markAsReadGroup(int id);
 
+    Q_PROPERTY(bool isReady READ isReady NOTIFY modelReady)
     bool isReady() const;
-    EventModel::QueryMode queryMode() const;
-    uint chunkSize() const;
-    uint firstChunkSize() const;
-    int limit() const;
-    int offset() const;
 
     /*!
      * Provide background thread for running database queries and blocking operations.

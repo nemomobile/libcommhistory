@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,45 +29,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtDeclarative>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExtensionPlugin>
-#include "constants.h"
-#include "groupobject.h"
-#include "eventmodel.h"
-#include "contactgroupmodel.h"
-#include "callproxymodel.h"
-#include "groupproxymodel.h"
-#include "conversationproxymodel.h"
-#include "declarativegroupmanager.h"
+#ifndef COMMHISTORY_DECLARATIVE_DECLARATIVEGROUPMANAGER_H
+#define COMMHISTORY_DECLARATIVE_DECLARATIVEGROUPMANAGER_H
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+#include "groupmanager.h"
+
+class DeclarativeGroupManager : public CommHistory::GroupManager
 {
+    Q_OBJECT
+
 public:
-    virtual ~CommHistoryPlugin() { }
+    DeclarativeGroupManager(QObject *parent = 0);
+    virtual ~DeclarativeGroupManager();
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
-    }
+    Q_PROPERTY(bool useBackgroundThread READ useBackgroundThread WRITE setUseBackgroundThread NOTIFY backgroundThreadChanged)
+    bool useBackgroundThread() { return backgroundThread() != 0; }
+    void setUseBackgroundThread(bool on);
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
+public slots:
+    void reload();
 
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
-        qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
-        qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
-    }
+signals:
+    void backgroundThreadChanged();
 };
 
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
+#endif
 

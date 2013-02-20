@@ -547,12 +547,12 @@ void GroupManager::setQueryMode(EventModel::QueryMode mode)
     d->queryMode = mode;
 }
 
-void GroupManager::setChunkSize(uint size)
+void GroupManager::setChunkSize(int size)
 {
     d->chunkSize = size;
 }
 
-void GroupManager::setFirstChunkSize(uint size)
+void GroupManager::setFirstChunkSize(int size)
 {
     d->firstChunkSize = size;
 }
@@ -797,12 +797,12 @@ EventModel::QueryMode GroupManager::queryMode() const
     return d->queryMode;
 }
 
-uint GroupManager::chunkSize() const
+int GroupManager::chunkSize() const
 {
     return d->chunkSize;
 }
 
-uint GroupManager::firstChunkSize() const
+int GroupManager::firstChunkSize() const
 {
     return d->firstChunkSize;
 }

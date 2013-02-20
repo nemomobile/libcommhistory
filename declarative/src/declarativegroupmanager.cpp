@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,45 +29,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtDeclarative>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExtensionPlugin>
-#include "constants.h"
-#include "groupobject.h"
-#include "eventmodel.h"
-#include "contactgroupmodel.h"
-#include "callproxymodel.h"
-#include "groupproxymodel.h"
-#include "conversationproxymodel.h"
 #include "declarativegroupmanager.h"
+#include <QThread>
+#include <QTimer>
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+using namespace CommHistory;
+
+DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
+    : CommHistory::GroupManager(parent)
 {
-public:
-    virtual ~CommHistoryPlugin() { }
+    QTimer::singleShot(0, this, SLOT(reload()));
+}
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
+DeclarativeGroupManager::~DeclarativeGroupManager()
+{
+    QThread *thread = backgroundThread();
+    if (thread->parent() == this) {
+        connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+        thread->setParent(0);
+        thread->quit();
+    }
+}
+
+void DeclarativeGroupManager::reload()
+{
+    getGroups();
+}
+
+void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
+{
+    if (enabled == useBackgroundThread())
+        return;
+
+    if (enabled) {
+        QThread *thread = new QThread(this);
+        thread->start();
+        setBackgroundThread(thread);
+    } else {
+        QThread *thread = backgroundThread();
+        setBackgroundThread(0);
+        if (thread->parent() == this) {
+            connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+            thread->quit();
+        }
     }
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
-        qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
-        qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
-    }
-};
-
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
+    emit backgroundThreadChanged();
+}
 

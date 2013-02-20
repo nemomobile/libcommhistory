@@ -94,8 +94,8 @@ public Q_SLOTS:
 
 public:
     EventModel::QueryMode queryMode;
-    uint chunkSize;
-    uint firstChunkSize;
+    int chunkSize;
+    int firstChunkSize;
     int queryLimit;
     int queryOffset;
     bool isReady;

@@ -13,13 +13,15 @@ SOURCES += src/plugin.cpp \
     src/callproxymodel.cpp \
     src/groupobject.cpp \
     src/groupproxymodel.cpp \
-    src/conversationproxymodel.cpp
+    src/conversationproxymodel.cpp \
+    src/declarativegroupmanager.cpp
 
 HEADERS += src/constants.h \
     src/callproxymodel.h \
     src/groupobject.h \
     src/groupproxymodel.h \
-    src/conversationproxymodel.h
+    src/conversationproxymodel.h \
+    src/declarativegroupmanager.h
 
 # do not edit below here, move this to a shared .pri?
 TEMPLATE = lib

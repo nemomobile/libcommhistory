@@ -26,10 +26,11 @@
 #include <QAbstractItemModel>
 
 #include "libcommhistoryexport.h"
+#include "contactgroup.h"
+#include "groupmanager.h"
 
 namespace CommHistory {
 
-class GroupManager;
 class GroupObject;
 class ContactGroupModelPrivate;
 
@@ -87,8 +88,10 @@ public:
      */
     ~ContactGroupModel();
 
+    Q_PROPERTY(QObject* manager READ manager WRITE setManager NOTIFY managerChanged)
     GroupManager *manager() const;
     void setManager(GroupManager *manager);
+    void setManager(QObject *manager) { setManager(qobject_cast<GroupManager*>(manager)); }
 
     /*!
      * Convenience method for getting the group data without QVariant casts.
@@ -114,6 +117,7 @@ Q_SIGNALS:
      *
      */
     void modelReady(bool successful);
+    void managerChanged();
 
 private:
     friend class ContactGroupModelPrivate;

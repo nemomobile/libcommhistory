@@ -248,11 +248,6 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
     roles[BaseRole + StartTime] = "startTime";
     roles[BaseRole + Groups] = "groups";
     setRoleNames(roles);
-
-    // XXX
-    GroupManager *m = new GroupManager(this);
-    m->getGroups();
-    setManager(m);
 }
 
 ContactGroupModel::~ContactGroupModel()
@@ -272,6 +267,7 @@ void ContactGroupModel::setManager(GroupManager *m)
         return;
 
     d->setManager(m);
+    emit managerChanged();
 }
 
 int ContactGroupModel::rowCount(const QModelIndex &parent) const
