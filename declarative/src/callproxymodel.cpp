@@ -8,7 +8,6 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     m_componentComplete(false)
 {
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
-    m_source->setTreeMode(true);
 
     this->setSourceModel(m_source);
     this->setDynamicSortFilter(true);
