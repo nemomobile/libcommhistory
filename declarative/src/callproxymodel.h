@@ -31,10 +31,11 @@
 #define CALLPROXYMODEL_H
 
 #include <QSortFilterProxyModel>
+#include <QDeclarativeParserStatus>
 
 #include "callmodel.h"
 
-class CallProxyModel : public QSortFilterProxyModel
+class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserStatus
 {
     Q_OBJECT
 
@@ -43,7 +44,10 @@ class CallProxyModel : public QSortFilterProxyModel
     Q_ENUMS(EventDirection)
     Q_ENUMS(EventStatus)
     Q_ENUMS(EventReadStatus)
+    Q_ENUMS(GroupBy)
 
+    Q_PROPERTY(GroupBy groupBy READ groupBy WRITE setGroupBy NOTIFY groupByChanged)
+    Q_INTERFACES(QDeclarativeParserStatus)
 public:
     enum EventRole {
         EventIdRole = CommHistory::EventModel::BaseRole,
@@ -106,7 +110,20 @@ public:
         ReadStatusDeleted
     };
 
+    enum GroupBy
+    {
+        GroupByNone = CommHistory::CallModel::SortByTime,
+        GroupByContact = CommHistory::CallModel::SortByContact,
+        GroupByContactAndType = CommHistory::CallModel::SortByContactAndType
+    };
+
     explicit CallProxyModel(QObject *parent = 0);
+
+    void classBegin();
+    void componentComplete();
+
+    GroupBy groupBy() const;
+    void setGroupBy(GroupBy grouping);
 
 public Q_SLOTS:
     void getEvents();
@@ -117,8 +134,13 @@ public Q_SLOTS:
 
     bool markAllRead();
 
+Q_SIGNALS:
+    void groupByChanged();
+
 private:
     CommHistory::CallModel *m_source;
+    GroupBy m_grouping;
+    bool m_componentComplete;
 };
 
 #endif // CALLPROXYMODEL_H

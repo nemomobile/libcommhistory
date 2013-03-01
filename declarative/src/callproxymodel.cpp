@@ -3,7 +3,9 @@
 
 CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
-    m_source(new CommHistory::CallModel(CommHistory::CallModel::SortByTime, this))
+    m_source(new CommHistory::CallModel(CommHistory::CallModel::SortByTime, this)),
+    m_grouping(GroupByNone),
+    m_componentComplete(false)
 {
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
 
@@ -11,11 +13,34 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     this->setDynamicSortFilter(true);
 
     this->setRoleNames(m_source->roleNames());
+}
 
-    if(!m_source->getEvents())
-    {
+void CallProxyModel::classBegin()
+{
+}
+
+void CallProxyModel::componentComplete()
+{
+    m_componentComplete = true;
+
+    if(!m_source->getEvents()) {
         qWarning() << "getEvents() failed on CommHistory::CallModel";
         return;
+    }
+}
+
+CallProxyModel::GroupBy CallProxyModel::groupBy() const
+{
+    return m_grouping;
+}
+
+void CallProxyModel::setGroupBy(GroupBy grouping)
+{
+    if (m_grouping != grouping) {
+        m_grouping = grouping;
+        m_source->setFilter(CommHistory::CallModel::Sorting(grouping));
+
+        emit groupByChanged();
     }
 }
 
