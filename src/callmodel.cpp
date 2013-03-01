@@ -147,7 +147,8 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
 
     qDebug() << Q_FUNC_INFO << start << end << events.count();
 
-    if (sortBy != CallModel::SortByContact || updatedGroups.isEmpty())
+    if ((sortBy != CallModel::SortByContact && sortBy != CallModel::SortByContactAndType)
+            || updatedGroups.isEmpty())
         return EventModelPrivate::eventsReceivedSlot(start, end, events);
 
     // reimp from EventModelPrivate, for video calls
@@ -253,7 +254,7 @@ bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
     {
         return true;
     }
-    else if (sortBy == CallModel::SortByTime
+    else if ((sortBy == CallModel::SortByTime || sortBy == CallModel::SortByContactAndType)
              && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
                  && e1.localUid() == e2.localUid()
                  && e1.direction() == e2.direction()
@@ -272,6 +273,7 @@ int CallModelPrivate::calculateEventCount( EventTreeItem *item )
     switch ( sortBy )
     {
         case CallModel::SortByContact :
+        case CallModel::SortByContactAndType:
         {
             // set event count for missed calls only,
             // leave the default value for non-missed ones
@@ -370,6 +372,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
              * missed calls have valid even count. (But -1 will be returned.)
              */
             case CallModel::SortByContact :
+            case CallModel::SortByContactAndType:
             {
                 QList<EventTreeItem *> topLevelItems;
                 // get the first event and save it as top level item
@@ -378,17 +381,16 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 if (!event.contacts().isEmpty())
                     contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
-                QList<CommHistory::Event> newEvents;
                 for (int i = 1; i < events.count(); i++) {
                     Event event = events.at(i);
                     if (!event.contacts().isEmpty())
                         contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
                     bool found = false;
-                    for (int i = 0; i < eventRootItem->childCount() && !found; i++) {
+                    for (int i = 0; i < topLevelItems.count() && !found; ++i) {
                         // ignore matching events because the already existing
                         // entry has to be more recent
-                        if (belongToSameGroup(eventRootItem->child(i)->event(), event))
+                        if (belongToSameGroup(topLevelItems.at(i)->event(), event))
                             found = true;
                     }
 
@@ -518,6 +520,7 @@ void CallModelPrivate::addToModel( Event &event )
     switch ( sortBy )
     {
         case CallModel::SortByContact :
+        case CallModel::SortByContactAndType:
         {
             // find match, update count if needed, move to top
             int matchingRow = -1;
@@ -794,18 +797,39 @@ void CallModelPrivate::deleteFromModel( int id )
     }
 }
 
-void CallModelPrivate::deleteCallGroup( const Event &event )
+void CallModelPrivate::deleteCallGroup( const Event &event, bool typed )
 {
     qDebug() << Q_FUNC_INFO << event.id();
 
     // the calls could be deleted simply with "delete ?call where ?call
     // belongs to ?channel", but then we wouldn't be able to send
     // separate eventDeleted signals :(
+    QString queryString;
 
-    QSparqlQuery query(
-        QLatin1String("SELECT ?call WHERE { "
-                      "?call nmo:communicationChannel ?:channel . "
-                      "}"));
+    if (!typed) {
+        queryString = QLatin1String("SELECT ?call WHERE { "
+                                    "?call nmo:communicationChannel ?:channel . "
+                                    "}");
+    } else if (event.direction() == Event::Outbound) {
+        queryString = QLatin1String("SELECT ?call WHERE { "
+                                    "?call nmo:communicationChannel ?:channel . "
+                                    "?call nmo:isSent true . "
+                                    "}");
+    } else if (event.isMissedCall()) {
+        queryString = QLatin1String("SELECT ?call WHERE { "
+                                    "?call nmo:communicationChannel ?:channel . "
+                                    "?call nmo:isSent false . "
+                                    "?call nmo:isAnswered false . "
+                                    "}");
+    } else {
+        queryString = QLatin1String("SELECT ?call WHERE { "
+                                    "?call nmo:communicationChannel ?:channel . "
+                                    "?call nmo:isSent false . "
+                                    "?call nmo:isAnswered true . "
+                                    "}");
+    }
+
+    QSparqlQuery query(queryString);
 
     QUrl channelUri(TrackerIOPrivate::makeCallGroupURI(event));
 
@@ -1106,9 +1130,10 @@ bool CallModel::deleteEvent( int id )
     switch ( d->sortBy )
     {
         case SortByContact :
+        case SortByContactAndType:
         {
             EventTreeItem *item = d->eventRootItem->child(index.row());
-            d->deleteCallGroup(item->event());
+            d->deleteCallGroup(item->event(), d->sortBy == SortByContactAndType);
             return true;
         }
 
