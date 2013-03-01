@@ -70,7 +70,7 @@ public:
 
     void deleteFromModel( int id );
 
-    void deleteCallGroup( const Event &event );
+    void deleteCallGroup( const Event &event, bool typed );
 
     /*!
      * Find real contact based on phone number or IM id.
