@@ -641,18 +641,16 @@ bool GroupManager::addGroups(QList<Group> &groups)
     return true;
 }
 
-#if 0
 bool GroupManager::modifyGroup(Group &group)
 {
     qDebug() << Q_FUNC_INFO << group.id();
 
-    d->tracker()->transaction();
-
     if (group.id() == -1) {
         qWarning() << __FUNCTION__ << "Group id not set";
-        d->tracker()->rollback();
         return false;
     }
+
+    d->tracker()->transaction();
 
     if (group.lastModified() == QDateTime::fromTime_t(0)) {
          group.setLastModified(QDateTime::currentDateTime());
@@ -666,13 +664,12 @@ bool GroupManager::modifyGroup(Group &group)
     CommittingTransaction *t = d->commitTransaction(QList<int>() << group.id());
     if (t)
         t->addSignal(false,
-                     d->emitter,
+                     d->emitter.data(),
                      "groupsUpdatedFull",
                      Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
 
     return t != 0;
 }
-#endif
 
 bool GroupManager::getGroups(const QString &localUid,
                            const QString &remoteUid)
@@ -726,15 +723,13 @@ bool GroupManager::markAsReadGroup(int id)
     return true;
 }
 
-#if 0
 void GroupManager::updateGroups(QList<Group> &groups)
 {
     // no need to update d->groups
     // cause they will be updated on the emitted signal as well
     if (!groups.isEmpty())
-        emit d->groupsUpdatedFull(groups);
+        emit d->emitter->groupsUpdatedFull(groups);
 }
-#endif
 
 bool GroupManager::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
 {
@@ -748,7 +743,7 @@ bool GroupManager::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
     CommittingTransaction *t = d->commitTransaction(groupIds);
 
     if (t)
-        t->addSignal(false, d, "groupsDeleted", Q_ARG(QList<int>, groupIds));
+        t->addSignal(false, d->emitter.data(), "groupsDeleted", Q_ARG(QList<int>, groupIds));
 
     return t != 0;
 }

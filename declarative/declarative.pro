@@ -11,7 +11,6 @@ INCLUDEPATH += ../src
 
 SOURCES += src/plugin.cpp \
     src/callproxymodel.cpp \
-    src/groupobject.cpp \
     src/groupproxymodel.cpp \
     src/conversationproxymodel.cpp \
     src/declarativegroupmanager.cpp \
@@ -19,7 +18,6 @@ SOURCES += src/plugin.cpp \
 
 HEADERS += src/constants.h \
     src/callproxymodel.h \
-    src/groupobject.h \
     src/groupproxymodel.h \
     src/conversationproxymodel.h \
     src/declarativegroupmanager.h \

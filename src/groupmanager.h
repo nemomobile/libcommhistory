@@ -21,8 +21,8 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_GROUPMODEL_H
-#define COMMHISTORY_GROUPMODEL_H
+#ifndef COMMHISTORY_GROUPMANAGER_H
+#define COMMHISTORY_GROUPMANAGER_H
 
 #include "groupobject.h"
 #include "libcommhistoryexport.h"
@@ -126,6 +126,15 @@ public:
     bool addGroups(QList<Group> &groups);
 
     /*!
+     * Modifies a group. This will update a group with a matching id in
+     * the database.
+     * group.lastModified() is automatically updated.
+     * \param group Group to be modified.
+     * \return true if successful, otherwise false
+     */
+    bool modifyGroup(Group &group);
+
+    /*!
      * Reset model to groups with the specified accounts and contacts
      * (if any). Groups with no messages are not included in the
      * initial results, but empty groups created elsewhere will appear
@@ -163,6 +172,13 @@ public:
      * \return true if successful, otherwise false
      */
     bool markAsReadGroup(int id);
+
+    /*!
+     * Update groups data
+     *
+     * \param groups
+     */
+    void updateGroups(QList<Group> &groups);
 
     Q_PROPERTY(bool isReady READ isReady NOTIFY modelReady)
     bool isReady() const;

@@ -27,12 +27,14 @@
 
 #include "eventmodel.h"
 #include "group.h"
+#include "groupobject.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
 class GroupModelPrivate;
 class TrackerIO;
+class GroupManager;
 
 /*!
  * \class GroupModel
@@ -77,6 +79,7 @@ public:
     enum Role {
         GroupRole = Qt::UserRole,
         ContactIdsRole,
+        GroupObjectRole,
         BaseRole = Qt::UserRole + 1000
     };
 
@@ -134,6 +137,8 @@ public:
      * \return group
      */
     Group group(const QModelIndex &index) const;
+
+    GroupObject *groupObject(const QModelIndex &index) const;
 
     /*!
      * Add a new group. If successful, group.id() is updated.

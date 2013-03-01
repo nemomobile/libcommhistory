@@ -23,11 +23,14 @@
 #include <QtDBus/QtDBus>
 #include <QDebug>
 #include <QStringList>
+#include <QObjectList>
 
 #include "contactgroupmodel.h"
 #include "contactgroupmodel_p.h"
 #include "groupmanager.h"
 #include "contactgroup.h"
+
+Q_DECLARE_METATYPE(QObjectList)
 
 using namespace CommHistory;
 
@@ -313,7 +316,7 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue<QStringList>(g->contactNames());
             break;
         case Groups:
-            var = QVariant::fromValue(g->groups());
+            var = QVariant::fromValue<QObjectList>(g->groupObjects());
             break;
         case EndTime:
             var = g->endTime();
