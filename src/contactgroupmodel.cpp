@@ -63,6 +63,7 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
 
     if (manager) {
         disconnect(manager, 0, this, 0);
+        disconnect(manager, 0, q, 0);
         qDeleteAll(items);
         items.clear();
     }
@@ -73,6 +74,7 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
         connect(manager, SIGNAL(groupAdded(GroupObject*)), SLOT(groupAdded(GroupObject*)));
         connect(manager, SIGNAL(groupUpdated(GroupObject*)), SLOT(groupUpdated(GroupObject*)));
         connect(manager, SIGNAL(groupDeleted(GroupObject*)), SLOT(groupDeleted(GroupObject*)));
+        connect(manager, SIGNAL(modelReady(bool)), q, SIGNAL(modelReady(bool)));
 
         // Create data without sorting
         foreach (GroupObject *group, manager->groups()) {
@@ -91,6 +93,9 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
     }
 
     q->endResetModel();
+
+    if (manager->isReady())
+        emit q->modelReady(true);
 }
 
 int ContactGroupModelPrivate::indexForContacts(QList<int> contacts)
