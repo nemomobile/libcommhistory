@@ -95,6 +95,9 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
 
 int ContactGroupModelPrivate::indexForContacts(QList<int> contacts)
 {
+    if (contacts.isEmpty())
+        return -1;
+
     std::sort(contacts.begin(), contacts.end());
 
     for (int i = 0; i < items.size(); i++) {
@@ -183,7 +186,14 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
 void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 {
     int oldIndex = indexForObject(group);
-    int newIndex = indexForContacts(group->contactIds());
+    int newIndex;
+    
+    // If the group has any contact information, and there is more than one group in this contactgroup,
+    // check for a new contactgroup. Otherwise, the current one is used.
+    if (!group->contactIds().isEmpty() && (oldIndex >= 0 && items[oldIndex]->groups().size() > 1))
+        newIndex = indexForContacts(group->contactIds());
+    else
+        newIndex = oldIndex;
 
     qDebug() << Q_FUNC_INFO << group->id() << group->contactIds() << oldIndex << newIndex;
 
