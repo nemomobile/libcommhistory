@@ -106,58 +106,104 @@ void ContactGroupPrivate::update()
      */
 
     QMap<int,QString> contacts;
-    
-    startTime = endTime = lastModified = QDateTime();
-    totalMessages = unreadMessages = sentMessages = 0;
-    lastEventGroup = 0;
+ 
+    QDateTime uStartTime, uEndTime, uLastModified;
+    int uTotalMessages = 0, uUnreadMessages = 0, uSentMessages = 0;
+    GroupObject *uLastEventGroup = 0;
 
     foreach (GroupObject *group, groups) {
         foreach (const Event::Contact &contact, group->contacts())
             contacts[contact.first] = contact.second;
 
-        if (!startTime.isValid() || group->startTime() < startTime)
-            startTime = group->startTime();
+        if (!uStartTime.isValid() || group->startTime() < uStartTime)
+            uStartTime = group->startTime();
 
-        if (!endTime.isValid() || group->endTime() > endTime)
-            endTime = group->endTime();
+        if (!uEndTime.isValid() || group->endTime() > uEndTime)
+            uEndTime = group->endTime();
 
-        if (group->lastEventId() >= 0 && (!lastEventGroup || group->endTime() > lastEventGroup->endTime()))
-            lastEventGroup = group;
+        if (group->lastEventId() >= 0 && (!uLastEventGroup || group->endTime() > uLastEventGroup->endTime()))
+            uLastEventGroup = group;
 
-        if (!lastModified.isValid() || group->lastModified() > lastModified)
-            lastModified = group->lastModified();
+        if (!uLastModified.isValid() || group->lastModified() > uLastModified)
+            uLastModified = group->lastModified();
 
-        totalMessages += group->totalMessages();
-        unreadMessages += group->unreadMessages();
-        sentMessages += group->sentMessages();
+        uTotalMessages += group->totalMessages();
+        uUnreadMessages += group->unreadMessages();
+        uSentMessages += group->sentMessages();
     }
 
-    contactIds = contacts.keys();
-    contactNames = contacts.values();
+    QList<int> uContactIds = contacts.keys();
+    QList<QString> uContactNames = contacts.values();
 
-    if (lastEventGroup) {
+    if (uContactIds != contactIds || uContactNames != contactNames) {
+        contactIds = uContactIds;
+        contactNames = uContactNames;
+        emit q->contactsChanged();
+    }
+
+    if (uStartTime != startTime) {
+        startTime = uStartTime;
+        emit q->startTimeChanged();
+    }
+
+    if (uEndTime != endTime) {
+        endTime = uEndTime;
+        emit q->endTimeChanged();
+    }
+
+    if (uLastModified != lastModified) {
+        lastModified = uLastModified;
+        emit q->lastModifiedChanged();
+    }
+
+    if (uTotalMessages != totalMessages) {
+        totalMessages = uTotalMessages;
+        emit q->totalMessagesChanged();
+    }
+
+    if (uUnreadMessages != unreadMessages) {
+        unreadMessages = uUnreadMessages;
+        emit q->unreadMessagesChanged();
+    }
+
+    if (uSentMessages != sentMessages) {
+        sentMessages = uSentMessages;
+        emit q->sentMessagesChanged();
+    }
+
+    if (uLastEventGroup) {
+        bool changed = false;
+        if (uLastEventGroup != lastEventGroup) {
+            lastEventGroup = uLastEventGroup;
+            changed = true;
+        }
+
+        if (lastEventId != lastEventGroup->lastEventId() ||
+                lastMessageText != lastEventGroup->lastMessageText() ||
+                lastVCardFileName != lastEventGroup->lastVCardFileName() ||
+                lastVCardLabel != lastEventGroup->lastVCardLabel() ||
+                lastEventType != lastEventGroup->lastEventType() ||
+                lastEventStatus != lastEventGroup->lastEventStatus())
+            changed = true;
+
         lastEventId = lastEventGroup->lastEventId();
         lastMessageText = lastEventGroup->lastMessageText();
         lastVCardFileName = lastEventGroup->lastVCardFileName();
         lastVCardLabel = lastEventGroup->lastVCardLabel();
         lastEventType = static_cast<int>(lastEventGroup->lastEventType());
         lastEventStatus = static_cast<int>(lastEventGroup->lastEventStatus());
-    } else {
+
+        if (changed)
+            emit q->lastEventChanged();
+    } else if (lastEventId >= 0) {
         lastEventId = -1;
         lastMessageText.clear();
         lastVCardFileName.clear();
         lastVCardLabel.clear();
         lastEventType = static_cast<int>(Event::UnknownType);
         lastEventStatus = static_cast<int>(Event::UnknownStatus);
+        emit q->lastEventChanged();
     }
-
-    emit q->contactsChanged();
-    emit q->startTimeChanged();
-    emit q->endTimeChanged();
-    emit q->totalMessagesChanged();
-    emit q->unreadMessagesChanged();
-    emit q->sentMessagesChanged();
-    emit q->lastEventChanged();
 }
 
 QList<int> ContactGroup::contactIds() const
