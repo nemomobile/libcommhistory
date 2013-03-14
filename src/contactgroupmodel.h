@@ -102,6 +102,9 @@ public:
     ContactGroup *at(const QModelIndex &index) const;
     Q_INVOKABLE QObject *at(int row) const { return at(index(row, 0)); }
 
+    Q_PROPERTY(QObjectList contactGroups READ contactGroups)
+    QObjectList contactGroups() const;
+
     /* reimp */
     virtual bool canFetchMore(const QModelIndex &parent) const;
     virtual void fetchMore(const QModelIndex &parent);
@@ -119,6 +122,10 @@ Q_SIGNALS:
      */
     void modelReady(bool successful);
     void managerChanged();
+
+    void contactGroupCreated(CommHistory::ContactGroup *group);
+    void contactGroupChanged(CommHistory::ContactGroup *group);
+    void contactGroupRemoved(CommHistory::ContactGroup *group);
 
 private:
     friend class ContactGroupModelPrivate;

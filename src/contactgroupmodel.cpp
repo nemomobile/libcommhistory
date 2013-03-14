@@ -64,6 +64,9 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
     if (manager) {
         disconnect(manager, 0, this, 0);
         disconnect(manager, 0, q, 0);
+
+        foreach (ContactGroup *g, items)
+            emit q->contactGroupRemoved(g);
         qDeleteAll(items);
         items.clear();
     }
@@ -87,6 +90,7 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
             }
 
             items[index]->addGroup(group);
+            emit q->contactGroupCreated(items[index]);
         }
 
         qSort(items.begin(), items.end(), contactGroupSort);
@@ -146,6 +150,8 @@ void ContactGroupModelPrivate::groupAdded(GroupObject *group)
         q->beginInsertRows(QModelIndex(), index, index);
         items.insert(index, item);
         q->endInsertRows();
+
+        emit q->contactGroupCreated(item);
         return;
     }
 
@@ -186,6 +192,8 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
     qDebug() << Q_FUNC_INFO << "changed" << newIndex;
     emit q->dataChanged(q->index(newIndex, 0, QModelIndex()),
                         q->index(newIndex, ContactGroupModel::NumberOfColumns-1, QModelIndex()));
+
+    emit q->contactGroupChanged(items[newIndex]);
 }
 
 void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
@@ -234,6 +242,8 @@ void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
         items.removeAt(index);
         emit q->endRemoveRows();
 
+        emit q->contactGroupRemoved(item);
+
         delete item;
         return;
     }
@@ -247,6 +257,7 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
 {
     qRegisterMetaType<QList<CommHistory::GroupObject*> >();
     qRegisterMetaType<CommHistory::GroupObject*>();
+    qRegisterMetaType<CommHistory::ContactGroup*>();
 
     QHash<int,QByteArray> roles;
     roles[ContactGroupRole] = "contactGroup";
@@ -383,6 +394,17 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
 ContactGroup *ContactGroupModel::at(const QModelIndex &index) const
 {
     return d->items.value(index.row());
+}
+
+QObjectList ContactGroupModel::contactGroups() const
+{
+    QObjectList re;
+    re.reserve(d->items.size());
+
+    foreach (ContactGroup *g, d->items)
+        re.append(g);
+
+    return re;
 }
 
 bool ContactGroupModel::canFetchMore(const QModelIndex &parent) const
