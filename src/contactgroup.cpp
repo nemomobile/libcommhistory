@@ -23,6 +23,7 @@
 #include "contactgroup.h"
 #include "trackerio.h"
 #include "updatesemitter.h"
+#include "commonutils.h"
 
 namespace CommHistory {
 
@@ -342,5 +343,20 @@ bool ContactGroup::markAsRead()
 
     emit UpdatesEmitter::instance()->groupsUpdatedFull(updated);
     return true;
+}
+
+GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)
+{
+    Q_D(ContactGroup);
+
+    foreach (GroupObject *g, d->groups) {
+        if (g->localUid() == localUid && g->remoteUids().size() == 1
+            && CommHistory::remoteAddressMatch(g->remoteUids().at(0), remoteUid))
+        {
+            return g;
+        }
+    }
+
+    return 0;
 }
 

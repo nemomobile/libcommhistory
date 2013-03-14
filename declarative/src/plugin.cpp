@@ -62,9 +62,11 @@ public:
         qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
         qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
         qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterUncreatableType<CommHistory::GroupObject>(uri, 1, 0, "Group", "Uncreatable data type");
         qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
         qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
+
+        qmlRegisterType<CommHistory::GroupObject>();
+        qmlRegisterType<CommHistory::ContactGroup>();
     }
 };
 
