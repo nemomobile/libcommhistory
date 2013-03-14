@@ -14,19 +14,23 @@ SOURCES += src/plugin.cpp \
     src/groupproxymodel.cpp \
     src/conversationproxymodel.cpp \
     src/declarativegroupmanager.cpp \
-    src/sharedbackgroundthread.cpp
+    src/sharedbackgroundthread.cpp \
+    src/contactaddresslookup.cpp
 
 HEADERS += src/constants.h \
     src/callproxymodel.h \
     src/groupproxymodel.h \
     src/conversationproxymodel.h \
     src/declarativegroupmanager.h \
-    src/sharedbackgroundthread.h
+    src/sharedbackgroundthread.h \
+    src/contactaddresslookup.h
 
-# do not edit below here, move this to a shared .pri?
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols
 QT += declarative
+
+CONFIG += mobility
+MOBILITY += contacts
 
 target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
 INSTALLS += target

@@ -40,6 +40,7 @@
 #include "groupproxymodel.h"
 #include "conversationproxymodel.h"
 #include "declarativegroupmanager.h"
+#include "contactaddresslookup.h"
 
 class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
 {
@@ -64,6 +65,7 @@ public:
         qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
         qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
         qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
+        qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
 
         qmlRegisterType<CommHistory::GroupObject>();
         qmlRegisterType<CommHistory::ContactGroup>();
