@@ -51,19 +51,8 @@ void GroupProxyModel::setSourceModel(QAbstractItemModel *m)
         m = 0;
     }
 
-    if (model)
-        disconnect(model, 0, this, 0);
-
     model = g;
     QIdentityProxyModel::setSourceModel(model);
-
-    connect(model, SIGNAL(dataChanged(QModelIndex,QModelIndex)),
-            SLOT(sourceDataChanged(QModelIndex,QModelIndex)));
-    connect(model, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)),
-            SLOT(sourceRowsMoved()));
-    connect(model, SIGNAL(layoutChanged()), SLOT(sourceRowsMoved()));
-    connect(model, SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
-            SLOT(sourceRowsRemoved(QModelIndex,int,int)));
 
     QHash<int,QByteArray> roles = model->roleNames();
     roles[WeekdaySectionRole] = "weekdaySection";
@@ -101,17 +90,7 @@ GroupObject *GroupProxyModel::group(int row)
         return 0;
     }
 
-    Group g = model->group(mapToSource(index(row, 0)));
-    if (!g.isValid())
-        return 0;
-
-    GroupObject *re = groupObjects.value(g.id());
-    if (!re) {
-        re = new GroupObject(g, this);
-        groupObjects.insert(g.id(), re);
-    }
-
-    return re;
+    return model->groupObject(mapToSource(index(row, 0)));
 }
 
 GroupObject *GroupProxyModel::groupById(int id)
@@ -121,56 +100,14 @@ GroupObject *GroupProxyModel::groupById(int id)
         return 0;
     }
 
-    GroupObject *re = groupObjects.value(id);
-    if (re)
-        return re;
-
     for (int r = 0; r < model->rowCount(); r++) {
-        Group g = model->group(model->index(r, 0));
-        if (!g.isValid() || g.id() != id)
+        GroupObject *g = model->groupObject(model->index(r, 0));
+        if (!g || g->id() != id)
             continue;
 
-        re = new GroupObject(g, this);
-        groupObjects.insert(g.id(), re);
-        break;
+        return g;
     }
 
-    return re;
-}
-
-void GroupProxyModel::sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight)
-{
-    Q_ASSERT(topLeft.parent() == bottomRight.parent());
-
-    for (int r = topLeft.row(); r <= bottomRight.row(); r++) {
-        const Group &g = model->group(model->index(r, 0));
-
-        GroupObject *obj = groupObjects.value(g.id());
-        if (!obj)
-            continue;
-
-        obj->updateGroup(g);
-    }
-}
-
-void GroupProxyModel::sourceRowsMoved()
-{
-    sourceDataChanged(model->index(0, 0), model->index(model->rowCount()-1, model->columnCount()-1));
-}
-
-void GroupProxyModel::sourceRowsRemoved(const QModelIndex &parent, int start, int end)
-{
-    Q_UNUSED(parent);
-
-    for (int r = start; r <= end; r++) {
-        const Group &g = model->group(model->index(r, 0));
-        GroupObject *obj = groupObjects.value(g.id());
-        if (!obj)
-            continue;
-
-        obj->removeGroup();
-        obj->deleteLater();
-        groupObjects.remove(g.id());
-    }
+    return 0;
 }
 

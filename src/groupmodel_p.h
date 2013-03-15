@@ -29,15 +29,9 @@
 
 #include "groupmodel.h"
 #include "eventmodel.h"
-#include "group.h"
+#include "groupmanager.h"
 
 namespace CommHistory {
-
-class QueryRunner;
-class TrackerIO;
-class ContactListener;
-class CommittingTransaction;
-class UpdatesEmitter;
 
 class GroupModelPrivate: public QObject
 {
@@ -56,77 +50,16 @@ public:
     GroupModelPrivate(GroupModel *parent = 0);
     ~GroupModelPrivate();
 
-    QString newObjectPath();
+    void setManager(GroupManager *manager);
+    void ensureManager();
 
-    void addToModel(Group &group);
-    void modifyInModel(Group &group, bool query = true);
+    GroupManager *manager;
+    QList<GroupObject*> groups;
 
-    bool canFetchMore() const;
-
-    void executeQuery(const QString query);
-
-    CommittingTransaction* commitTransaction(QList<int> groupIds);
-
-    void resetQueryRunner();
-    void deleteQueryRunner();
-
-    TrackerIO* tracker();
-    void startContactListening();
-
-public Q_SLOTS:
-    void eventsAddedSlot(const QList<CommHistory::Event> &events);
-
-    void groupsAddedSlot(const QList<CommHistory::Group> &addedGroups);
-
-    void groupsUpdatedSlot(const QList<int> &groupIds);
-    void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
-
-    void groupsDeletedSlot(const QList<int> &groupIds);
-
-    void groupsReceivedSlot(int start, int end, QList<CommHistory::Group> result);
-
-    void modelUpdatedSlot(bool successful);
-
-    void canFetchMoreChangedSlot(bool canFetch);
-
-    void slotContactUpdated(quint32 localId,
-                            const QString &contactName,
-                            const QList< QPair<QString,QString> > &contactAddresses);
-
-    void slotContactRemoved(quint32 localId);
-
-    void slotContactSettingsChanged(const QHash<QString, QVariant> &changedSettings);
-
-Q_SIGNALS:
-    void groupsAdded(const QList<CommHistory::Group> &groups);
-
-    void groupsUpdated(const QList<int> &groupIds);
-    void groupsUpdatedFull(const QList<CommHistory::Group> &groups);
-
-    void groupsDeleted(const QList<int> &groupIds);
-
-public:
-    EventModel::QueryMode queryMode;
-    uint chunkSize;
-    uint firstChunkSize;
-    int queryLimit;
-    int queryOffset;
-    bool isReady;
-    QList<Group> groups;
-
-    QString filterLocalUid;
-    QString filterRemoteUid;
-
-    QueryRunner *queryRunner;
-    bool threadCanFetchMore;
-
-    QThread *bgThread;
-
-    TrackerIO *m_pTracker;
-
-    QSharedPointer<ContactListener> contactListener;
-    bool contactChangesEnabled;
-    QSharedPointer<UpdatesEmitter> emitter;
+public slots:
+    void groupAdded(GroupObject *group);
+    void groupUpdated(GroupObject *group);
+    void groupDeleted(GroupObject *group);
 };
 
 }

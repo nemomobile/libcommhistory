@@ -35,7 +35,13 @@ HEADERS += trackerio.h \
            eventsquery.h \
            preparedqueries.h \
            updatesemitter.h \
-           constants.h
+           constants.h \
+           groupobject.h \
+           groupmanager.h \
+           groupmanager_p.h \
+           contactgroupmodel.h \
+           contactgroupmodel_p.h \
+           contactgroup.h
 
 SOURCES += trackerio.cpp \
            commonutils.cpp \
@@ -64,4 +70,8 @@ SOURCES += trackerio.cpp \
            committingtransaction.cpp \
            eventsquery.cpp \
            updatequery.cpp \
-           updatesemitter.cpp
+           updatesemitter.cpp \
+           groupmanager.cpp \
+           groupobject.cpp \
+           contactgroupmodel.cpp \
+           contactgroup.cpp

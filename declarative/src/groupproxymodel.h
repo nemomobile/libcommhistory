@@ -34,10 +34,9 @@
 #include <QIdentityProxyModel>
 #include <QHash>
 
-class GroupObject;
-
 namespace CommHistory {
     class GroupModel;
+    class GroupObject;
 }
 
 class GroupProxyModel : public QIdentityProxyModel
@@ -60,22 +59,16 @@ public:
 
     CommHistory::GroupModel *groupModel() const { return model; }
 
-    Q_INVOKABLE GroupObject *group(int row);
-    Q_INVOKABLE GroupObject *groupById(int id);
+    Q_INVOKABLE CommHistory::GroupObject *group(int row);
+    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
 
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
 
 signals:
     void sourceModelChanged();
 
-private slots:
-    void sourceDataChanged(const QModelIndex &topLeft, const QModelIndex &bottomRight);
-    void sourceRowsRemoved(const QModelIndex &parent, int start, int end);
-    void sourceRowsMoved();
-
 private:
     CommHistory::GroupModel *model;
-    QHash<int,GroupObject*> groupObjects;
 };
 
 #endif

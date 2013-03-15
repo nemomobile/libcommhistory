@@ -30,6 +30,8 @@
 #include <QTimer>
 #include <QPointer>
 
+#include "libcommhistoryexport.h"
+
 // contacts
 #include <qcontact.h>
 #include <qtcontacts-tracker/settings.h>
@@ -43,7 +45,7 @@ QTM_END_NAMESPACE
 
 namespace CommHistory {
 
-class ContactListener : public QObject
+class LIBCOMMHISTORY_EXPORT ContactListener : public QObject
 {
     Q_OBJECT
 
