@@ -35,15 +35,14 @@ class GroupObject;
 class ContactGroupModelPrivate;
 
 /*!
- * \class GroupModel
+ * \class ContactGroupModel
  *
- * Model for event groups (conversations) in the commhistory database.
- * Contains rows of Group data. Call getGroups() to fill the model.
- * Dig into a conversation by either calling getEvents(), or
- * creating a new EventModel and filtering it by group.
- * Group data is automatically updated when new events arrive.
- * Use the Qt rowsInserted(), dataChanged() etc. signals to
- * monitor changes.
+ * This is experimental API, subject to change without notice or compatibility.
+ *
+ * ContactGroupModel builds on GroupManager by coalescing groups (conversations)
+ * related to the same contact into a ContactGroup, and offering a sorted model
+ * of those.
+ *
  */
 class LIBCOMMHISTORY_EXPORT ContactGroupModel : public QAbstractTableModel
 {
@@ -89,13 +88,18 @@ public:
      */
     ~ContactGroupModel();
 
+    /*!
+     * Group manager used for the list of groups. This may be shared with other models.
+     * User is responsible for creating the manager, and querying groups with the desired
+     * parameters.
+     */
     Q_PROPERTY(QObject* manager READ manager WRITE setManager NOTIFY managerChanged)
     GroupManager *manager() const;
     void setManager(GroupManager *manager);
     void setManager(QObject *manager) { setManager(qobject_cast<GroupManager*>(manager)); }
 
     /*!
-     * Convenience method for getting the group data without QVariant casts.
+     * Convenience method to get the ContactGroup by row without QVariant casts
      *
      * \param index Model index.
      * \return group
@@ -103,6 +107,9 @@ public:
     ContactGroup *at(const QModelIndex &index) const;
     Q_INVOKABLE QObject *at(int row) const { return at(index(row, 0)); }
 
+    /*!
+     * List of contact groups in the model
+     */
     Q_PROPERTY(QObjectList contactGroups READ contactGroups)
     QObjectList contactGroups() const;
 

@@ -34,15 +34,16 @@ class GroupManagerPrivate;
 class TrackerIO;
 
 /*!
- * \class GroupModel
+ * \class GroupManager
  *
- * Model for event groups (conversations) in the commhistory database.
- * Contains rows of Group data. Call getGroups() to fill the model.
- * Dig into a conversation by either calling getEvents(), or
- * creating a new EventModel and filtering it by group.
- * Group data is automatically updated when new events arrive.
- * Use the Qt rowsInserted(), dataChanged() etc. signals to
- * monitor changes.
+ * Manager for querying and updating event groups (conversations) from
+ * the database and in response to realtime changes.
+ *
+ * Call getGroups() to fill from the database. Changes made by other
+ * processes will be automatically reflected in the manager.
+ *
+ * Use groupAdded, groupUpdated, and groupRemoved signals to monitor
+ * changes, or the indiviual change signals for a GroupObject.
  */
 class LIBCOMMHISTORY_EXPORT GroupManager : public QObject
 {
@@ -52,59 +53,53 @@ public:
     GroupManager(QObject *parent = 0);
     virtual ~GroupManager();
 
-    Q_PROPERTY(CommHistory::EventModel::QueryMode queryMode READ queryMode WRITE setQueryMode)
-    EventModel::QueryMode queryMode() const;
     /*!
      * Set query mode. See EventModel::setQueryMode().
      */
+    Q_PROPERTY(CommHistory::EventModel::QueryMode queryMode READ queryMode WRITE setQueryMode)
+    EventModel::QueryMode queryMode() const;
     void setQueryMode(EventModel::QueryMode mode);
 
+    /*!
+     * Set chunk size (number of groups to fetch per request) for asynchronous
+     * and streamed queries.
+     */
     Q_PROPERTY(int chunkSize READ chunkSize WRITE setChunkSize)
     int chunkSize() const;
-    /*!
-     * Set chunk size (number of groups to fetch) for asynchronous and
-     * streamed queries.
-     *
-     * \param size Chunk size.
-     */
     void setChunkSize(int size);
 
+    /*!
+     * Set the size of first chunk for asynchronous and streamed queries.
+     */
     Q_PROPERTY(int firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
     int firstChunkSize() const;
-    /*!
-     * Set the size of first chunk (number of groups to fetch) for asynchronous
-     * and streamed queries.
-     *
-     * \param size First chunk size.
-     */
     void setFirstChunkSize(int size);
 
-    Q_PROPERTY(int limit READ limit WRITE setLimit)
-    int limit() const;
     /*!
      * Set number of groups to fetch in the next query.
-     *
-     * \param limit Query limit.
      */
+    Q_PROPERTY(int limit READ limit WRITE setLimit)
+    int limit() const;
     void setLimit(int limit);
 
+    /*!
+     * Set offset for the next query, usually used with limit
+     */
     Q_PROPERTY(int offset READ offset WRITE setOffset)
     int offset() const;
-    /*!
-     * Set offset for the next query.
-     *
-     * \param offset Query offset.
-     */
     void setOffset(int offset);
 
     /*!
-     * Convenience method for getting the group data without QVariant casts.
+     * Get the group object representing a group by ID
      *
-     * \param index Model index.
+     * \param groupId group ID
      * \return group
      */
     GroupObject *group(int groupId) const;
 
+    /*!
+     * Get a list of all loaded group objects
+     */
     QList<GroupObject*> groups() const;
 
     /*!
@@ -180,6 +175,9 @@ public:
      */
     void updateGroups(QList<Group> &groups);
 
+    /*!
+     * True when data is loaded from the database
+     */
     Q_PROPERTY(bool isReady READ isReady NOTIFY modelReady)
     bool isReady() const;
 
@@ -234,8 +232,26 @@ Q_SIGNALS:
      */
     void groupsCommitted(const QList<int> &groupIds, bool successful);
 
+    /*!
+     * Emitted when a group is added to the manager for any reason, including
+     * query results, activity in other processes, or addGroup().
+     *
+     * \param group New group object
+     */
     void groupAdded(GroupObject *group);
+    /*!
+     * Emitted when the data of a group changes for any reason. GroupObject has
+     * signals for monitoring specific changes.
+     *
+     * \param group Group
+     */
     void groupUpdated(GroupObject *group);
+    /*!
+     * Emitted when a group is removed from the model for any reason. This does
+     * not mean that the group is removed from the underlying database.
+     *
+     * \param group Group
+     */
     void groupDeleted(GroupObject *group);
 
 private:
