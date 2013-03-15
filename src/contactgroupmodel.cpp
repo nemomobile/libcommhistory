@@ -261,6 +261,7 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
 
     QHash<int,QByteArray> roles;
     roles[ContactGroupRole] = "contactGroup";
+    roles[WeekdaySectionRole] = "weekdaySection";
     roles[BaseRole + ContactIds] = "contactIds";
     roles[BaseRole + ContactNames] = "contactNames";
     roles[BaseRole + EndTime] = "endTime";
@@ -327,8 +328,20 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
         role = Qt::DisplayRole;
     }
 
-    if (role == ContactGroupRole)
+    if (role == ContactGroupRole) {
         return QVariant::fromValue<QObject*>(g);
+    } else if (role == WeekdaySectionRole) {
+        QDateTime dateTime = g->endTime().toLocalTime();
+
+        // Return the date for the past week, and group all older items together under an
+        // arbitrary older date
+        const int daysDiff = QDate::currentDate().toJulianDay() - dateTime.date().toJulianDay();
+        if (daysDiff < 7)
+            return dateTime.date();
+
+        // Arbitrary static date for older items..
+        return QDate(2000, 1, 1);
+    }
 
     if (role != Qt::DisplayRole)
         return QVariant();
