@@ -85,7 +85,7 @@ const int numMmsSubjects = 10;
 
 #define TELEPATHY_ACCOUNT_PREFIX       QLatin1String("/org/freedesktop/Telepathy/Account/")
 #define TELEPATHY_MMS_ACCOUNT_POSTFIX  QLatin1String("mmscm/mms/mms0")
-#define TELEPATHY_RING_ACCOUNT_POSTFIX QLatin1String("ring/tel/ring")
+#define TELEPATHY_RING_ACCOUNT_POSTFIX QLatin1String("ring/tel/account0")
 
 #define MMS_ACCOUNT  TELEPATHY_ACCOUNT_PREFIX + TELEPATHY_MMS_ACCOUNT_POSTFIX
 #define RING_ACCOUNT TELEPATHY_ACCOUNT_PREFIX + TELEPATHY_RING_ACCOUNT_POSTFIX

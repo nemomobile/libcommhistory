@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,47 +29,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#ifndef SHAREDBACKGROUNDTHREAD_H
+#define SHAREDBACKGROUNDTHREAD_H
 
-#include <QIdentityProxyModel>
-#include <QHash>
+#include <QSharedPointer>
+#include <QThread>
 
-namespace CommHistory {
-    class GroupModel;
-    class GroupObject;
-}
-
-class GroupProxyModel : public QIdentityProxyModel
-{
-    Q_OBJECT
-
-public:
-    enum {
-        WeekdaySectionRole = Qt::UserRole + 2000
-    };
-
-    GroupProxyModel(QObject *parent = 0);
-
-    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
-    virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *m)
-    {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
-    }
-
-    CommHistory::GroupModel *groupModel() const { return model; }
-
-    Q_INVOKABLE CommHistory::GroupObject *group(int row);
-    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
-
-    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
-
-signals:
-    void sourceModelChanged();
-
-private:
-    CommHistory::GroupModel *model;
-};
+QSharedPointer<QThread> getSharedBackgroundThread();
 
 #endif
+

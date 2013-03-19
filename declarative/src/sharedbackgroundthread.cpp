@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,47 +29,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#include "sharedbackgroundthread.h"
+#include <QDebug>
 
-#include <QIdentityProxyModel>
-#include <QHash>
-
-namespace CommHistory {
-    class GroupModel;
-    class GroupObject;
+static void stopAndDeleteThread(QThread *thread)
+{
+    qDebug() << "libcommhistory-declarative SharedBackgroundThread deleted";
+    QObject::connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    thread->quit();
 }
 
-class GroupProxyModel : public QIdentityProxyModel
+QSharedPointer<QThread> getSharedBackgroundThread()
 {
-    Q_OBJECT
+    static QWeakPointer<QThread> instance;
+    QSharedPointer<QThread> re = instance.toStrongRef();
+    if (!re.isNull())
+        return re;
 
-public:
-    enum {
-        WeekdaySectionRole = Qt::UserRole + 2000
-    };
+    re = QSharedPointer<QThread>(new QThread, stopAndDeleteThread);
+    instance = re.toWeakRef();
+    re->start();
+    return re;
+}
 
-    GroupProxyModel(QObject *parent = 0);
-
-    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
-    virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *m)
-    {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
-    }
-
-    CommHistory::GroupModel *groupModel() const { return model; }
-
-    Q_INVOKABLE CommHistory::GroupObject *group(int row);
-    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
-
-    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
-
-signals:
-    void sourceModelChanged();
-
-private:
-    CommHistory::GroupModel *model;
-};
-
-#endif

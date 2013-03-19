@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,47 +29,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#include "declarativegroupmanager.h"
+#include "sharedbackgroundthread.h"
+#include <QTimer>
 
-#include <QIdentityProxyModel>
-#include <QHash>
+using namespace CommHistory;
 
-namespace CommHistory {
-    class GroupModel;
-    class GroupObject;
+DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
+    : CommHistory::GroupManager(parent)
+{
+    QTimer::singleShot(0, this, SLOT(reload()));
 }
 
-class GroupProxyModel : public QIdentityProxyModel
+DeclarativeGroupManager::~DeclarativeGroupManager()
 {
-    Q_OBJECT
+}
 
-public:
-    enum {
-        WeekdaySectionRole = Qt::UserRole + 2000
-    };
+void DeclarativeGroupManager::reload()
+{
+    getGroups();
+}
 
-    GroupProxyModel(QObject *parent = 0);
+void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
+{
+    if (enabled == useBackgroundThread())
+        return;
 
-    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
-    virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *m)
-    {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
+    if (enabled) {
+        threadInstance = getSharedBackgroundThread();
+        setBackgroundThread(threadInstance.data());
+    } else {
+        setBackgroundThread(0);
+        threadInstance.clear();
     }
 
-    CommHistory::GroupModel *groupModel() const { return model; }
+    emit backgroundThreadChanged();
+}
 
-    Q_INVOKABLE CommHistory::GroupObject *group(int row);
-    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
-
-    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
-
-signals:
-    void sourceModelChanged();
-
-private:
-    CommHistory::GroupModel *model;
-};
-
-#endif

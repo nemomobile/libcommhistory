@@ -2,8 +2,8 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Copyright (C) 2013 Jolla Ltd.
+** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -20,46 +20,46 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_GROUPMODEL_P_H
-#define COMMHISTORY_GROUPMODEL_P_H
+#ifndef COMMHISTORY_CONTACTGROUPMODEL_P_H
+#define COMMHISTORY_CONTACTGROUPMODEL_P_H
 
-#include <QAbstractItemModel>
-#include <QList>
-#include <QPair>
-
-#include "groupmodel.h"
-#include "eventmodel.h"
-#include "groupmanager.h"
+#include "libcommhistoryexport.h"
+#include "contactgroupmodel.h"
+#include <QObject>
+#include <QDateTime>
 
 namespace CommHistory {
 
-class GroupModelPrivate: public QObject
+class GroupManager;
+class GroupObject;
+class ContactGroup;
+
+class ContactGroupModelPrivate : public QObject
 {
     Q_OBJECT
-
-    Q_DECLARE_PUBLIC(GroupModel);
+    Q_DECLARE_PUBLIC(ContactGroupModel)
 
 public:
-    GroupModel *q_ptr;
+    ContactGroupModel *q_ptr;
 
-    /*!
-     * Model constructor.
-     *
-     * \param parent Parent object.
-     */
-    GroupModelPrivate(GroupModel *parent = 0);
-    ~GroupModelPrivate();
-
-    void setManager(GroupManager *manager);
-    void ensureManager();
+    ContactGroupModelPrivate(ContactGroupModel *parent);
+    virtual ~ContactGroupModelPrivate();
 
     GroupManager *manager;
-    QList<GroupObject*> groups;
+    QList<ContactGroup*> items;
 
-public slots:
+    void setManager(GroupManager *manager);
+
+    int indexForContacts(QList<int> contacts);
+    int indexForObject(GroupObject *group);
+
+private slots:
     void groupAdded(GroupObject *group);
     void groupUpdated(GroupObject *group);
     void groupDeleted(GroupObject *group);
+
+private:
+    void itemDataChanged(int index);
 };
 
 }

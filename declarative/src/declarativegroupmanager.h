@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,47 +29,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#ifndef COMMHISTORY_DECLARATIVE_DECLARATIVEGROUPMANAGER_H
+#define COMMHISTORY_DECLARATIVE_DECLARATIVEGROUPMANAGER_H
 
-#include <QIdentityProxyModel>
-#include <QHash>
+#include "groupmanager.h"
+#include "sharedbackgroundthread.h"
 
-namespace CommHistory {
-    class GroupModel;
-    class GroupObject;
-}
-
-class GroupProxyModel : public QIdentityProxyModel
+class DeclarativeGroupManager : public CommHistory::GroupManager
 {
     Q_OBJECT
 
 public:
-    enum {
-        WeekdaySectionRole = Qt::UserRole + 2000
-    };
+    DeclarativeGroupManager(QObject *parent = 0);
+    virtual ~DeclarativeGroupManager();
 
-    GroupProxyModel(QObject *parent = 0);
+    Q_PROPERTY(bool useBackgroundThread READ useBackgroundThread WRITE setUseBackgroundThread NOTIFY backgroundThreadChanged)
+    bool useBackgroundThread() { return backgroundThread() != 0; }
+    void setUseBackgroundThread(bool on);
 
-    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
-    virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *m)
-    {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
-    }
-
-    CommHistory::GroupModel *groupModel() const { return model; }
-
-    Q_INVOKABLE CommHistory::GroupObject *group(int row);
-    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
-
-    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+public slots:
+    void reload();
 
 signals:
-    void sourceModelChanged();
+    void backgroundThreadChanged();
 
 private:
-    CommHistory::GroupModel *model;
+    QSharedPointer<QThread> threadInstance;
 };
 
 #endif
+

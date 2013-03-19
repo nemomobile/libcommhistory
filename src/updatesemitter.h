@@ -40,6 +40,9 @@ public:
     ~UpdatesEmitter();
 
 Q_SIGNALS:
+#ifndef Q_MOC_RUN
+public:
+#endif
     void eventsAdded(const QList<CommHistory::Event> &events);
     void eventsUpdated(const QList<CommHistory::Event> &events);
     void eventDeleted(int id);

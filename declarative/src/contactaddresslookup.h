@@ -1,4 +1,5 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2013 Jolla Ltd.
+ * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,47 +29,45 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#ifndef COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
-#define COMMHISTORY_DECLARATIVE_GROUPPROXYMODEL_H
+#ifndef CONTACTADDRESSLOOKUP_H
+#define CONTACTADDRESSLOOKUP_H
 
-#include <QIdentityProxyModel>
-#include <QHash>
+#include <QObject>
+#include <QSharedPointer>
+#include "contactlistener.h"
 
-namespace CommHistory {
-    class GroupModel;
-    class GroupObject;
-}
-
-class GroupProxyModel : public QIdentityProxyModel
+class ContactAddressLookup : public QObject
 {
     Q_OBJECT
 
 public:
-    enum {
-        WeekdaySectionRole = Qt::UserRole + 2000
-    };
+    ContactAddressLookup(QObject *parent = 0);
 
-    GroupProxyModel(QObject *parent = 0);
+    Q_PROPERTY(QString localUid READ localUid WRITE setLocalUid NOTIFY localUidChanged)
+    QString localUid() const { return mLocalUid; }
+    void setLocalUid(const QString &localUid);
 
-    Q_PROPERTY(QObject* sourceModel READ sourceModel WRITE setSourceModel NOTIFY sourceModelChanged)
-    virtual void setSourceModel(QAbstractItemModel *sourceModel);
-    void setSourceModel(QObject *m)
-    {
-        setSourceModel(qobject_cast<QAbstractItemModel*>(m));
-    }
+    Q_PROPERTY(QString remoteUid READ remoteUid WRITE setRemoteUid NOTIFY remoteUidChanged)
+    QString remoteUid() const { return mRemoteUid; }
+    void setRemoteUid(const QString &remoteUid);
 
-    CommHistory::GroupModel *groupModel() const { return model; }
-
-    Q_INVOKABLE CommHistory::GroupObject *group(int row);
-    Q_INVOKABLE CommHistory::GroupObject *groupById(int id);
-
-    virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+    Q_PROPERTY(int contactId READ contactId NOTIFY contactIdChanged)
+    int contactId() const { return mContactId; }
 
 signals:
-    void sourceModelChanged();
+    void localUidChanged();
+    void remoteUidChanged();
+    void contactIdChanged();
+
+private slots:
+    void request();
+    void contactUpdated(quint32 id, const QString &name, const QList<QPair<QString, QString> > &addresses);
 
 private:
-    CommHistory::GroupModel *model;
+    QString mLocalUid, mRemoteUid;
+    int mContactId;
+    bool requestPending;
+    QSharedPointer<CommHistory::ContactListener> listener;
 };
 
 #endif
