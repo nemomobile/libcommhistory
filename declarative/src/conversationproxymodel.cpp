@@ -36,7 +36,7 @@
 using namespace CommHistory;
 
 ConversationProxyModel::ConversationProxyModel(QObject *parent)
-    : ConversationModel(parent), m_contactGroup(0)
+    : ConversationModel(parent), m_contactGroup(0), m_groupId(-1) 
 {
     // Defaults
     setQueryMode(EventModel::StreamedAsyncQuery);
@@ -71,6 +71,12 @@ void ConversationProxyModel::setContactGroup(QObject *o)
         disconnect(m_contactGroup, SIGNAL(groupsChanged()), this, SLOT(reload()));
 
     m_contactGroup = g;
+    emit contactGroupChanged();
+
+    if (m_contactGroup && m_groupId >= 0) {
+        m_groupId = -1;
+        emit groupIdChanged();
+    }
 
     if (m_contactGroup)
         connect(m_contactGroup, SIGNAL(groupsChanged()), SLOT(reload()));
@@ -78,20 +84,35 @@ void ConversationProxyModel::setContactGroup(QObject *o)
     QTimer::singleShot(0, this, SLOT(reload()));
 }
 
+void ConversationProxyModel::setGroupId(int g)
+{
+    if (g == m_groupId)
+        return;
+
+    m_groupId = g;
+    emit groupIdChanged();
+
+    if (m_contactGroup)
+        setContactGroup(0);
+    else
+        QTimer::singleShot(0, this, SLOT(reload()));
+}
+
 void ConversationProxyModel::reload()
 {
-    if (!m_contactGroup) {
+    if (m_groupId >= 0) {
+        getEvents(m_groupId);
+    } else if (m_contactGroup) {
+        QList<GroupObject*> groups = m_contactGroup->groups();
+        QList<int> groupIds;
+        groupIds.reserve(groups.size());
+
+        foreach (GroupObject *group, groups)
+            groupIds.append(group->id());
+
+        getEvents(groupIds);
+    } else {
         getEvents(QList<int>());
-        return;
     }
-
-    QList<GroupObject*> groups = m_contactGroup->groups();
-    QList<int> groupIds;
-    groupIds.reserve(groups.size());
-
-    foreach (GroupObject *group, groups)
-        groupIds.append(group->id());
-
-    getEvents(groupIds);
 }
 

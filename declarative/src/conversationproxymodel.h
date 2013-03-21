@@ -53,15 +53,21 @@ public:
     bool useBackgroundThread() { return backgroundThread() != 0; }
     void setUseBackgroundThread(bool on);
 
+    Q_PROPERTY(int groupId READ groupId WRITE setGroupId NOTIFY groupIdChanged)
+    int groupId() const { return m_groupId; }
+    void setGroupId(int groupId);
+
 public slots:
     void reload();
 
 signals:
     void contactGroupChanged();
+    void groupIdChanged();
     void backgroundThreadChanged();
 
 private:
     CommHistory::ContactGroup *m_contactGroup;
+    int m_groupId;
     QSharedPointer<QThread> threadInstance;
 };
 
