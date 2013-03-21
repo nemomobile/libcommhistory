@@ -35,9 +35,9 @@
 #include "constants.h"
 #include "groupobject.h"
 #include "eventmodel.h"
+#include "groupmodel.h"
 #include "contactgroupmodel.h"
 #include "callproxymodel.h"
-#include "groupproxymodel.h"
 #include "conversationproxymodel.h"
 #include "declarativegroupmanager.h"
 #include "contactaddresslookup.h"
@@ -60,7 +60,7 @@ public:
 
         qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
         qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<GroupProxyModel>(uri, 1, 0, "CommGroupModel");
+        qmlRegisterType<CommHistory::GroupModel>(uri, 1, 0, "CommGroupModel");
         qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
         qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
         qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");

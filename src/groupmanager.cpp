@@ -572,6 +572,17 @@ GroupObject *GroupManager::group(int groupId) const
     return d->groups.value(groupId);
 }
 
+GroupObject *GroupManager::findGroup(const QString &localUid, const QString &remoteUid) const
+{
+    foreach (GroupObject *g, d->groups) {
+        if (g->localUid() == localUid && g->remoteUids().size() == 1
+                && CommHistory::remoteAddressMatch(g->remoteUids().first(), remoteUid))
+            return g;
+    }
+
+    return 0;
+}
+
 void GroupManagerPrivate::add(Group &group)
 {
     Q_Q(GroupManager);

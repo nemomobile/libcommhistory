@@ -95,7 +95,18 @@ public:
      * \param groupId group ID
      * \return group
      */
-    GroupObject *group(int groupId) const;
+    Q_INVOKABLE CommHistory::GroupObject *group(int groupId) const;
+
+    /*!
+     * Get the group object representing a local and remote UID pair
+     *
+     * The group must be already loaded in the GroupManager.
+     *
+     * \param localUid local account UID
+     * \param remoteUid remote UID
+     * \return group
+     */
+    Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid) const;
 
     /*!
      * Get a list of all loaded group objects

@@ -28,13 +28,13 @@
 #include "eventmodel.h"
 #include "group.h"
 #include "groupobject.h"
+#include "groupmanager.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
 class GroupModelPrivate;
 class TrackerIO;
-class GroupManager;
 
 /*!
  * \class GroupModel
@@ -80,6 +80,7 @@ public:
         GroupRole = Qt::UserRole,
         ContactIdsRole,
         GroupObjectRole,
+        WeekdaySectionRole,
         BaseRole = Qt::UserRole + 1000
     };
 
@@ -94,6 +95,18 @@ public:
      * Destructor.
      */
     ~GroupModel();
+
+    /*!
+     * Group manager used for the list of groups. This may be shared with other models.
+     * User is responsible for creating the manager, and querying groups with the desired
+     * parameters.
+     *
+     * If not set, a manager will be created internally and settings copied to it.
+     */
+    Q_PROPERTY(QObject* manager READ manager WRITE setManager)
+    GroupManager *manager() const;
+    void setManager(GroupManager *manager);
+    void setManager(QObject *manager) { setManager(qobject_cast<GroupManager*>(manager)); }
 
     /*!
      * Set query mode. See EventModel::setQueryMode().
@@ -139,6 +152,7 @@ public:
     Group group(const QModelIndex &index) const;
 
     GroupObject *groupObject(const QModelIndex &index) const;
+    Q_INVOKABLE CommHistory::GroupObject *at(int row) const { return groupObject(index(row, 0)); }
 
     /*!
      * Add a new group. If successful, group.id() is updated.

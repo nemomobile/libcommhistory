@@ -179,6 +179,8 @@ GroupModel::GroupModel(QObject *parent)
     roles[BaseRole + LastModified] = "lastModified";
     roles[BaseRole + StartTime] = "startTime";
     roles[ContactIdsRole] = "contactIds";
+    roles[GroupObjectRole] = "group";
+    roles[WeekdaySectionRole] = "weekdaySection";
     setRoleNames(roles);
 }
 
@@ -186,6 +188,19 @@ GroupModel::~GroupModel()
 {
     delete d;
     d = 0;
+}
+
+GroupManager *GroupModel::manager() const
+{
+    return d->manager;
+}
+
+void GroupModel::setManager(GroupManager *m)
+{
+    if (m == d->manager)
+        return;
+
+    d->setManager(m);
 }
 
 void GroupModel::setQueryMode(EventModel::QueryMode mode)
@@ -248,6 +263,17 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         return QVariant::fromValue<QObject*>(group);
     } else if (role == ContactIdsRole) {
         return QVariant::fromValue(group->contactIds());
+    } else if (role == WeekdaySectionRole) {
+        QDateTime dateTime = group->endTime().toLocalTime();
+
+        // Return the date for the past week, and group all older items together under an
+        // arbitrary older date
+        const int daysDiff = QDate::currentDate().toJulianDay() - dateTime.date().toJulianDay();
+        if (daysDiff < 7)
+            return dateTime.date();
+
+        // Arbitrary static date for older items..
+        return QDate(2000, 1, 1);
     }
 
     int column = index.column();
