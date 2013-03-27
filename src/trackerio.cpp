@@ -1094,8 +1094,9 @@ void TrackerIO::recreateIds()
     qDebug() << Q_FUNC_INFO;
 
     // Read max event/group ids from tracker and reset IdSource.
+    // There is apparently no way to extract the integer and sort by that with sparql.
 
-    QSparqlQuery query("SELECT ?m { ?m a nmo:Message. FILTER(REGEX(?m, \"^(message|call):\")) } ORDER BY DESC(tracker:id(?m)) LIMIT 1");
+    QSparqlQuery query("SELECT ?m { ?m a nmo:Message. FILTER(REGEX(?m, \"^(message|call):\")) }");
     QSparqlResult *result = d->connection().syncExec(query);
     if (result->hasError()) {
         qCritical() << Q_FUNC_INFO << "Error querying message ids";
@@ -1106,14 +1107,16 @@ void TrackerIO::recreateIds()
     int maxMessageId = 0;
     int len = QString(QLatin1String("message:")).length();
     if (result->first()) {
-        bool ok = false;
-        int id = result->value(0).toString().mid(len).toInt(&ok);
-        if (ok)
-            maxMessageId = id;
+        do {
+            bool ok = false;
+            int id = result->value(0).toString().mid(len).toInt(&ok);
+            if (ok && id > maxMessageId)
+                maxMessageId = id;
+        } while (result->next());
     }
     delete result;
 
-    QSparqlQuery groupQuery("SELECT ?c { ?c a nmo:CommunicationChannel. FILTER(REGEX(?c, \"^conversation:\")) } ORDER BY DESC(tracker:id(?c)) LIMIT 1");
+    QSparqlQuery groupQuery("SELECT ?c { ?c a nmo:CommunicationChannel. FILTER(REGEX(?c, \"^conversation:\")) }");
     result = d->connection().syncExec(groupQuery);
     if (result->hasError()) {
         qCritical() << Q_FUNC_INFO << "Error querying group ids";
@@ -1124,10 +1127,12 @@ void TrackerIO::recreateIds()
     int maxGroupId = 0;
     len = QString(QLatin1String("conversation:")).length();
     if (result->first()) {
-        bool ok = false;
-        int id = result->value(0).toString().mid(len).toInt(&ok);
-        if (ok)
-            maxGroupId = id;
+        do {
+            bool ok = false;
+            int id = result->value(0).toString().mid(len).toInt(&ok);
+            if (ok && id > maxGroupId)
+                maxGroupId = id;
+        } while (result->next());
     }
     delete result;
 
