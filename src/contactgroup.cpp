@@ -24,6 +24,7 @@
 #include "trackerio.h"
 #include "updatesemitter.h"
 #include "commonutils.h"
+#include "committingtransaction.h"
 
 namespace CommHistory {
 
@@ -343,6 +344,34 @@ bool ContactGroup::markAsRead()
 
     emit UpdatesEmitter::instance()->groupsUpdatedFull(updated);
     return true;
+}
+
+bool ContactGroup::deleteGroups()
+{
+    Q_D(ContactGroup);
+
+    QList<int> ids;
+    ids.reserve(d->groups.size());
+    foreach (GroupObject *group, d->groups)
+        ids.append(group->id());
+
+    if (ids.isEmpty())
+        return true;
+
+    TrackerIO *tracker = TrackerIO::instance();
+    tracker->transaction();
+
+    if (!tracker->deleteGroups(ids, true, 0)) {
+        tracker->rollback();
+        return false;
+    }
+
+    CommittingTransaction *t = tracker->commit();
+
+    if (t)
+        t->addSignal(false, UpdatesEmitter::instance().data(), "groupsDeleted", Q_ARG(QList<int>, ids));
+
+    return t != 0;
 }
 
 GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)

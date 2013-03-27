@@ -90,6 +90,11 @@ public:
     Q_INVOKABLE bool markAsRead();
 
     /*!
+     * Delete the group and all its messages
+     */
+    Q_INVOKABLE bool deleteGroup();
+
+    /*!
      * Object contains a valid group
      */
     bool isValid() const;

@@ -98,6 +98,7 @@ public slots:
     void updateGroup(GroupObject *group);
 
     bool markAsRead();
+    bool deleteGroups();
 
 signals:
     void contactsChanged();

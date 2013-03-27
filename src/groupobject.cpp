@@ -435,6 +435,16 @@ bool GroupObject::markAsRead()
     return d->manager->markAsReadGroup(id());
 }
 
+bool GroupObject::deleteGroup()
+{
+    if (!d->manager) {
+        qDebug() << Q_FUNC_INFO << "No manager for object instance";
+        return false;
+    }
+
+    return d->manager->deleteGroups(QList<int>() << id(), true);
+}
+
 QString GroupObject::toString() const
 {
     QString contacts;
