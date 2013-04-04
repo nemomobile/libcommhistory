@@ -21,4 +21,5 @@
 ###############################################################################
 
 TEMPLATE = subdirs
+CONFIG += ordered
 SUBDIRS = shared.pro static.pro
