@@ -47,6 +47,15 @@ public:
     bool useBackgroundThread() { return backgroundThread() != 0; }
     void setUseBackgroundThread(bool on);
 
+    /* Create an event for an outgoing plain text message, which will be
+     * in the sending state. Returns the event ID, which should be passed
+     * using the x-commhistory-event-id header in a Telepathy message to
+     * inform commhistory-daemon about the existing event.
+     *
+     * If groupId is negative, an appropriate group will be found or created
+     * inline if necessary. */
+    Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QString &remoteUid, const QString &text);
+
 public slots:
     void reload();
 

@@ -66,3 +66,50 @@ void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
     emit backgroundThreadChanged();
 }
 
+int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
+                                                        const QString &remoteUid, const QString &text)
+{
+    if (groupId < 0) {
+        // Try to find an appropriate group
+        GroupObject *group = findGroup(localUid, remoteUid);
+        if (group) {
+            groupId = group->id();
+        } else {
+            Group g;
+            g.setLocalUid(localUid);
+            g.setRemoteUids(QStringList() << remoteUid);
+            g.setChatType(Group::ChatTypeP2P);
+            qDebug() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUid;
+            if (!addGroup(g)) {
+                qWarning() << Q_FUNC_INFO << "Failed creating group";
+                return -1;
+            }
+            groupId = g.id();
+        }
+    }
+
+    Event event;
+    if (localUid.indexOf("/ring/tel/") >= 0)
+        event.setType(Event::SMSEvent);
+    else
+        event.setType(Event::IMEvent);
+
+    event.setDirection(Event::Outbound);
+    event.setIsRead(true);
+    event.setLocalUid(localUid);
+    event.setRemoteUid(remoteUid);
+    event.setFreeText(text);
+    event.setStartTime(QDateTime::currentDateTime());
+    event.setEndTime(event.startTime());
+    event.setStatus(Event::SendingStatus);
+    event.setGroupId(groupId);
+
+    qDebug() << Q_FUNC_INFO << groupId << localUid << remoteUid << text;
+    EventModel model;
+    if (model.addEvent(event))
+        return event.id();
+
+    qWarning() << Q_FUNC_INFO << "Failed creating event";
+    return -1;
+}
+
