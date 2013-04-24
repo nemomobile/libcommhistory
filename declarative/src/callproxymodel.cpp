@@ -5,6 +5,7 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
     m_source(new CommHistory::CallModel(CommHistory::CallModel::SortByTime, this)),
     m_grouping(GroupByNone),
+    m_limit(-1),
     m_componentComplete(false)
 {
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
@@ -41,6 +42,20 @@ void CallProxyModel::setGroupBy(GroupBy grouping)
         m_source->setFilter(CommHistory::CallModel::Sorting(grouping));
 
         emit groupByChanged();
+    }
+}
+
+int CallProxyModel::limit() const
+{
+    return m_limit;
+}
+
+void CallProxyModel::setLimit(int limit)
+{
+    if (m_limit != limit) {
+        m_limit = limit;
+        m_source->setLimit(limit);
+        emit limitChanged();
     }
 }
 
