@@ -141,14 +141,14 @@ void printUsage()
     std::cout << "                 setstatus event-id {unknown|sent|sending|delivered|temporarilyfailed|permanentlyfailed}"                                << std::endl;
     std::cout << "                 delete event-id"                                                                                                        << std::endl;
     std::cout << "                 deletegroup group-id"                                                                                                   << std::endl;
-    std::cout << "                 deleteall"                                                                                                              << std::endl;
+    std::cout << "                 deleteall [-groups] [-calls] [-reset]"                                                                                  << std::endl;
     std::cout << "                 markallcallsread"                                                                                                       << std::endl;
     std::cout << "                 export [-group group-id] [-calls] [-groups] filename"
-                                    << std::endl;
+                        << std::endl;
     std::cout << "                 import filename"
-                                    << std::endl;
+                        << std::endl;
     std::cout << "                 import-json filename"
-                                    << std::endl;
+                        << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
     std::cout << "New events are of IM type and have random contents."                                                                                     << std::endl;
@@ -866,14 +866,52 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     Q_UNUSED(arguments);
     Q_UNUSED(options);
 
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String(
-            "DELETE {?n a rdfs:Resource}"
-            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                "nmo:CommunicationChannel))}"),
-                       QSparqlQuery::DeleteStatement);
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
+    bool hasAnyOption = options.size() > 0;
+
+    if (!hasAnyOption || options.contains("-groups")) {
+        GroupModel model;
+        model.enableContactChanges(false);
+        model.setQueryMode(EventModel::SyncQuery);
+        if (!model.getGroups()) {
+            qCritical() << "Error fetching groups";
+            return -1;
+        }
+
+        if (model.rowCount()) {
+            Catcher c(&model);
+            model.deleteAll();
+            c.waitCommit(0);
+        }
+    }
+
+    if (!hasAnyOption || options.contains("-calls")) {
+        CallModel callModel;
+        callModel.enableContactChanges(false);
+        callModel.setTreeMode(false);
+        callModel.setFilter(CallModel::SortByTime);
+        callModel.setQueryMode(EventModel::SyncQuery);
+        if (!callModel.getEvents()) {
+            qCritical() << "Error fetching calls";
+            return -1;
+        }
+
+        if (callModel.rowCount()) {
+            Catcher c(&callModel);
+            callModel.deleteAll();
+            c.waitCommit(0);
+        }
+    }
+ 
+    if (!hasAnyOption || options.contains("-reset")) {
+        QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+        QSparqlQuery query(QLatin1String(
+                "DELETE {?n a rdfs:Resource}"
+                "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                    "nmo:CommunicationChannel))}"),
+                           QSparqlQuery::DeleteStatement);
+        QSparqlResult* result = conn->exec(query);
+        result->waitForFinished();
+    }
 
     return 0;
 }
