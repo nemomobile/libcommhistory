@@ -26,7 +26,9 @@ TEMPLATE = app
 QT -= gui
 CONFIG += qdbus \
     debug \
-    qtsparql qtcontacts_extensions_tracker
+    qtsparql qtcontacts_extensions_tracker \
+    pkgconfig
+PKGCONFIG += QJson
 VERSION = $$PROJECT_VERSION
 TARGET = commhistory-tool
 HEADERS += catcher.h

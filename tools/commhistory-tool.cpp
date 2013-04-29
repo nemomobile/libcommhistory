@@ -40,6 +40,8 @@
 
 #include "catcher.h"
 
+#include "qjson/parser.h"
+
 using namespace CommHistory;
 
 const char *remoteUids[] = {
@@ -139,12 +141,14 @@ void printUsage()
     std::cout << "                 setstatus event-id {unknown|sent|sending|delivered|temporarilyfailed|permanentlyfailed}"                                << std::endl;
     std::cout << "                 delete event-id"                                                                                                        << std::endl;
     std::cout << "                 deletegroup group-id"                                                                                                   << std::endl;
-    std::cout << "                 deleteall"                                                                                                              << std::endl;
+    std::cout << "                 deleteall [-groups] [-calls] [-reset]"                                                                                  << std::endl;
     std::cout << "                 markallcallsread"                                                                                                       << std::endl;
     std::cout << "                 export [-group group-id] [-calls] [-groups] filename"
-                                    << std::endl;
+                        << std::endl;
     std::cout << "                 import filename"
-                                    << std::endl;
+                        << std::endl;
+    std::cout << "                 import-json filename"
+                        << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
     std::cout << "New events are of IM type and have random contents."                                                                                     << std::endl;
@@ -862,14 +866,52 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     Q_UNUSED(arguments);
     Q_UNUSED(options);
 
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String(
-            "DELETE {?n a rdfs:Resource}"
-            "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                "nmo:CommunicationChannel))}"),
-                       QSparqlQuery::DeleteStatement);
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
+    bool hasAnyOption = options.size() > 0;
+
+    if (!hasAnyOption || options.contains("-groups")) {
+        GroupModel model;
+        model.enableContactChanges(false);
+        model.setQueryMode(EventModel::SyncQuery);
+        if (!model.getGroups()) {
+            qCritical() << "Error fetching groups";
+            return -1;
+        }
+
+        if (model.rowCount()) {
+            Catcher c(&model);
+            model.deleteAll();
+            c.waitCommit(0);
+        }
+    }
+
+    if (!hasAnyOption || options.contains("-calls")) {
+        CallModel callModel;
+        callModel.enableContactChanges(false);
+        callModel.setTreeMode(false);
+        callModel.setFilter(CallModel::SortByTime);
+        callModel.setQueryMode(EventModel::SyncQuery);
+        if (!callModel.getEvents()) {
+            qCritical() << "Error fetching calls";
+            return -1;
+        }
+
+        if (callModel.rowCount()) {
+            Catcher c(&callModel);
+            callModel.deleteAll();
+            c.waitCommit(0);
+        }
+    }
+ 
+    if (!hasAnyOption || options.contains("-reset")) {
+        QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
+        QSparqlQuery query(QLatin1String(
+                "DELETE {?n a rdfs:Resource}"
+                "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
+                                                    "nmo:CommunicationChannel))}"),
+                           QSparqlQuery::DeleteStatement);
+        QSparqlResult* result = conn->exec(query);
+        result->waitForFinished();
+    }
 
     return 0;
 }
@@ -1071,6 +1113,139 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
     return 0;
 }
 
+int doJsonImport(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED(options);
+
+    QString fileName = arguments.at(2);
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qCritical() << "Unable to open file" << fileName << " for reading:" << file.errorString();
+        return -1;
+    }
+
+    QJson::Parser parser;
+    bool ok;
+    QVariantList result = parser.parse(&file, &ok).toList();
+    if (!ok) {
+        qCritical() << "Unable to import file" << fileName << ":" << parser.errorString() << "on line" << parser.errorLine();
+        return -1;
+    }
+
+    GroupModel groupModel;
+    groupModel.enableContactChanges(false);
+    groupModel.setQueryMode(EventModel::SyncQuery);
+    Catcher groupCatcher(&groupModel);
+    EventModel model;
+    Catcher eventCatcher(&model);
+    int groupCount = 0;
+
+    foreach (const QVariant &c, result) {
+        QVariantMap conversation = c.toMap();
+        Group group;
+        Event::EventType type;
+
+        groupCount++;
+
+        if (conversation["type"] == QLatin1String("sms")) {
+            type = Event::SMSEvent;
+            group.setLocalUid(RING_ACCOUNT);
+        } else if (conversation["type"] == QLatin1String("im")) {
+            type = Event::IMEvent;
+            QString from = conversation["from"].toString();
+            if (from.isEmpty()) {
+                qWarning() << "No 'from' field in IM conversation" << groupCount;
+                ok = false;
+                continue;
+            }
+
+            group.setLocalUid(TELEPATHY_ACCOUNT_PREFIX + from);
+        } else {
+            qWarning() << "No valid type for conversation" << groupCount;
+            ok = false;
+            continue;
+        }
+
+        QString to = conversation.value("to").toString();
+        if (to.isEmpty()) {
+            qWarning() << "No 'to' field in conversation" << groupCount;
+            ok = false;
+            continue;
+        }
+
+        group.setRemoteUids(QStringList() << to);
+        group.setChatType(Group::ChatTypeP2P);
+
+        if (!groupModel.addGroup(group)) {
+            qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
+            ok = false;
+            continue;
+        }
+        groupCatcher.waitCommit(0);
+
+        // messages
+        QList<Event> events;
+        QVariantList messages = conversation.value("messages").toList();
+        events.reserve(messages.size());
+
+        int eventCount = 0;
+        foreach (const QVariant &m, messages) {
+            QVariantMap message = m.toMap();
+            Event event;
+            event.setType(type);
+            event.setGroupId(group.id());
+            event.setLocalUid(group.localUid());
+            event.setRemoteUid(group.remoteUids().first());
+
+            eventCount++;
+
+            if (message["direction"] == "in") {
+                event.setDirection(Event::Inbound);
+            } else if (message["direction"] == "out") {
+                event.setDirection(Event::Outbound);
+                event.setStatus(Event::DeliveredStatus);
+            } else {
+                qWarning() << "No valid direction for message" << eventCount << "in conversation" << groupCount;
+                ok = false;
+                continue;
+            }
+
+            QDateTime date = QDateTime::fromString(message.value("date").toString(), Qt::ISODate);
+            if (!date.isValid()) {
+                qWarning() << "No valid date for message" << eventCount << "in conversation" << groupCount;
+                ok = false;
+                continue;
+            }
+            event.setStartTime(date);
+            event.setEndTime(date);
+
+            if (!message.value("unread").toBool())
+                event.setIsRead(true);
+
+            event.setFreeText(message.value("text").toString());
+
+            events.append(event);
+        }
+
+        if (!events.isEmpty() && !model.addEvents(events)) {
+            qWarning() << "Error adding messages for conversation" << groupCount;
+            ok = false;
+            continue;
+        }
+        eventCatcher.waitCommit(events.size());
+
+        qDebug() << "CONVERSATION " << group.id() << ":" << group.localUid() << group.remoteUids() << "-"
+                 << events.size() << "messages";
+    }
+
+    if (!ok) {
+        qWarning() << "Errors occurred while importing JSON file. Data may be incomplete.";
+        return 1;
+    }
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     try {
@@ -1131,6 +1306,8 @@ int main(int argc, char **argv)
             return doExport(args, options);
         } else if (args.at(1) == "import") {
             return doImport(args, options);
+        } else if (args.at(1) == "import-json" && args.count() >= 3) {
+            return doJsonImport(args, options);
         } else {
             printUsage();
         }

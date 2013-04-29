@@ -12,6 +12,7 @@ BuildRequires:  pkgconfig(QtContacts)
 BuildRequires:  pkgconfig(QtSparql)
 BuildRequires:  pkgconfig(tracker-sparql-0.14)
 BuildRequires:  pkgconfig(QtDeclarative)
+BuildRequires:  pkgconfig(QJson)
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.
