@@ -221,6 +221,12 @@ QString functionForProperty(Event::Property p)
         break;
     case Event::ContactId:
         // join all contact matches
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+        // Return the contact remoteUids to be resolved into contacts in a second pass
+        func << QLatin1String("(SELECT GROUP_CONCAT(")
+             << QLatin1String("tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), \"\\u001c\") ")
+             << QLatin1String("WHERE { ?target nco:hasContactMedium ?medium . })");
+#else
         func << QLatin1String(
             "  (SELECT GROUP_CONCAT(" \
             "    fn:concat(tracker:id(?contact), \"\\u001e\", " \
@@ -248,6 +254,7 @@ QString functionForProperty(Event::Property p)
             "  }}" \
             "}) AS ?contacts "
             );
+#endif
         break;
     case Event::ContactName:
         func << QLatin1String("rdf:nil");

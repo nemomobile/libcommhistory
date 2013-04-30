@@ -38,13 +38,21 @@
 #include "commonutils.h"
 
 #include "contactlistener.h"
+#include "qcontacttpmetadata_p.h"
 
 using namespace CommHistory;
 
 QWeakPointer<ContactListener> ContactListener::m_Instance;
 
 namespace {
+
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+    // Using the sqlite backend for QtMobility Contacts
+    const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
+#else
+    // Using the tracker backend for QtMobility Contacts
     static const QLatin1String CONTACT_STORAGE_TYPE("tracker");
+#endif
     static const int CONTACT_REQUEST_THRESHOLD = 5000;
     static const int REQUEST_BATCH_SIZE = 10;
 
@@ -90,10 +98,20 @@ void ContactListener::init()
     qDebug() << Q_FUNC_INFO;
 
     if (!m_ContactManager) {
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+        QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+        if (!envspec.isEmpty()) {
+            qDebug() << "Using contact manager:" << envspec;
+            m_ContactManager = new QContactManager(envspec);
+        } else {
+            m_ContactManager = new QContactManager;
+        }
+#else
         QMap<QString,QString> params;
         params["contact-types"] = QLatin1String("contact");
         params["omit-presence-changes"] = QLatin1String(""); // value ignored
         m_ContactManager = new QContactManager(CONTACT_STORAGE_TYPE, params);
+#endif
         m_ContactManager->setParent(this);
         connect(m_ContactManager, SIGNAL(contactsAdded(const QList<QContactLocalId> &)),
                 this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
@@ -154,7 +172,7 @@ void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactI
 
     qDebug() << Q_FUNC_INFO << contactIds;
 
-    foreach (QContactLocalId localId, contactIds)
+    foreach (const QContactLocalId &localId, contactIds)
         emit contactRemoved(localId);
 }
 
@@ -171,6 +189,7 @@ void ContactListener::slotStartContactRequest()
 
             QString number = CommHistory::normalizePhoneNumber(contact.second,
                                                                NormalizeFlagKeepDialString);
+
             if (number.isEmpty()) {
                 QContactDetailFilter filterLocal;
                 filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
@@ -184,7 +203,17 @@ void ContactListener::slotStartContactRequest()
 
                 filter = addContactFilter(filter, filterLocal & filterRemote);
             } else {
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+                // The 'normalized' field in qtcontacts-sqlite corresponds to the CommHistory 'short' number
+                QContactDetailFilter phoneFilter;
+                phoneFilter.setDetailDefinitionName(QContactPhoneNumber::DefinitionName, QContactPhoneNumber__FieldNormalizedNumber);
+                phoneFilter.setValue(CommHistory::makeShortNumber(contact.second));
+                phoneFilter.setMatchFlags(QContactFilter::MatchExactly);
+
+                filter = addContactFilter(filter, phoneFilter);
+#else
                 filter = addContactFilter(filter, QContactPhoneNumber::match(number));
+#endif
             }
         }
         request = buildRequest(filter);
@@ -217,15 +246,15 @@ void ContactListener::slotResultsAvailable()
 
     qDebug() << Q_FUNC_INFO << request->contacts().size() << "contacts";
 
-    foreach (QContact contact, request->contacts()) {
+    foreach (const QContact &contact, request->contacts()) {
         if (contact.localId() != m_ContactManager->selfContactId()) {
             QList< QPair<QString,QString> > addresses;
-            foreach (QContactOnlineAccount account,
+            foreach (const QContactOnlineAccount &account,
                      contact.details(QContactOnlineAccount::DefinitionName)) {
                 addresses += qMakePair(account.value(QLatin1String("AccountPath")),
                                        account.accountUri());
             }
-            foreach (QContactPhoneNumber phoneNumber,
+            foreach (const QContactPhoneNumber &phoneNumber,
                      contact.details(QContactPhoneNumber::DefinitionName)) {
                 addresses += qMakePair(QString(), phoneNumber.number());
             }

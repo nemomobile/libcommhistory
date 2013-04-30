@@ -29,6 +29,22 @@
 
 #include <qtcontacts-tracker/phoneutils.h>
 
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+#include <QContact>
+#include <QContactManager>
+#include <QContactDetail>
+#include <QContactDetailFilter>
+#include <QContactIntersectionFilter>
+#include <QContactRelationshipFilter>
+#include <QContactUnionFilter>
+
+#include <QContactName>
+#include <QContactNickname>
+#include <QContactOnlineAccount>
+#include <QContactPhoneNumber>
+#include <QContactSyncTarget>
+#endif
+
 #include <QFile>
 #include <QTextStream>
 
@@ -40,8 +56,32 @@
 #include "trackerio.h"
 #include "commonutils.h"
 
+#include "qcontacttpmetadata_p.h"
+
 namespace {
 static int contactNumber = 0;
+
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+QContactManager *createManager()
+{
+    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+    if (!envspec.isEmpty()) {
+        qDebug() << "Using contact manager:" << envspec;
+        return new QContactManager(envspec);
+    }
+
+    return new QContactManager;
+}
+
+QContactManager *manager()
+{
+    static QContactManager *manager = createManager();
+    return manager;
+}
+
+const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
+const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
+#endif
 };
 
 using namespace CommHistory;
@@ -118,6 +158,74 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid)
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
+
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+    QContact contact;
+
+    QContactSyncTarget syncTarget;
+    syncTarget.setSyncTarget(QLatin1String("commhistory-tests"));
+    if (!contact.saveDetail(&syncTarget)) {
+        qWarning() << "Unable to add sync target to contact:" << contactUri;
+        return -1;
+    }
+
+    if (!localUid.isEmpty()) {
+        // Create a metadata detail to link the contact with the account
+        QContactTpMetadata metadata;
+        metadata.setContactId(remoteUid);
+        metadata.setAccountId(localUid);
+        metadata.setAccountEnabled(true);
+        if (!contact.saveDetail(&metadata)) {
+            qWarning() << "Unable to add metadata to contact:" << contactUri;
+            return -1;
+        }
+    }
+
+    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
+    if (normal.isEmpty()) {
+        QContactOnlineAccount qcoa;
+        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
+        qcoa.setAccountUri(remoteUid);
+        if (!contact.saveDetail(&qcoa)) {
+            qWarning() << "Unable to add online account to contact:" << contactUri;
+            return -1;
+        }
+    } else {
+        QContactPhoneNumber phoneNumberDetail;
+        phoneNumberDetail.setNumber(remoteUid);
+        phoneNumberDetail.setValue(QContactPhoneNumber__FieldNormalizedNumber, makeShortNumber(remoteUid));
+        if (!contact.saveDetail(&phoneNumberDetail)) {
+            qWarning() << "Unable to add phone number to contact:" << contactUri;
+            return -1;
+        }
+    }
+
+    QContactName nameDetail;
+    nameDetail.setLastName(name);
+    if (!contact.saveDetail(&nameDetail)) {
+        qWarning() << "Unable to add name to contact:" << contactUri;
+        return -1;
+    }
+
+    if (!manager()->saveContact(&contact)) {
+        qWarning() << "Unable to store contact:" << contactUri;
+        return -1;
+    }
+
+    // We should return the aggregated instance of this contact
+    QContactRelationshipFilter filter;
+    filter.setRelationshipType(QContactRelationship::Aggregates);
+    filter.setRelatedContactId(contact.id());
+    filter.setRelatedContactRole(QContactRelationship::Second);
+
+    foreach (const QContactLocalId &id, manager()->contactIds(filter)) {
+        qDebug() << "********** contact id" << id;
+        return id;
+    }
+
+    qWarning() << "Could not find aggregator for:" << contact.localId();
+    return contact.localId();
+#else
     QString addContact("INSERT { "
                        " GRAPH <commhistory-tests> { "
                        " %1 "
@@ -168,12 +276,32 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     qDebug() << "********** contact id" << result->value(0).toInt();
 
     return result->value(0).toInt();
+#endif
 }
 
 void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+    QContact contact = manager()->contact(id);
+    if (!contact.isEmpty()) {
+        qWarning() << "unable to retrieve contact:" << id;
+        return;
+    }
+
+    QContactName nameDetail = contact.detail<QContactName>();
+    nameDetail.setLastName(name);
+    if (!contact.saveDetail(&nameDetail)) {
+        qWarning() << "Unable to add name to contact:" << id;
+        return;
+    }
+
+    if (!manager()->saveContact(&contact)) {
+        qWarning() << "Unable to store contact:" << id;
+        return;
+    }
+#else
     QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
                   "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
                   "FILTER(tracker:id(?contact) = %1) }");
@@ -196,10 +324,16 @@ void modifyTestContact(int id, const QString &name)
         qWarning() << "error modifying contact:" << result2->lastError().message();
         return;
     }
+#endif
 }
 
 void deleteTestContact(int id)
 {
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+    if (!manager()->removeContact(QContactLocalId(id))) {
+        qWarning() << "error deleting contact:" << id;
+    }
+#else
     QString query("DELETE { ?aff a nco:Affiliation } WHERE"
                   "{ ?c a nco:PersonContact; nco:hasAffiliation ?aff . "
                   "FILTER(tracker:id(?c) = %1) } "
@@ -214,6 +348,7 @@ void deleteTestContact(int id)
         qWarning() << "error deleting contact:" << result->lastError().message();
         return;
     }
+#endif
 }
 
 void cleanUpTestContacts()

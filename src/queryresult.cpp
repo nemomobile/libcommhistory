@@ -24,6 +24,22 @@
 
 #include "queryresult.h"
 #include "contactlistener.h"
+#include "commonutils.h"
+#include "qcontacttpmetadata_p.h"
+
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+#include <QContact>
+#include <QContactManager>
+#include <QContactDetail>
+#include <QContactDetailFilter>
+#include <QContactIntersectionFilter>
+#include <QContactUnionFilter>
+
+#include <QContactName>
+#include <QContactNickname>
+#include <QContactOnlineAccount>
+#include <QContactPhoneNumber>
+#endif
 
 #include <QSettings>
 using namespace CommHistory;
@@ -38,6 +54,40 @@ using namespace CommHistory;
 #define IM_ADDRESS_SEPARATOR QLatin1Char('!')
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
+
+
+void QContactTpMetadata::setContactId(const QString &s) { setValue(FieldContactId, s); }
+QString QContactTpMetadata::contactId() const { return value(FieldContactId); }
+
+void QContactTpMetadata::setAccountId(const QString &s) { setValue(FieldAccountId, s); }
+QString QContactTpMetadata::accountId() const { return value(FieldAccountId); }
+
+void QContactTpMetadata::setAccountEnabled(bool b) { setValue(FieldAccountEnabled, QLatin1String(b ? "true" : "false")); }
+bool QContactTpMetadata::accountEnabled() const { return (value(FieldAccountEnabled) == QLatin1String("true")); }
+
+QContactDetailFilter QContactTpMetadata::matchContactId(const QString &s)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldContactId);
+    filter.setValue(s);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+    return filter;
+}
+
+QContactDetailFilter QContactTpMetadata::matchAccountId(const QString &s)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldAccountId);
+    filter.setValue(s);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+    return filter;
+}
+
+Q_IMPLEMENT_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldContactId, "ContactId");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountId, "AccountId");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountEnabled, "AccountEnabled");
+
 
 namespace {
 
@@ -81,7 +131,87 @@ QString getAddresbookNameOrder()
     return addressBookSettings.value(LAT("nameOrder")).toString();
 }
 
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
+
+QContactManager *createManager()
+{
+    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+    if (!envspec.isEmpty()) {
+        qDebug() << "Using contact manager:" << envspec;
+        return new QContactManager(envspec);
+    }
+
+    return new QContactManager;
+}
+
+QContactManager *manager()
+{
+    static QContactManager *manager = createManager();
+    return manager;
+}
+
+QContactDetailFilter matchPhoneNumberFilter(const QString &phoneNumber)
+{
+    // The 'normalized' field in qtcontacts-sqlite corresponds to the CommHistory 'short' number
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactPhoneNumber::DefinitionName, QContactPhoneNumber__FieldNormalizedNumber);
+    filter.setValue(CommHistory::makeShortNumber(phoneNumber));
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+
+    return filter;
+}
+
+QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAddress)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+
+    if (imAddress.startsWith(QLatin1String("telepathy:"))) {
+        // Only match contacts created by telepathy for the specified account
+        // Note: qtcontacts-sqlite uses the QContactTpMetadata detail to reflect the telepathy
+        // origin, so the 'telepathy:' qualification must be removed from the values
+        QContactIntersectionFilter tpFilter;
+        tpFilter << QContactTpMetadata::matchAccountId(localUid);
+
+        QString trailing(imAddress);
+        trailing.remove(0, 10);
+        filter.setValue(trailing);
+
+        tpFilter << filter;
+        return tpFilter;
+    }
+
+    filter.setValue(imAddress);
+    return filter;
+}
+
+QContactUnionFilter matchContactFilter(const QString &localUid, const QString &match)
+{
+    QContactUnionFilter filter;
+    filter << matchPhoneNumberFilter(match);
+    filter << matchIMAddressFilter(localUid, match);
+
+    return filter;
+}
+
+QList<QContact> findMatchingContacts(const QString &localUid, const QStringList &matches)
+{
+    QContactUnionFilter filter;
+
+    foreach (const QString &match, matches) {
+        filter << matchContactFilter(localUid, match);
+    }
+
+    // TODO: test using a definitionMask here to reduce data retrieval
+    return manager()->contacts(filter);
+}
+#else
+
 bool isLastNameFirst = getAddresbookNameOrder() == LAT("last-first");
+
+#endif
 
 }
 
@@ -412,6 +542,48 @@ void QueryResult::parseHeaders(const QString &result,
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
                                 QList<Event::Contact> &contacts)
 {
+#ifdef COMMHISTORY_USE_QTCONTACTS_API
+    /* Tracker does not contain any contact info - we need to retrieve it separately.
+     * The 'result' contains only remoteUids, to be resolved into contacts.
+     */
+    QStringList remoteUidList = result.split('\x1c', QString::SkipEmptyParts);
+    const QList<QContact> &matched(findMatchingContacts(localUid, remoteUidList));
+    if (!matched.isEmpty()) {
+        contacts.reserve(contacts.count() + matched.count());
+
+        foreach (const QContact &match, matched) {
+            Event::Contact contact;
+            contact.first = match.localId();
+
+            QString firstName, lastName, contactNickname, imNickname;
+
+            foreach (const QContactName &name, match.details<QContactName>()) {
+                if (!name.isEmpty()) {
+                    firstName = name.firstName();
+                    lastName = name.lastName();
+                    break;
+                }
+            }
+            foreach (const QContactNickname &nickname, match.details<QContactNickname>()) {
+                if (!nickname.isEmpty()) {
+                    contactNickname = nickname.nickname();
+                    break;
+                }
+            }
+            foreach (const QContactPresence &presence, match.details<QContactPresence>()) {
+                if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
+                    imNickname = presence.nickname();
+                    break;
+                }
+            }
+
+            contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+
+            if (!contacts.contains(contact))
+                contacts.append(contact);
+        }
+    }
+#else
     /*
      * Query result format:
      * result      ::= contact (1C contact)*
@@ -476,6 +648,7 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
                 contacts << contact;
         }
     }
+#endif
 }
 
 QString QueryResult::buildContactName(const QString &firstName,
