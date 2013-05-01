@@ -79,7 +79,6 @@ QContactManager *manager()
     return manager;
 }
 
-const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
 const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
 #endif
 };
@@ -193,7 +192,6 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     } else {
         QContactPhoneNumber phoneNumberDetail;
         phoneNumberDetail.setNumber(remoteUid);
-        phoneNumberDetail.setValue(QContactPhoneNumber__FieldNormalizedNumber, makeShortNumber(remoteUid));
         if (!contact.saveDetail(&phoneNumberDetail)) {
             qWarning() << "Unable to add phone number to contact:" << contactUri;
             return -1;

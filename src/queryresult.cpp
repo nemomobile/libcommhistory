@@ -132,8 +132,6 @@ QString getAddresbookNameOrder()
 }
 
 #ifdef COMMHISTORY_USE_QTCONTACTS_API
-const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
-
 QContactManager *createManager()
 {
     QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
@@ -149,17 +147,6 @@ QContactManager *manager()
 {
     static QContactManager *manager = createManager();
     return manager;
-}
-
-QContactDetailFilter matchPhoneNumberFilter(const QString &phoneNumber)
-{
-    // The 'normalized' field in qtcontacts-sqlite corresponds to the CommHistory 'short' number
-    QContactDetailFilter filter;
-    filter.setDetailDefinitionName(QContactPhoneNumber::DefinitionName, QContactPhoneNumber__FieldNormalizedNumber);
-    filter.setValue(CommHistory::makeShortNumber(phoneNumber));
-    filter.setMatchFlags(QContactFilter::MatchExactly);
-
-    return filter;
 }
 
 QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAddress)
@@ -190,7 +177,7 @@ QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAd
 QContactUnionFilter matchContactFilter(const QString &localUid, const QString &match)
 {
     QContactUnionFilter filter;
-    filter << matchPhoneNumberFilter(match);
+    filter << QContactPhoneNumber::match(match);
     filter << matchIMAddressFilter(localUid, match);
 
     return filter;

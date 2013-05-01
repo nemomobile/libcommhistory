@@ -46,10 +46,7 @@ QWeakPointer<ContactListener> ContactListener::m_Instance;
 
 namespace {
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
-    // Using the sqlite backend for QtMobility Contacts
-    const QLatin1String QContactPhoneNumber__FieldNormalizedNumber("NormalizedNumber");
-#else
+#ifndef COMMHISTORY_USE_QTCONTACTS_API
     // Using the tracker backend for QtMobility Contacts
     static const QLatin1String CONTACT_STORAGE_TYPE("tracker");
 #endif
@@ -203,17 +200,7 @@ void ContactListener::slotStartContactRequest()
 
                 filter = addContactFilter(filter, filterLocal & filterRemote);
             } else {
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
-                // The 'normalized' field in qtcontacts-sqlite corresponds to the CommHistory 'short' number
-                QContactDetailFilter phoneFilter;
-                phoneFilter.setDetailDefinitionName(QContactPhoneNumber::DefinitionName, QContactPhoneNumber__FieldNormalizedNumber);
-                phoneFilter.setValue(CommHistory::makeShortNumber(contact.second));
-                phoneFilter.setMatchFlags(QContactFilter::MatchExactly);
-
-                filter = addContactFilter(filter, phoneFilter);
-#else
                 filter = addContactFilter(filter, QContactPhoneNumber::match(number));
-#endif
             }
         }
         request = buildRequest(filter);
