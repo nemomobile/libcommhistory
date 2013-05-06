@@ -1576,7 +1576,7 @@ void EventModelTest::testMoveEvent()
     // Then the empty group should be deleted:
     QVERIFY(model.moveEvent(eventFromTracker,group1.id()));
 
-    watcher.waitForSignals();
+    watcher.waitForSignals(1, 1, 1);
     QCOMPARE(watcher.deletedCount(), 1);
     QCOMPARE(watcher.lastDeletedId(),eventFromTracker.id());
     QCOMPARE(watcher.addedCount(), 1);

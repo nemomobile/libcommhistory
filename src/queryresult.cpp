@@ -183,16 +183,80 @@ QContactUnionFilter matchContactFilter(const QString &localUid, const QString &m
     return filter;
 }
 
-QList<QContact> findMatchingContacts(const QString &localUid, const QStringList &matches)
+QContactFetchHint getRetrievalHint()
 {
-    QContactUnionFilter filter;
+    QContactFetchHint hint;
 
-    foreach (const QString &match, matches) {
-        filter << matchContactFilter(localUid, match);
+    // Only retrieve the details we will use
+    hint.setDetailDefinitionsHint(QStringList() << QContactName::DefinitionName
+                                                << QContactPhoneNumber::DefinitionName
+                                                << QContactOnlineAccount::DefinitionName
+                                                << QContactNickname::DefinitionName
+                                                << QContactPresence::DefinitionName);
+
+    return hint;
+}
+
+QList<QContact> findMatchingFromList(QList<QContact> *list, const QString &match)
+{
+    QList<QContact> rv;
+
+    QString shortNumber = makeShortNumber(match, NormalizeFlagKeepDialString);
+    QString accountUri = match;
+    if (accountUri.startsWith(QLatin1String("telepathy:"))) {
+        accountUri.remove(0, 10);
     }
 
-    // TODO: test using a definitionMask here to reduce data retrieval
-    return manager()->contacts(filter);
+    for (QList<QContact>::iterator it = list->begin(); it != list->end(); ) {
+        const QContact &contact(*it);
+
+        // Is this contact a match for this criterion?
+        QList<QContact>::iterator matchIt = list->end();
+        foreach (const QContactPhoneNumber &number, contact.details<QContactPhoneNumber>()) {
+            if (number.number().contains(shortNumber)) {
+                matchIt = it;
+                break;
+            }
+        }
+        foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
+            if (account.accountUri() == accountUri) {
+                matchIt = it;
+                break;
+            }
+        }
+
+        if (matchIt != list->end()) {
+            rv.append(*matchIt);
+            // Don't match this contact again
+            it = list->erase(matchIt);
+        } else {
+            ++it;
+        }
+    }
+
+    return rv;
+}
+
+QList<QContact> findMatchingContacts(const QString &localUid, const QStringList &matches)
+{
+    static const QContactFetchHint retrievalHint(getRetrievalHint());
+    static const QList<QContactSortOrder> defaultOrder;
+
+    QList<QContact> rv;
+
+    // Fetch all matches in one query
+    QContactUnionFilter groupFilter;
+    foreach (const QString &match, matches) {
+        groupFilter << matchContactFilter(localUid, match);
+    }
+
+    QList<QContact> matchList = manager()->contacts(groupFilter, defaultOrder, retrievalHint);
+    foreach (const QString &match, matches) {
+        // For each remoteUid, find the returned match(es), so that contacts order is correct
+        rv.append(findMatchingFromList(&matchList, match));
+    }
+
+    return rv;
 }
 #else
 
