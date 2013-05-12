@@ -201,7 +201,7 @@ QList<QContact> findMatchingFromList(QList<QContact> *list, const QString &match
 {
     QList<QContact> rv;
 
-    QString shortNumber = makeShortNumber(match, NormalizeFlagKeepDialString);
+    QString shortMatch = makeShortNumber(match, NormalizeFlagKeepDialString);
     QString accountUri = match;
     if (accountUri.startsWith(QLatin1String("telepathy:"))) {
         accountUri.remove(0, 10);
@@ -213,7 +213,8 @@ QList<QContact> findMatchingFromList(QList<QContact> *list, const QString &match
         // Is this contact a match for this criterion?
         QList<QContact>::iterator matchIt = list->end();
         foreach (const QContactPhoneNumber &number, contact.details<QContactPhoneNumber>()) {
-            if (number.number().contains(shortNumber)) {
+            QString shortForm = makeShortNumber(number.number(), NormalizeFlagKeepDialString);
+            if (shortForm == shortMatch) {
                 matchIt = it;
                 break;
             }
