@@ -41,11 +41,8 @@ HEADERS += trackerio.h \
            groupmanager_p.h \
            contactgroupmodel.h \
            contactgroupmodel_p.h \
-           contactgroup.h
-
-contains(DEFINES, COMMHISTORY_USE_QTCONTACTS_API) {
-    HEADERS += qcontacttpmetadata_p.h
-}
+           contactgroup.h \
+           qcontacttpmetadata_p.h
 
 SOURCES += trackerio.cpp \
            commonutils.cpp \

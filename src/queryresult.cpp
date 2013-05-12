@@ -27,7 +27,6 @@
 #include "commonutils.h"
 #include "qcontacttpmetadata_p.h"
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -39,7 +38,6 @@
 #include <QContactNickname>
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
-#endif
 
 #include <QSettings>
 using namespace CommHistory;
@@ -131,7 +129,6 @@ QString getAddresbookNameOrder()
     return addressBookSettings.value(LAT("nameOrder")).toString();
 }
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
 QContactManager *createManager()
 {
     QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
@@ -262,11 +259,6 @@ QList<QContact> findMatchingContacts(const QString &localUid, const QStringList 
 
     return rv;
 }
-#else
-
-bool isLastNameFirst = getAddresbookNameOrder() == LAT("last-first");
-
-#endif
 
 }
 
@@ -597,7 +589,6 @@ void QueryResult::parseHeaders(const QString &result,
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
                                 QList<Event::Contact> &contacts)
 {
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
     /* Tracker does not contain any contact info - we need to retrieve it separately.
      * The 'result' contains only remoteUids, to be resolved into contacts.
      */
@@ -638,72 +629,6 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
                 contacts.append(contact);
         }
     }
-#else
-    /*
-     * Query result format:
-     * result      ::= contact (1C contact)*
-     * contact     ::= namePart 1D contactNickname 1D imNickPart
-     * namePart    ::= contactID 1E firstName 1E lastName
-     * imNickPart  ::= 1E nickContact (1E nickContact)*
-     * nickContact ::= imAddress 1F nickname
-     * imAddress   ::= 'telepathy:' imAccountPath '!' remoteUid
-     */
-
-    // first split each contact to separate string
-    QStringList contactStringList = result.split('\x1c', QString::SkipEmptyParts);
-    foreach (QString contactString, contactStringList) {
-        // split contact to namePart and nickPart
-        QStringList contactPartList = contactString.split('\x1d');
-
-        // get nickname
-        QString contactNickname;
-        QString imNickname;
-        if (contactPartList.size() > 1) {
-            // nco:nickname
-            contactNickname = contactPartList[1];
-        }
-
-        if (contactPartList.size() > 2) {
-            // split nickPart to separate nickContacts
-            QStringList nickList = contactPartList[2].split('\x1e', QString::SkipEmptyParts);
-
-            foreach (QString nickContact, nickList) {
-                // split nickContact to imAddress and nickname
-                QStringList imPartList = nickContact.split('\x1f', QString::SkipEmptyParts);
-
-                // get nickname from part that matches localUid
-                if (imPartList[0].contains(localUid) && imPartList.size() > 1) {
-                    imNickname = imPartList[1];
-                    break;
-                }
-
-                // if localUid doesn't match to any imAddress (for example in call/SMS case),
-                // first nickname in the list is used
-                if (imNickname.isEmpty() && imPartList.size() > 1) {
-                    imNickname = imPartList[1];
-                }
-            }
-        }
-
-        // create contact
-        Event::Contact contact;
-        // split namePart to contact id, first name, last name and nickname
-        QStringList namePartList = contactPartList[0].split('\x1e');
-        if (!namePartList.isEmpty()) {
-            contact.first = namePartList[0].toInt();
-
-            QString firstName, lastName;
-            if (namePartList.size() >= 2)
-                firstName = namePartList[1];
-            if (namePartList.size() >= 3)
-                lastName = namePartList[2];
-            contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
-
-            if (!contacts.contains(contact))
-                contacts << contact;
-        }
-    }
-#endif
 }
 
 QString QueryResult::buildContactName(const QString &firstName,

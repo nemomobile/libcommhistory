@@ -41,8 +41,5 @@ PROJECT_VERSION = 1.1.0
 #------------------------------------------------------------------------------
 LIBRARY_VERSION = 0.0.1
 
-# Use QContacts API for contact details
-DEFINES *= COMMHISTORY_USE_QTCONTACTS_API
-
 # End of File
 

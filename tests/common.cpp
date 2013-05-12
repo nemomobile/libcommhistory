@@ -29,7 +29,6 @@
 
 #include <qtcontacts-tracker/phoneutils.h>
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -43,7 +42,6 @@
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
 #include <QContactSyncTarget>
-#endif
 
 #include <QFile>
 #include <QTextStream>
@@ -61,7 +59,6 @@
 namespace {
 static int contactNumber = 0;
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
 QContactManager *createManager()
 {
     QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
@@ -80,7 +77,6 @@ QContactManager *manager()
 }
 
 const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
-#endif
 };
 
 using namespace CommHistory;
@@ -158,7 +154,6 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
     QContact contact;
 
     QContactSyncTarget syncTarget;
@@ -223,65 +218,12 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     qWarning() << "Could not find aggregator for:" << contact.localId();
     return contact.localId();
-#else
-    QString addContact("INSERT { "
-                       " GRAPH <commhistory-tests> { "
-                       " %1 "
-                       " %2 a nco:PersonContact ; "
-                       " nco:hasAffiliation _:foo ; "
-                       " nco:nameFamily \"%3\" . } }");
-
-    QString addAffiliation("_:foo a nco:Affiliation; ");
-
-    QString addressQuery;
-    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
-    if (normal.isEmpty()) {
-        QString uri = QString("telepathy:%1!%2").arg(localUid).arg(remoteUid);
-        addressQuery = QString("INSERT { GRAPH <commhistory-tests> { <%1> a nco:IMAddress } }").arg(uri);
-        addAffiliation += QString("nco:hasIMAddress <%1> .").arg(uri);
-    } else {
-        QString shortNumber = makeShortNumber(remoteUid);
-        QString phoneIRI = qctMakePhoneNumberIri(remoteUid);
-        addressQuery =
-            QString("INSERT SILENT { GRAPH <commhistory-tests> { <%1> a nco:PhoneNumber ; "
-                    "nco:phoneNumber \"%2\" ; "
-                    "maemo:localPhoneNumber \"%3\" . } }")
-            .arg(phoneIRI)
-            .arg(remoteUid)
-            .arg(shortNumber);
-        addAffiliation += QString("nco:hasPhoneNumber <%1> .").arg(phoneIRI);
-    }
-
-    QString query = addressQuery + " " + QString(addContact).arg(addAffiliation).arg(contactUri).arg(name);
-    QSparqlQuery insertQuery(query, QSparqlQuery::InsertStatement);
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QScopedPointer<QSparqlResult> result(conn->syncExec(insertQuery));
-    result->waitForFinished();
-    if (result->hasError()) {
-        qWarning() << "error inserting address:" << result->lastError().message();
-        return -1;
-    }
-
-    query = QString("SELECT tracker:id(?c) WHERE { ?c a nco:PersonContact. FILTER(?c = %1) }")
-        .arg(contactUri);
-    result.reset(conn->syncExec(QSparqlQuery(query)));
-    result->waitForFinished();
-    if (result->hasError() || !result->first()) {
-        qWarning() << "error getting id of inserted contact:" << result->lastError().message();
-        return -1;
-    }
-
-    qDebug() << "********** contact id" << result->value(0).toInt();
-
-    return result->value(0).toInt();
-#endif
 }
 
 void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
     QContact contact = manager()->contact(id);
     if (!contact.isEmpty()) {
         qWarning() << "unable to retrieve contact:" << id;
@@ -299,54 +241,13 @@ void modifyTestContact(int id, const QString &name)
         qWarning() << "Unable to store contact:" << id;
         return;
     }
-#else
-    QString query("DELETE { ?contact nco:nameFamily ?name } WHERE "
-                  "{ ?contact a nco:PersonContact; nco:nameFamily ?name . "
-                  "FILTER(tracker:id(?contact) = %1) }");
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
-                                                                 QSparqlQuery::DeleteStatement)));
-    result->waitForFinished();
-    if (result->hasError()) {
-        qWarning() << "error modifying contact:" << result->lastError().message();
-        return;
-    }
-
-    QString addContact("INSERT { GRAPH <commhistory-tests> { ?c nco:nameFamily \"%2\" } } "
-                       "WHERE {?c a nco:PersonContact . FILTER(tracker:id(?c) = %1) }");
-    QScopedPointer<QSparqlResult> result2(conn->exec(QSparqlQuery(addContact.arg(id).arg(name),
-                                                                  QSparqlQuery::InsertStatement)));
-
-    result2->waitForFinished();
-    if (result2->hasError()) {
-        qWarning() << "error modifying contact:" << result2->lastError().message();
-        return;
-    }
-#endif
 }
 
 void deleteTestContact(int id)
 {
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
     if (!manager()->removeContact(QContactLocalId(id))) {
         qWarning() << "error deleting contact:" << id;
     }
-#else
-    QString query("DELETE { ?aff a nco:Affiliation } WHERE"
-                  "{ ?c a nco:PersonContact; nco:hasAffiliation ?aff . "
-                  "FILTER(tracker:id(?c) = %1) } "
-                  "DELETE { ?contact a nco:PersonContact } WHERE"
-                  "{ ?contact a nco:PersonContact . "
-                  "FILTER(tracker:id(?contact) = %1) }");
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query.arg(QString::number(id)),
-                                                                 QSparqlQuery::DeleteStatement)));
-    result->waitForFinished();
-    if (result->hasError()) {
-        qWarning() << "error deleting contact:" << result->lastError().message();
-        return;
-    }
-#endif
 }
 
 void cleanUpTestContacts()

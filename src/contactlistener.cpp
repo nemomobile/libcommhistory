@@ -46,10 +46,6 @@ QWeakPointer<ContactListener> ContactListener::m_Instance;
 
 namespace {
 
-#ifndef COMMHISTORY_USE_QTCONTACTS_API
-    // Using the tracker backend for QtMobility Contacts
-    static const QLatin1String CONTACT_STORAGE_TYPE("tracker");
-#endif
     static const int CONTACT_REQUEST_THRESHOLD = 5000;
     static const int REQUEST_BATCH_SIZE = 10;
 
@@ -95,7 +91,6 @@ void ContactListener::init()
     qDebug() << Q_FUNC_INFO;
 
     if (!m_ContactManager) {
-#ifdef COMMHISTORY_USE_QTCONTACTS_API
         QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
         if (!envspec.isEmpty()) {
             qDebug() << "Using contact manager:" << envspec;
@@ -103,12 +98,6 @@ void ContactListener::init()
         } else {
             m_ContactManager = new QContactManager;
         }
-#else
-        QMap<QString,QString> params;
-        params["contact-types"] = QLatin1String("contact");
-        params["omit-presence-changes"] = QLatin1String(""); // value ignored
-        m_ContactManager = new QContactManager(CONTACT_STORAGE_TYPE, params);
-#endif
         m_ContactManager->setParent(this);
         connect(m_ContactManager, SIGNAL(contactsAdded(const QList<QContactLocalId> &)),
                 this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
