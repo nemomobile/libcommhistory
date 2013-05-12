@@ -194,6 +194,9 @@ QContactFetchHint getRetrievalHint()
                                                 << QContactNickname::DefinitionName
                                                 << QContactPresence::DefinitionName);
 
+    // Relationships are slow and unnecessary here
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
     return hint;
 }
 

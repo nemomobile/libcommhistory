@@ -146,8 +146,11 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
 
     QContactFetchHint hint;
     hint.setDetailDefinitionsHint(details);
-    request->setFetchHint(hint);
 
+    // Relationships are slow and unnecessary here
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+    request->setFetchHint(hint);
     return request;
 }
 
