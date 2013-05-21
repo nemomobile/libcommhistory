@@ -26,7 +26,15 @@ INCLUDEPATH += . ../../src ..
 LIBS += ../../src/libcommhistory.a
 DEPENDPATH  += $${INCLUDEPATH}
 
-CONFIG += qtsparql 
+CONFIG += qtsparql
+
+equals(QT_MAJOR_VERSION, 4) {
+    CONFIG += mobility
+    MOBILITY += contacts
+}
+equals(QT_MAJOR_VERSION, 5) {
+    QT += contacts
+}
 
 SOURCES += ../common.cpp ../modelwatcher.cpp
 HEADERS += ../common.h ../modelwatcher.h

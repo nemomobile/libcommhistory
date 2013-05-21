@@ -23,13 +23,9 @@
 !include( ../common-vars.pri ):error( "Unable to install common-vars.pri" )
 
 TEMPLATE = subdirs
-SUBDIRS = model_example \
-          group_example \
-          async_example \
-          ut_eventmodel \
+SUBDIRS = ut_eventmodel \
           ut_callmodel \
           ut_conversationmodel \
-          ut_draftmodel \
           ut_groupmodel \
           ut_outboxmodel \
           ut_smsinboxmodel \

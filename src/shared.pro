@@ -35,12 +35,21 @@ TEMPLATE = lib
 TARGET   = commhistory
 VERSION  = $$LIBRARY_VERSION
 
-CONFIG  += qdbus \
-           shared \
-           mobility \
+CONFIG  += shared \
            debug \
            qtsparql
-MOBILITY += contacts
+
+QT += dbus
+
+equals(QT_MAJOR_VERSION, 4) {
+    CONFIG += mobility
+    MOBILITY += contacts
+}
+
+equals(QT_MAJOR_VERSION, 5) {
+    QT += contacts
+}
+
 PKGCONFIG += tracker-sparql-0.14
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden

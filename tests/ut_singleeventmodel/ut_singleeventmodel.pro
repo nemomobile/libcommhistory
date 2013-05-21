@@ -5,7 +5,5 @@ include( ../tests.pri )
 TARGET = ut_singleeventmodel
 DESTDIR = ../bin
 QT -= gui
-MOBILITY += contacts
-CONFIG  += qtestlib qdbus mobility
 SOURCES += singleeventmodeltest.cpp
 HEADERS += singleeventmodeltest.h

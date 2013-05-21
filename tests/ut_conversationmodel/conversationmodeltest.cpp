@@ -278,7 +278,11 @@ void ConversationModelTest::modifyEvent()
     QVERIFY(model.trackerIO().getEvent(event.id(), event));
     QCOMPARE(event.freeText(), QString("modified event"));
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Make nie:contentLastUpdated handling consistent");
+#else
     QSKIP("Make nie:contentLastUpdated handling consistent", SkipSingle);
+#endif
     event = model.event(model.index(row, 0));
     QCOMPARE(event.freeText(), QString("modified event"));
     QVERIFY(event.lastModified() > modified);

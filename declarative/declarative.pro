@@ -25,14 +25,21 @@ HEADERS += src/constants.h \
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols
-QT += declarative
 
-CONFIG += mobility
-MOBILITY += contacts
+equals(QT_MAJOR_VERSION, 4) {
+    QT += declarative
+    CONFIG += mobility
+    MOBILITY += contacts
+    target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
+}
 
-target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
+equals(QT_MAJOR_VERSION, 5) {
+    QT += quick contacts
+    target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
+}
+
 INSTALLS += target
 
 qmldir.files += $$PWD/qmldir
-qmldir.path +=  $$[QT_INSTALL_IMPORTS]/$$$$PLUGIN_IMPORT_PATH
+qmldir.path +=  $$target.path
 INSTALLS += qmldir

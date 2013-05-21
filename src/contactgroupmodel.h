@@ -119,6 +119,7 @@ public:
     virtual int rowCount(const QModelIndex &parent = QModelIndex()) const;
     virtual int columnCount(const QModelIndex &parent = QModelIndex()) const;
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+    virtual QHash<int,QByteArray> roleNames() const;
     /***/
 
 Q_SIGNALS:

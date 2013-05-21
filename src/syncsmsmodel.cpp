@@ -103,7 +103,7 @@ void SyncSMSModelPrivate::checkTokens(CommittingTransaction *transaction,
 {
     qDebug() << Q_FUNC_INFO;
 
-    QList<Event> events = qVariantValue<QList<CommHistory::Event> >(arg);
+    QList<Event> events = arg.value<QList<CommHistory::Event> >();
 
     transaction->addSignal(true,
                            this,

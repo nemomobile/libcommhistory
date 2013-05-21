@@ -24,11 +24,11 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 TEMPLATE = app
 QT -= gui
-CONFIG += qdbus \
-    debug \
+CONFIG += debug \
     qtsparql \
     pkgconfig
-PKGCONFIG += QJson
+QT += dbus
+equals(QT_MAJOR_VERSION, 4): PKGCONFIG += QJson
 VERSION = $$PROJECT_VERSION
 TARGET = commhistory-tool
 HEADERS += catcher.h

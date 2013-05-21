@@ -36,12 +36,23 @@
 #include <QContact>
 #include <QContactFetchRequest>
 
-QTM_USE_NAMESPACE
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+# include <QContactLocalIdFilter>
 
+QTM_USE_NAMESPACE
 QTM_BEGIN_NAMESPACE
 class QContactManager;
 class QContactFetchRequest;
 QTM_END_NAMESPACE
+
+#else
+# include <QContactId>
+# include <QContactIdFilter>
+# define QContactLocalId QContactId
+# define QContactLocalIdFilter QContactIdFilter
+
+using namespace QtContacts;
+#endif
 
 namespace CommHistory {
 

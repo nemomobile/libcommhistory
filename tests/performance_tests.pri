@@ -28,6 +28,14 @@ DEPENDPATH  += $${INCLUDEPATH}
 
 CONFIG += qtsparql 
 
+equals(QT_MAJOR_VERSION, 4) {
+    CONFIG += mobility
+    MOBILITY += contacts
+}
+equals(QT_MAJOR_VERSION, 5) {
+    QT += contacts
+}
+
 SOURCES += ../common.cpp
 HEADERS += ../common.h
 

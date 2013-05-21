@@ -1595,8 +1595,6 @@ void EventModelTest::testStreaming_data()
 
 void EventModelTest::testStreaming()
 {
-    QSKIP("*** Fix bug 294824 ***", SkipSingle);
-
     //::tracker()->setVerbosity(5);
     QFETCH(bool, useThread);
 
