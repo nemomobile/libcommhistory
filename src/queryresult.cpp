@@ -238,12 +238,12 @@ QList<QContact> findMatchingFromList(QList<QContact> *list, const QString &match
     return rv;
 }
 
-QList<QContact> findMatchingContacts(const QString &localUid, const QStringList &matches)
+QHash<QString, QList<QContact> > findMatchingContacts(const QString &localUid, const QStringList &matches)
 {
     static const QContactFetchHint retrievalHint(getRetrievalHint());
     static const QList<QContactSortOrder> defaultOrder;
 
-    QList<QContact> rv;
+    QHash<QString, QList<QContact> > rv;
 
     // Fetch all matches in one query
     QContactUnionFilter groupFilter;
@@ -253,8 +253,8 @@ QList<QContact> findMatchingContacts(const QString &localUid, const QStringList 
 
     QList<QContact> matchList = manager()->contacts(groupFilter, defaultOrder, retrievalHint);
     foreach (const QString &match, matches) {
-        // For each remoteUid, find the returned match(es), so that contacts order is correct
-        rv.append(findMatchingFromList(&matchList, match));
+        // For each remoteUid, find the returned match(es), so that contacts order can be preserved
+        rv.insert(match, findMatchingFromList(&matchList, match));
     }
 
     return rv;
@@ -262,7 +262,7 @@ QList<QContact> findMatchingContacts(const QString &localUid, const QStringList 
 
 }
 
-void QueryResult::fillEventFromModel(Event &event)
+void QueryResult::fillEventFromModel(Event &event, ContactMap *contactMap)
 {
     Event eventToFill;
 
@@ -439,7 +439,7 @@ void QueryResult::fillEventFromModel(Event &event)
     if (properties.contains(Event::ContactId)) {
         QList<Event::Contact> contacts;
         parseContacts(RESULT_INDEX2(Event::ContactId).toString(),
-                      eventToFill.localUid(), contacts);
+                      eventToFill.localUid(), contacts, contactMap);
         eventToFill.setContacts(contacts);
     }
 
@@ -448,7 +448,7 @@ void QueryResult::fillEventFromModel(Event &event)
     event.resetModifiedProperties();
 }
 
-void QueryResult::fillGroupFromModel(Group &group)
+void QueryResult::fillGroupFromModel(Group &group, ContactMap *contactMap)
 {
     Group groupToFill;
 
@@ -482,7 +482,7 @@ void QueryResult::fillGroupFromModel(Group &group)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(Group::ContactId).toString(),
-                  groupToFill.localUid(), contacts);
+                  groupToFill.localUid(), contacts, contactMap);
     groupToFill.setContacts(contacts);
 
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
@@ -532,7 +532,7 @@ void QueryResult::fillMessagePartFromModel(MessagePart &messagePart)
     messagePart = newPart;
 }
 
-void QueryResult::fillCallGroupFromModel(Event &event)
+void QueryResult::fillCallGroupFromModel(Event &event, ContactMap *contactMap)
 {
     Event eventToFill;
 
@@ -560,7 +560,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(CallGroupColumnContacts).toString(),
-                  eventToFill.localUid(), contacts);
+                  eventToFill.localUid(), contacts, contactMap);
     eventToFill.setContacts(contacts);
 
     eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
@@ -587,46 +587,81 @@ void QueryResult::parseHeaders(const QString &result,
 }
 
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
-                                QList<Event::Contact> &contacts)
+                                QList<Event::Contact> &contacts, ContactMap *contactMap)
 {
     /* Tracker does not contain any contact info - we need to retrieve it separately.
      * The 'result' contains only remoteUids, to be resolved into contacts.
      */
     QStringList remoteUidList = result.split('\x1c', QString::SkipEmptyParts);
-    const QList<QContact> &matched(findMatchingContacts(localUid, remoteUidList));
-    if (!matched.isEmpty()) {
-        contacts.reserve(contacts.count() + matched.count());
+    contacts.reserve(contacts.count() + remoteUidList.count());
 
-        foreach (const QContact &match, matched) {
-            Event::Contact contact;
-            contact.first = match.localId();
-
-            QString firstName, lastName, contactNickname, imNickname;
-
-            foreach (const QContactName &name, match.details<QContactName>()) {
-                if (!name.isEmpty()) {
-                    firstName = name.firstName();
-                    lastName = name.lastName();
-                    break;
+    QStringList unresolvedUidList;
+    if (contactMap) {
+        foreach (const QString &remoteUid, remoteUidList) {
+            ContactMap::iterator it = contactMap->find(qMakePair(localUid, remoteUid));
+            if (it != contactMap->end()) {
+                // We already have this contact in the map
+                const QList<Event::Contact> &cached(it.value());
+                foreach (const Event::Contact &contact, cached) {
+                    if (!contacts.contains(contact))
+                        contacts.append(contact);
                 }
-            }
-            foreach (const QContactNickname &nickname, match.details<QContactNickname>()) {
-                if (!nickname.isEmpty()) {
-                    contactNickname = nickname.nickname();
-                    break;
-                }
-            }
-            foreach (const QContactPresence &presence, match.details<QContactPresence>()) {
-                if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
-                    imNickname = presence.nickname();
-                    break;
-                }
+                continue;
             }
 
-            contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+            // We need to look this contact up
+            unresolvedUidList.append(remoteUid);
+        }
+    } else {
+        unresolvedUidList = remoteUidList;
+    }
 
-            if (!contacts.contains(contact))
-                contacts.append(contact);
+    if (!unresolvedUidList.isEmpty()) {
+        // Find all contacts macthing each unresolved UID
+        QHash<QString, QList<QContact> > matchingContacts(findMatchingContacts(localUid, unresolvedUidList));
+
+        foreach (const QString &remoteUid, unresolvedUidList) {
+            QList<Event::Contact> retrieved;
+
+            const QList<QContact> &matched = matchingContacts[remoteUid];
+            foreach (const QContact &match, matched) {
+                Event::Contact contact;
+                contact.first = match.localId();
+
+                QString firstName, lastName, contactNickname, imNickname;
+
+                foreach (const QContactName &name, match.details<QContactName>()) {
+                    if (!name.isEmpty()) {
+                        firstName = name.firstName();
+                        lastName = name.lastName();
+                        break;
+                    }
+                }
+                foreach (const QContactNickname &nickname, match.details<QContactNickname>()) {
+                    if (!nickname.isEmpty()) {
+                        contactNickname = nickname.nickname();
+                        break;
+                    }
+                }
+                foreach (const QContactPresence &presence, match.details<QContactPresence>()) {
+                    if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
+                        imNickname = presence.nickname();
+                        break;
+                    }
+                }
+
+                contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+
+                if (!contacts.contains(contact))
+                    contacts.append(contact);
+
+                retrieved.append(contact);
+            }
+
+            if (!retrieved.isEmpty() && contactMap) {
+                // Cache this result for later
+                contactMap->insert(qMakePair(localUid, remoteUid), retrieved);
+            }
         }
     }
 }
