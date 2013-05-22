@@ -163,6 +163,7 @@ void QueryRunner::startNextQueryIfReady()
     if (!m_queries.isEmpty()) {
         // start new query
         m_activeQuery = m_queries.takeFirst();
+        m_contactMap.clear();
 
         qDebug() << &(m_pTracker->d->connection()) << QThread::currentThread();
     }
@@ -262,7 +263,7 @@ void QueryRunner::readData()
         while (m_activeQuery.result->next()) {
             Event event;
 
-            m_activeQuery.fillEventFromModel(event);
+            m_activeQuery.fillEventFromModel(event, &m_contactMap);
             events.append(event);
 
             int max = m_activeQuery.result->current().count();
@@ -287,7 +288,7 @@ void QueryRunner::readData()
 
         while (m_activeQuery.result->next()) {
             Group group;
-            m_activeQuery.fillGroupFromModel(group);
+            m_activeQuery.fillGroupFromModel(group, &m_contactMap);
             groups.append(group);
             ++added;
             lastReadPos = m_activeQuery.result->pos();
@@ -318,7 +319,7 @@ void QueryRunner::readData()
 
         while (m_activeQuery.result->next()) {
             Event event;
-            m_activeQuery.fillCallGroupFromModel(event);
+            m_activeQuery.fillCallGroupFromModel(event, &m_contactMap);
             events.append(event);
             ++added;
             lastReadPos = m_activeQuery.result->pos();

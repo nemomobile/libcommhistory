@@ -41,7 +41,8 @@ HEADERS += trackerio.h \
            groupmanager_p.h \
            contactgroupmodel.h \
            contactgroupmodel_p.h \
-           contactgroup.h
+           contactgroup.h \
+           qcontacttpmetadata_p.h
 
 SOURCES += trackerio.cpp \
            commonutils.cpp \

@@ -49,30 +49,9 @@
 "      ?_total_sent_messages_1 nmo:isDeleted false ." \
 "  })" \
 "  ?_lastMessage " \
-"  (SELECT GROUP_CONCAT(" \
-"    fn:concat(tracker:id(?contact), \"\\u001e\", " \
-"              tracker:coalesce(nco:nameGiven(?contact), \"\"), \"\\u001e\", " \
-"              tracker:coalesce(nco:nameFamily(?contact), \"\"), " \
-"              \"\\u001d\"," \
-"              tracker:coalesce(nco:nickname(?contact), \"\")," \
-"              \"\\u001d\"," \
-"              tracker:coalesce(?nicknames, \"\")), " \
-"    \"\\u001c\") " \
-"  WHERE {" \
-"    SELECT ?contact " \
-"    (SELECT GROUP_CONCAT(fn:string-join((nco:imID(?addr), ?nickname), \"\\u001f\"), \"\\u001e\")" \
-"    WHERE {" \
-"      ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] . " \
-"      ?addr nco:imNickname ?nickname . " \
-"    }) AS ?nicknames " \
-"    WHERE {" \
-"    {" \
-"      ?part nco:hasIMAddress ?address . " \
-"      ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . " \
-"    } UNION {" \
-"      ?part nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . " \
-"      ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . " \
-"    }}" \
+"  ( SELECT GROUP_CONCAT(" \
+"      tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), \"\\u001c\") " \
+"      WHERE { ?part nco:hasContactMedium ?medium . " \
 "  }) AS ?contacts " \
 "  rdf:nil " \
 "  fn:string-join((nmo:messageSubject(?_lastMessage),nie:plainTextContent(?_lastMessage)),\"\\u001e\")" \
@@ -127,30 +106,9 @@
 "  nmo:isEmergency(?lastCall)" \
 "  nmo:isRead(?lastCall)" \
 "  nie:contentLastModified(?lastCall)" \
-"  (SELECT GROUP_CONCAT(" \
-"    fn:concat(tracker:id(?contact), \"\\u001e\", " \
-"              tracker:coalesce(nco:nameGiven(?contact), \"\"), \"\\u001e\", " \
-"              tracker:coalesce(nco:nameFamily(?contact), \"\"), " \
-"              \"\\u001d\"," \
-"              tracker:coalesce(nco:nickname(?contact), \"\")," \
-"              \"\\u001d\"," \
-"              tracker:coalesce(?nicknames, \"\")), " \
-"    \"\\u001c\") " \
-"  WHERE {" \
-"    SELECT ?contact " \
-"    (SELECT GROUP_CONCAT(fn:string-join((nco:imID(?addr), ?nickname), \"\\u001f\"), \"\\u001e\")" \
-"    WHERE {" \
-"      ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] . " \
-"      ?addr nco:imNickname ?nickname . " \
-"    }) AS ?nicknames " \
-"    WHERE {" \
-"    {" \
-"      ?part nco:hasIMAddress ?address . " \
-"      ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . " \
-"    } UNION {" \
-"      ?part nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . " \
-"      ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . " \
-"    }}" \
+"  ( SELECT GROUP_CONCAT(" \
+"      tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), \"\\u001c\") " \
+"      WHERE { ?part nco:hasContactMedium ?medium . " \
 "  }) AS ?contacts " \
 "  rdf:nil " \
 "  ?missedCalls " \

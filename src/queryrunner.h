@@ -117,6 +117,8 @@ private:
 
     bool m_syncMode;
 
+    QueryResult::ContactMap m_contactMap;
+
 #ifdef DEBUG
     QTime m_timer;
 #endif
