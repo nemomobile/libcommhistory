@@ -38,6 +38,7 @@ typedef enum {
     EventQuery, GroupQuery, MessagePartQuery, GroupedCallQuery, GenericQuery
 } QueryType;
 
+
 struct QueryResult {
     QSparqlQuery query;
     QueryType queryType;
@@ -49,16 +50,18 @@ struct QueryResult {
 
     QueryResult() : eventId(0) {}
 
-    void fillEventFromModel(Event &event);
-    void fillGroupFromModel(Group &group);
+    typedef QHash<QPair<QString, QString>, QList<Event::Contact> > ContactMap;
+
+    void fillEventFromModel(Event &event, ContactMap *contactMap = 0);
+    void fillGroupFromModel(Group &group, ContactMap *contactMap = 0);
     void fillMessagePartFromModel(MessagePart &part);
-    void fillCallGroupFromModel(Event &event);
+    void fillCallGroupFromModel(Event &event, ContactMap *contactMap = 0);
 
     static void parseHeaders(const QString &result,
                              QHash<QString, QString> &headers);
 
     static void parseContacts(const QString &result, const QString &localUid,
-                              QList<Event::Contact> &contacts);
+                              QList<Event::Contact> &contacts, ContactMap *contactMap = 0);
 
     static QString buildContactName(const QString &firstName,
                                     const QString &lastName,

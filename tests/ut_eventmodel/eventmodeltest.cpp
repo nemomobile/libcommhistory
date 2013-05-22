@@ -541,6 +541,8 @@ void EventModelTest::testDeleteEventVCard()
 
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
     RUN_QUERY(fileNameQuery, 0);
+
+    #undef RUN_QUERY
 }
 
 void EventModelTest::testDeleteEventMmsParts_data()
@@ -722,6 +724,10 @@ void EventModelTest::testDeleteEventMmsParts()
     CHECK_PART(part4, 0);
 
     CHECK_CONTENT(part3, 0);
+
+    #undef RUN_QUERY
+    #undef CHECK_PART
+    #undef CHECK_CONTENT
 }
 
 
@@ -1339,6 +1345,8 @@ void EventModelTest::testMessagePartsQuery()
     QVERIFY(!QDir(mmsPath + "MSGTOKEN1").exists());
     QVERIFY(!QDir(mmsPath + "MSGTOKEN2").exists());
     QVERIFY(!QDir(mmsPath + "MSGTOKEN3").exists());
+
+    #undef CREATE_FILE
 }
 
 void EventModelTest::testCcBcc()
@@ -1568,7 +1576,7 @@ void EventModelTest::testMoveEvent()
     // Then the empty group should be deleted:
     QVERIFY(model.moveEvent(eventFromTracker,group1.id()));
 
-    watcher.waitForSignals();
+    watcher.waitForSignals(1, 1, 1);
     QCOMPARE(watcher.deletedCount(), 1);
     QCOMPARE(watcher.lastDeletedId(),eventFromTracker.id());
     QCOMPARE(watcher.addedCount(), 1);

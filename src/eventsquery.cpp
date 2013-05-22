@@ -221,33 +221,10 @@ QString functionForProperty(Event::Property p)
         break;
     case Event::ContactId:
         // join all contact matches
-        func << QLatin1String(
-            "  (SELECT GROUP_CONCAT(" \
-            "    fn:concat(tracker:id(?contact), \"\\u001e\", " \
-            "              tracker:coalesce(nco:nameGiven(?contact), \"\"), \"\\u001e\", " \
-            "              tracker:coalesce(nco:nameFamily(?contact), \"\"), " \
-            "              \"\\u001d\"," \
-            "              tracker:coalesce(nco:nickname(?contact), \"\")," \
-            "              \"\\u001d\"," \
-            "              tracker:coalesce(?nicknames, \"\")), " \
-            "    \"\\u001c\") " \
-            "WHERE {" \
-            "  SELECT ?contact " \
-            "  (SELECT GROUP_CONCAT(fn:string-join((nco:imID(?addr), ?nickname), \"\\u001f\"), \"\\u001e\")" \
-            "  WHERE {" \
-            "    ?contact nco:hasAffiliation [ nco:hasIMAddress ?addr ] . " \
-            "    ?addr nco:imNickname ?nickname . " \
-            "  }) AS ?nicknames " \
-            "  WHERE {" \
-            "  {" \
-            "    ?target nco:hasIMAddress ?address . " \
-            "    ?contact nco:hasAffiliation [ nco:hasIMAddress ?address ] . " \
-            "  } UNION {" \
-            "    ?target nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] . " \
-            "    ?contact nco:hasAffiliation [ nco:hasPhoneNumber [ maemo:localPhoneNumber ?number ] ] . " \
-            "  }}" \
-            "}) AS ?contacts "
-            );
+        // Return the contact remoteUids to be resolved into contacts in a second pass
+        func << QLatin1String("(SELECT GROUP_CONCAT(")
+             << QLatin1String("tracker:coalesce(nco:imID(?medium), nco:phoneNumber(?medium), ?medium), \"\\u001c\") ")
+             << QLatin1String("WHERE { ?target nco:hasContactMedium ?medium . })");
         break;
     case Event::ContactName:
         func << QLatin1String("rdf:nil");

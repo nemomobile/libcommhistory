@@ -24,6 +24,20 @@
 
 #include "queryresult.h"
 #include "contactlistener.h"
+#include "commonutils.h"
+#include "qcontacttpmetadata_p.h"
+
+#include <QContact>
+#include <QContactManager>
+#include <QContactDetail>
+#include <QContactDetailFilter>
+#include <QContactIntersectionFilter>
+#include <QContactUnionFilter>
+
+#include <QContactName>
+#include <QContactNickname>
+#include <QContactOnlineAccount>
+#include <QContactPhoneNumber>
 
 #include <QSettings>
 using namespace CommHistory;
@@ -38,6 +52,40 @@ using namespace CommHistory;
 #define IM_ADDRESS_SEPARATOR QLatin1Char('!')
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
+
+
+void QContactTpMetadata::setContactId(const QString &s) { setValue(FieldContactId, s); }
+QString QContactTpMetadata::contactId() const { return value(FieldContactId); }
+
+void QContactTpMetadata::setAccountId(const QString &s) { setValue(FieldAccountId, s); }
+QString QContactTpMetadata::accountId() const { return value(FieldAccountId); }
+
+void QContactTpMetadata::setAccountEnabled(bool b) { setValue(FieldAccountEnabled, QLatin1String(b ? "true" : "false")); }
+bool QContactTpMetadata::accountEnabled() const { return (value(FieldAccountEnabled) == QLatin1String("true")); }
+
+QContactDetailFilter QContactTpMetadata::matchContactId(const QString &s)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldContactId);
+    filter.setValue(s);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+    return filter;
+}
+
+QContactDetailFilter QContactTpMetadata::matchAccountId(const QString &s)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldAccountId);
+    filter.setValue(s);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+    return filter;
+}
+
+Q_IMPLEMENT_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldContactId, "ContactId");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountId, "AccountId");
+Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountEnabled, "AccountEnabled");
+
 
 namespace {
 
@@ -81,11 +129,140 @@ QString getAddresbookNameOrder()
     return addressBookSettings.value(LAT("nameOrder")).toString();
 }
 
-bool isLastNameFirst = getAddresbookNameOrder() == LAT("last-first");
+QContactManager *createManager()
+{
+    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+    if (!envspec.isEmpty()) {
+        qDebug() << "Using contact manager:" << envspec;
+        return new QContactManager(envspec);
+    }
+
+    return new QContactManager;
+}
+
+QContactManager *manager()
+{
+    static QContactManager *manager = createManager();
+    return manager;
+}
+
+QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAddress)
+{
+    QContactDetailFilter filter;
+    filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
+    filter.setMatchFlags(QContactFilter::MatchExactly);
+
+    if (imAddress.startsWith(QLatin1String("telepathy:"))) {
+        // Only match contacts created by telepathy for the specified account
+        // Note: qtcontacts-sqlite uses the QContactTpMetadata detail to reflect the telepathy
+        // origin, so the 'telepathy:' qualification must be removed from the values
+        QContactIntersectionFilter tpFilter;
+        tpFilter << QContactTpMetadata::matchAccountId(localUid);
+
+        QString trailing(imAddress);
+        trailing.remove(0, 10);
+        filter.setValue(trailing);
+
+        tpFilter << filter;
+        return tpFilter;
+    }
+
+    filter.setValue(imAddress);
+    return filter;
+}
+
+QContactUnionFilter matchContactFilter(const QString &localUid, const QString &match)
+{
+    QContactUnionFilter filter;
+    filter << QContactPhoneNumber::match(match);
+    filter << matchIMAddressFilter(localUid, match);
+
+    return filter;
+}
+
+QContactFetchHint getRetrievalHint()
+{
+    QContactFetchHint hint;
+
+    // Only retrieve the details we will use
+    hint.setDetailDefinitionsHint(QStringList() << QContactName::DefinitionName
+                                                << QContactPhoneNumber::DefinitionName
+                                                << QContactOnlineAccount::DefinitionName
+                                                << QContactNickname::DefinitionName
+                                                << QContactPresence::DefinitionName);
+
+    // Relationships are slow and unnecessary here
+    hint.setOptimizationHints(QContactFetchHint::NoRelationships);
+
+    return hint;
+}
+
+QList<QContact> findMatchingFromList(QList<QContact> *list, const QString &match)
+{
+    QList<QContact> rv;
+
+    QString shortMatch = makeShortNumber(match, NormalizeFlagKeepDialString);
+    QString accountUri = match;
+    if (accountUri.startsWith(QLatin1String("telepathy:"))) {
+        accountUri.remove(0, 10);
+    }
+
+    for (QList<QContact>::iterator it = list->begin(); it != list->end(); ) {
+        const QContact &contact(*it);
+
+        // Is this contact a match for this criterion?
+        QList<QContact>::iterator matchIt = list->end();
+        foreach (const QContactPhoneNumber &number, contact.details<QContactPhoneNumber>()) {
+            QString shortForm = makeShortNumber(number.number(), NormalizeFlagKeepDialString);
+            if (shortForm == shortMatch) {
+                matchIt = it;
+                break;
+            }
+        }
+        foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
+            if (account.accountUri() == accountUri) {
+                matchIt = it;
+                break;
+            }
+        }
+
+        if (matchIt != list->end()) {
+            rv.append(*matchIt);
+            // Don't match this contact again
+            it = list->erase(matchIt);
+        } else {
+            ++it;
+        }
+    }
+
+    return rv;
+}
+
+QHash<QString, QList<QContact> > findMatchingContacts(const QString &localUid, const QStringList &matches)
+{
+    static const QContactFetchHint retrievalHint(getRetrievalHint());
+    static const QList<QContactSortOrder> defaultOrder;
+
+    QHash<QString, QList<QContact> > rv;
+
+    // Fetch all matches in one query
+    QContactUnionFilter groupFilter;
+    foreach (const QString &match, matches) {
+        groupFilter << matchContactFilter(localUid, match);
+    }
+
+    QList<QContact> matchList = manager()->contacts(groupFilter, defaultOrder, retrievalHint);
+    foreach (const QString &match, matches) {
+        // For each remoteUid, find the returned match(es), so that contacts order can be preserved
+        rv.insert(match, findMatchingFromList(&matchList, match));
+    }
+
+    return rv;
+}
 
 }
 
-void QueryResult::fillEventFromModel(Event &event)
+void QueryResult::fillEventFromModel(Event &event, ContactMap *contactMap)
 {
     Event eventToFill;
 
@@ -262,7 +439,7 @@ void QueryResult::fillEventFromModel(Event &event)
     if (properties.contains(Event::ContactId)) {
         QList<Event::Contact> contacts;
         parseContacts(RESULT_INDEX2(Event::ContactId).toString(),
-                      eventToFill.localUid(), contacts);
+                      eventToFill.localUid(), contacts, contactMap);
         eventToFill.setContacts(contacts);
     }
 
@@ -271,7 +448,7 @@ void QueryResult::fillEventFromModel(Event &event)
     event.resetModifiedProperties();
 }
 
-void QueryResult::fillGroupFromModel(Group &group)
+void QueryResult::fillGroupFromModel(Group &group, ContactMap *contactMap)
 {
     Group groupToFill;
 
@@ -305,7 +482,7 @@ void QueryResult::fillGroupFromModel(Group &group)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(Group::ContactId).toString(),
-                  groupToFill.localUid(), contacts);
+                  groupToFill.localUid(), contacts, contactMap);
     groupToFill.setContacts(contacts);
 
     groupToFill.setTotalMessages(result->value(Group::TotalMessages).toInt());
@@ -355,7 +532,7 @@ void QueryResult::fillMessagePartFromModel(MessagePart &messagePart)
     messagePart = newPart;
 }
 
-void QueryResult::fillCallGroupFromModel(Event &event)
+void QueryResult::fillCallGroupFromModel(Event &event, ContactMap *contactMap)
 {
     Event eventToFill;
 
@@ -383,7 +560,7 @@ void QueryResult::fillCallGroupFromModel(Event &event)
 
     QList<Event::Contact> contacts;
     parseContacts(result->value(CallGroupColumnContacts).toString(),
-                  eventToFill.localUid(), contacts);
+                  eventToFill.localUid(), contacts, contactMap);
     eventToFill.setContacts(contacts);
 
     eventToFill.setEventCount(result->value(CallGroupColumnMissedCount).toInt());
@@ -410,70 +587,81 @@ void QueryResult::parseHeaders(const QString &result,
 }
 
 void QueryResult::parseContacts(const QString &result, const QString &localUid,
-                                QList<Event::Contact> &contacts)
+                                QList<Event::Contact> &contacts, ContactMap *contactMap)
 {
-    /*
-     * Query result format:
-     * result      ::= contact (1C contact)*
-     * contact     ::= namePart 1D contactNickname 1D imNickPart
-     * namePart    ::= contactID 1E firstName 1E lastName
-     * imNickPart  ::= 1E nickContact (1E nickContact)*
-     * nickContact ::= imAddress 1F nickname
-     * imAddress   ::= 'telepathy:' imAccountPath '!' remoteUid
+    /* Tracker does not contain any contact info - we need to retrieve it separately.
+     * The 'result' contains only remoteUids, to be resolved into contacts.
      */
+    QStringList remoteUidList = result.split('\x1c', QString::SkipEmptyParts);
+    contacts.reserve(contacts.count() + remoteUidList.count());
 
-    // first split each contact to separate string
-    QStringList contactStringList = result.split('\x1c', QString::SkipEmptyParts);
-    foreach (QString contactString, contactStringList) {
-        // split contact to namePart and nickPart
-        QStringList contactPartList = contactString.split('\x1d');
-
-        // get nickname
-        QString contactNickname;
-        QString imNickname;
-        if (contactPartList.size() > 1) {
-            // nco:nickname
-            contactNickname = contactPartList[1];
-        }
-
-        if (contactPartList.size() > 2) {
-            // split nickPart to separate nickContacts
-            QStringList nickList = contactPartList[2].split('\x1e', QString::SkipEmptyParts);
-
-            foreach (QString nickContact, nickList) {
-                // split nickContact to imAddress and nickname
-                QStringList imPartList = nickContact.split('\x1f', QString::SkipEmptyParts);
-
-                // get nickname from part that matches localUid
-                if (imPartList[0].contains(localUid) && imPartList.size() > 1) {
-                    imNickname = imPartList[1];
-                    break;
+    QStringList unresolvedUidList;
+    if (contactMap) {
+        foreach (const QString &remoteUid, remoteUidList) {
+            ContactMap::iterator it = contactMap->find(qMakePair(localUid, remoteUid));
+            if (it != contactMap->end()) {
+                // We already have this contact in the map
+                const QList<Event::Contact> &cached(it.value());
+                foreach (const Event::Contact &contact, cached) {
+                    if (!contacts.contains(contact))
+                        contacts.append(contact);
                 }
-
-                // if localUid doesn't match to any imAddress (for example in call/SMS case),
-                // first nickname in the list is used
-                if (imNickname.isEmpty() && imPartList.size() > 1) {
-                    imNickname = imPartList[1];
-                }
+                continue;
             }
+
+            // We need to look this contact up
+            unresolvedUidList.append(remoteUid);
         }
+    } else {
+        unresolvedUidList = remoteUidList;
+    }
 
-        // create contact
-        Event::Contact contact;
-        // split namePart to contact id, first name, last name and nickname
-        QStringList namePartList = contactPartList[0].split('\x1e');
-        if (!namePartList.isEmpty()) {
-            contact.first = namePartList[0].toInt();
+    if (!unresolvedUidList.isEmpty()) {
+        // Find all contacts macthing each unresolved UID
+        QHash<QString, QList<QContact> > matchingContacts(findMatchingContacts(localUid, unresolvedUidList));
 
-            QString firstName, lastName;
-            if (namePartList.size() >= 2)
-                firstName = namePartList[1];
-            if (namePartList.size() >= 3)
-                lastName = namePartList[2];
-            contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+        foreach (const QString &remoteUid, unresolvedUidList) {
+            QList<Event::Contact> retrieved;
 
-            if (!contacts.contains(contact))
-                contacts << contact;
+            const QList<QContact> &matched = matchingContacts[remoteUid];
+            foreach (const QContact &match, matched) {
+                Event::Contact contact;
+                contact.first = match.localId();
+
+                QString firstName, lastName, contactNickname, imNickname;
+
+                foreach (const QContactName &name, match.details<QContactName>()) {
+                    if (!name.isEmpty()) {
+                        firstName = name.firstName();
+                        lastName = name.lastName();
+                        break;
+                    }
+                }
+                foreach (const QContactNickname &nickname, match.details<QContactNickname>()) {
+                    if (!nickname.isEmpty()) {
+                        contactNickname = nickname.nickname();
+                        break;
+                    }
+                }
+                foreach (const QContactPresence &presence, match.details<QContactPresence>()) {
+                    if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
+                        imNickname = presence.nickname();
+                        break;
+                    }
+                }
+
+                contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+
+                if (!contacts.contains(contact))
+                    contacts.append(contact);
+
+                retrieved.append(contact);
+            }
+
+            if (!retrieved.isEmpty() && contactMap) {
+                // Cache this result for later
+                contactMap->insert(qMakePair(localUid, remoteUid), retrieved);
+            }
         }
     }
 }
