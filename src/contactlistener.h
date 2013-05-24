@@ -33,8 +33,8 @@
 #include "libcommhistoryexport.h"
 
 // contacts
-#include <qcontact.h>
-#include <qtcontacts-tracker/settings.h>
+#include <QContact>
+#include <QContactFetchRequest>
 
 QTM_USE_NAMESPACE
 
@@ -78,14 +78,12 @@ Q_SIGNALS:
                         const QString &contactName,
                         const QList< QPair<QString,QString> > &contactAddresses);
     void contactRemoved(quint32 localId);
-    void contactSettingsChanged(const QHash<QString, QVariant> &changedSettings);
 
 private Q_SLOTS:
     void slotContactsUpdated(const QList<QContactLocalId> &contactIds);
     void slotContactsRemoved(const QList<QContactLocalId> &contactIds);
     void slotStartContactRequest();
     void slotResultsAvailable();
-    void slotSettingsChanged(const QHash<QString, QVariant> &changedSettings);
 
 private:
     ContactListener(QObject *parent = 0);
@@ -101,7 +99,6 @@ private:
     QPointer<QContactManager> m_ContactManager;
     QList<QContactLocalId> m_PendingContactIds;
     QList<QPair<QString,QString> > m_PendingUnresolvedContacts;
-    QPointer<QctSettings> m_Settings;
 };
 
 }

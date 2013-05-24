@@ -4,7 +4,6 @@ include( ../tests.pri )
 
 TARGET = ut_eventsquery
 DESTDIR = ../bin
-QT -= gui
 MOBILITY += contacts
 CONFIG  += qtestlib qdbus mobility
 SOURCES += eventsquerytest.cpp
