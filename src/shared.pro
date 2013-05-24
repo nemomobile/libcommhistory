@@ -39,8 +39,7 @@ CONFIG  += qdbus \
            shared \
            mobility \
            debug \
-           qtsparql \
-           qtcontacts_extensions_tracker
+           qtsparql
 MOBILITY += contacts
 PKGCONFIG += tracker-sparql-0.14
 DEFINES += LIBCOMMHISTORY_SHARED

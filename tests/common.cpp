@@ -27,8 +27,6 @@
 #include <QSparqlQuery>
 #include <QSparqlError>
 
-#include <qtcontacts-tracker/phoneutils.h>
-
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -55,6 +53,8 @@
 #include "commonutils.h"
 
 #include "qcontacttpmetadata_p.h"
+
+QTM_USE_NAMESPACE
 
 namespace {
 static int contactNumber = 0;

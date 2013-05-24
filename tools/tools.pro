@@ -26,7 +26,7 @@ TEMPLATE = app
 QT -= gui
 CONFIG += qdbus \
     debug \
-    qtsparql qtcontacts_extensions_tracker \
+    qtsparql \
     pkgconfig
 PKGCONFIG += QJson
 VERSION = $$PROJECT_VERSION

@@ -6,7 +6,6 @@ Group:      System/Libraries
 License:    LGPL
 URL:        https://github.com/nemomobile/libcommhistory
 Source0:    %{name}-%{version}.tar.bz2
-BuildRequires:  libqtcontacts-tracker-extensions-devel
 BuildRequires:  pkgconfig(QtCore) >= 4.7.0
 BuildRequires:  pkgconfig(QtContacts)
 BuildRequires:  pkgconfig(QtSparql)

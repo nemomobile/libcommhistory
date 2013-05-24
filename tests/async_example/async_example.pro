@@ -24,7 +24,7 @@ include( ../../common-project-config.pri )
 include( ../../common-vars.pri )
 
 TARGET = async_example
-CONFIG += qdbus debug mobility qtsparql qtcontacts_extensions_tracker
+CONFIG += qdbus debug mobility qtsparql
 MOBILITY += contacts
 HEADERS += asyncquery.h
 SOURCES += asyncquery.cpp async_example.cpp

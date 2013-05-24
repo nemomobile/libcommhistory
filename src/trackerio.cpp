@@ -30,8 +30,6 @@
 #include <QDBusConnection>
 #include <QDBusPendingCall>
 
-#include <qtcontacts-tracker/phoneutils.h>
-
 #include "commonutils.h"
 #include "event.h"
 #include "group.h"
@@ -254,6 +252,12 @@ void TrackerIOPrivate::ensurePhoneNumber(UpdateQuery &query,
         .arg(shortNumber);
 
     query.appendInsertion(phoneNumberInsert);
+}
+
+QString qctMakePhoneNumberIri(const QString &number)
+{
+    const QString escapedNumber = encodeUri(number);
+    return QString::fromLatin1("urn:x-maemo-phone:%1").arg(escapedNumber);
 }
 
 void TrackerIOPrivate::addSIPContact(UpdateQuery &query,

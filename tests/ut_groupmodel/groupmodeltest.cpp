@@ -1045,7 +1045,7 @@ void GroupModelTest::queryContacts()
     //add cellular groups
     Group group;
     addTestGroup(group, RING_ACCOUNT, "445566");
-    addTestGroup(group, RING_ACCOUNT, "+3851234567");
+    addTestGroup(group, RING_ACCOUNT, "+3854892930");
 
     QVERIFY(model.getGroups());
     QVERIFY(waitSignal(modelReady));
@@ -1144,7 +1144,7 @@ void GroupModelTest::queryContacts()
     }
 
     int contactIdPhone2 = addTestContact("CodeBlue",
-                                         "+3851234567");
+                                         "+3854892930");
 
     QVERIFY(model.getGroups());
     QVERIFY(waitSignal(modelReady));
@@ -1155,7 +1155,7 @@ void GroupModelTest::queryContacts()
             if (g.remoteUids().contains("445566")) {
                 QCOMPARE(g.contactId(), contactIdPhone1);
                 QCOMPARE(g.contactName(), QString("CodeRed"));
-            } else if (g.remoteUids().contains("+3851234567")) {
+            } else if (g.remoteUids().contains("+3854892930")) {
                 QCOMPARE(g.contactId(), contactIdPhone1);
                 QCOMPARE(g.contactName(), QString("CodeBlue"));
             }

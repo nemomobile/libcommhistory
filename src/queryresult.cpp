@@ -38,6 +38,7 @@
 #include <QContactNickname>
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
+#include <QContactPresence>
 
 #include <QSettings>
 using namespace CommHistory;
