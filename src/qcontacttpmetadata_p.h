@@ -26,7 +26,9 @@
 #include <QContactDetail>
 #include <QContactDetailFilter>
 
-class Q_CONTACTS_EXPORT QContactTpMetadata : public QContactDetail
+QTM_USE_NAMESPACE
+
+class Q_DECL_EXPORT QContactTpMetadata : public QContactDetail
 {
 public:
     Q_DECLARE_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata")
