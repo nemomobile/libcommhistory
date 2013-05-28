@@ -233,14 +233,6 @@ void ConversationModelPrivate::modelUpdatedSlot(bool successful)
     } else{
         EventModelPrivate::modelUpdatedSlot(successful);
     }
-
-    if (contactChangesEnabled && contactListener) {
-        connect(contactListener.data(),
-                SIGNAL(contactSettingsChanged(const QHash<QString, QVariant> &)),
-                this,
-                SLOT(contactSettingsChangedSlot(const QHash<QString, QVariant> &)),
-                Qt::UniqueConnection);
-    }
 }
 
 void ConversationModelPrivate::extraReceivedSlot(QList<CommHistory::Event> events,
@@ -259,15 +251,6 @@ bool ConversationModelPrivate::isModelReady() const
 {
     return activeQueries == 0
            && eventsFilled < (firstFetch ? firstChunkSize : chunkSize);
-}
-
-void ConversationModelPrivate::contactSettingsChangedSlot(const QHash<QString, QVariant> &changedSettings)
-{
-    Q_UNUSED(changedSettings);
-    Q_Q(ConversationModel);
-
-    if (!filterGroupIds.isEmpty())
-        q->getEvents(filterGroupIds.toList());
 }
 
 ConversationModel::ConversationModel(QObject *parent)
