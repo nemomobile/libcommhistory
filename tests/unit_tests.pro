@@ -34,7 +34,6 @@ SUBDIRS = ut_eventmodel \
           ut_classzerosmsmodel \
           ut_singleeventmodel \
           ut_eventsquery
-CONFIG += ordered
 
 # make sure the destination path exists
 !system( mkdir -p $${OUT_PWD}/bin ) : \
