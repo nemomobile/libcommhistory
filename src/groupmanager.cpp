@@ -501,15 +501,6 @@ void GroupManagerPrivate::slotContactRemoved(quint32 localId)
     }
 }
 
-void GroupManagerPrivate::slotContactSettingsChanged(const QHash<QString, QVariant> &changedSettings)
-{
-    Q_UNUSED(changedSettings);
-    Q_Q(GroupManager);
-
-    if (!groups.isEmpty())
-        q->getGroups(filterLocalUid, filterRemoteUid);
-}
-
 void GroupManagerPrivate::startContactListening()
 {
     if (contactChangesEnabled && !contactListener) {
@@ -522,11 +513,6 @@ void GroupManagerPrivate::startContactListening()
                 SIGNAL(contactRemoved(quint32)),
                 this,
                 SLOT(slotContactRemoved(quint32)));
-
-        connect(contactListener.data(),
-                SIGNAL(contactSettingsChanged(const QHash<QString, QVariant> &)),
-                this,
-                SLOT(slotContactSettingsChanged(const QHash<QString, QVariant> &)));
     }
 }
 
