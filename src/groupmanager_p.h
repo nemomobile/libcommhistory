@@ -90,8 +90,6 @@ public Q_SLOTS:
 
     void slotContactRemoved(quint32 localId);
 
-    void slotContactSettingsChanged(const QHash<QString, QVariant> &changedSettings);
-
 public:
     EventModel::QueryMode queryMode;
     int chunkSize;
