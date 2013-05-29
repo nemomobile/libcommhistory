@@ -28,18 +28,19 @@ CONFIG   += static debug qtsparql
 PKGCONFIG += tracker-sparql-0.14
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION
-TARGET    = commhistory
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
 
 QT += dbus
 
 equals(QT_MAJOR_VERSION, 4) {
+    TARGET = commhistory
     CONFIG += mobility
     MOBILITY += contacts
 }
 
 equals(QT_MAJOR_VERSION, 5) {
+    TARGET = commhistory-qt5
     QT += contacts
 }
 

@@ -70,8 +70,9 @@ contains( TEMPLATE, lib ) {
 # target for header files
 #-----------------------------------------------------------------------------
 !isEmpty( headers.files ) {
-    headers.path  = $${INSTALL_PREFIX}/include/CommHistory
-    INSTALLS     += headers
+    equals(QT_MAJOR_VERSION, 4): headers.path = $${INSTALL_PREFIX}/include/commhistory/CommHistory
+    equals(QT_MAJOR_VERSION, 5): headers.path = $${INSTALL_PREFIX}/include/commhistory-qt5/CommHistory
+    INSTALLS += headers
     message("====")
     message("==== INSTALLS += headers")
 } else {

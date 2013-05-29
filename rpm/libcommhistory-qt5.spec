@@ -87,7 +87,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/lib*.so*
+%{_libdir}/libcommhistory-qt5.so*
 
 %files tools
 %defattr(-,root,root,-)
@@ -99,19 +99,19 @@ rm -rf %{buildroot}
 
 %files unit-tests
 %defattr(-,root,root,-)
-/opt/tests/libcommhistory-unit-tests/*
+/opt/tests/libcommhistory-qt5-unit-tests/*
 
 %files performance-tests
 %defattr(-,root,root,-)
-/opt/tests/libcommhistory-performance-tests/*
+/opt/tests/libcommhistory-qt5-performance-tests/*
 
 %files devel
 %defattr(-,root,root,-)
-%{_libdir}/libcommhistory.a
-%{_libdir}/pkgconfig/commhistory.pc
-%{_includedir}/CommHistory/*
+%{_libdir}/libcommhistory-qt5.a
+%{_libdir}/pkgconfig/commhistory-qt5.pc
+%{_includedir}/commhistory-qt5/CommHistory/*
 
 %files doc
 %defattr(-,root,root,-)
-%{_datadir}/doc/libcommhistory/*
+%{_datadir}/doc/libcommhistory-qt5/*
 

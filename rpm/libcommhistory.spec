@@ -105,7 +105,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_libdir}/libcommhistory.a
 %{_libdir}/pkgconfig/commhistory.pc
-%{_includedir}/CommHistory/*
+%{_includedir}/commhistory/CommHistory/*
 
 %files doc
 %defattr(-,root,root,-)

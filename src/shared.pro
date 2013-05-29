@@ -32,7 +32,6 @@
 # target setup
 # -----------------------------------------------------------------------------
 TEMPLATE = lib
-TARGET   = commhistory
 VERSION  = $$LIBRARY_VERSION
 
 CONFIG  += shared \
@@ -42,11 +41,13 @@ CONFIG  += shared \
 QT += dbus
 
 equals(QT_MAJOR_VERSION, 4) {
+    TARGET = commhistory
     CONFIG += mobility
     MOBILITY += contacts
 }
 
 equals(QT_MAJOR_VERSION, 5) {
+    TARGET = commhistory-qt5
     QT += contacts
 }
 
@@ -95,7 +96,7 @@ headers.files = $$HEADERS \
 # -----------------------------------------------------------------------------
 # Installation target for .pc file
 # -----------------------------------------------------------------------------
-pkgconfig.files = commhistory.pc
+pkgconfig.files = $${TARGET}.pc
 pkgconfig.path  = $${INSTALL_PREFIX}/lib/pkgconfig
 INSTALLS       += pkgconfig
 
