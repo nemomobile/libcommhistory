@@ -12,6 +12,8 @@ BuildRequires:  pkgconfig(QtSparql)
 BuildRequires:  pkgconfig(tracker-sparql-0.14)
 BuildRequires:  pkgconfig(QtDeclarative)
 BuildRequires:  pkgconfig(QJson)
+Requires: libqtsparql-tracker
+Requires: libqtsparql-tracker-direct
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.
@@ -105,7 +107,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_libdir}/libcommhistory.a
 %{_libdir}/pkgconfig/commhistory.pc
-%{_includedir}/CommHistory/*
+%{_includedir}/commhistory/CommHistory/*
 
 %files doc
 %defattr(-,root,root,-)

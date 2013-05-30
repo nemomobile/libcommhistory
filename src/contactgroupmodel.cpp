@@ -259,6 +259,13 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
     qRegisterMetaType<CommHistory::GroupObject*>();
     qRegisterMetaType<CommHistory::ContactGroup*>();
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    setRoleNames(roleNames());
+#endif
+}
+
+QHash<int,QByteArray> ContactGroupModel::roleNames() const
+{
     QHash<int,QByteArray> roles;
     roles[ContactGroupRole] = "contactGroup";
     roles[WeekdaySectionRole] = "weekdaySection";
@@ -278,7 +285,7 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
     roles[BaseRole + LastModified] = "lastModified";
     roles[BaseRole + StartTime] = "startTime";
     roles[BaseRole + Groups] = "groups";
-    setRoleNames(roles);
+    return roles;
 }
 
 ContactGroupModel::~ContactGroupModel()

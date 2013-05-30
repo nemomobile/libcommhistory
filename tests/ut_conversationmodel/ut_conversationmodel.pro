@@ -27,8 +27,6 @@ include( ../tests.pri )
 TARGET = ut_conversationmodel
 DESTDIR = ../bin
 QT -= gui
-MOBILITY += contacts
-CONFIG  += qtestlib qdbus mobility
 SOURCES += conversationmodeltest.cpp
 HEADERS += conversationmodeltest.h
 

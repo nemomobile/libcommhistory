@@ -54,7 +54,7 @@ using namespace CommHistory;
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
-
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 void QContactTpMetadata::setContactId(const QString &s) { setValue(FieldContactId, s); }
 QString QContactTpMetadata::contactId() const { return value(FieldContactId); }
 
@@ -86,7 +86,7 @@ Q_IMPLEMENT_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata");
 Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldContactId, "ContactId");
 Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountId, "AccountId");
 Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountEnabled, "AccountEnabled");
-
+#endif
 
 namespace {
 
@@ -149,7 +149,11 @@ QContactManager *manager()
 
 QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAddress)
 {
+    Q_UNUSED(localUid);
+    Q_UNUSED(imAddress);
     QContactDetailFilter filter;
+    // QT5: Add telepathy details from contacts
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
     filter.setMatchFlags(QContactFilter::MatchExactly);
 
@@ -169,6 +173,7 @@ QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAd
     }
 
     filter.setValue(imAddress);
+#endif
     return filter;
 }
 
@@ -186,11 +191,19 @@ QContactFetchHint getRetrievalHint()
     QContactFetchHint hint;
 
     // Only retrieve the details we will use
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactDetail::TypeName
+                                                                << QContactDetail::TypePhoneNumber
+                                                                << QContactDetail::TypeOnlineAccount
+                                                                << QContactDetail::TypeNickname
+                                                                << QContactDetail::TypePresence);
+#else
     hint.setDetailDefinitionsHint(QStringList() << QContactName::DefinitionName
                                                 << QContactPhoneNumber::DefinitionName
                                                 << QContactOnlineAccount::DefinitionName
                                                 << QContactNickname::DefinitionName
                                                 << QContactPresence::DefinitionName);
+#endif
 
     // Relationships are slow and unnecessary here
     hint.setOptimizationHints(QContactFetchHint::NoRelationships);
@@ -627,7 +640,11 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
             const QList<QContact> &matched = matchingContacts[remoteUid];
             foreach (const QContact &match, matched) {
                 Event::Contact contact;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                contact.first = match.id().toString().toInt();
+#else
                 contact.first = match.localId();
+#endif
 
                 QString firstName, lastName, contactNickname, imNickname;
 

@@ -157,7 +157,7 @@ void CallModelPerfTest::getEvents()
 
     char *iterVar = getenv("PERF_ITERATIONS");
     if (iterVar) {
-        int iters = QString::fromAscii(iterVar).toInt();
+        int iters = QString::fromLatin1(iterVar).toInt();
         if (iters > 0) {
             iterations = iters;
         }

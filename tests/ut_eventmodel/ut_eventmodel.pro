@@ -27,7 +27,5 @@ include( ../tests.pri )
 TARGET = ut_eventmodel
 DESTDIR = ../bin
 QT -= gui
-MOBILITY += contacts
-CONFIG  += qtestlib qdbus mobility
 SOURCES += eventmodeltest.cpp
 HEADERS += eventmodeltest.h

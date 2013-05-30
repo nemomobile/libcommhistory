@@ -27,7 +27,5 @@ include( ../performance_tests.pri )
 TARGET = perf_conversationmodel
 DESTDIR = ../perf_bin
 QT -= gui
-MOBILITY += contacts
-CONFIG  += qtestlib qdbus mobility
 SOURCES += conversationmodelperftest.cpp
 HEADERS += conversationmodelperftest.h

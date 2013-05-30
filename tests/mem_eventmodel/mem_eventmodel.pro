@@ -27,7 +27,6 @@ include( ../tests.pri )
 TARGET = mem_eventmodel
 DESTDIR = ../bin
 QT -= gui
-MOBILITY += contacts
-CONFIG  += qtestlib qdbus mobility
+
 SOURCES += mem_eventmodel.cpp
 HEADERS += mem_eventmodel.h

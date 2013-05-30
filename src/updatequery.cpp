@@ -31,7 +31,7 @@ namespace {
 
 QString encloseUrl(const QUrl &url)
 {
-    QString urlString(QString::fromAscii(url.toEncoded()));
+    QString urlString(QString::fromLatin1(url.toEncoded()));
     if (urlString.startsWith(LAT("_:"))
         || urlString.startsWith(LAT("?")))
         return urlString;

@@ -11,8 +11,6 @@ CallProxyModel::CallProxyModel(QObject *parent) :
 
     this->setSourceModel(m_source);
     this->setDynamicSortFilter(true);
-
-    this->setRoleNames(m_source->roleNames());
 }
 
 void CallProxyModel::classBegin()

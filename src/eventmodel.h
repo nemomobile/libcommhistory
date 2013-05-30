@@ -342,6 +342,8 @@ public:
     virtual QVariant headerData(int section, Qt::Orientation orientation,
                                 int role) const;
 
+    virtual QHash<int, QByteArray> roleNames() const;
+
     /*!
      * Provide background thread for running database queries and blocking operations.
      * It allows to avoid blocking when the model used in the main GUI thread.
@@ -388,8 +390,6 @@ protected:
 
 private:
     Q_DECLARE_PRIVATE(EventModel);
-
-    void setupRoles();
 };
 
 }

@@ -39,7 +39,11 @@ void CommittingTransactionPrivate::DelayedSignal::addArgument(QGenericArgument &
         if (type) {
             SignalArgument sa;
             sa.typeName = arg.name();
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+            sa.data = QMetaType::create(type, arg.data());
+#else
             sa.data = QMetaType::construct(type, arg.data());
+#endif
 
             arguments.append(sa);
         } else {

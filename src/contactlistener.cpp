@@ -27,9 +27,7 @@
 #include <QContactFetchRequest>
 #include <QContactOnlineAccount>
 #include <QContactDetailFilter>
-#include <QContactLocalIdFilter>
 #include <QContactPhoneNumber>
-#include <QContactId>
 #include <QContactName>
 #include <QContactDisplayLabel>
 
@@ -119,6 +117,7 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     request->setParent(this);
     request->setFilter(filter);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     QStringList details;
     details << QContactName::DefinitionName
             << QContactOnlineAccount::DefinitionName
@@ -127,6 +126,17 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
 
     QContactFetchHint hint;
     hint.setDetailDefinitionsHint(details);
+#else
+    QList<QContactDetail::DetailType> details;
+    details << QContactName::Type
+            << QContactOnlineAccount::Type
+            << QContactPhoneNumber::Type
+            << QContactDisplayLabel::Type;
+
+    QContactFetchHint hint;
+    hint.setDetailTypesHint(details);
+#endif
+
 
     // Relationships are slow and unnecessary here
     hint.setOptimizationHints(QContactFetchHint::NoRelationships);
@@ -153,8 +163,12 @@ void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactI
 
     qDebug() << Q_FUNC_INFO << contactIds;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED FOR QT5";
+#else
     foreach (const QContactLocalId &localId, contactIds)
         emit contactRemoved(localId);
+#endif
 }
 
 void ContactListener::slotStartContactRequest()
@@ -173,14 +187,22 @@ void ContactListener::slotStartContactRequest()
 
             if (number.isEmpty()) {
                 QContactDetailFilter filterLocal;
-                filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
-                                                    QLatin1String("AccountPath"));
                 filterLocal.setValue(contact.first);
 
                 QContactDetailFilter filterRemote;
+                filterRemote.setValue(contact.second);
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+                // XXX Fields are wrong
+                filterLocal.setDetailType(QContactOnlineAccount::Type, 0);
+                filterRemote.setDetailType(QContactOnlineAccount::Type, 1);
+#else
+                filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
+                                                    QLatin1String("AccountPath"));
                 filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
                                                      QContactOnlineAccount::FieldAccountUri);
                 filterRemote.setValue(contact.second);
+#endif
 
                 filter = addContactFilter(filter, filterLocal & filterRemote);
             } else {
@@ -218,6 +240,10 @@ void ContactListener::slotResultsAvailable()
     qDebug() << Q_FUNC_INFO << request->contacts().size() << "contacts";
 
     foreach (const QContact &contact, request->contacts()) {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+        if (contact.id() != m_ContactManager->selfContactId()) {
+            qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED for Qt5";
+#else
         if (contact.localId() != m_ContactManager->selfContactId()) {
             QList< QPair<QString,QString> > addresses;
             foreach (const QContactOnlineAccount &account,
@@ -231,6 +257,7 @@ void ContactListener::slotResultsAvailable()
             }
 
             emit contactUpdated(contact.localId(), contact.displayLabel(), addresses);
+#endif
         } // if
     }
 

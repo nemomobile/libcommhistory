@@ -159,7 +159,14 @@ GroupModel::GroupModel(QObject *parent)
     : QAbstractTableModel(parent),
       d(new GroupModelPrivate(this))
 {
-    QHash<int,QByteArray> roles = roleNames();
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    setRoleNames(roleNames());
+#endif
+}
+
+QHash<int, QByteArray> GroupModel::roleNames() const
+{
+    QHash<int,QByteArray> roles;
     roles[BaseRole + GroupId] = "groupId";
     roles[BaseRole + LocalUid] = "localUid";
     roles[BaseRole + RemoteUids] = "remoteUids";
@@ -181,7 +188,7 @@ GroupModel::GroupModel(QObject *parent)
     roles[ContactIdsRole] = "contactIds";
     roles[GroupObjectRole] = "group";
     roles[WeekdaySectionRole] = "weekdaySection";
-    setRoleNames(roles);
+    return roles;
 }
 
 GroupModel::~GroupModel()

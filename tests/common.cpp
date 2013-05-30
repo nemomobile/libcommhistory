@@ -54,7 +54,11 @@
 
 #include "qcontacttpmetadata_p.h"
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+using namespace QtContacts;
+#else
 QTM_USE_NAMESPACE
+#endif
 
 namespace {
 static int contactNumber = 0;
@@ -164,6 +168,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     }
 
     if (!localUid.isEmpty()) {
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
         // Create a metadata detail to link the contact with the account
         QContactTpMetadata metadata;
         metadata.setContactId(remoteUid);
@@ -173,10 +178,12 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             qWarning() << "Unable to add metadata to contact:" << contactUri;
             return -1;
         }
+#endif
     }
 
     QString normal = CommHistory::normalizePhoneNumber(remoteUid);
     if (normal.isEmpty()) {
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
         QContactOnlineAccount qcoa;
         qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
         qcoa.setAccountUri(remoteUid);
@@ -184,6 +191,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             qWarning() << "Unable to add online account to contact:" << contactUri;
             return -1;
         }
+#endif
     } else {
         QContactPhoneNumber phoneNumberDetail;
         phoneNumberDetail.setNumber(remoteUid);
@@ -207,9 +215,22 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     // We should return the aggregated instance of this contact
     QContactRelationshipFilter filter;
-    filter.setRelationshipType(QContactRelationship::Aggregates);
-    filter.setRelatedContactId(contact.id());
     filter.setRelatedContactRole(QContactRelationship::Second);
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    filter.setRelatedContact(contact);
+    filter.setRelationshipType(QContactRelationship::Aggregates());
+
+    foreach (const QContactId &id, manager()->contactIds(filter)) {
+        qDebug() << "********** contact id" << id;
+        return id.toString().toInt();
+    }
+
+    qWarning() << "Could not find aggregator for:" << contact.id();
+    return contact.id().toString().toInt();
+#else
+    filter.setRelatedContactId(contact.id());
+    filter.setRelationshipType(QContactRelationship::Aggregates);
 
     foreach (const QContactLocalId &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
@@ -218,13 +239,19 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     qWarning() << "Could not find aggregator for:" << contact.localId();
     return contact.localId();
+#endif
 }
 
 void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QContact contact = manager()->contact(QContactId::fromString(QString::number(id)));
+#else
     QContact contact = manager()->contact(id);
+#endif
+
     if (!contact.isEmpty()) {
         qWarning() << "unable to retrieve contact:" << id;
         return;
@@ -245,7 +272,11 @@ void modifyTestContact(int id, const QString &name)
 
 void deleteTestContact(int id)
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    if (!manager()->removeContact(QContactId::fromString(QString::number(id)))) {
+#else
     if (!manager()->removeContact(QContactLocalId(id))) {
+#endif
         qWarning() << "error deleting contact:" << id;
     }
 }

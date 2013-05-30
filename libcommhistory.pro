@@ -23,11 +23,14 @@
 !include( common-vars.pri ):error( "Unable to install common-vars.pri" )
 
 TEMPLATE  = subdirs
-CONFIG   += ordered
 SUBDIRS   = src   \
             declarative \
             tools \
             tests
+
+declarative.depends = src
+tools.depends = src
+tests.depends = src
 
 #-----------------------------------------------------------------------------
 # installation setup

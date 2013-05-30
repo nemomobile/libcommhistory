@@ -31,7 +31,12 @@
 #define CALLPROXYMODEL_H
 
 #include <QSortFilterProxyModel>
-#include <QDeclarativeParserStatus>
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+# include <QQmlParserStatus>
+# define QDeclarativeParserStatus QQmlParserStatus
+#else
+# include <QDeclarativeParserStatus>
+#endif
 
 #include "callmodel.h"
 
@@ -47,7 +52,7 @@ class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserSt
     Q_ENUMS(GroupBy)
 
     Q_PROPERTY(GroupBy groupBy READ groupBy WRITE setGroupBy NOTIFY groupByChanged)
-    Q_INTERFACES(QDeclarativeParserStatus)
+
 public:
     enum EventRole {
         EventIdRole = CommHistory::EventModel::BaseRole,
