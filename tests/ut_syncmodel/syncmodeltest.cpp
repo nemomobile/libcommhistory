@@ -191,10 +191,10 @@ void SyncModelTest::addEventsCheckTokens()
     while (timer.elapsed() < 4000 && spy.count() < 2)
         QCoreApplication::processEvents();
     QCOMPARE(spy.count(), 2);
-    QList<Event> result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());
+    QList<Event> result = spy.first().first().value<QList<CommHistory::Event> >();
     QCOMPARE(result.count(), 25);
     QCOMPARE(spy.first().at(1).toBool(), true);
-    result = qVariantValue<QList<CommHistory::Event> >(spy.at(1).first());
+    result = spy.at(1).first().value<QList<CommHistory::Event> >();
     QCOMPARE(result.count(), 5);
     QCOMPARE(spy.at(1).at(1).toBool(), true);
 
@@ -208,7 +208,7 @@ void SyncModelTest::addEventsCheckTokens()
     while (timer.elapsed() < 4000 && spy.count() < 1)
         QCoreApplication::processEvents();
     QCOMPARE(spy.count(), 1);
-    result = qVariantValue<QList<CommHistory::Event> >(spy.first().first());
+    result = spy.first().first().value<QList<CommHistory::Event> >();
     QCOMPARE(result.count(), 5);
     QCOMPARE(spy.first().at(1).toBool(), false);
 }

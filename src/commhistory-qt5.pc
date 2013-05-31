@@ -1,13 +1,13 @@
 prefix=/usr
 exec_prefix=${prefix}
 libdir=${prefix}/lib/
-includedir=${prefix}/include/commhistory/
+includedir=${prefix}/include/commhistory-qt5/
 
-Name: libcommhistory
+Name: libcommhistory-qt5
 Description: Messaging/Call-History Library
 Version: 1.1.1
-Libs: -L${libdir} -lcommhistory
+Libs: -L${libdir} -lcommhistory-qt5
 Libs.private: -L/usr/lib
 Cflags:  -I${includedir}
-Requires: QtCore, QtSparql, tracker-sparql-0.14
+Requires: Qt5Core, Qt5Sparql, tracker-sparql-0.14
 

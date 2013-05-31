@@ -23,17 +23,24 @@
 include( ../common-project-config.pri )
 include( ../common-vars.pri )
 TEMPLATE = app
-QT -= gui
-CONFIG += qdbus \
-    debug \
-    qtsparql \
-    pkgconfig
-PKGCONFIG += QJson
 VERSION = $$PROJECT_VERSION
 TARGET = commhistory-tool
+
+QT -= gui
+QT += dbus
+CONFIG += debug \
+    qtsparql \
+    pkgconfig
+
+equals(QT_MAJOR_VERSION, 4) {
+    PKGCONFIG += QJson
+    LIBS += -L../src ../src/libcommhistory.so
+}
+
+equals(QT_MAJOR_VERSION, 5): LIBS += -L../src ../src/libcommhistory-qt5.so
+
+INCLUDEPATH += ../src 
 HEADERS += catcher.h
 SOURCES += commhistory-tool.cpp
-LIBS += -L../src \
-    ../src/libcommhistory.so
-INCLUDEPATH += ../src 
+
 include( ../common-installs-config.pri )

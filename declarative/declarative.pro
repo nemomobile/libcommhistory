@@ -5,8 +5,6 @@ TARGET = commhistory-declarative
 PLUGIN_IMPORT_PATH = org/nemomobile/commhistory
 VERSION = $$PROJECT_VERSION
 
-LIBS += -L../src \
-    ../src/libcommhistory.so
 INCLUDEPATH += ../src 
 
 SOURCES += src/plugin.cpp \
@@ -25,14 +23,23 @@ HEADERS += src/constants.h \
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols
-QT += declarative
 
-CONFIG += mobility
-MOBILITY += contacts
+equals(QT_MAJOR_VERSION, 4) {
+    LIBS += -L../src ../src/libcommhistory.so
+    QT += declarative
+    CONFIG += mobility
+    MOBILITY += contacts
+    target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
+}
 
-target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
+equals(QT_MAJOR_VERSION, 5) {
+    LIBS += -L../src ../src/libcommhistory-qt5.so
+    QT += quick contacts
+    target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
+}
+
 INSTALLS += target
 
 qmldir.files += $$PWD/qmldir
-qmldir.path +=  $$[QT_INSTALL_IMPORTS]/$$$$PLUGIN_IMPORT_PATH
+qmldir.path +=  $$target.path
 INSTALLS += qmldir

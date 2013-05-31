@@ -46,7 +46,7 @@ public:
     struct PendingQuery {
         QSparqlQuery query;
         QPointer<QSparqlResult> result;
-        QWeakPointer<QObject> caller;
+        QPointer<QObject> caller;
         const char *callback;
         QVariant argument;
     };
@@ -77,7 +77,7 @@ private:
     // store model signals that should be emitted on transaction commit
     struct DelayedSignal {
         const char *signalName;
-        QWeakPointer<QObject> sender;
+        QPointer<QObject> sender;
         bool onError;
         struct SignalArgument {
             const char *typeName;

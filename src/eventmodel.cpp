@@ -45,7 +45,9 @@ EventModel::EventModel(QObject *parent)
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
 
-    setupRoles();
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    setRoleNames(roleNames());
+#endif
 }
 
 EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
@@ -55,7 +57,9 @@ EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
     connect(d_ptr, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)),
             this, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&,bool)));
 
-    setupRoles();
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+    setRoleNames(roleNames());
+#endif
 }
 
 EventModel::~EventModel()
@@ -63,9 +67,9 @@ EventModel::~EventModel()
     delete d_ptr;
 }
 
-void EventModel::setupRoles()
+QHash<int, QByteArray> EventModel::roleNames() const
 {
-    QHash<int,QByteArray> roles = roleNames();
+    QHash<int,QByteArray> roles;
     roles[BaseRole + EventId] = "eventId";
     roles[BaseRole + EventType] = "eventType";
     roles[BaseRole + StartTime] = "startTime";
@@ -90,7 +94,7 @@ void EventModel::setupRoles()
     roles[BaseRole + Charset] = "charset";
     roles[BaseRole + Language] = "language";
     roles[BaseRole + IsDeleted] = "isDeleted";
-    setRoleNames(roles);
+    return roles;
 }
 
 void EventModel::setPropertyMask(const Event::PropertySet &properties)

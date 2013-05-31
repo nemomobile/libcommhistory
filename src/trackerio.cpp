@@ -65,7 +65,7 @@ namespace {
         return binding.toString();
     }
     QString encodeUri(const QUrl &uri) {
-        return QString::fromAscii(uri.toEncoded());
+        return QString::fromLatin1(uri.toEncoded());
     }
 }
 
@@ -1029,7 +1029,7 @@ void TrackerIOPrivate::updateGroupTimestamps(CommittingTransaction *transaction,
         return;
     }
 
-    Event event = qVariantValue<CommHistory::Event>(arg);
+    Event event = arg.value<CommHistory::Event>();
     qDebug() << Q_FUNC_INFO << event.type() << event.groupId();
 
     if ((event.type() != Event::CallEvent && event.groupId() == -1)

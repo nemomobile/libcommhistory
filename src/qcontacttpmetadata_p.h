@@ -23,6 +23,7 @@
 #ifndef __QCONTACTTPMETADATA_P_H__
 #define __QCONTACTTPMETADATA_P_H__
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 #include <QContactDetail>
 #include <QContactDetailFilter>
 
@@ -49,5 +50,6 @@ public:
 
     static QContactDetailFilter matchAccountId(const QString &s);
 };
+#endif
 
 #endif

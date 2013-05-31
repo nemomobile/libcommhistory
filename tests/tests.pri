@@ -23,10 +23,19 @@
 QT          += testlib dbus
 TEMPLATE     = app
 INCLUDEPATH += . ../../src ..
-LIBS += ../../src/libcommhistory.a
 DEPENDPATH  += $${INCLUDEPATH}
 
-CONFIG += qtsparql 
+CONFIG += qtsparql
+
+equals(QT_MAJOR_VERSION, 4) {
+    LIBS += ../../src/libcommhistory.a
+    CONFIG += mobility
+    MOBILITY += contacts
+}
+equals(QT_MAJOR_VERSION, 5) {
+    LIBS += ../../src/libcommhistory-qt5.a
+    QT += contacts
+}
 
 SOURCES += ../common.cpp ../modelwatcher.cpp
 HEADERS += ../common.h ../modelwatcher.h

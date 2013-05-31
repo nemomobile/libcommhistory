@@ -1,19 +1,20 @@
-Name:       libcommhistory
+Name:       libcommhistory-qt5
 Summary:    Communications event history database API
-Version:    1.5.6
+Version:    1.5.2
 Release:    1
 Group:      System/Libraries
 License:    LGPL
 URL:        https://github.com/nemomobile/libcommhistory
 Source0:    %{name}-%{version}.tar.bz2
-BuildRequires:  pkgconfig(QtCore) >= 4.7.0
-BuildRequires:  pkgconfig(QtContacts)
-BuildRequires:  pkgconfig(QtSparql)
+BuildRequires:  pkgconfig(Qt5Core)
+BuildRequires:  pkgconfig(Qt5Contacts)
+BuildRequires:  pkgconfig(Qt5Sparql)
 BuildRequires:  pkgconfig(tracker-sparql-0.14)
-BuildRequires:  pkgconfig(QtDeclarative)
-BuildRequires:  pkgconfig(QJson)
-Requires: libqtsparql-tracker
-Requires: libqtsparql-tracker-direct
+BuildRequires:  pkgconfig(Qt5Qml)
+BuildRequires:  pkgconfig(Qt5DBus)
+BuildRequires:  pkgconfig(Qt5Gui)
+Requires: libqt5sparql-tracker
+Requires: libqt5sparql-tracker-direct
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.
@@ -36,6 +37,7 @@ Performance Test files for libcommhistory
 Summary: Command line tools for libcommhistory
 Group: Communications/Telephony and IM
 Requires: %{name} = %{version}-%{release}
+Conflicts: libcommhistory-tools
 
 %description tools
 Command line tools for the commhistory library.
@@ -70,7 +72,7 @@ Documentation for libcommhistory
 
 %build
 unset LD_AS_NEEDED
-%qmake 
+%qmake5
 make %{?jobs:-j%jobs}
 
 %install
@@ -85,7 +87,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_libdir}/lib*.so*
+%{_libdir}/libcommhistory-qt5.so*
 
 %files tools
 %defattr(-,root,root,-)
@@ -93,23 +95,23 @@ rm -rf %{buildroot}
 
 %files declarative
 %defattr(-,root,root,-)
-%{_libdir}/qt4/imports/org/nemomobile/commhistory/*
+%{_libdir}/qt5/qml/org/nemomobile/commhistory/*
 
 %files unit-tests
 %defattr(-,root,root,-)
-/opt/tests/libcommhistory-unit-tests/*
+/opt/tests/libcommhistory-qt5-unit-tests/*
 
 %files performance-tests
 %defattr(-,root,root,-)
-/opt/tests/libcommhistory-performance-tests/*
+/opt/tests/libcommhistory-qt5-performance-tests/*
 
 %files devel
 %defattr(-,root,root,-)
-%{_libdir}/libcommhistory.a
-%{_libdir}/pkgconfig/commhistory.pc
-%{_includedir}/commhistory/CommHistory/*
+%{_libdir}/libcommhistory-qt5.a
+%{_libdir}/pkgconfig/commhistory-qt5.pc
+%{_includedir}/commhistory-qt5/CommHistory/*
 
 %files doc
 %defattr(-,root,root,-)
-%{_datadir}/doc/libcommhistory/*
+%{_datadir}/doc/libcommhistory-qt5/*
 
