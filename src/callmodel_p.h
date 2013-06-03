@@ -29,8 +29,6 @@
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 
-class QSparqlResult;
-
 namespace CommHistory
 {
 
@@ -43,8 +41,6 @@ class CallModelPrivate : public EventModelPrivate
 
 public:
     CallModelPrivate( EventModel *model );
-
-    void executeGroupedQuery(const QString &query);
 
     void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
@@ -86,7 +82,6 @@ public:
 
 public Q_SLOTS:
     void slotAllCallsDeleted(int unused);
-    void doDeleteCallGroup(QSparqlResult *result);
 
 public:
     CallModel::Sorting sortBy;

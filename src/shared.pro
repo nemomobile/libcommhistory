@@ -38,7 +38,7 @@ CONFIG  += shared \
            debug \
            qtsparql
 
-QT += dbus
+QT += dbus sql
 
 equals(QT_MAJOR_VERSION, 4) {
     TARGET = commhistory
@@ -71,7 +71,8 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/SingleEventModel \
                    headers/Events \
                    headers/Models \
-                   headers/TrackerIO
+                   headers/TrackerIO \
+                   headers/DatabaseIO
 
 include(sources.pri)
 

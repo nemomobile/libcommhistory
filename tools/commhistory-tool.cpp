@@ -32,6 +32,7 @@
 #include "../src/callevent.h"
 #include "../src/group.h"
 #include "../src/trackerio.h"
+#include "../src/databaseio.h"
 
 #include <QSparqlConnection>
 #include <QSparqlResult>
@@ -440,7 +441,7 @@ int doAddVCard(const QStringList &arguments, const QVariantMap &options)
     }
     EventModel model;
     Event e;
-    if(!model.trackerIO().getEvent(id, e)) {
+    if(!model.databaseIO().getEvent(id, e)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -582,17 +583,21 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         qCritical() << "Error fetching groups";
         return -1;
     }
+
+    Q_UNUSED(showParts);
     EventModel eventModel;
     for (int i = 0; i < model.rowCount(); i++) {
         Group g = model.group(model.index(i, 0));
         std::cout << qPrintable(g.toString()) << std::endl;
 
+#if 0
         Event e;
-        if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
+        if (eventModel.databaseIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);
         } else {
             qCritical() << "getEvent error ";
         }
+#endif
 
         std::cout << std::endl;
     }
@@ -663,7 +668,7 @@ int doIsRead(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -703,7 +708,7 @@ int doIsVideo(const QStringList &arguments, const QVariantMap &options)
 
     CallModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -739,7 +744,7 @@ int doReportDelivery(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -771,7 +776,7 @@ int doSetStatus(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -990,7 +995,7 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
         }
 
         Group group;
-        if (!groupModel.trackerIO().getGroup(id, group)) {
+        if (!groupModel.databaseIO().getGroup(id, group)) {
             qCritical() << "Error reading group" << id;
             return -1;
         }

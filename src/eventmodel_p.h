@@ -2,6 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013 Jolla Ltd. <john.brooks@jollamobile.com>
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** Contact: Reto Zingg <reto.zingg@nokia.com>
 **
@@ -30,14 +31,14 @@
 #include "event.h"
 #include "messagepart.h"
 #include "eventtreeitem.h"
-#include "trackerio.h"
+#include "databaseio.h"
 #include "libcommhistoryexport.h"
+
+class QSqlQuery;
 
 namespace CommHistory {
 
-class QueryRunner;
 class ContactListener;
-class CommittingTransaction;
 class EventsQuery;
 class UpdatesEmitter;
 
@@ -93,11 +94,11 @@ public:
     virtual QModelIndex findParent(const Event &event);
 
     /*!
-     * Executes a tracker query. fillModel() is called when new events
+     * Executes a database query. fillModel() is called when new events
      * are received, and modelReady() is emitted when the query is
      * finished.
      */
-    bool executeQuery(EventsQuery &query);
+    bool executeQuery(QSqlQuery &query);
 
     /*!
      * Add new events from the query results to the internal event
@@ -123,12 +124,7 @@ public:
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
 
-    virtual bool doAddEvent(Event &event);
-    virtual bool doDeleteEvent(int id, Event &event);
-
     QModelIndex findEventRecursive(int id, EventTreeItem *parent) const;
-
-    CommittingTransaction* commitTransaction(const QList<Event> &events);
 
     bool canFetchMore() const;
 
@@ -148,10 +144,7 @@ public:
                                  const QList< QPair<QString,QString> > &contactAddresses,
                                  EventTreeItem *parent);
 
-    void resetQueryRunners();
-    void deleteQueryRunners();
-
-    TrackerIO *tracker();
+    DatabaseIO *database();
     bool setContactFromCache(CommHistory::Event &event);
     void startContactListening();
 
@@ -170,11 +163,7 @@ public:
     bool isReady;
     bool messagePartsReady;
     bool threadCanFetchMore;
-    bool syncOnCommit;
     bool contactChangesEnabled;
-
-    QueryRunner *queryRunner;
-    QueryRunner *partQueryRunner;
 
     Event::PropertySet propertyMask;
 
@@ -185,7 +174,6 @@ public:
 
     QThread *bgThread;
 
-    TrackerIO *m_pTracker;
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:

@@ -31,7 +31,7 @@ VERSION   = $$LIBRARY_VERSION
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
 
-QT += dbus
+QT += dbus sql
 
 equals(QT_MAJOR_VERSION, 4) {
     TARGET = commhistory

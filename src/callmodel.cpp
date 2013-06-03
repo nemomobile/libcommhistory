@@ -22,9 +22,11 @@
 
 #include <QtDBus/QtDBus>
 #include <QDebug>
+#include <QSqlQuery>
+#include <QSqlError>
 
-#include "trackerio.h"
-#include "trackerio_p.h"
+#include "databaseio.h"
+#include "databaseio_p.h"
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "callmodel.h"
@@ -32,10 +34,6 @@
 #include "event.h"
 #include "commonutils.h"
 #include "contactlistener.h"
-#include "eventsquery.h"
-#include "queryrunner.h"
-#include "updatequery.h"
-#include "committingtransaction.h"
 
 namespace {
     static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
@@ -75,27 +73,6 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
 {
     contactChangesEnabled = true;
     propertyMask -= unusedProperties;
-}
-
-void CallModelPrivate::executeGroupedQuery(const QString &query)
-{
-    qDebug() << __PRETTY_FUNCTION__;
-
-    startContactListening();
-
-    isReady = false;
-    if (queryMode == EventModel::StreamedAsyncQuery) {
-        queryRunner->setStreamedMode(true);
-        queryRunner->setChunkSize(chunkSize);
-        queryRunner->setFirstChunkSize(firstChunkSize);
-    }
-    queryRunner->runGroupedCallQuery(query);
-    if (queryMode == EventModel::SyncQuery) {
-        QEventLoop loop;
-        while (!isReady || !messagePartsReady) {
-            loop.processEvents(QEventLoop::WaitForMoreEvents);
-        }
-    }
 }
 
 bool CallModelPrivate::eventMatchesFilter( const Event &event ) const
@@ -173,7 +150,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
                                                     EventModel::NumberOfColumns - 1,
                                                     eventRootItem->child(row));
                 emit q->dataChanged(index, bottom);
-                updatedGroups.remove(TrackerIOPrivate::makeCallGroupURI(event));
+                updatedGroups.remove(DatabaseIOPrivate::makeCallGroupURI(event));
 
                 // if we had an audio and video call group for the same
                 // contact and the latest audio call gets upgraded (or
@@ -209,7 +186,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
             eventRootItem->insertChildAt(row, new EventTreeItem(event, eventRootItem));
             q->endInsertRows();
 
-            updatedGroups.remove(TrackerIOPrivate::makeCallGroupURI(event));
+            updatedGroups.remove(DatabaseIOPrivate::makeCallGroupURI(event));
         }
     }
 
@@ -218,7 +195,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         // no results for call group means it has been emptied, remove from list
         foreach (QString group, updatedGroups.values()) {
             for (int row = 0; row < eventRootItem->childCount(); row++) {
-                if (TrackerIOPrivate::makeCallGroupURI(eventRootItem->eventAt(row)) == group) {
+                if (DatabaseIOPrivate::makeCallGroupURI(eventRootItem->eventAt(row)) == group) {
                     qDebug() << Q_FUNC_INFO << "remove" << row << eventRootItem->eventAt(row).toString();
                     emit q->beginRemoveRows(QModelIndex(), row, row);
                     eventRootItem->removeAt(row);
@@ -651,8 +628,8 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
                 // Video call status up/downgraded; refetch both video-
                 // and non-video-versions for the call group and process
                 // the results in eventsReceived
-                updatedGroups.insert(TrackerIOPrivate::makeCallGroupURI(oldEvent));
-                updatedGroups.insert(TrackerIOPrivate::makeCallGroupURI(event));
+                updatedGroups.insert(DatabaseIOPrivate::makeCallGroupURI(oldEvent));
+                updatedGroups.insert(DatabaseIOPrivate::makeCallGroupURI(event));
             } else {
                 modifyInModel(e);
             }
@@ -675,8 +652,13 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
             }
         }
 
-        QString query = TrackerIOPrivate::prepareGroupedCallQuery(updatedGroups.toList());
+#if 0
+        QString query = DatabaseIOPrivate::prepareGroupedCallQuery(updatedGroups.toList());
         executeGroupedQuery(query);
+#else
+        qWarning() << Q_FUNC_INFO << "grouped query not implemented";
+        q->getEvents();
+#endif
     }
 }
 
@@ -791,8 +773,10 @@ void CallModelPrivate::deleteFromModel( int id )
 
 void CallModelPrivate::deleteCallGroup( const Event &event, bool typed )
 {
-    qDebug() << Q_FUNC_INFO << event.id();
+    qWarning() << Q_FUNC_INFO << event.id() << " NOT IMPLEMENTED";
+    Q_UNUSED(typed);
 
+#if 0
     // the calls could be deleted simply with "delete ?call where ?call
     // belongs to ?channel", but then we wouldn't be able to send
     // separate eventDeleted signals :(
@@ -865,6 +849,7 @@ void CallModelPrivate::doDeleteCallGroup(QSparqlResult *result)
     }
 
     result->deleteLater();
+#endif
 }
 
 void CallModelPrivate::slotAllCallsDeleted(int unused)
@@ -940,40 +925,38 @@ bool CallModel::getEvents()
     d->updatedGroups.clear();
 
     if (d->sortBy == SortByContact) {
-        QString query = TrackerIOPrivate::prepareGroupedCallQuery();
-        d->executeGroupedQuery(query);
-        return true;
+        qWarning() << Q_FUNC_INFO << "SortByContact NOT IMPLEMENTED";
+        return false;
     }
 
-    EventsQuery query(d->propertyMask);
-    query.addPattern(QLatin1String("%1 a nmo:Call .")).variable(Event::Id);
+    QString q = DatabaseIOPrivate::eventQueryBase();
+    q += QString::fromLatin1("WHERE type=%1 ").arg(Event::CallEvent);
 
     if (d->eventType != CallEvent::UnknownCallType) {
         if (!d->isInTreeMode) {
             if (d->eventType == CallEvent::ReceivedCallType) {
-                query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
-                                               "%1 nmo:isAnswered \"true\". "))
-                    .variable(Event::Id);
+                q += QString::fromLatin1("AND direction=%1 AND isAnswered=1 ").arg(Event::Inbound);
             } else if (d->eventType == CallEvent::MissedCallType) {
-                query.addPattern(QLatin1String("%1 nmo:isSent \"false\" . "
-                                               "%1 nmo:isAnswered \"false\". "))
-                    .variable(Event::Id);
+                q += QString::fromLatin1("AND direction=%1 AND isAnswered=0 ").arg(Event::Inbound);
             } else if (d->eventType == CallEvent::DialedCallType) {
-                query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
-                    .variable(Event::Id);
+                q += QString::fromLatin1("AND direction=%1 ").arg(Event::Outbound);
             }
         }
 
         if (!d->referenceTime.isNull()) {
-            query.addPattern(QString(QLatin1String("FILTER (nmo:sentDate(%2) >= \"%1\"^^xsd:dateTime)"))
-                             .arg(d->referenceTime.toUTC().toString(Qt::ISODate)))
-                .variable(Event::Id);
+            q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime.toTime_t());
         }
     }
 
-    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2))")
-                     .variable(Event::StartTime)
-                     .variable(Event::Id);
+    q += "ORDER BY startTime, id DESC";
+
+    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
+    if (!query.prepare(q)) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
 
     return d->executeQuery(query);
 }
@@ -993,20 +976,14 @@ bool CallModel::deleteAll()
 {
     Q_D(CallModel);
 
-    d->tracker()->transaction();
-
     bool deleted;
-    deleted = d->tracker()->deleteAllEvents(Event::CallEvent);
+    deleted = d->database()->deleteAllEvents(Event::CallEvent);
     if (!deleted) {
         qWarning() << __PRETTY_FUNCTION__ << "Failed to delete events";
-        d->tracker()->rollback();
         return false;
     }
 
-    CommittingTransaction *t = d->commitTransaction(QList<Event>());
-    if (t != 0)
-        t->addSignal(false, d, "slotAllCallsDeleted", Q_ARG(int, -1));
-
+    d->slotAllCallsDeleted(-1);
     return true;
 }
 
@@ -1014,17 +991,12 @@ bool CallModel::markAllRead()
 {
     Q_D(CallModel);
 
-    d->tracker()->transaction();
-
     bool marked;
-    marked = d->tracker()->markAsReadAll(Event::CallEvent);
+    marked = d->database()->markAsReadAll(Event::CallEvent);
     if (!marked) {
         qWarning() << __PRETTY_FUNCTION__ << "Failed to delete events";
-        d->tracker()->rollback();
         return false;
     }
-
-    d->commitTransaction(QList<Event>());
 
     return true;
 }
@@ -1051,14 +1023,14 @@ bool CallModel::modifyEvent( Event &event )
     // isRead has changed, modify the event and set isRead for nested events
     bool isRead = event.isRead();
 
-    d->tracker()->transaction(d->syncOnCommit);
+    d->database()->transaction();
 
     if (event.lastModified() == QDateTime::fromTime_t(0)) {
          event.setLastModified(QDateTime::currentDateTime());
     }
 
-    if (!d->tracker()->modifyEvent(event)) {
-        d->tracker()->rollback();
+    if (!d->database()->modifyEvent(event)) {
+        d->database()->rollback();
         return false;
     }
 
@@ -1066,7 +1038,7 @@ bool CallModel::modifyEvent( Event &event )
     events << event;
 
     if (d->sortBy == SortByContact) {
-        d->tracker()->markAsReadCallGroup(event);
+        d->database()->markAsReadCallGroup(event);
     } else {
         QModelIndex index = d->findEvent(event.id());
         if (index.isValid()) {
@@ -1075,8 +1047,8 @@ bool CallModel::modifyEvent( Event &event )
                 // child 0 = event
                 for (int i = 1; i < item->childCount(); i++) {
                     item->child(i)->event().setIsRead(isRead);
-                    if (!d->tracker()->modifyEvent(item->child(i)->event())) {
-                        d->tracker()->rollback();
+                    if (!d->database()->modifyEvent(item->child(i)->event())) {
+                        d->database()->rollback();
                         return false;
                     }
                     events << item->child(i)->event();
@@ -1085,22 +1057,18 @@ bool CallModel::modifyEvent( Event &event )
         }
     }
 
-    CommittingTransaction *t = d->commitTransaction(events);
-    if (t) {
-        t->addSignal(false,
-                     d,
-                     "eventsUpdated",
-                    Q_ARG(QList<CommHistory::Event>, events));
-    }
+    if (!d->database()->commit())
+        return false;
 
-    return t != 0;
+    emit d->eventsUpdated(events);
+    return true;
 }
 
 bool CallModel::deleteEvent( int id )
 {
     Q_D(CallModel);
 
-    if(!d->isInTreeMode)
+    if (!d->isInTreeMode)
     {
         return EventModel::deleteEvent(id);
     }
@@ -1124,7 +1092,7 @@ bool CallModel::deleteEvent( int id )
         {
             EventTreeItem *item = d->eventRootItem->child( index.row() );
 
-            d->tracker()->transaction( d->syncOnCommit );
+            d->database()->transaction();
 
             QList<Event> deletedEvents;
 
@@ -1132,14 +1100,14 @@ bool CallModel::deleteEvent( int id )
             for ( int i = 0; i < item->childCount(); i++ )
             {
                 // NOTE: when events are sorted by time, the tree hierarchy is only 2 levels deep
-                if (!d->tracker()->deleteEvent(item->child(i)->event())) {
-                    d->tracker()->rollback();
+                if (!d->database()->deleteEvent(item->child(i)->event())) {
+                    d->database()->rollback();
                     return false;
                 }
                 deletedEvents << item->child( i )->event();
             }
 
-            d->commitTransaction(deletedEvents);
+            d->database()->commit();
             // delete event from model (not only from db)
             d->deleteFromModel( id );
             // signal delete in case someone else needs to know it

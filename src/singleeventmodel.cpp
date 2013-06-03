@@ -21,7 +21,11 @@
 ******************************************************************************/
 
 #include <QDebug>
+#include <QSqlQuery>
+#include <QSqlError>
 
+#include "databaseio_p.h"
+#include "commhistorydatabase.h"
 #include "eventmodel_p.h"
 #include "group.h"
 #include "eventsquery.h"
@@ -39,16 +43,15 @@ public:
     SingleEventModelPrivate(EventModel *model)
         : EventModelPrivate(model) {
         queryLimit = 1;
-        clearUrl();
+        m_eventId = -1;
         clearTokens();
     }
 
     bool acceptsEvent(const Event &event) const {
 
         // If the urls match, we'll accept
-        if (!m_url.isEmpty() && m_url == event.url()) {
+        if (m_eventId >= 0 && event.id() == m_eventId)
             return true;
-        }
 
         // If the m_groupId is valid and the m_groupId doesn't
         // match events group id, don't accept the event
@@ -61,17 +64,13 @@ public:
                (!m_mmsId.isEmpty() && m_mmsId == event.mmsId());
     }
 
-    void clearUrl() {
-        m_url.clear();
-    }
-
     void clearTokens() {
         m_token.clear();
         m_mmsId.clear();
         m_groupId = -1;
     }
 
-    QUrl m_url;
+    int m_eventId;
     QString m_token;
     QString m_mmsId;
     int m_groupId;
@@ -86,7 +85,7 @@ SingleEventModel::~SingleEventModel()
 {
 }
 
-bool SingleEventModel::getEventByUri(const QUrl &uri)
+bool SingleEventModel::getEventById(int eventId)
 {
     Q_D(SingleEventModel);
 
@@ -95,16 +94,20 @@ bool SingleEventModel::getEventByUri(const QUrl &uri)
     d->clearTokens();
     endResetModel();
 
-    d->m_url = uri;
+    d->m_eventId = eventId;
 
-    EventsQuery query(d->propertyMask);
+    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
+    QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(" WHERE id = %1").arg(eventId);
 
-    query.addPattern(QString(QLatin1String("FILTER(%2 = <%1>) ")).arg(uri.toString()))
-            .variable(Event::Id);
+    if (!query.prepare(q)) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
 
     return d->executeQuery(query);
 }
-
 
 bool SingleEventModel::getEventByTokens(const QString &token,
                                         const QString &mmsId,
@@ -114,30 +117,39 @@ bool SingleEventModel::getEventByTokens(const QString &token,
 
     beginResetModel();
     d->clearEvents();
-    d->clearUrl();
+    d->m_eventId = -1;
     endResetModel();
 
     d->m_token = token;
     d->m_mmsId = mmsId;
     d->m_groupId = groupId;
 
-    EventsQuery query(d->propertyMask);
+    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
+
+    QString q = DatabaseIOPrivate::eventQueryBase();
+    q += "WHERE ";
 
     QStringList pattern;
     if (!token.isEmpty()) {
-        pattern << QString(QLatin1String("{ %2 nmo:messageId \"%1\" }")).arg(token);
+        q += "messageToken = :messageToken AND ";
+        query.bindValue(":messageToken", token);
     }
     if (!mmsId.isEmpty()) {
-        pattern << QString(QLatin1String("{ %2 nmo:mmsId \"%1\"; nmo:isSent true }")).arg(mmsId);
+        q += QString::fromLatin1("mmsId = :mmsId AND direction = %1 AND ").arg(Event::Outbound);
+        query.bindValue(":mmsId", mmsId);
     }
 
-    query.addPattern(pattern.join(QLatin1String("UNION"))).variable(Event::Id);
     if (groupId > -1)
-        query.addPattern(QString(QLatin1String("%2 nmo:communicationChannel <%1> ."))
-                         .arg(Group::idToUrl(groupId).toString()))
-        .variable(Event::Id);
+        q += QString::fromLatin1("groupId = %1").arg(groupId);
+    else
+        q += "1 = 1";
 
-    query.setDistinct(true);
+    if (!query.prepare(q)) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
 
     return d->executeQuery(query);
 }

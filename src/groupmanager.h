@@ -31,7 +31,7 @@
 namespace CommHistory {
 
 class GroupManagerPrivate;
-class TrackerIO;
+class DatabaseIO;
 
 /*!
  * \class GroupManager
@@ -207,10 +207,10 @@ public:
     QThread* backgroundThread();
 
     /*!
-     * Return an instance of TrackerIO that can be used for low-level queries.
-     * \return a TrackerIO
+     * Return an instance of DatabaseIO that can be used for low-level queries.
+     * \return a DatabaseIO
      */
-    TrackerIO& trackerIO();
+    DatabaseIO& databaseIO();
 
     /*!
      * If enabled (default), Group::contactId and Group::contactName in model

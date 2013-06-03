@@ -56,11 +56,11 @@ public:
     /*!
      * Polulate model with existing event.
      *
-     * \param uri, event uri to be fetched from database
+     * \param id, event id to be fetched from database
      *
      * \return true if successful, otherwise false
      */
-    bool getEventByUri(const QUrl &uri);
+    bool getEventById(int eventId);
 
     /*!
      * Polulate model with existing event identified by message token or mms id.

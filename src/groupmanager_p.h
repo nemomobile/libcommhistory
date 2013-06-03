@@ -33,10 +33,8 @@
 
 namespace CommHistory {
 
-class QueryRunner;
-class TrackerIO;
+class DatabaseIO;
 class ContactListener;
-class CommittingTransaction;
 class UpdatesEmitter;
 
 class GroupManagerPrivate : public QObject
@@ -58,14 +56,9 @@ public:
 
     bool canFetchMore() const;
 
-    void executeQuery(const QString query);
+    bool commitTransaction(QList<int> groupIds);
 
-    CommittingTransaction* commitTransaction(QList<int> groupIds);
-
-    void resetQueryRunner();
-    void deleteQueryRunner();
-
-    TrackerIO* tracker();
+    DatabaseIO* database();
     void startContactListening();
 
 public Q_SLOTS:
@@ -77,12 +70,6 @@ public Q_SLOTS:
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
 
     void groupsDeletedSlot(const QList<int> &groupIds);
-
-    void groupsReceivedSlot(int start, int end, QList<CommHistory::Group> result);
-
-    void modelUpdatedSlot(bool successful);
-
-    void canFetchMoreChangedSlot(bool canFetch);
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
@@ -102,12 +89,7 @@ public:
     QString filterLocalUid;
     QString filterRemoteUid;
 
-    QueryRunner *queryRunner;
-    bool threadCanFetchMore;
-
     QThread *bgThread;
-
-    TrackerIO *m_pTracker;
 
     QSharedPointer<ContactListener> contactListener;
     bool contactChangesEnabled;

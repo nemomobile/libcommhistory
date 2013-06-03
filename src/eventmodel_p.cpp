@@ -2,6 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013 Jolla Ltd. <john.brooks@jollamobile.com>
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** Contact: Reto Zingg <reto.zingg@nokia.com>
 **
@@ -22,10 +23,11 @@
 
 #include <QtDBus/QtDBus>
 #include <QDebug>
+#include <QSqlQuery>
+#include <QSqlError>
 
-#include "trackerio.h"
-#include "trackerio_p.h"
-#include "queryrunner.h"
+#include "databaseio.h"
+#include "databaseio_p.h"
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "updatesemitter.h"
@@ -34,7 +36,6 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "contactlistener.h"
-#include "committingtransaction.h"
 #include "eventsquery.h"
 
 using namespace CommHistory;
@@ -53,13 +54,9 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , isReady(true)
         , messagePartsReady(true)
         , threadCanFetchMore(false)
-        , syncOnCommit(false)
         , contactChangesEnabled(false)
-        , queryRunner(0)
-        , partQueryRunner(0)
         , propertyMask(Event::allProperties())
         , bgThread(0)
-        , m_pTracker(0)
 {
     q_ptr = model;
     qRegisterMetaType<QList<CommHistory::Event> >();
@@ -89,7 +86,6 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         QString(), QString(), COMM_HISTORY_SERVICE_NAME, EVENT_DELETED_SIGNAL,
         this, SLOT(eventDeletedSlot(int)));
 
-    resetQueryRunners();
     eventRootItem = new EventTreeItem(Event());
 }
 
@@ -97,51 +93,7 @@ EventModelPrivate::~EventModelPrivate()
 {
     qDebug() << Q_FUNC_INFO;
 
-    deleteQueryRunners();
     delete eventRootItem;
-}
-
-
-void EventModelPrivate::resetQueryRunners()
-{
-    deleteQueryRunners();
-
-    queryRunner = new QueryRunner(tracker());
-    partQueryRunner = new QueryRunner(tracker());
-
-    connect(queryRunner, SIGNAL(eventsReceived(int, int, QList<CommHistory::Event>)),
-            this, SLOT(eventsReceivedSlot(int, int, QList<CommHistory::Event>)));
-    connect(queryRunner, SIGNAL(canFetchMoreChanged(bool)),
-            this, SLOT(canFetchMoreChangedSlot(bool)));
-    connect(queryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(modelUpdatedSlot(bool)));
-
-    connect(partQueryRunner, SIGNAL(messagePartsReceived(int, QList<CommHistory::MessagePart>)),
-            this, SLOT(messagePartsReceivedSlot(int, QList<CommHistory::MessagePart>)));
-    connect(partQueryRunner, SIGNAL(modelUpdated(bool)), this, SLOT(partsUpdatedSlot(bool)));
-    partQueryRunner->enableQueue(true);
-
-    if (bgThread) {
-        qDebug() << Q_FUNC_INFO << "MOVE" << queryRunner
-                 << partQueryRunner;
-
-        queryRunner->moveToThread(bgThread);
-        partQueryRunner->moveToThread(bgThread);
-    }
-}
-
-void EventModelPrivate::deleteQueryRunners()
-{
-    if (queryRunner) {
-        queryRunner->disconnect(this);
-        queryRunner->deleteLater();
-        queryRunner = 0;
-    }
-
-    if (partQueryRunner) {
-        partQueryRunner->disconnect(this);
-        partQueryRunner->deleteLater();
-        partQueryRunner = 0;
-    }
 }
 
 bool EventModelPrivate::acceptsEvent(const Event &event) const
@@ -175,32 +127,29 @@ QModelIndex EventModelPrivate::findParent(const Event &event)
     return QModelIndex();
 }
 
-bool EventModelPrivate::executeQuery(EventsQuery &query)
+bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     qDebug() << __PRETTY_FUNCTION__;
 
     startContactListening();
 
     isReady = false;
-    if (queryMode == EventModel::StreamedAsyncQuery) {
-        queryRunner->setStreamedMode(true);
-        queryRunner->setChunkSize(chunkSize);
-        queryRunner->setFirstChunkSize(firstChunkSize);
-    } else {
-        if (queryLimit)
-            query.addModifier(QLatin1String("LIMIT ") + QString::number(queryLimit));
-        if (queryOffset)
-            query.addModifier(QLatin1String("OFFSET ") + QString::number(queryOffset));
-    }
-    QString sparqlQuery = query.query();
-    queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
-    if (queryMode == EventModel::SyncQuery) {
-        QEventLoop loop;
-        while (!isReady || !messagePartsReady) {
-            loop.processEvents(QEventLoop::WaitForMoreEvents);
-        }
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
     }
 
+    QList<Event> events;
+    while (query.next()) {
+        Event e;
+        DatabaseIOPrivate::readEventResult(query, e);
+        events.append(e);
+    }
+
+    eventsReceivedSlot(0, events.size(), events);
+    modelUpdatedSlot(true);
     return true;
 }
 
@@ -302,55 +251,6 @@ void EventModelPrivate::deleteFromModel(int id)
     }
 }
 
-bool EventModelPrivate::doAddEvent( Event &event )
-{
-    if (event.type() == Event::UnknownType) {
-        qWarning() << Q_FUNC_INFO << "Event type not set";
-        return false;
-    }
-
-    if (event.direction() == Event::UnknownDirection) {
-        qWarning() << Q_FUNC_INFO << "Event direction not set";
-        return false;
-    }
-
-    if (event.groupId() == -1) {
-        if (!event.isDraft() && event.type() != Event::CallEvent) {
-            qWarning() << Q_FUNC_INFO << "Group id not set";
-            return false;
-        }
-    }
-
-    if (!tracker()->addEvent(event)) {
-        return false;
-    }
-
-    return true;
-}
-
-bool EventModelPrivate::doDeleteEvent(int id, Event &event)
-{
-    QModelIndex index = findEvent(id);
-
-    // If event can be found already from the model then no need to fetch it from database:
-    if (index.isValid()) {
-        qDebug() << __PRETTY_FUNCTION__ << "Event " << id << " already present in model. No need to fetch from db.";
-        event = q_ptr->event(index);
-    } else {
-        qDebug() << __PRETTY_FUNCTION__ << "Event " << id << " not present in model. Need to fetch from db.";
-        // fetch event from database
-        if (!tracker()->getEvent(id, event)) {
-            return false;
-        }
-    }
-
-    // delete it
-    if (!tracker()->deleteEvent(event, bgThread)) {
-        return false;
-    }
-    return true;
-}
-
 void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> events)
 {
     qDebug() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
@@ -368,11 +268,6 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         if (!event.contacts().isEmpty()) {
             contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
         }
-
-        if (event.type() == Event::MMSEvent && propertyMask.contains(Event::MessageParts)) {
-            messagePartsReady = false;
-            partQueryRunner->runMessagePartQuery(TrackerIOPrivate::prepareMessagePartQuery(event.url().toString()));
-        }
     }
 
     if (!events.isEmpty()) {
@@ -381,9 +276,6 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
         fillModel(start, end, events);
     }
-
-    if (!messagePartsReady)
-        partQueryRunner->startQueue();
 }
 
 void EventModelPrivate::messagePartsReceivedSlot(int eventId,
@@ -469,27 +361,6 @@ void EventModelPrivate::eventDeletedSlot(int id)
     qDebug() << __PRETTY_FUNCTION__ << ":" << id;
 
     deleteFromModel(id);
-}
-
-CommittingTransaction* EventModelPrivate::commitTransaction(const QList<Event> &events)
-{
-    CommittingTransaction *t = tracker()->commit();
-
-    if (t) {
-        t->addSignal(false,
-                    this,
-                    "eventsCommitted",
-                    Q_ARG(QList<CommHistory::Event>, events),
-                    Q_ARG(bool, true));
-
-        t->addSignal(true,
-                    this,
-                    "eventsCommitted",
-                    Q_ARG(QList<CommHistory::Event>, events),
-                    Q_ARG(bool, false));
-    }
-
-    return t;
 }
 
 void EventModelPrivate::canFetchMoreChangedSlot(bool canFetch)
@@ -661,9 +532,9 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
                             eventRootItem);
 }
 
-TrackerIO* EventModelPrivate::tracker()
+DatabaseIO* EventModelPrivate::database()
 {
-    return TrackerIO::instance();
+    return DatabaseIO::instance();
 }
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)

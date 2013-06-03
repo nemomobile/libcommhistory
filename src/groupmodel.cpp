@@ -546,10 +546,10 @@ QThread* GroupModel::backgroundThread()
     return d->manager->backgroundThread();
 }
 
-TrackerIO& GroupModel::trackerIO()
+DatabaseIO& GroupModel::databaseIO()
 {
     d->ensureManager();
-    return d->manager->trackerIO();
+    return d->manager->databaseIO();
 }
 
 void GroupModel::enableContactChanges(bool enabled)

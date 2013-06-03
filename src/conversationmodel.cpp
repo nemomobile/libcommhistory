@@ -22,6 +22,8 @@
 
 #include <QtDBus/QtDBus>
 #include <QDebug>
+#include <QSqlQuery>
+#include <QSqlError>
 
 #include "eventmodel_p.h"
 #include "conversationmodel.h"
@@ -29,6 +31,8 @@
 #include "constants.h"
 #include "eventsquery.h"
 #include "queryrunner.h"
+#include "commhistorydatabase.h"
+#include "databaseio_p.h"
 #include "contactlistener.h"
 
 namespace {
@@ -171,47 +175,40 @@ bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::
     return true;
 }
 
-EventsQuery ConversationModelPrivate::buildQuery() const
+QSqlQuery ConversationModelPrivate::buildQuery() const
 {
-    EventsQuery query(propertyMask);
+    QString q = DatabaseIOPrivate::eventQueryBase();
+
+    q += "WHERE Events.isDraft = 0 AND Events.isDeleted = 0 ";
 
     if (!filterAccount.isEmpty()) {
-        query.addPattern(QString(QLatin1String("{%2 nmo:to [nco:hasContactMedium <telepathy:%1>]} "
-                                               "UNION "
-                                               "{%2 nmo:from [nco:hasContactMedium <telepathy:%1>]}"))
-                         .arg(filterAccount))
-                .variable(Event::Id);
+        q += "AND Events.localUid = :filterAccount ";
     }
 
-    if (filterType == Event::IMEvent) {
-        query.addPattern(QLatin1String("%1 rdf:type nmo:IMMessage ."))
-                        .variable(Event::Id);
-    } else if (filterType == Event::SMSEvent) {
-        query.addPattern(QLatin1String("%1 rdf:type nmo:SMSMessage ."))
-                        .variable(Event::Id);
+    if (filterType != Event::UnknownType) {
+        q += "AND Events.type = :filterType ";
     }
 
-    if (filterDirection == Event::Outbound) {
-        query.addPattern(QLatin1String("%1 nmo:isSent \"true\" ."))
-                        .variable(Event::Id);
-    } else if (filterDirection == Event::Inbound) {
-        query.addPattern(QLatin1String("%1 nmo:isSent \"false\" ."))
-                         .variable(Event::Id);
+    if (filterDirection != Event::UnknownDirection) {
+        q += "AND Events.direction = :filterDirection ";
     }
 
-    query.addPattern(QLatin1String("%1 nmo:isDraft \"false\"; nmo:isDeleted \"false\" .")).variable(Event::Id);
+    if (!filterGroupIds.isEmpty()) {
+        QStringList ids;
+        foreach (int id, filterGroupIds)
+            ids.append(QString::number(id));
+        q += "AND Events.groupId IN (" + ids.join(QLatin1String(",")) + ")";
+    }
 
-    QStringList ids;
-    foreach (int id, filterGroupIds)
-        ids.append(QString(QLatin1String("<%1>")).arg(Group::idToUrl(id).toString()));
-    
-    query.addPattern(QString(QLatin1String("FILTER(%2 IN (%1)) ."))
-                     .arg(ids.join(QLatin1String(",")))).variable(Event::GroupId);
+    q += "ORDER BY Events.endTime, Events.id DESC";
 
-    query.addModifier("ORDER BY DESC(%1) DESC(tracker:id(%2)) DESC(tracker:id(%3))")
-                     .variable(Event::EndTime)
-                     .variable(Event::Id)
-                     .variable(Event::GroupId);
+    QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
+    if (!filterAccount.isEmpty())
+        query.bindValue(":filterAccount", filterAccount);
+    if (filterType != Event::UnknownType)
+        query.bindValue(":filterType", filterType);
+    if (filterDirection != Event::UnknownDirection)
+        query.bindValue(":filterDirection", filterDirection);
 
     return query;
 }
@@ -297,32 +294,7 @@ bool ConversationModel::getEvents(QList<int> groupIds)
     if (groupIds.isEmpty())
         return true;
 
-    EventsQuery query = d->buildQuery();
-
-    if (d->queryMode == EventModel::StreamedAsyncQuery) {
-        d->startContactListening();
-
-        d->isReady = false;
-        query.addModifier(QLatin1String("LIMIT ") + QString::number(d->firstChunkSize));
-        query.addProjection(QLatin1String("tracker:id(%1)")).variable(Event::Id);
-
-        d->queryRunner->enableQueue();
-
-        QString sparqlQuery = query.query();
-        d->queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
-        d->eventsFilled = 0;
-        d->firstFetch = true;
-        d->activeQueries = 1;
-
-        connect(d->queryRunner, SIGNAL(eventsReceivedExtra(QList<CommHistory::Event>,QVariantList)),
-                d, SLOT(extraReceivedSlot(QList<CommHistory::Event>,QVariantList)),
-                Qt::UniqueConnection);
-
-        d->queryRunner->startQueue();
-
-        return true;
-    }
-
+    QSqlQuery query = d->buildQuery();
     return d->executeQuery(query);
 }
 
@@ -337,8 +309,10 @@ bool ConversationModel::canFetchMore(const QModelIndex &parent) const
 void ConversationModel::fetchMore(const QModelIndex &parent)
 {
     Q_UNUSED(parent);
-    Q_D(ConversationModel);
 
+    qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED";
+
+#if 0
     // isModelReady() is true when there are no more events to request
     if (d->isModelReady() || d->eventRootItem->childCount() < 1)
         return;
@@ -361,6 +335,7 @@ void ConversationModel::fetchMore(const QModelIndex &parent)
     d->activeQueries++;
 
     d->queryRunner->startQueue();
+#endif
 }
 
 }

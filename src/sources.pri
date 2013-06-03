@@ -36,7 +36,10 @@ HEADERS += trackerio.h \
            contactgroupmodel.h \
            contactgroupmodel_p.h \
            contactgroup.h \
-           qcontacttpmetadata_p.h
+           qcontacttpmetadata_p.h \
+           databaseio.h \
+           databaseio_p.h \
+           commhistorydatabase.h
 
 SOURCES += trackerio.cpp \
            commonutils.cpp \
@@ -65,4 +68,6 @@ SOURCES += trackerio.cpp \
            groupobject.cpp \
            contactgroupmodel.cpp \
            contactgroup.cpp \
-           qcontacttpmetadata.cpp
+           qcontacttpmetadata.cpp \
+           databaseio.cpp \
+           commhistorydatabase.cpp
