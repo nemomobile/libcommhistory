@@ -1264,7 +1264,9 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
 
 int main(int argc, char **argv)
 {
+#ifndef QT_NO_EXCEPTIONS
     try {
+#endif
         QCoreApplication app(argc, argv);
 
         optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text";
@@ -1330,8 +1332,10 @@ int main(int argc, char **argv)
 
         return 0;
 
+#ifndef QT_NO_EXCEPTIONS
     } catch (std::bad_alloc &ba) {
         std::cerr << "Bad alloc exception: " << ba.what() << std::endl;
         return 1;
     }
+#endif
 }

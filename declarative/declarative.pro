@@ -34,7 +34,7 @@ equals(QT_MAJOR_VERSION, 4) {
 
 equals(QT_MAJOR_VERSION, 5) {
     LIBS += -L../src ../src/libcommhistory-qt5.so
-    QT += quick contacts
+    QT += qml contacts
     target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 }
 
