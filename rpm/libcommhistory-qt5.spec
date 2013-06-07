@@ -13,6 +13,7 @@ BuildRequires:  pkgconfig(tracker-sparql-0.14)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5DBus)
 BuildRequires:  pkgconfig(Qt5Gui)
+BuildRequires:  pkgconfig(Qt5Test)
 Requires: libqt5sparql-tracker
 Requires: libqt5sparql-tracker-direct
 
