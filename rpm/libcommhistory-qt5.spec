@@ -109,6 +109,7 @@ rm -rf %{buildroot}
 %files devel
 %defattr(-,root,root,-)
 %{_libdir}/libcommhistory-qt5.a
+%{_libdir}/libcommhistory-qt5.prl
 %{_libdir}/pkgconfig/commhistory-qt5.pc
 %{_includedir}/commhistory-qt5/CommHistory/*
 
