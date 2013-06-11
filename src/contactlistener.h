@@ -36,7 +36,16 @@
 #include <QContact>
 #include <QContactFetchRequest>
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#ifdef USING_QTPIM
+# include <QContactId>
+# include <QContactIdFilter>
+
+QTCONTACTS_USE_NAMESPACE
+
+typedef QContactId QContactIdType;
+typedef QContactIdFilter QContactIdTypeFilter;
+
+#else
 # include <QContactLocalIdFilter>
 
 QTM_USE_NAMESPACE
@@ -45,13 +54,9 @@ class QContactManager;
 class QContactFetchRequest;
 QTM_END_NAMESPACE
 
-#else
-# include <QContactId>
-# include <QContactIdFilter>
-# define QContactLocalId QContactId
-# define QContactLocalIdFilter QContactIdFilter
+typedef QContactLocalId QContactIdType;
+typedef QContactLocalIdFilter QContactIdTypeFilter;
 
-using namespace QtContacts;
 #endif
 
 namespace CommHistory {
@@ -72,11 +77,20 @@ public:
                                    const QString &remoteUid,
                                    const QList< QPair<QString,QString> > &contactAddresses);
 
+    static int internalContactId(const QContactIdType &id);
+    static int internalContactId(const QContact &contact);
+    static QContactIdType apiContactId(int internalId);
+
     /**
      * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.
      */
     void resolveContact(const QString &localUid,
                         const QString &remoteUid);
+
+    /**
+     * Get contact name from a QContact. Should have QContactName, QContactNickname,
+     * and QContactPresence details. */
+    QString contactName(const QContact &contact);
 
     /**
      * Get address book settings.
@@ -91,8 +105,14 @@ Q_SIGNALS:
     void contactRemoved(quint32 localId);
 
 private Q_SLOTS:
+#ifdef USING_QTPIM
+    void slotContactsUpdated(const QList<QContactId> &contactIds);
+    void slotContactsRemoved(const QList<QContactId> &contactIds);
+#else
     void slotContactsUpdated(const QList<QContactLocalId> &contactIds);
     void slotContactsRemoved(const QList<QContactLocalId> &contactIds);
+#endif
+
     void slotStartContactRequest();
     void slotResultsAvailable();
 
@@ -108,7 +128,7 @@ private:
     bool m_Initialized;
     QTimer m_ContactTimer;
     QPointer<QContactManager> m_ContactManager;
-    QList<QContactLocalId> m_PendingContactIds;
+    QList<QContactIdType> m_PendingContactIds;
     QList<QPair<QString,QString> > m_PendingUnresolvedContacts;
 };
 

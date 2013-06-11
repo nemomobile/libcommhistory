@@ -75,4 +75,5 @@ SOURCES += trackerio.cpp \
            groupmanager.cpp \
            groupobject.cpp \
            contactgroupmodel.cpp \
-           contactgroup.cpp
+           contactgroup.cpp \
+           qcontacttpmetadata.cpp
