@@ -63,11 +63,6 @@ struct QueryResult {
     static void parseContacts(const QString &result, const QString &localUid,
                               QList<Event::Contact> &contacts, ContactMap *contactMap = 0);
 
-    static QString buildContactName(const QString &firstName,
-                                    const QString &lastName,
-                                    const QString &contactNickname,
-                                    const QString &imNickname);
-
     // columns for message part query
     enum {
         MessagePartColumnMessage = 0,

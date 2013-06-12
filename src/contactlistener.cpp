@@ -29,6 +29,8 @@
 #include <QContactDetailFilter>
 #include <QContactPhoneNumber>
 #include <QContactName>
+#include <QContactNickname>
+#include <QContactPresence>
 #include <QContactDisplayLabel>
 
 #include "commonutils.h"
@@ -54,6 +56,57 @@ namespace {
         return existingFilter | newFilter;
     }
 }
+
+#ifdef USING_QTPIM
+int ContactListener::internalContactId(const QContactIdType &id)
+{
+    // We need to be able to represent an ID as a 32-bit int; we could use
+    // hashing, but for now we will just extract the integral part of the ID
+    // string produced by qtcontacts-sqlite
+    if (!id.isNull()) {
+        QStringList components = id.toString().split(QChar::fromLatin1(':'));
+        const QString &idComponent = components.isEmpty() ? QString() : components.last();
+        if (idComponent.startsWith(QString::fromLatin1("sql-"))) {
+            return idComponent.mid(4).toUInt();
+        }
+    }
+    return 0;
+}
+
+int ContactListener::internalContactId(const QContact &contact)
+{
+    return internalContactId(contact.id());
+}
+
+QContactIdType ContactListener::apiContactId(int iid)
+{
+    // Currently only works with qtcontacts-sqlite
+    QContactId contactId;
+    if (iid != 0) {
+        static const QString idStr(QString::fromLatin1("qtcontacts:org.nemomobile.contacts.sqlite::sql-%1"));
+        contactId = QContactId::fromString(idStr.arg(iid));
+        if (contactId.isNull()) {
+            qWarning() << "Unable to formulate valid ID from:" << iid;
+        }
+    }
+    return contactId;
+}
+#else
+int ContactListener::internalContactId(const QContactIdType &id)
+{
+    return id;
+}
+
+int ContactListener::internalContactId(const QContact &contact)
+{
+    return contact.localId();
+}
+
+QContactIdType ContactListener::apiContactId(int id)
+{
+    return id;
+}
+#endif
 
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
@@ -95,12 +148,21 @@ void ContactListener::init()
             m_ContactManager = new QContactManager;
         }
         m_ContactManager->setParent(this);
-        connect(m_ContactManager, SIGNAL(contactsAdded(const QList<QContactLocalId> &)),
-                this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
-        connect(m_ContactManager, SIGNAL(contactsChanged(const QList<QContactLocalId> &)),
-                this, SLOT(slotContactsUpdated(const QList<QContactLocalId> &)));
-        connect(m_ContactManager, SIGNAL(contactsRemoved(const QList<QContactLocalId> &)),
-                this, SLOT(slotContactsRemoved(const QList<QContactLocalId> &)));
+#ifdef USING_QTPIM
+        connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactId>)),
+                this, SLOT(slotContactsUpdated(QList<QContactId>)));
+        connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactId>)),
+                this, SLOT(slotContactsUpdated(QList<QContactId>)));
+        connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactId>)),
+                this, SLOT(slotContactsRemoved(QList<QContactId>)));
+#else
+        connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactLocalId>)),
+                this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
+        connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactLocalId>)),
+                this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
+        connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactLocalId>)),
+                this, SLOT(slotContactsRemoved(QList<QContactLocalId>)));
+#endif
     }
 
     m_ContactTimer.setSingleShot(true);
@@ -117,26 +179,29 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     request->setParent(this);
     request->setFilter(filter);
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    QStringList details;
-    details << QContactName::DefinitionName
-            << QContactOnlineAccount::DefinitionName
-            << QContactPhoneNumber::DefinitionName
-            << QContactDisplayLabel::DefinitionName;
-
-    QContactFetchHint hint;
-    hint.setDetailDefinitionsHint(details);
-#else
+#ifdef USING_QTPIM
     QList<QContactDetail::DetailType> details;
     details << QContactName::Type
             << QContactOnlineAccount::Type
             << QContactPhoneNumber::Type
+            << QContactNickname::Type
+            << QContactPresence::Type
             << QContactDisplayLabel::Type;
 
     QContactFetchHint hint;
     hint.setDetailTypesHint(details);
-#endif
+#else
+    QStringList details;
+    details << QContactName::DefinitionName
+            << QContactOnlineAccount::DefinitionName
+            << QContactPhoneNumber::DefinitionName
+            << QContactNickname::DefinitionName
+            << QContactPresence::DefinitionName 
+            << QContactDisplayLabel::DefinitionName;
 
+    QContactFetchHint hint;
+    hint.setDetailDefinitionsHint(details);
+#endif
 
     // Relationships are slow and unnecessary here
     hint.setOptimizationHints(QContactFetchHint::NoRelationships);
@@ -145,7 +210,7 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     return request;
 }
 
-void ContactListener::slotContactsUpdated(const QList<QContactLocalId> &contactIds)
+void ContactListener::slotContactsUpdated(const QList<QContactIdType> &contactIds)
 {
     if (contactIds.isEmpty())
         return;
@@ -156,19 +221,15 @@ void ContactListener::slotContactsUpdated(const QList<QContactLocalId> &contactI
     startRequestOrTimer();
 }
 
-void ContactListener::slotContactsRemoved(const QList<QContactLocalId> &contactIds)
+void ContactListener::slotContactsRemoved(const QList<QContactIdType> &contactIds)
 {
     if (contactIds.isEmpty())
         return;
 
     qDebug() << Q_FUNC_INFO << contactIds;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED FOR QT5";
-#else
-    foreach (const QContactLocalId &localId, contactIds)
-        emit contactRemoved(localId);
-#endif
+    foreach (const QContactIdType &localId, contactIds)
+        emit contactRemoved(internalContactId(localId));
 }
 
 void ContactListener::slotStartContactRequest()
@@ -192,16 +253,14 @@ void ContactListener::slotStartContactRequest()
                 QContactDetailFilter filterRemote;
                 filterRemote.setValue(contact.second);
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-                // XXX Fields are wrong
-                filterLocal.setDetailType(QContactOnlineAccount::Type, 0);
-                filterRemote.setDetailType(QContactOnlineAccount::Type, 1);
+#ifdef USING_QTPIM
+                filterLocal.setDetailType(QContactOnlineAccount::Type, QContactTpMetadata::FieldAccountId);
+                filterRemote.setDetailType(QContactOnlineAccount::Type, QContactTpMetadata::FieldContactId);
 #else
                 filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
                                                     QLatin1String("AccountPath"));
                 filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
                                                      QContactOnlineAccount::FieldAccountUri);
-                filterRemote.setValue(contact.second);
 #endif
 
                 filter = addContactFilter(filter, filterLocal & filterRemote);
@@ -213,12 +272,12 @@ void ContactListener::slotStartContactRequest()
     }
 
     if (!request && !m_PendingContactIds.isEmpty()) {
-        QList<QContactLocalId> requestIds;
+        QList<QContactIdType> requestIds;
 
         for (int i = 0; i < REQUEST_BATCH_SIZE && !m_PendingContactIds.isEmpty(); i++)
             requestIds << m_PendingContactIds.takeFirst();
 
-        QContactLocalIdFilter filter;
+        QContactIdTypeFilter filter;
         filter.setIds(requestIds);
         request = buildRequest(filter);
     }
@@ -240,9 +299,18 @@ void ContactListener::slotResultsAvailable()
     qDebug() << Q_FUNC_INFO << request->contacts().size() << "contacts";
 
     foreach (const QContact &contact, request->contacts()) {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#ifdef USING_QTPIM
         if (contact.id() != m_ContactManager->selfContactId()) {
-            qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED for Qt5";
+            QList< QPair<QString,QString> > addresses;
+            foreach (const QContactOnlineAccount &account,
+                    contact.details(QContactOnlineAccount::Type)) {
+                addresses += qMakePair(account.value(QContactOnlineAccount__FieldAccountPath).toString(),
+                                       account.accountUri());
+            }
+            foreach (const QContactPhoneNumber &phoneNumber,
+                    contact.details(QContactPhoneNumber::Type)) {
+                addresses += qMakePair(QString(), phoneNumber.number());
+            }
 #else
         if (contact.localId() != m_ContactManager->selfContactId()) {
             QList< QPair<QString,QString> > addresses;
@@ -255,9 +323,9 @@ void ContactListener::slotResultsAvailable()
                      contact.details(QContactPhoneNumber::DefinitionName)) {
                 addresses += qMakePair(QString(), phoneNumber.number());
             }
-
-            emit contactUpdated(contact.localId(), contact.displayLabel(), addresses);
 #endif
+
+            emit contactUpdated(internalContactId(contact), contactName(contact), addresses);
         } // if
     }
 
@@ -317,3 +385,76 @@ bool ContactListener::preferNickname()
     return false;
 }
 
+QString ContactListener::contactName(const QContact &contact)
+{
+    QString displayLabel, firstName, lastName, contactNickname, imNickname;
+
+    /* Use the CustomLabel field if present, otherwise get first/last name */
+    foreach (const QContactName &name, contact.details<QContactName>()) {
+        if (name.isEmpty())
+            continue;
+
+#ifdef USING_QTPIM
+        displayLabel = name.value(QContactName__FieldCustomLabel).toString();
+#else
+        displayLabel = name.customLabel();
+#endif
+        if (!displayLabel.isEmpty())
+            return displayLabel;
+
+        firstName = name.firstName();
+        lastName = name.lastName();
+        break;
+    }
+
+    /* Use QContactDisplayLabel as a fallback */
+#ifdef USING_QTPIM
+    displayLabel = contact.detail<QContactDisplayLabel>().label();
+#else
+    displayLabel = contact.displayLabel();
+#endif
+    if (!displayLabel.isEmpty())
+        return displayLabel;
+
+    /* Generate the name */
+    foreach (const QContactNickname &nickname, contact.details<QContactNickname>()) {
+        if (!nickname.isEmpty()) {
+            contactNickname = nickname.nickname();
+            break;
+        }
+    }
+    foreach (const QContactPresence &presence, contact.details<QContactPresence>()) {
+        if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
+            imNickname = presence.nickname();
+            break;
+        }
+    }
+
+    QString realName;
+    if (!firstName.isEmpty() || !lastName.isEmpty()) {
+        QString lname;
+        if (isLastNameFirst())  {
+            realName = lastName;
+            lname = firstName;
+        } else {
+            realName = firstName;
+            lname = lastName;
+        }
+
+        if (!lname.isEmpty()) {
+            if (!realName.isEmpty())
+                realName.append(' ');
+            realName.append(lname);
+        }
+    }
+
+    if (preferNickname() && !contactNickname.isEmpty())
+        return contactNickname;
+    else if (!realName.isEmpty())
+        return realName;
+    else if (!imNickname.isEmpty())
+        return imNickname;
+    else
+        return contactNickname;
+}
+  

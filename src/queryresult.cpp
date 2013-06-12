@@ -54,40 +54,6 @@ using namespace CommHistory;
 
 #define NMO_ "http://www.semanticdesktop.org/ontologies/2007/03/22/nmo#"
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-void QContactTpMetadata::setContactId(const QString &s) { setValue(FieldContactId, s); }
-QString QContactTpMetadata::contactId() const { return value(FieldContactId); }
-
-void QContactTpMetadata::setAccountId(const QString &s) { setValue(FieldAccountId, s); }
-QString QContactTpMetadata::accountId() const { return value(FieldAccountId); }
-
-void QContactTpMetadata::setAccountEnabled(bool b) { setValue(FieldAccountEnabled, QLatin1String(b ? "true" : "false")); }
-bool QContactTpMetadata::accountEnabled() const { return (value(FieldAccountEnabled) == QLatin1String("true")); }
-
-QContactDetailFilter QContactTpMetadata::matchContactId(const QString &s)
-{
-    QContactDetailFilter filter;
-    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldContactId);
-    filter.setValue(s);
-    filter.setMatchFlags(QContactFilter::MatchExactly);
-    return filter;
-}
-
-QContactDetailFilter QContactTpMetadata::matchAccountId(const QString &s)
-{
-    QContactDetailFilter filter;
-    filter.setDetailDefinitionName(QContactTpMetadata::DefinitionName, FieldAccountId);
-    filter.setValue(s);
-    filter.setMatchFlags(QContactFilter::MatchExactly);
-    return filter;
-}
-
-Q_IMPLEMENT_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata");
-Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldContactId, "ContactId");
-Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountId, "AccountId");
-Q_DEFINE_LATIN1_CONSTANT(QContactTpMetadata::FieldAccountEnabled, "AccountEnabled");
-#endif
-
 namespace {
 
 Event::EventStatus nmoStatusToEventStatus(const QString &status)
@@ -152,9 +118,11 @@ QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAd
     Q_UNUSED(localUid);
     Q_UNUSED(imAddress);
     QContactDetailFilter filter;
-    // QT5: Add telepathy details from contacts
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#ifdef USING_QTPIM
+    filter.setDetailType(QContactOnlineAccount::Type, QContactOnlineAccount::FieldAccountUri);
+#else
     filter.setDetailDefinitionName(QContactOnlineAccount::DefinitionName, QContactOnlineAccount::FieldAccountUri);
+#endif
     filter.setMatchFlags(QContactFilter::MatchExactly);
 
     if (imAddress.startsWith(QLatin1String("telepathy:"))) {
@@ -173,7 +141,6 @@ QContactFilter matchIMAddressFilter(const QString &localUid, const QString &imAd
     }
 
     filter.setValue(imAddress);
-#endif
     return filter;
 }
 
@@ -191,7 +158,7 @@ QContactFetchHint getRetrievalHint()
     QContactFetchHint hint;
 
     // Only retrieve the details we will use
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#ifdef USING_QTPIM
     hint.setDetailTypesHint(QList<QContactDetail::DetailType>() << QContactDetail::TypeName
                                                                 << QContactDetail::TypePhoneNumber
                                                                 << QContactDetail::TypeOnlineAccount
@@ -640,35 +607,8 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
             const QList<QContact> &matched = matchingContacts[remoteUid];
             foreach (const QContact &match, matched) {
                 Event::Contact contact;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-                contact.first = match.id().toString().toInt();
-#else
-                contact.first = match.localId();
-#endif
-
-                QString firstName, lastName, contactNickname, imNickname;
-
-                foreach (const QContactName &name, match.details<QContactName>()) {
-                    if (!name.isEmpty()) {
-                        firstName = name.firstName();
-                        lastName = name.lastName();
-                        break;
-                    }
-                }
-                foreach (const QContactNickname &nickname, match.details<QContactNickname>()) {
-                    if (!nickname.isEmpty()) {
-                        contactNickname = nickname.nickname();
-                        break;
-                    }
-                }
-                foreach (const QContactPresence &presence, match.details<QContactPresence>()) {
-                    if (!presence.isEmpty() && !presence.nickname().isEmpty()) {
-                        imNickname = presence.nickname();
-                        break;
-                    }
-                }
-
-                contact.second = buildContactName(firstName, lastName, contactNickname, imNickname);
+                contact.first = ContactListener::internalContactId(match);
+                contact.second = ContactListener::instance()->contactName(match);
 
                 if (!contacts.contains(contact))
                     contacts.append(contact);
@@ -684,46 +624,3 @@ void QueryResult::parseContacts(const QString &result, const QString &localUid,
     }
 }
 
-QString QueryResult::buildContactName(const QString &firstName,
-                                      const QString &lastName,
-                                      const QString &contactNickname,
-                                      const QString &imNickname)
-{
-    QString name;
-
-    QString realName;
-    if (!firstName.isEmpty() || !lastName.isEmpty()) {
-        QString lname;
-        if (ContactListener::instance()->isLastNameFirst())  {
-            realName = lastName;
-            lname = firstName;
-        } else {
-            realName = firstName;
-            lname = lastName;
-        }
-
-        if (!lname.isEmpty()) {
-            if (!realName.isEmpty())
-                realName.append(' ');
-            realName.append(lname);
-        }
-    }
-
-    if (ContactListener::instance()->preferNickname()) {
-        if (!contactNickname.isEmpty())
-            name = contactNickname;
-        else if (!realName.isEmpty())
-            name = realName;
-        else
-            name = imNickname;
-    } else {
-        if (!realName.isEmpty())
-            name = realName;
-        else if (!imNickname.isEmpty())
-            name = imNickname;
-        else
-            name = contactNickname;
-    }
-
-    return name;
-}

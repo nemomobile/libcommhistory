@@ -51,13 +51,16 @@
 #include "common.h"
 #include "trackerio.h"
 #include "commonutils.h"
+#include "contactlistener.h"
 
 #include "qcontacttpmetadata_p.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-using namespace QtContacts;
+#ifdef USING_QTPIM
+QTCONTACTS_USE_NAMESPACE
+typedef QContactId QContactIdType;
 #else
 QTM_USE_NAMESPACE
+typedef QContactLocalId QContactIdType;
 #endif
 
 namespace {
@@ -79,8 +82,6 @@ QContactManager *manager()
     static QContactManager *manager = createManager();
     return manager;
 }
-
-const QLatin1String QContactOnlineAccount__FieldAccountPath("AccountPath");
 };
 
 using namespace CommHistory;
@@ -168,7 +169,6 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     }
 
     if (!localUid.isEmpty()) {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
         // Create a metadata detail to link the contact with the account
         QContactTpMetadata metadata;
         metadata.setContactId(remoteUid);
@@ -178,12 +178,10 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             qWarning() << "Unable to add metadata to contact:" << contactUri;
             return -1;
         }
-#endif
     }
 
     QString normal = CommHistory::normalizePhoneNumber(remoteUid);
     if (normal.isEmpty()) {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
         QContactOnlineAccount qcoa;
         qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
         qcoa.setAccountUri(remoteUid);
@@ -191,7 +189,6 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             qWarning() << "Unable to add online account to contact:" << contactUri;
             return -1;
         }
-#endif
     } else {
         QContactPhoneNumber phoneNumberDetail;
         phoneNumberDetail.setNumber(remoteUid);
@@ -217,41 +214,28 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     QContactRelationshipFilter filter;
     filter.setRelatedContactRole(QContactRelationship::Second);
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#ifdef USING_QTPIM
     filter.setRelatedContact(contact);
     filter.setRelationshipType(QContactRelationship::Aggregates());
-
-    foreach (const QContactId &id, manager()->contactIds(filter)) {
-        qDebug() << "********** contact id" << id;
-        return id.toString().toInt();
-    }
-
-    qWarning() << "Could not find aggregator for:" << contact.id();
-    return contact.id().toString().toInt();
 #else
     filter.setRelatedContactId(contact.id());
     filter.setRelationshipType(QContactRelationship::Aggregates);
+#endif
 
-    foreach (const QContactLocalId &id, manager()->contactIds(filter)) {
+    foreach (const QContactIdType &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
-        return id;
+        return ContactListener::internalContactId(id);
     }
 
-    qWarning() << "Could not find aggregator for:" << contact.localId();
-    return contact.localId();
-#endif
+    qWarning() << "Could not find aggregator";
+    return ContactListener::internalContactId(contact);
 }
 
 void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    QContact contact = manager()->contact(QContactId::fromString(QString::number(id)));
-#else
-    QContact contact = manager()->contact(id);
-#endif
-
+    QContact contact = manager()->contact(ContactListener::apiContactId(id));
     if (!contact.isEmpty()) {
         qWarning() << "unable to retrieve contact:" << id;
         return;
@@ -272,11 +256,7 @@ void modifyTestContact(int id, const QString &name)
 
 void deleteTestContact(int id)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    if (!manager()->removeContact(QContactId::fromString(QString::number(id)))) {
-#else
-    if (!manager()->removeContact(QContactLocalId(id))) {
-#endif
+    if (!manager()->removeContact(ContactListener::apiContactId(id))) {
         qWarning() << "error deleting contact:" << id;
     }
 }

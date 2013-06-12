@@ -23,19 +23,43 @@
 #ifndef __QCONTACTTPMETADATA_P_H__
 #define __QCONTACTTPMETADATA_P_H__
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 #include <QContactDetail>
 #include <QContactDetailFilter>
+#include <QContactOnlineAccount>
+#include <QContactPhoneNumber>
+#include <QContactName>
 
+#ifdef USING_QTPIM
+QTCONTACTS_USE_NAMESPACE
+static const int QContactName__FieldCustomLabel = (QContactName::FieldSuffix+1);
+
+static const int QContactOnlineAccount__FieldAccountPath = (QContactOnlineAccount::FieldSubTypes+1);
+static const int QContactOnlineAccount__FieldAccountIconPath = (QContactOnlineAccount::FieldSubTypes+2);
+static const int QContactOnlineAccount__FieldEnabled = (QContactOnlineAccount::FieldSubTypes+3);
+
+static const int QContactPhoneNumber__FieldNormalizedNumber = (QContactPhoneNumber::FieldSubTypes+1);
+#else
 QTM_USE_NAMESPACE
+Q_DECLARE_LATIN1_CONSTANT(QContactOnlineAccount__FieldAccountPath, "AccountPath") = { "AccountPath" };
+#endif
 
 class Q_DECL_EXPORT QContactTpMetadata : public QContactDetail
 {
 public:
+#ifdef USING_QTPIM
+    Q_DECLARE_CUSTOM_CONTACT_DETAIL(QContactTpMetadata);
+
+    enum {
+        FieldContactId = 0,
+        FieldAccountId = 1,
+        FieldAccountEnabled = 2
+    };
+#else
     Q_DECLARE_CUSTOM_CONTACT_DETAIL(QContactTpMetadata, "TpMetadata")
     Q_DECLARE_LATIN1_CONSTANT(FieldContactId, "ContactId");
     Q_DECLARE_LATIN1_CONSTANT(FieldAccountId, "AccountId");
     Q_DECLARE_LATIN1_CONSTANT(FieldAccountEnabled, "AccountEnabled");
+#endif
 
     void setContactId(const QString &s);
     QString contactId() const;
@@ -50,6 +74,5 @@ public:
 
     static QContactDetailFilter matchAccountId(const QString &s);
 };
-#endif
 
 #endif
