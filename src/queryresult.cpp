@@ -98,7 +98,12 @@ QString getAddresbookNameOrder()
 
 QContactManager *createManager()
 {
+#ifdef USING_QTPIM
+    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
+    QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
+#else
     QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+#endif
     if (!envspec.isEmpty()) {
         qDebug() << "Using contact manager:" << envspec;
         return new QContactManager(envspec);
