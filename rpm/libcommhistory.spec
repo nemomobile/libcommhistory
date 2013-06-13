@@ -1,6 +1,6 @@
 Name:       libcommhistory
 Summary:    Communications event history database API
-Version:    1.5.6
+Version:    1.5.7
 Release:    1
 Group:      System/Libraries
 License:    LGPL
