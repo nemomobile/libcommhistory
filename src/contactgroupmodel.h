@@ -110,8 +110,8 @@ public:
     /*!
      * List of contact groups in the model
      */
-    Q_PROPERTY(QObjectList contactGroups READ contactGroups)
-    QObjectList contactGroups() const;
+    Q_PROPERTY(QList<QObject*> contactGroups READ contactGroups)
+    QList<QObject*> contactGroups() const;
 
     /* reimp */
     virtual bool canFetchMore(const QModelIndex &parent) const;
