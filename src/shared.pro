@@ -49,6 +49,7 @@ equals(QT_MAJOR_VERSION, 4) {
 equals(QT_MAJOR_VERSION, 5) {
     TARGET = commhistory-qt5
     QT += contacts
+    DEFINES += USING_QTPIM
 }
 
 PKGCONFIG += tracker-sparql-0.14

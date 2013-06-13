@@ -43,6 +43,7 @@ equals(QT_MAJOR_VERSION, 5) {
     TARGET = commhistory-qt5
     CONFIG += create_prl
     QT += contacts
+    DEFINES += USING_QTPIM
 }
 
 include(sources.pri)

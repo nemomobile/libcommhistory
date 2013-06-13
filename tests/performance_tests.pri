@@ -35,6 +35,7 @@ equals(QT_MAJOR_VERSION, 4) {
 equals(QT_MAJOR_VERSION, 5) {
     LIBS += ../../src/libcommhistory-qt5.a
     QT += contacts
+    DEFINES += USING_QTPIM
 }
 
 SOURCES += ../common.cpp
