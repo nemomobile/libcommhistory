@@ -304,10 +304,10 @@ QList<GroupObject*> ContactGroup::groups() const
     return d->groups;
 }
 
-QObjectList ContactGroup::groupObjects() const
+QList<QObject*> ContactGroup::groupObjects() const
 {
     Q_D(const ContactGroup);
-    QObjectList l;
+    QList<QObject*> l;
     l.reserve(d->groups.size());
     foreach (GroupObject *o, d->groups)
         l.append(o);

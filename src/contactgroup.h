@@ -85,9 +85,9 @@ public:
     Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
     QDateTime lastModified() const;
  
-    Q_PROPERTY(QObjectList groups READ groupObjects NOTIFY groupsChanged);
+    Q_PROPERTY(QList<QObject*> groups READ groupObjects NOTIFY groupsChanged);
     QList<GroupObject*> groups() const;
-    QObjectList groupObjects() const;
+    QList<QObject*> groupObjects() const;
 
     // Does not work for multi-target groups
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid);
