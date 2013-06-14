@@ -22,6 +22,7 @@
 
 #include <QDebug>
 #include <QStringList>
+#include <algorithm>
 
 #include "eventsquery.h"
 
@@ -400,6 +401,7 @@ public:
         }
 
         variables = finalProperties.toList();
+        std::sort(variables.begin(), variables.end());
     }
 
     EventsQuery *q;
