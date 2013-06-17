@@ -11,6 +11,10 @@ CallProxyModel::CallProxyModel(QObject *parent) :
 
     this->setSourceModel(m_source);
     this->setDynamicSortFilter(true);
+
+    connect(this, SIGNAL(rowsInserted(const QModelIndex&,int,int)), this, SIGNAL(countChanged()));
+    connect(this, SIGNAL(rowsRemoved(const QModelIndex&,int,int)), this, SIGNAL(countChanged()));
+    connect(this, SIGNAL(modelReset()), this, SIGNAL(countChanged()));
 }
 
 void CallProxyModel::classBegin()
@@ -40,6 +44,11 @@ void CallProxyModel::setGroupBy(GroupBy grouping)
 
         emit groupByChanged();
     }
+}
+
+int CallProxyModel::count() const
+{
+    return rowCount();
 }
 
 void CallProxyModel::setSortRole(int role)
