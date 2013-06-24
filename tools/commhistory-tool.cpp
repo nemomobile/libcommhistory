@@ -28,7 +28,6 @@
 #include "../src/groupmodel.h"
 #include "../src/conversationmodel.h"
 #include "../src/callmodel.h"
-#include "../src/draftmodel.h"
 #include "../src/event.h"
 #include "../src/callevent.h"
 #include "../src/group.h"
@@ -133,7 +132,6 @@ void printUsage()
     std::cout << "Usage:"                                                                                                                                  << std::endl;
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
-    std::cout << "                 listdrafts"                                                                                                             << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;

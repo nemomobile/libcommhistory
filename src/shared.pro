@@ -62,7 +62,6 @@ QMAKE_CXXFLAGS += -fvisibility=hidden
 QT_LIKE_HEADERS += headers/CallEvent \
                    headers/CallModel \
                    headers/ConversationModel \
-                   headers/DraftModel \
                    headers/Event \
                    headers/EventModel \
                    headers/MessagePart \

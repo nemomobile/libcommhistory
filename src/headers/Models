@@ -28,7 +28,6 @@
 #include "eventmodel.h"
 #include "conversationmodel.h"
 #include "callmodel.h"
-#include "draftmodel.h"
 #include "smsinboxmodel.h"
 #include "syncsmsmodel.h"
 #include "outboxmodel.h"

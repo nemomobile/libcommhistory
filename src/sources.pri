@@ -10,7 +10,6 @@ HEADERS += trackerio.h \
            conversationmodel.h \
            callmodel.h \
            callmodel_p.h \
-           draftmodel.h \
            smsinboxmodel.h \
            syncsmsmodel.h \
            syncsmsmodel_p.h \
@@ -52,7 +51,6 @@ SOURCES += trackerio.cpp \
            eventtreeitem.cpp \
            conversationmodel.cpp \
            callmodel.cpp \
-           draftmodel.cpp \
            smsinboxmodel.cpp \
            syncsmsmodel.cpp \
            outboxmodel.cpp \
