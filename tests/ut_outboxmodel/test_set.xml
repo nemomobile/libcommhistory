@@ -1,5 +1,0 @@
-<set description="libcommhistory-tests:ut_outboxmodel" name="ut_outboxmodel">
-    <case description="libcommhistory-tests:ut_outboxmodel:" name="outboxmodel" level="Component" type="Functional">
-        <step expected_result="0">/opt/tests/libcommhistory-unit-tests/ut_outboxmodel</step>
-    </case>
-</set>

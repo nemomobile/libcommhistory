@@ -10,7 +10,6 @@ HEADERS += trackerio.h \
            conversationmodel.h \
            callmodel.h \
            callmodel_p.h \
-           outboxmodel.h \
            groupmodel.h \
            groupmodel_p.h \
            group.h \
@@ -48,7 +47,6 @@ SOURCES += trackerio.cpp \
            eventtreeitem.cpp \
            conversationmodel.cpp \
            callmodel.cpp \
-           outboxmodel.cpp \
            groupmodel.cpp \
            group.cpp \
            adaptor.cpp \

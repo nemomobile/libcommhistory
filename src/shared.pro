@@ -67,7 +67,6 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/MessagePart \
                    headers/Group \
                    headers/GroupModel \
-                   headers/OutboxModel \
                    headers/UnreadEventsModel \
                    headers/ClassZeroSMSModel \
                    headers/SingleEventModel \
