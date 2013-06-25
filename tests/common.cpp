@@ -22,11 +22,6 @@
 
 #include <QtTest/QtTest>
 
-#include <QSparqlConnection>
-#include <QSparqlResult>
-#include <QSparqlQuery>
-#include <QSparqlError>
-
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -49,7 +44,6 @@
 #include "callmodel.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
 #include "commonutils.h"
 #include "contactlistener.h"
 
@@ -269,6 +263,7 @@ void deleteTestContact(int id)
 void cleanUpTestContacts()
 {
     qDebug() << Q_FUNC_INFO;
+#if 0
     QString query("DELETE { ?r a rdfs:Resource } WHERE { GRAPH <commhistory-tests> { ?r a rdfs:Resource } }");
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query,
@@ -278,6 +273,7 @@ void cleanUpTestContacts()
         qWarning() << "error deleting contacts:" << result->lastError().message();
         return;
     }
+#endif
 }
 
 bool compareEvents(Event &e1, Event &e2)
@@ -392,6 +388,8 @@ void deleteAll()
 
 void deleteSmsMsgs()
 {
+    qDebug() << Q_FUNC_INFO << "Not implemented";
+#if 0
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QSparqlQuery query(QLatin1String("DELETE {?n a rdfs:Resource} WHERE {?n rdf:type nmo:SMSMessage}"),
                        QSparqlQuery::DeleteStatement);
@@ -399,6 +397,7 @@ void deleteSmsMsgs()
     result->waitForFinished();
     if (result->hasError())
         qDebug() << result->lastError().message();
+#endif
 }
 
 QString randomMessage(int words)

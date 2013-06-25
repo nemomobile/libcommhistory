@@ -35,8 +35,7 @@ TEMPLATE = lib
 VERSION  = $$LIBRARY_VERSION
 
 CONFIG  += shared \
-           debug \
-           qtsparql
+           debug
 
 QT += dbus sql
 
@@ -52,7 +51,6 @@ equals(QT_MAJOR_VERSION, 5) {
     DEFINES += USING_QTPIM
 }
 
-PKGCONFIG += tracker-sparql-0.14
 DEFINES += LIBCOMMHISTORY_SHARED
 QMAKE_CXXFLAGS += -fvisibility=hidden
 

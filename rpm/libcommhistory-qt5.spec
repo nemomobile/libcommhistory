@@ -8,14 +8,10 @@ URL:        https://github.com/nemomobile/libcommhistory
 Source0:    %{name}-%{version}.tar.bz2
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Contacts)
-BuildRequires:  pkgconfig(Qt5Sparql)
-BuildRequires:  pkgconfig(tracker-sparql-0.14)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5DBus)
 BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Test)
-Requires: libqt5sparql-tracker
-Requires: libqt5sparql-tracker-direct
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.

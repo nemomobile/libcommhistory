@@ -25,8 +25,6 @@ TEMPLATE     = app
 INCLUDEPATH += . ../../src ..
 DEPENDPATH  += $${INCLUDEPATH}
 
-CONFIG += qtsparql
-
 equals(QT_MAJOR_VERSION, 4) {
     LIBS += ../../src/libcommhistory.a
     CONFIG += mobility

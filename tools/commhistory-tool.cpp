@@ -33,10 +33,6 @@
 #include "../src/group.h"
 #include "../src/databaseio.h"
 
-#include <QSparqlConnection>
-#include <QSparqlResult>
-#include <QSparqlQuery>
-
 #include "catcher.h"
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
@@ -909,6 +905,8 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     }
  
     if (!hasAnyOption || options.contains("-reset")) {
+        qWarning() << Q_FUNC_INFO << "Reset not implemented";
+#if 0
         QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
         QSparqlQuery query(QLatin1String(
                 "DELETE {?n a rdfs:Resource}"
@@ -917,6 +915,7 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
                            QSparqlQuery::DeleteStatement);
         QSparqlResult* result = conn->exec(query);
         result->waitForFinished();
+#endif
     }
 
     return 0;

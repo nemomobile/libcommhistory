@@ -24,8 +24,7 @@ include( ../common-project-config.pri )
 include( ../common-vars.pri )
 
 TEMPLATE  = lib
-CONFIG   += static debug qtsparql
-PKGCONFIG += tracker-sparql-0.14
+CONFIG   += static debug 
 MOBILITY += contacts
 VERSION   = $$LIBRARY_VERSION
 DEFINES += LIBCOMMHISTORY_SHARED
