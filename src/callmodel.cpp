@@ -807,7 +807,7 @@ void CallModelPrivate::deleteCallGroup( const Event &event, bool typed )
 
     QSparqlQuery query(queryString);
 
-    QUrl channelUri(TrackerIOPrivate::makeCallGroupURI(event));
+    QUrl channelUri(DatabaseIOPrivate::makeCallGroupURI(event));
 
     query.bindValue(QLatin1String("channel"), channelUri);
 

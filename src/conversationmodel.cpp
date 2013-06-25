@@ -29,8 +29,6 @@
 #include "conversationmodel.h"
 #include "conversationmodel_p.h"
 #include "constants.h"
-#include "eventsquery.h"
-#include "queryrunner.h"
 #include "commhistorydatabase.h"
 #include "databaseio_p.h"
 #include "contactlistener.h"

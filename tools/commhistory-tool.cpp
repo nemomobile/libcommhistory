@@ -31,7 +31,6 @@
 #include "../src/event.h"
 #include "../src/callevent.h"
 #include "../src/group.h"
-#include "../src/trackerio.h"
 #include "../src/databaseio.h"
 
 #include <QSparqlConnection>

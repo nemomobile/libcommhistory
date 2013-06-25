@@ -36,7 +36,6 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "contactlistener.h"
-#include "eventsquery.h"
 
 using namespace CommHistory;
 

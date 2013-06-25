@@ -71,7 +71,6 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/SingleEventModel \
                    headers/Events \
                    headers/Models \
-                   headers/TrackerIO \
                    headers/DatabaseIO
 
 include(sources.pri)

@@ -1,7 +1,5 @@
-HEADERS += trackerio.h \
-           commonutils.h \
+HEADERS += commonutils.h \
            eventmodel.h \
-           queryrunner.h \
            eventmodel_p.h \
            event.h \
            messagepart.h \
@@ -17,17 +15,9 @@ HEADERS += trackerio.h \
            conversationmodel_p.h \
            classzerosmsmodel.h \
            mmscontentdeleter.h \
-           updatequery.h \
            contactlistener.h \
            libcommhistoryexport.h \
-           idsource.h \
-           trackerio_p.h \
-           queryresult.h \
            singleeventmodel.h \
-           committingtransaction.h \
-           committingtransaction_p.h \
-           eventsquery.h \
-           preparedqueries.h \
            updatesemitter.h \
            constants.h \
            groupobject.h \
@@ -41,10 +31,8 @@ HEADERS += trackerio.h \
            databaseio_p.h \
            commhistorydatabase.h
 
-SOURCES += trackerio.cpp \
-           commonutils.cpp \
+SOURCES += commonutils.cpp \
            eventmodel.cpp \
-           queryrunner.cpp \
            eventmodel_p.cpp \
            eventtreeitem.cpp \
            conversationmodel.cpp \
@@ -57,12 +45,7 @@ SOURCES += trackerio.cpp \
            classzerosmsmodel.cpp \
            mmscontentdeleter.cpp \
            contactlistener.cpp \
-           idsource.cpp \
-           queryresult.cpp \
            singleeventmodel.cpp \
-           committingtransaction.cpp \
-           eventsquery.cpp \
-           updatequery.cpp \
            updatesemitter.cpp \
            groupmanager.cpp \
            groupobject.cpp \

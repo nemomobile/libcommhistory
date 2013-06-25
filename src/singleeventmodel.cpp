@@ -28,7 +28,6 @@
 #include "commhistorydatabase.h"
 #include "eventmodel_p.h"
 #include "group.h"
-#include "eventsquery.h"
 
 #include "singleeventmodel.h"
 

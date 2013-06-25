@@ -33,7 +33,6 @@ namespace CommHistory {
 
 class DatabaseIOPrivate;
 class Group;
-class UpdateQuery;
 
 /**
  * \class DatabaseIO
@@ -264,7 +263,6 @@ public:
 
 private:
     friend class DatabaseIOPrivate;
-    friend class QueryRunner;
     DatabaseIOPrivate * const d;
 };
 

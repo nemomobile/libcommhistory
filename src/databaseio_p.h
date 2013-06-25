@@ -33,7 +33,6 @@
 #include <QStringList>
 #include <QSqlDatabase>
 
-#include "idsource.h"
 #include "event.h"
 #include "commonutils.h"
 
@@ -42,10 +41,7 @@ class MmsContentDeleter;
 namespace CommHistory {
 
 class Group;
-class UpdateQuery;
 class DatabaseIO;
-class CommittingTransaction;
-class EventsQuery;
 
 /**
  * \class DatabaseIOPrivate
@@ -80,8 +76,6 @@ public:
 
 public:
     QSqlDatabase m_pConnection;
-    CommittingTransaction *m_pTransaction;
-    QQueue<CommittingTransaction*> m_pendingTransactions;
 
     MmsContentDeleter *m_MmsContentDeleter;
     QSet<QString> m_mmsTokens;

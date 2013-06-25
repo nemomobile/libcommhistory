@@ -39,7 +39,6 @@ class QSqlQuery;
 namespace CommHistory {
 
 class ContactListener;
-class EventsQuery;
 class UpdatesEmitter;
 
 /*!
