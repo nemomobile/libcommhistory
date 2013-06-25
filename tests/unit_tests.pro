@@ -27,7 +27,6 @@ SUBDIRS = ut_eventmodel \
           ut_callmodel \
           ut_conversationmodel \
           ut_groupmodel \
-          ut_unreadeventsmodel \
           ut_classzerosmsmodel \
           ut_singleeventmodel \
           ut_eventsquery

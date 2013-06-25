@@ -26,14 +26,12 @@
 #include "eventmodel.h"
 #include "libcommhistoryexport.h"
 
-class QUrl;
-
 namespace CommHistory {
 
 class SingleEventModelPrivate;
 
 /*!
- * \class UnreadEventsModel
+ * \class SingleEventModel
  * \brief Model representing single event
  * e.g. phone number or IM user id
  * todo: currently model is flat, doesnt group events by contacts
@@ -83,4 +81,4 @@ private:
 
 } // namespace CommHistory
 
-#endif // UNREADEVENTSMODEL_H
+#endif // SINGLEEVENTMODEL_H

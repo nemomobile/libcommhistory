@@ -14,7 +14,6 @@ HEADERS += trackerio.h \
            groupmodel_p.h \
            group.h \
            adaptor.h \
-           unreadeventsmodel.h \
            conversationmodel_p.h \
            classzerosmsmodel.h \
            mmscontentdeleter.h \
@@ -52,7 +51,6 @@ SOURCES += trackerio.cpp \
            adaptor.cpp \
            event.cpp \
            messagepart.cpp \
-           unreadeventsmodel.cpp \
            classzerosmsmodel.cpp \
            mmscontentdeleter.cpp \
            contactlistener.cpp \
