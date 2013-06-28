@@ -28,7 +28,7 @@
 #include "adaptor.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
+#include "databaseio.h"
 #include "modelwatcher.h"
 
 using namespace CommHistory;
@@ -114,7 +114,7 @@ void ConversationModelTest::getEvents()
         Event e1, e2;
         QModelIndex ind = model.index(i, 0);
         e1 = model.event(ind);
-        QVERIFY(model.trackerIO().getEvent(e1.id(), e2));
+        QVERIFY(model.databaseIO().getEvent(e1.id(), e2));
         QVERIFY(compareEvents(e1, e2));
         QVERIFY(model.event(ind).type() != Event::CallEvent);
     }
@@ -275,7 +275,7 @@ void ConversationModelTest::modifyEvent()
     QDateTime modified = event.lastModified();
     QVERIFY(model.modifyEvent(event));
     watcher.waitForSignals();
-    QVERIFY(model.trackerIO().getEvent(event.id(), event));
+    QVERIFY(model.databaseIO().getEvent(event.id(), event));
     QCOMPARE(event.freeText(), QString("modified event"));
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
@@ -306,7 +306,7 @@ void ConversationModelTest::deleteEvent()
     qDebug() << row << event.id();
     QVERIFY(model.deleteEvent(event.id()));
     watcher.waitForSignals();
-    QVERIFY(!model.trackerIO().getEvent(event.id(), event));
+    QVERIFY(!model.databaseIO().getEvent(event.id(), event));
     QVERIFY(model.event(model.index(row, 0)).id() != event.id());
     QVERIFY(model.rowCount() == rows - 1);
 }

@@ -6,7 +6,6 @@
 #include "adaptor.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
 
 #include "modelwatcher.h"
 
@@ -28,7 +27,7 @@ void SingleEventModelTest::initTestCase()
     addTestGroups(group1, group2);
 }
 
-void SingleEventModelTest::getEventByUri()
+void SingleEventModelTest::getEventById()
 {
     SingleEventModel model;
 
@@ -56,7 +55,7 @@ void SingleEventModelTest::getEventByUri()
     watcher.waitForSignals();
 
     QVERIFY(event.id() != -1);
-    QVERIFY(model.getEventByUri(event.url()));
+    QVERIFY(model.getEventById(event.id()));
     QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
@@ -204,7 +203,7 @@ void SingleEventModelTest::contactMatching()
     watcher.waitForSignals();
     QVERIFY(eventId != -1);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     Event event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -217,7 +216,7 @@ void SingleEventModelTest::contactMatching()
                    noMatch,
                    localId);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -225,7 +224,7 @@ void SingleEventModelTest::contactMatching()
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -270,7 +269,7 @@ void SingleEventModelTest::updateStatus()
                                                       << CommHistory::Event::ReportDelivery
                                                       << CommHistory::Event::MmsId;
     model.setPropertyMask(props);
-    QVERIFY(model.getEventByUri(event.url()));
+    QVERIFY(model.getEventById(event.id()));
     QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
@@ -287,7 +286,7 @@ void SingleEventModelTest::updateStatus()
 
 
     // init observer model with the same event and all properties
-    QVERIFY(observer.getEventByUri(event.url()));
+    QVERIFY(observer.getEventById(event.id()));
     QVERIFY(watcherObserver.waitForModelReady());
 
     QCOMPARE(observer.rowCount(), 1);

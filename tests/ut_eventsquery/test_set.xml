@@ -1,5 +1,0 @@
-<set description="libcommhistory-tests:ut_eventsquery" name="ut_eventsquery">
-    <case description="libcommhistory-tests:ut_eventsquery:" name="eventsquery" level="Component" type="Functional">
-        <step expected_result="0">/opt/tests/libcommhistory-unit-tests/ut_eventsquery</step>
-    </case>
-</set>

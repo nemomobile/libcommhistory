@@ -25,7 +25,7 @@
 #include "callmodeltest.h"
 #include "common.h"
 #include "modelwatcher.h"
-#include "trackerio.h"
+#include "databaseio.h"
 
 using namespace CommHistory;
 
@@ -711,7 +711,7 @@ void CallModelTest::testSortByContactUpdate()
     e.setIsRead(true);
     QVERIFY(model.modifyEvent(e));
     watcher.waitForSignals(1);
-    QVERIFY(model.trackerIO().getEvent(firstMissedId, e));
+    QVERIFY(model.databaseIO().getEvent(firstMissedId, e));
     QVERIFY(e.isRead());
 
     // add call to the other contact...
@@ -807,7 +807,7 @@ void CallModelTest::testSortByTimeUpdate()
     e.setIsRead(true);
     QVERIFY(model.modifyEvent(e));
     watcher.waitForSignals(2);
-    QVERIFY(model.trackerIO().getEvent(firstMissedId, e));
+    QVERIFY(model.databaseIO().getEvent(firstMissedId, e));
     QVERIFY(e.isRead());
 }
 
@@ -936,10 +936,10 @@ void CallModelTest::testMarkAllRead()
     waitSignal(eventsCommitted);
 
     Event e1, e2;
-    QVERIFY(callModel.trackerIO().getEvent(eventId1, e1));
+    QVERIFY(callModel.databaseIO().getEvent(eventId1, e1));
     QVERIFY(e1.isRead());
 
-    QVERIFY(callModel.trackerIO().getEvent(eventId2, e2));
+    QVERIFY(callModel.databaseIO().getEvent(eventId2, e2));
     QVERIFY(e2.isRead());
 }
 

@@ -9,7 +9,7 @@ class SingleEventModelTest : public QObject
 
 private slots:
     void initTestCase();
-    void getEventByUri();
+    void getEventById();
     void getEventByTokens();
     void contactMatching_data();
     void contactMatching();
