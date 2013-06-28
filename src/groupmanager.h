@@ -157,10 +157,9 @@ public:
      * Delete groups from database.
      *
      * \param groupIds List of group ids to be deleted.
-     * \param deleteMessages If true (default), also delete all messages in the groups.
      * \return true if successful, otherwise false
      */
-    bool deleteGroups(const QList<int> &groupIds, bool deleteMessages = true);
+    bool deleteGroups(const QList<int> &groupIds);
 
     /*!
      * Delete all groups from database.

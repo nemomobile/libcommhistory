@@ -473,10 +473,10 @@ void GroupModel::updateGroups(QList<Group> &groups)
     return d->manager->updateGroups(groups);
 }
 
-bool GroupModel::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
+bool GroupModel::deleteGroups(const QList<int> &groupIds)
 {
     d->ensureManager();
-    return d->manager->deleteGroups(groupIds, deleteMessages);
+    return d->manager->deleteGroups(groupIds);
 }
 
 bool GroupModel::deleteAll()

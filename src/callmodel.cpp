@@ -1037,9 +1037,11 @@ bool CallModel::modifyEvent( Event &event )
     QList<Event> events;
     events << event;
 
+#if 0
     if (d->sortBy == SortByContact) {
         d->database()->markAsReadCallGroup(event);
     } else {
+#endif
         QModelIndex index = d->findEvent(event.id());
         if (index.isValid()) {
             EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
@@ -1055,7 +1057,9 @@ bool CallModel::modifyEvent( Event &event )
                 }
             }
         }
+#if 0
     }
+#endif
 
     if (!d->database()->commit())
         return false;

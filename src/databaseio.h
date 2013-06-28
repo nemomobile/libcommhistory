@@ -86,16 +86,6 @@ public:
     bool getEventByMessageToken(const QString &token, Event &event);
 
     /*!
-     * Query a single event by message token and group ID.
-     *
-     * \param token Message token
-     * \param groupId Group ID
-     * \param event Return value for event details.
-     * \return true if successful, otherwise false
-     */
-    bool getEventByMessageToken(const QString &token, int groupId, Event &event);
-
-    /*!
      * Query a single event by mms id.
      *
      * \param mmsId mms id
@@ -164,23 +154,21 @@ public:
      * Delete a group
      *
      * \param groupId Existing group id
-     * \param deleteMessages flag to delete group's messages
      * \param backgroundThread optional thread (to delete mms attachments)
      *
      * \return true if successful, otherwise false
      */
-    bool deleteGroup(int groupId, bool deleteMessages = true, QThread *backgroundThread = 0);
+    bool deleteGroup(int groupId, QThread *backgroundThread = 0);
 
     /*!
      * Delete groups
      *
      * \param groupIds Existing group ids
-     * \param deleteMessages flag to delete group's messages
      * \param backgroundThread optional thread (to delete mms attachments)
      *
      * \return true if successful, otherwise false
      */
-    bool deleteGroups(QList<int> groupIds, bool deleteMessages = true, QThread *backgroundThread = 0);
+    bool deleteGroups(QList<int> groupIds, QThread *backgroundThread = 0);
 
     /*!
      * Query the number of events in a group
@@ -200,15 +188,6 @@ public:
      * \return true if successful, otherwise false
      */
     bool markAsReadGroup(int groupId);
-
-    /*!
-     * Mark all calls in the same call group as read
-     *
-     * \param event Call event
-     *
-     * \return true if successful, otherwise false
-     */
-    bool markAsReadCallGroup(Event &event);
 
     /*!
      * Mark messages as read
@@ -255,11 +234,6 @@ public:
      * Cancels the current transaction.
      */
     bool rollback();
-
-    /*!
-     * Do NOT call this unless you know what you are doing.
-     */
-    void recreateIds();
 
 private:
     friend class DatabaseIOPrivate;

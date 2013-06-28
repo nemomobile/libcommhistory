@@ -534,18 +534,6 @@ void GroupModelTest::deleteGroups()
     QCOMPARE(groupModel.rowCount(), numGroups - 1);
     QVERIFY(!model.databaseIO().getEvent(messageId, event));
 
-    // delete group without deleting messages
-    messageId = groupModel.group(groupModel.index(0, 0)).lastEventId();
-    groupsCommitted.clear();
-    deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id(),
-                              false);
-    loop->exec();
-    if (groupsCommitted.isEmpty())
-        QVERIFY(waitSignal(groupsCommitted));
-    QVERIFY(groupsCommitted.first().at(1).toBool());
-    QCOMPARE(groupModel.rowCount(), numGroups - 2);
-    QVERIFY(model.databaseIO().getEvent(messageId, event));
-
     // delete group with SMS/MMS, check that messages are flagged as deleted
     QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
     int groupId = groupModel.group(groupModel.index(0, 0)).id();

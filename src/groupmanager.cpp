@@ -629,12 +629,12 @@ void GroupManager::updateGroups(QList<Group> &groups)
         emit d->emitter->groupsUpdatedFull(groups);
 }
 
-bool GroupManager::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
+bool GroupManager::deleteGroups(const QList<int> &groupIds)
 {
     qDebug() << Q_FUNC_INFO << groupIds;
 
     d->database()->transaction();
-    if (!d->database()->deleteGroups(groupIds, deleteMessages, d->bgThread)) {
+    if (!d->database()->deleteGroups(groupIds, d->bgThread)) {
         d->database()->rollback();
         return false;
     }
@@ -659,7 +659,7 @@ bool GroupManager::deleteAll()
     if (ids.isEmpty())
         return true;
 
-    return deleteGroups(ids, true);
+    return deleteGroups(ids);
 }
 
 bool GroupManager::canFetchMore() const

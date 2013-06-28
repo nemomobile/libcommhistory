@@ -360,7 +360,7 @@ bool ContactGroup::deleteGroups()
     DatabaseIO *database = DatabaseIO::instance();
     database->transaction();
 
-    if (!database->deleteGroups(ids, true, 0)) {
+    if (!database->deleteGroups(ids)) {
         database->rollback();
         return false;
     }

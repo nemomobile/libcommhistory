@@ -594,7 +594,7 @@ bool EventModel::deleteEvent(Event &event)
 
         if (total == 0) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
-            if (!d->database()->deleteGroup(event.groupId(), false)) {
+            if (!d->database()->deleteGroup(event.groupId())) {
                 d->database()->rollback();
                 return false;
             } else
@@ -646,7 +646,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
 
         if (total == 0) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
-            if (!d->database()->deleteGroup(event.groupId(), false)) {
+            if (!d->database()->deleteGroup(event.groupId())) {
                 qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->database()->rollback();
                 return false;

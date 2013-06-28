@@ -43,6 +43,9 @@ static const char *setupTempStore =
 static const char *setupJournal =
         "\n PRAGMA journal_mode = WAL;";
 
+static const char *setupForeignKeys =
+        "\n PRAGMA foreign_keys = ON;";
+
 static const char *createGroupsTable =
         "\n CREATE TABLE Groups ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -88,7 +91,8 @@ static const char *createEventsTable =
         "reportRead INTEGER,"
         "reportedReadRequested INTEGER,"
         "mmsId INTEGER,"
-        "targetTo TEXT"
+        "targetTo TEXT,"
+        "FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE"
         ");";
 
 static const char *createTables[] =
@@ -114,11 +118,8 @@ static bool execute(QSqlDatabase &database, const QString &statement)
 
 static bool prepareDatabase(QSqlDatabase &database)
 {
-    if (!execute(database, QLatin1String(setupEncoding))
-            || !execute(database, QLatin1String(setupTempStore))
-            || !execute(database, QLatin1String(setupJournal))) {
+    if (!execute(database, QLatin1String(setupEncoding)))
         return false;
-    }
 
     if (!database.transaction())
         return false;
@@ -169,15 +170,21 @@ QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
         qWarning() << "Opened commhistory database:" << databaseFile;
     }
 
+    if (!execute(database, QLatin1String(setupTempStore))
+            || !execute(database, QLatin1String(setupJournal))
+            || !execute(database, QLatin1String(setupForeignKeys))) {
+        database.close();
+        if (!exists)
+            QFile::remove(databaseFile);
+        return database;
+    }
+
     if (!exists && !prepareDatabase(database)) {
         database.close();
 
         QFile::remove(databaseFile);
 
         return database;
-    } else {
-        database.exec(QLatin1String(setupTempStore));
-        database.exec(QLatin1String(setupJournal));
     }
 
     return database;

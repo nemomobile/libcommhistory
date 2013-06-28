@@ -189,18 +189,18 @@ bool DatabaseIO::addEvent(Event &event)
     query.bindValue(":contentLocation", event.contentLocation());
     // XXX disabled
     query.bindValue(":messageParts", QVariant());
-    // XXX only one
-    query.bindValue(":targetCc", event.ccList().value(0));
-    query.bindValue(":targetBcc", event.bccList().value(0));
+    query.bindValue(":targetCc", event.ccList().join('\n'));
+    query.bindValue(":targetBcc", event.bccList().join('\n'));
     query.bindValue(":readStatus", event.readStatus());
     query.bindValue(":reportedReadRequested", event.reportReadRequested());
     query.bindValue(":mmsId", event.mmsId());
-    query.bindValue(":targetTo", event.toList().value(0));
+    query.bindValue(":targetTo", event.toList().join('\n'));
 
     if (!query.exec()) {
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     event.setId(query.lastInsertId().toInt());
@@ -277,13 +277,13 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
     event.setContentLocation(query.value(24).toString());
     // Message parts are much more complicated
     //event.setMessageParts(query.value(25).toString());
-    event.setCcList(QStringList() << query.value(26).toString());
-    event.setBccList(QStringList() << query.value(27).toString());
+    event.setCcList(QStringList() << query.value(26).toString().split('\n'));
+    event.setBccList(QStringList() << query.value(27).toString().split('\n'));
     event.setReadStatus(static_cast<Event::EventReadStatus>(query.value(28).toInt()));
     event.setReportRead(query.value(29).toBool());
     event.setReportReadRequested(query.value(30).toBool());
     event.setMmsId(query.value(31).toString());
-    event.setToList(QStringList() << query.value(32).toString());
+    event.setToList(QStringList() << query.value(32).toString().split('\n'));
 
     // contacts
     // event count
@@ -302,6 +302,7 @@ bool DatabaseIO::getEvent(int id, Event &event)
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     Event e;
@@ -314,28 +315,49 @@ bool DatabaseIO::getEvent(int id, Event &event)
 
 bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
 {
-    Q_UNUSED(token);
-    Q_UNUSED(event);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
-}
+    QByteArray q = baseEventQuery;
+    q += "\n WHERE Events.messageToken = :messageToken LIMIT 1";
 
-bool DatabaseIO::getEventByMessageToken(const QString &token, int groupId, Event &event)
-{
-    Q_UNUSED(token);
-    Q_UNUSED(groupId);
-    Q_UNUSED(event);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":messageToken", token);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    Event e;
+    if (query.next())
+        d->readEventResult(query, e);
+
+    event = e;
+    return true;
 }
 
 bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event)
 {
-    Q_UNUSED(mmsId);
-    Q_UNUSED(groupId);
-    Q_UNUSED(event);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    QByteArray q = baseEventQuery;
+    q += "\n WHERE Events.mmsId = :mmsId AND Events.groupId = :groupId LIMIT 1";
+
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":mmsId", mmsId);
+    query.bindValue(":groupId", groupId);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    Event e;
+    if (query.next())
+        d->readEventResult(query, e);
+
+    event = e;
+    return true;
 }
 
 bool DatabaseIO::modifyEvent(Event &event)
@@ -347,18 +369,38 @@ bool DatabaseIO::modifyEvent(Event &event)
 
 bool DatabaseIO::moveEvent(Event &event, int groupId)
 {
-    Q_UNUSED(event);
-    Q_UNUSED(groupId);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    static const char *q = "UPDATE Events SET groupId=:groupId WHERE id=:id";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":groupId", groupId);
+    query.bindValue(":id", event.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    event.setGroupId(groupId);
+    return true;
 }
 
 bool DatabaseIO::deleteEvent(Event &event, QThread *backgroundThread)
 {
-    Q_UNUSED(event);
     Q_UNUSED(backgroundThread);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+
+    static const char *q = "DELETE FROM Events WHERE id=:id";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":id", event.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 static const char *addGroupQuery =
@@ -382,7 +424,7 @@ bool DatabaseIO::addGroup(Group &group)
     QSqlQuery query = CommHistoryDatabase::prepare(addGroupQuery, d->connection());
 
     query.bindValue(":localUid", group.localUid());
-    query.bindValue(":remoteUids", group.remoteUids().join(","));
+    query.bindValue(":remoteUids", group.remoteUids().join('\n'));
     query.bindValue(":type", group.chatType());
     query.bindValue(":chatName", group.chatName());
     query.bindValue(":startTime", group.startTime());
@@ -406,7 +448,7 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
 {
     group.setId(query.value(0).toInt());
     group.setLocalUid(query.value(1).toString());
-    group.setRemoteUids(query.value(2).toString().split(','));
+    group.setRemoteUids(query.value(2).toString().split('\n'));
     group.setChatType(static_cast<Group::ChatType>(query.value(3).toInt()));
     group.setChatName(query.value(4).toString());
     group.setStartTime(QDateTime::fromTime_t(query.value(5).toUInt()));
@@ -469,6 +511,7 @@ bool DatabaseIO::getGroup(int id, Group &group)
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     Group g;
@@ -524,65 +567,123 @@ bool DatabaseIO::modifyGroup(Group &group)
     return false;
 }
 
-bool DatabaseIO::deleteGroup(int groupId, bool deleteMessages, QThread *backgroundThread)
+bool DatabaseIO::deleteGroup(int groupId, QThread *backgroundThread)
 {
-    Q_UNUSED(groupId);
-    Q_UNUSED(deleteMessages);
-    Q_UNUSED(backgroundThread);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    return deleteGroups(QList<int>() << groupId, backgroundThread);
 }
 
-bool DatabaseIO::deleteGroups(QList<int> groupIds, bool deleteMessages, QThread *backgroundThread)
+static inline QByteArray joinNumberList(const QList<int> &list)
 {
-    Q_UNUSED(groupIds);
-    Q_UNUSED(deleteMessages);
+    QByteArray re;
+    foreach (int i, list) {
+        if (!re.isEmpty())
+            re += ',';
+        re += QByteArray::number(i);
+    }
+    return re;
+}
+
+bool DatabaseIO::deleteGroups(QList<int> groupIds, QThread *backgroundThread)
+{
     Q_UNUSED(backgroundThread);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+
+    // Events are deleted via SQL foreign keys
+    QByteArray q = "DELETE FROM Groups WHERE id IN (" + joinNumberList(groupIds) + ")";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::totalEventsInGroup(int groupId, int &totalEvents)
 {
-    Q_UNUSED(groupId);
-    Q_UNUSED(totalEvents);
-    qDebug() << Q_FUNC_INFO << "stub";
+    static const char *q = "SELECT COUNT(id) FROM Events WHERE groupId=:groupId";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":groupId", groupId);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    if (query.next()) {
+        totalEvents = query.value(0).toInt();
+        return true;
+    }
+
     return false;
 }
 
 bool DatabaseIO::markAsReadGroup(int groupId)
 {
-    Q_UNUSED(groupId);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
-}
+    static const char *q = "UPDATE Events SET isRead=1 WHERE groupId=:groupId";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":groupId", groupId);
 
-bool DatabaseIO::markAsReadCallGroup(Event &event)
-{
-    Q_UNUSED(event);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::markAsRead(const QList<int> &eventIds)
 {
-    Q_UNUSED(eventIds);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    QByteArray q = "UPDATE Events SET isRead=1 WHERE id IN (";
+    q += joinNumberList(eventIds) + ")";
+
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::markAsReadAll(Event::EventType eventType)
 {
-    Q_UNUSED(eventType);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    static const char *q = "UPDATE Events SET isRead=1 WHERE type=:eventType";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":eventType", eventType);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::deleteAllEvents(Event::EventType eventType)
 {
-    Q_UNUSED(eventType);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    static const char *q = "DELETE FROM Events WHERE type=:eventType";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":eventType", eventType);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 void DatabaseIO::transaction()
@@ -611,11 +712,6 @@ bool DatabaseIO::rollback()
         qWarning() << d->connection().lastError();
     }
     return re;
-}
-
-void DatabaseIO::recreateIds()
-{
-    qDebug() << Q_FUNC_INFO << "stub";
 }
 
 QString DatabaseIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
