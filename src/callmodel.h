@@ -90,8 +90,9 @@ public:
 
     /*!
      * \brief Sets optional filters.
+     * \deprecated Avoid this method in favor of setSorting and setFilter*.
      *
-     * Sets optional filters. It will result in a new tracker query if  called
+     * Sets optional filters. It will result in a new database query if called
      * after getEvents().
      *
      * \param sortBy Sets sorting of call events in the result set.
@@ -105,6 +106,50 @@ public:
     bool setFilter(CallModel::Sorting sortBy = SortByContact,
                    CallEvent::CallType type = CallEvent::UnknownCallType,
                    const QDateTime &referenceTime = QDateTime());
+
+    /*!
+     * \brief Set the sorting mode
+     *
+     * getEvents() must be called after this function to have effect.
+     *
+     * \param sortBy Sorting mode
+     */
+    void setSorting(CallModel::Sorting sortBy);
+    /*!
+     * \brief Filter calls by type
+     *
+     * Only events of the specified type appear in the result set.
+     * CallEvent::UnknownCallType is treated as a wildcard to allow any event.
+     * getEvents() must be called after this function to have effect.
+     *
+     * \param type Call type
+     */
+    void setFilterType(CallEvent::CallType type);
+    /*!
+     * \brief Filter calls by start time
+     *
+     * Only events with a start time after this reference time will be shown.
+     * getEvents() must be called after this function to have effect.
+     *
+     * \param referenceTime Reference time
+     */
+    void setFilterReferenceTime(const QDateTime &referenceTime);
+    /*!
+     * \brief Filter calls by account
+     *
+     * Only events associated with this local account will be shown
+     * getEvents() must be called after this function to have effect.
+     *
+     * \param localUid Local account UID
+     */
+    void setFilterAccount(const QString &localUid);
+    /*!
+     * \brief Reset call filters and sorting
+     *
+     * Reset filter and sorting parameters.
+     * getEvents() must be called after this function to have effect.
+     */
+    void resetFilters();
 
     /*!
      * \brief Resets model and fetch call events.

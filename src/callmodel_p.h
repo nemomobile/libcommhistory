@@ -87,6 +87,7 @@ public:
     CallModel::Sorting sortBy;
     CallEvent::CallType eventType;
     QDateTime referenceTime;
+    QString filterLocalUid;
     bool hasBeenFetched;
     QSet<QString> countedUids;
     QSet<QString> updatedGroups;

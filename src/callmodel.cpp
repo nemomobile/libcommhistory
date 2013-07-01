@@ -112,7 +112,10 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
         return false;
     }
 
-    if (!isInTreeMode && eventType != CallEvent::UnknownCallType && !eventMatchesFilter(event))
+    if (eventType != CallEvent::UnknownCallType && !eventMatchesFilter(event))
+        return false;
+
+    if (!filterLocalUid.isEmpty() && event.localUid() != filterLocalUid)
         return false;
 
     return true;
@@ -900,16 +903,49 @@ bool CallModel::setFilter(CallModel::Sorting sortBy,
 {
     Q_D(CallModel);
 
-    // save sorting, reference Time and call event Type for filtering call events
-    d->sortBy = sortBy;
-    d->eventType = type;
-    d->referenceTime = referenceTime;
+    setSorting(sortBy);
+    setFilterType(type);
+    setFilterReferenceTime(referenceTime);
+    setFilterAccount(QString());
 
     if ( d->hasBeenFetched )
     {
         return getEvents();
     }
     return true;
+}
+
+void CallModel::setSorting(CallModel::Sorting sortBy)
+{
+    Q_D(CallModel);
+    d->sortBy = sortBy;
+}
+
+void CallModel::setFilterType(CallEvent::CallType type)
+{
+    Q_D(CallModel);
+    d->eventType = type;
+}
+
+void CallModel::setFilterReferenceTime(const QDateTime &referenceTime)
+{
+    Q_D(CallModel);
+    d->referenceTime = referenceTime;
+}
+
+void CallModel::setFilterAccount(const QString &localUid)
+{
+    Q_D(CallModel);
+    d->filterLocalUid = localUid;
+}
+
+void CallModel::resetFilters()
+{
+    Q_D(CallModel);
+    d->sortBy = SortByContact;
+    d->eventType = CallEvent::UnknownCallType;
+    d->referenceTime = QDateTime();
+    d->filterLocalUid = QString();
 }
 
 bool CallModel::getEvents()
@@ -932,25 +968,27 @@ bool CallModel::getEvents()
     QString q = DatabaseIOPrivate::eventQueryBase();
     q += QString::fromLatin1("WHERE type=%1 ").arg(Event::CallEvent);
 
-    if (d->eventType != CallEvent::UnknownCallType) {
-        if (!d->isInTreeMode) {
-            if (d->eventType == CallEvent::ReceivedCallType) {
-                q += QString::fromLatin1("AND direction=%1 AND isAnswered=1 ").arg(Event::Inbound);
-            } else if (d->eventType == CallEvent::MissedCallType) {
-                q += QString::fromLatin1("AND direction=%1 AND isAnswered=0 ").arg(Event::Inbound);
-            } else if (d->eventType == CallEvent::DialedCallType) {
-                q += QString::fromLatin1("AND direction=%1 ").arg(Event::Outbound);
-            }
-        }
-
-        if (!d->referenceTime.isNull()) {
-            q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime.toTime_t());
-        }
+    if (d->eventType == CallEvent::ReceivedCallType) {
+        q += QString::fromLatin1("AND direction=%1 AND isAnswered=1 ").arg(Event::Inbound);
+    } else if (d->eventType == CallEvent::MissedCallType) {
+        q += QString::fromLatin1("AND direction=%1 AND isAnswered=0 ").arg(Event::Inbound);
+    } else if (d->eventType == CallEvent::DialedCallType) {
+        q += QString::fromLatin1("AND direction=%1 ").arg(Event::Outbound);
     }
+
+    if (!d->referenceTime.isNull()) {
+        q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime.toTime_t());
+    }
+
+    if (!d->filterLocalUid.isEmpty())
+        q += QString::fromLatin1("AND localUid=:filterLocalUid ");
 
     q += "ORDER BY startTime, id DESC";
 
     QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
+    if (!d->filterLocalUid.isEmpty())
+        query.bindValue(":filterLocalUid", d->filterLocalUid);
+
     if (!query.prepare(q)) {
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
