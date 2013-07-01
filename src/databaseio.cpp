@@ -32,6 +32,225 @@ using namespace CommHistory;
 
 Q_GLOBAL_STATIC(DatabaseIO, databaseIO)
 
+class QueryHelper {
+public:
+    typedef QPair<QByteArray,QVariant> Field;
+    typedef QList<Field> FieldList;
+
+    QueryHelper()
+    {
+    }
+
+    static QSqlQuery insertQuery(QByteArray q, const FieldList &fields)
+    {
+        QByteArray fieldsStr, valuesStr;
+        foreach (const Field &field, fields) {
+            fieldsStr += field.first + ", ";
+            valuesStr += ":" + field.first + ", ";
+        }
+        fieldsStr.chop(2);
+        valuesStr.chop(2);
+        q.replace(":fields", fieldsStr);
+        q.replace(":values", valuesStr);
+
+        // XXX
+        QSqlQuery query = CommHistoryDatabase::prepare(q, DatabaseIOPrivate::instance()->connection());
+        foreach (const Field &field, fields) 
+            query.bindValue(QString::fromLatin1(":" + field.first), field.second);
+
+        return query;
+    }
+
+    static QSqlQuery updateQuery(QByteArray q, const FieldList &fields)
+    {
+        QByteArray fieldsStr;
+        foreach (const Field &field, fields)
+            fieldsStr += field.first + "=:" + field.first + ", ";
+        fieldsStr.chop(2);
+        q.replace(":fields", fieldsStr);
+
+        // XXX
+        QSqlQuery query = CommHistoryDatabase::prepare(q, DatabaseIOPrivate::instance()->connection());
+
+        foreach (const Field &field, fields)
+            query.bindValue(QString::fromLatin1(":" + field.first), field.second);
+
+        return query;
+    }
+
+    static FieldList eventFields(const Event &event, const Event::PropertySet &properties)
+    {
+        FieldList fields;
+
+        foreach (Event::Property property, properties) {
+            switch (property) {
+                case Event::Type:
+                    fields.append(QueryHelper::Field("type", event.type()));
+                    break;
+                case Event::StartTime:
+                    fields.append(QueryHelper::Field("startTime", event.startTime().toTime_t()));
+                    break;
+                case Event::EndTime:
+                    fields.append(QueryHelper::Field("endTime", event.endTime().toTime_t()));
+                    break;
+                case Event::Direction:
+                    fields.append(QueryHelper::Field("direction", event.direction()));
+                    break;
+                case Event::IsDraft:
+                    fields.append(QueryHelper::Field("isDraft", event.isDraft()));
+                    break;
+                case Event::IsRead:
+                    fields.append(QueryHelper::Field("isRead", event.isRead()));
+                    break;
+                case Event::IsMissedCall:
+                    fields.append(QueryHelper::Field("isMissedCall", event.isMissedCall()));
+                    break;
+                case Event::IsEmergencyCall:
+                    fields.append(QueryHelper::Field("isEmergencyCall", event.isEmergencyCall()));
+                    break;
+                case Event::Status:
+                    fields.append(QueryHelper::Field("status", event.status()));
+                    break;
+                case Event::BytesReceived:
+                    fields.append(QueryHelper::Field("bytesReceived", event.bytesReceived()));
+                    break;
+                case Event::LocalUid:
+                    fields.append(QueryHelper::Field("localUid", event.localUid()));
+                    break;
+                case Event::RemoteUid:
+                    fields.append(QueryHelper::Field("remoteUid", event.remoteUid()));
+                    break;
+                case Event::ParentId:
+                    fields.append(QueryHelper::Field("parentId", event.parentId()));
+                    break;
+                case Event::Subject:
+                    fields.append(QueryHelper::Field("subject", event.subject()));
+                    break;
+                case Event::FreeText:
+                    fields.append(QueryHelper::Field("freeText", event.freeText()));
+                    break;
+                case Event::GroupId:
+                    fields.append(QueryHelper::Field("groupId", event.groupId() == -1 ? QVariant() : event.groupId()));
+                    break;
+                case Event::MessageToken:
+                    fields.append(QueryHelper::Field("messageToken", event.messageToken()));
+                    break;
+                case Event::LastModified:
+                    fields.append(QueryHelper::Field("lastModified", event.lastModified()));
+                    break;
+                case Event::FromVCardFileName:
+                    fields.append(QueryHelper::Field("vCardFileName", event.fromVCardFileName()));
+                    break;
+                case Event::FromVCardLabel:
+                    fields.append(QueryHelper::Field("vCardLabel", event.fromVCardLabel()));
+                    break;
+                case Event::IsDeleted:
+                    fields.append(QueryHelper::Field("isDeleted", event.isDeleted()));
+                    break;
+                case Event::ReportDelivery:
+                    fields.append(QueryHelper::Field("reportDelivery", event.reportDelivery()));
+                    break;
+                case Event::ValidityPeriod:
+                    fields.append(QueryHelper::Field("validityPeriod", event.validityPeriod()));
+                    break;
+                case Event::ContentLocation:
+                    fields.append(QueryHelper::Field("contentLocation", event.contentLocation()));
+                    break;
+                case Event::Cc:
+                    fields.append(QueryHelper::Field("targetCc", event.ccList().join('\n')));
+                    break;
+                case Event::Bcc:
+                    fields.append(QueryHelper::Field("targetBcc", event.bccList().join('\n')));
+                    break;
+                case Event::ReadStatus:
+                    fields.append(QueryHelper::Field("readStatus", event.readStatus()));
+                    break;
+                case Event::ReportRead:
+                    fields.append(QueryHelper::Field("reportRead", event.reportRead()));
+                    break;
+                case Event::ReportReadRequested:
+                    fields.append(QueryHelper::Field("reportedReadRequested", event.reportReadRequested()));
+                    break;
+                case Event::MmsId:
+                    fields.append(QueryHelper::Field("mmsId", event.mmsId()));
+                    break;
+                case Event::To:
+                    fields.append(QueryHelper::Field("targetTo", event.toList().join('\n')));
+                    break;
+                /* Irrelevant properties from Event */
+                case Event::Id:
+                case Event::ContactId:
+                case Event::ContactName:
+                case Event::Contacts:
+                    break;
+                /* XXX Disabled properties (remove?) */
+                case Event::EventCount:
+                case Event::IsAction:
+                case Event::Headers:
+                case Event::MessageParts:
+                case Event::Encoding:
+                case Event::CharacterSet:
+                case Event::Language:
+                    break;
+                default:
+                    qWarning() << Q_FUNC_INFO << "Event field ignored:" << property;
+                    break;
+            }
+        }
+
+        return fields;
+    }
+
+    static FieldList groupFields(const Group &group, const Group::PropertySet &properties)
+    {
+        FieldList fields;
+
+        foreach (Group::Property property, properties) {
+            switch (property) {
+                case Group::LocalUid:
+                    fields.append(QueryHelper::Field("localUid", group.localUid()));
+                    break;
+                case Group::RemoteUids:
+                    fields.append(QueryHelper::Field("remoteUids", group.remoteUids().join('\n')));
+                    break;
+                case Group::Type:
+                    fields.append(QueryHelper::Field("type", group.chatType()));
+                    break;
+                case Group::ChatName:
+                    fields.append(QueryHelper::Field("chatName", group.chatName()));
+                    break;
+                case Group::StartTime:
+                    fields.append(QueryHelper::Field("startTime", group.startTime()));
+                    break;
+                case Group::EndTime:
+                    fields.append(QueryHelper::Field("endTime", group.endTime()));
+                    break;
+                /* Ignored properties (not settable) */
+                case Group::Id:
+                case Group::TotalMessages:
+                case Group::UnreadMessages:
+                case Group::SentMessages:
+                case Group::LastEventId:
+                case Group::ContactId:
+                case Group::ContactName:
+                case Group::LastMessageText:
+                case Group::LastVCardFileName:
+                case Group::LastVCardLabel:
+                case Group::LastEventType:
+                case Group::LastEventStatus:
+                case Group::LastModified:
+                case Group::Contacts:
+                    break;
+                default:
+                    qWarning() << Q_FUNC_INFO << "Group field ignored:" << property;
+                    break;
+            }
+        }
+
+        return fields;
+    }
+ };
+
 DatabaseIO *DatabaseIO::instance()
 {
     return databaseIO();
@@ -73,75 +292,6 @@ QSqlQuery DatabaseIOPrivate::createQuery()
     return QSqlQuery(connection());
 }
 
-static const char *addEventQuery =
-    "\n INSERT INTO Events ("
-    "\n  type,"
-    "\n  startTime,"
-    "\n  endTime,"
-    "\n  direction,"
-    "\n  isDraft,"
-    "\n  isRead,"
-    "\n  isMissedCall,"
-    "\n  isEmergencyCall,"
-    "\n  status,"
-    "\n  bytesReceived,"
-    "\n  localUid,"
-    "\n  remoteUid,"
-    "\n  parentId,"
-    "\n  subject,"
-    "\n  freeText,"
-    "\n  groupId,"
-    "\n  messageToken,"
-    "\n  lastModified,"
-    "\n  vCardFileName,"
-    "\n  vCardLabel,"
-    "\n  isDeleted,"
-    "\n  reportDelivery,"
-    "\n  validityPeriod,"
-    "\n  contentLocation,"
-    "\n  messageParts,"
-    "\n  targetCc,"
-    "\n  targetBcc,"
-    "\n  readStatus,"
-    "\n  reportRead,"
-    "\n  reportedReadRequested,"
-    "\n  mmsId,"
-    "\n  targetTo"
-    "\n ) VALUES ("
-    "\n  :type,"
-    "\n  :startTime,"
-    "\n  :endTime,"
-    "\n  :direction,"
-    "\n  :isDraft,"
-    "\n  :isRead,"
-    "\n  :isMissedCall,"
-    "\n  :isEmergencyCall,"
-    "\n  :status,"
-    "\n  :bytesReceived,"
-    "\n  :localUid,"
-    "\n  :remoteUid,"
-    "\n  :parentId,"
-    "\n  :subject,"
-    "\n  :freeText,"
-    "\n  :groupId,"
-    "\n  :messageToken,"
-    "\n  :lastModified,"
-    "\n  :vCardFileName,"
-    "\n  :vCardLabel,"
-    "\n  :isDeleted,"
-    "\n  :reportDelivery,"
-    "\n  :validityPeriod,"
-    "\n  :contentLocation,"
-    "\n  :messageParts,"
-    "\n  :targetCc,"
-    "\n  :targetBcc,"
-    "\n  :readStatus,"
-    "\n  :reportRead,"
-    "\n  :reportedReadRequested,"
-    "\n  :mmsId,"
-    "\n  :targetTo"
-    "\n )";
-
 bool DatabaseIO::addEvent(Event &event)
 {
     if (event.type() == Event::UnknownType) {
@@ -162,39 +312,8 @@ bool DatabaseIO::addEvent(Event &event)
     if (event.id() != -1)
         qWarning() << Q_FUNC_INFO << "Adding event with an ID set. ID will be ignored.";
 
-    QSqlQuery query = CommHistoryDatabase::prepare(addEventQuery, d->connection());
-    query.bindValue(":type", event.type());
-    query.bindValue(":startTime", event.startTime().toTime_t());
-    query.bindValue(":endTime", event.endTime().toTime_t());
-    query.bindValue(":direction", event.direction());
-    query.bindValue(":isDraft", event.isDraft());
-    query.bindValue(":isRead", event.isRead());
-    query.bindValue(":isMissedCall", event.isMissedCall());
-    query.bindValue(":isEmergencyCall", event.isEmergencyCall());
-    query.bindValue(":status", event.status());
-    query.bindValue(":bytesReceived", event.bytesReceived());
-    query.bindValue(":localUid", event.localUid());
-    query.bindValue(":remoteUid", event.remoteUid());
-    query.bindValue(":parentId", event.parentId());
-    query.bindValue(":subject", event.subject());
-    query.bindValue(":freeText", event.freeText());
-    query.bindValue(":groupId", event.groupId());
-    query.bindValue(":messageToken", event.messageToken());
-    query.bindValue(":lastModified", event.lastModified());
-    query.bindValue(":vCardFileName", event.fromVCardFileName());
-    query.bindValue(":vCardLabel", event.fromVCardLabel());
-    query.bindValue(":isDeleted", event.isDeleted());
-    query.bindValue(":reportDelivery", event.reportDelivery());
-    query.bindValue(":validityPeriod", event.validityPeriod());
-    query.bindValue(":contentLocation", event.contentLocation());
-    // XXX disabled
-    query.bindValue(":messageParts", QVariant());
-    query.bindValue(":targetCc", event.ccList().join('\n'));
-    query.bindValue(":targetBcc", event.bccList().join('\n'));
-    query.bindValue(":readStatus", event.readStatus());
-    query.bindValue(":reportedReadRequested", event.reportReadRequested());
-    query.bindValue(":mmsId", event.mmsId());
-    query.bindValue(":targetTo", event.toList().join('\n'));
+    QueryHelper::FieldList fields = QueryHelper::eventFields(event, event.allProperties());
+    QSqlQuery query = QueryHelper::insertQuery("INSERT INTO Events (:fields) VALUES (:values)", fields);
 
     if (!query.exec()) {
         qWarning() << "Failed to execute query";
@@ -306,11 +425,14 @@ bool DatabaseIO::getEvent(int id, Event &event)
     }
 
     Event e;
+    bool re = true;
     if (query.next())
         d->readEventResult(query, e);
+    else
+        re = false;
 
     event = e;
-    return true;
+    return re;
 }
 
 bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
@@ -362,9 +484,18 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
 
 bool DatabaseIO::modifyEvent(Event &event)
 {
-    Q_UNUSED(event);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    QueryHelper::FieldList fields = QueryHelper::eventFields(event, event.modifiedProperties());
+    QSqlQuery query = QueryHelper::updateQuery("UPDATE Events SET :fields WHERE id=:eventId", fields);
+    query.bindValue(":eventId", event.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::moveEvent(Event &event, int groupId)
@@ -403,32 +534,15 @@ bool DatabaseIO::deleteEvent(Event &event, QThread *backgroundThread)
     return true;
 }
 
-static const char *addGroupQuery =
-    "\n INSERT INTO Groups ("
-    "\n  localUid, "
-    "\n  remoteUids, "
-    "\n  type, "
-    "\n  chatName, "
-    "\n  startTime, "
-    "\n  endTime)"
-    "\n VALUES ("
-    "\n  :localUid, "
-    "\n  :remoteUids, "
-    "\n  :type, "
-    "\n  :chatName, "
-    "\n  :startTime, "
-    "\n  :endTime);";
-
 bool DatabaseIO::addGroup(Group &group)
 {
-    QSqlQuery query = CommHistoryDatabase::prepare(addGroupQuery, d->connection());
+    if (group.localUid().isEmpty() || group.remoteUids().isEmpty()) {
+        qWarning() << Q_FUNC_INFO << "No local/remote UIDs for new group";
+        return false;
+    }
 
-    query.bindValue(":localUid", group.localUid());
-    query.bindValue(":remoteUids", group.remoteUids().join('\n'));
-    query.bindValue(":type", group.chatType());
-    query.bindValue(":chatName", group.chatName());
-    query.bindValue(":startTime", group.startTime());
-    query.bindValue(":endTime", group.endTime());
+    QueryHelper::FieldList fields = QueryHelper::groupFields(group, Group::allProperties());
+    QSqlQuery query = QueryHelper::insertQuery("INSERT INTO Groups (:fields) VALUES (:values)", fields);
 
     if (!query.exec()) {
         qWarning() << "Failed to execute query";
@@ -496,7 +610,7 @@ static const char *baseGroupQuery =
     "\n   vCardLabel, "
     "\n   type, "
     "\n   status "
-    "\n  FROM Events GROUP BY groupId ORDER BY endTime DESC LIMIT 1 "
+    "\n  FROM Events GROUP BY groupId ORDER BY endTime, id DESC LIMIT 1 "
     "\n ) AS LastEvent ON (LastEvent.groupId = Groups.id) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)
@@ -562,9 +676,18 @@ bool DatabaseIO::getGroups(const QString &localUid, const QString &remoteUid, QL
 
 bool DatabaseIO::modifyGroup(Group &group)
 {
-    Q_UNUSED(group);
-    qDebug() << Q_FUNC_INFO << "stub";
-    return false;
+    QueryHelper::FieldList fields = QueryHelper::groupFields(group, group.modifiedProperties());
+    QSqlQuery query = QueryHelper::updateQuery("UPDATE Groups SET :fields WHERE id=:groupId", fields);
+    query.bindValue(":groupId", group.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    return true;
 }
 
 bool DatabaseIO::deleteGroup(int groupId, QThread *backgroundThread)

@@ -563,6 +563,7 @@ bool GroupManager::getGroups(const QString &localUid,
 {
     d->filterLocalUid = localUid;
     d->filterRemoteUid = remoteUid;
+    d->isReady = false;
 
     if (!d->groups.isEmpty()) {
         foreach (GroupObject *go, d->groups)
