@@ -178,7 +178,7 @@ public:
                    const QDateTime &referenceTime = QDateTime());
 
     /*!
-     * \brief Deletes all call events from tracker and clears model.
+     * \brief Deletes all call events from the database and clears model.
      *
      * \return true if successful; false, otherwise.
      */
