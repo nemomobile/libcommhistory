@@ -210,8 +210,9 @@ public:
     /*!
      * Delete events of a certain type
      *
-     * \param eventType
+     * If Event::UnknownType is passed, all events are deleted.
      *
+     * \param eventType
      * \return true if successful, otherwise false
      */
     bool deleteAllEvents(Event::EventType eventType);

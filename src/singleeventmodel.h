@@ -34,7 +34,6 @@ class SingleEventModelPrivate;
  * \class SingleEventModel
  * \brief Model representing single event
  * e.g. phone number or IM user id
- * todo: currently model is flat, doesnt group events by contacts
  */
 class LIBCOMMHISTORY_EXPORT SingleEventModel : public EventModel
 {
@@ -63,7 +62,7 @@ public:
     bool getEventById(int eventId);
 
     /*!
-     * Polulate model with existing event identified by message token or mms id.
+     * Populate model with existing event identified by message token or mms id.
      *
      * \param token, message token or empty string
      * \param mmsId, mms id or empty string

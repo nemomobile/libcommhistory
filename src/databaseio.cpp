@@ -795,9 +795,13 @@ bool DatabaseIO::markAsReadAll(Event::EventType eventType)
 
 bool DatabaseIO::deleteAllEvents(Event::EventType eventType)
 {
-    static const char *q = "DELETE FROM Events WHERE type=:eventType";
+    QByteArray q = "DELETE FROM Events ";
+    if (eventType != Event::UnknownType)
+        q += "WHERE type=:eventType ";
+
     QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
-    query.bindValue(":eventType", eventType);
+    if (eventType != Event::UnknownType)
+        query.bindValue(":eventType", eventType);
 
     if (!query.exec()) {
         qWarning() << "Failed to execute query";

@@ -585,14 +585,12 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         Group g = model.group(model.index(i, 0));
         std::cout << qPrintable(g.toString()) << std::endl;
 
-#if 0
         Event e;
         if (eventModel.databaseIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);
         } else {
             qCritical() << "getEvent error ";
         }
-#endif
 
         std::cout << std::endl;
     }
@@ -905,17 +903,9 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     }
  
     if (!hasAnyOption || options.contains("-reset")) {
-        qWarning() << Q_FUNC_INFO << "Reset not implemented";
-#if 0
-        QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-        QSparqlQuery query(QLatin1String(
-                "DELETE {?n a rdfs:Resource}"
-                "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                    "nmo:CommunicationChannel))}"),
-                           QSparqlQuery::DeleteStatement);
-        QSparqlResult* result = conn->exec(query);
-        result->waitForFinished();
-#endif
+        // Note that reset does not emit signals, unlike -groups and -calls.
+        // Other clients will need to be restarted to refresh their view of the events db.
+        DatabaseIO::instance()->deleteAllEvents(Event::UnknownType);
     }
 
     return 0;
