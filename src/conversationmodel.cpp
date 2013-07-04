@@ -198,7 +198,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
         q += "AND Events.groupId IN (" + ids.join(QLatin1String(",")) + ")";
     }
 
-    q += "ORDER BY Events.endTime, Events.id DESC";
+    q += "ORDER BY Events.endTime DESC, Events.id DESC";
 
     QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
     if (!filterAccount.isEmpty())
