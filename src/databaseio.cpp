@@ -156,12 +156,6 @@ public:
                 case Event::ContentLocation:
                     fields.append(QueryHelper::Field("contentLocation", event.contentLocation()));
                     break;
-                case Event::Cc:
-                    fields.append(QueryHelper::Field("targetCc", event.ccList().join('\n')));
-                    break;
-                case Event::Bcc:
-                    fields.append(QueryHelper::Field("targetBcc", event.bccList().join('\n')));
-                    break;
                 case Event::ReadStatus:
                     fields.append(QueryHelper::Field("readStatus", event.readStatus()));
                     break;
@@ -174,9 +168,17 @@ public:
                 case Event::MmsId:
                     fields.append(QueryHelper::Field("mmsId", event.mmsId()));
                     break;
-                case Event::To:
-                    fields.append(QueryHelper::Field("targetTo", event.toList().join('\n')));
-                    break;
+                case Event::Headers:
+                    {
+                        QHash<QString,QString> headers = event.headers();
+                        QString re;
+                        for (QHash<QString,QString>::iterator it = headers.begin(); it != headers.end(); it++) {
+                            if (!re.isEmpty())
+                                re += '\x1e';
+                            re += it.key() + '\x1f' + it.value();
+                        }
+                        fields.append(QueryHelper::Field("headers", re));
+                    }
                 /* Irrelevant properties from Event */
                 case Event::Id:
                 case Event::ContactId:
@@ -186,7 +188,9 @@ public:
                 /* XXX Disabled properties (remove?) */
                 case Event::EventCount:
                 case Event::IsAction:
-                case Event::Headers:
+                case Event::To:
+                case Event::Cc:
+                case Event::Bcc:
                 case Event::MessageParts:
                 case Event::Encoding:
                 case Event::CharacterSet:
@@ -354,13 +358,11 @@ static const char *baseEventQuery =
     "\n Events.validityPeriod, "
     "\n Events.contentLocation, "
     "\n Events.messageParts, "
-    "\n Events.targetCc, "
-    "\n Events.targetBcc, "
+    "\n Events.headers, "
     "\n Events.readStatus, "
     "\n Events.reportRead, "
     "\n Events.reportedReadRequested, "
-    "\n Events.mmsId, "
-    "\n Events.targetTo "
+    "\n Events.mmsId "
     "\n FROM Events ";
 
 QString DatabaseIOPrivate::eventQueryBase() 
@@ -396,13 +398,19 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
     event.setContentLocation(query.value(24).toString());
     // Message parts are much more complicated
     //event.setMessageParts(query.value(25).toString());
-    event.setCcList(QStringList() << query.value(26).toString().split('\n'));
-    event.setBccList(QStringList() << query.value(27).toString().split('\n'));
-    event.setReadStatus(static_cast<Event::EventReadStatus>(query.value(28).toInt()));
-    event.setReportRead(query.value(29).toBool());
-    event.setReportReadRequested(query.value(30).toBool());
-    event.setMmsId(query.value(31).toString());
-    event.setToList(QStringList() << query.value(32).toString().split('\n'));
+    event.setReadStatus(static_cast<Event::EventReadStatus>(query.value(27).toInt()));
+    event.setReportRead(query.value(28).toBool());
+    event.setReportReadRequested(query.value(29).toBool());
+    event.setMmsId(query.value(30).toString());
+
+    QHash<QString,QString> headers;
+    QStringList hf = query.value(26).toString().split('\x1e');
+    foreach (QString h, hf) {
+        QStringList fields = h.split('\x1f');
+        if (fields.size() == 2)
+            headers.insert(fields.value(0), fields.value(1));
+    }
+    event.setHeaders(headers);
 
     // contacts
     // event count

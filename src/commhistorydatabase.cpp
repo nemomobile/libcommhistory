@@ -85,13 +85,11 @@ static const char *createEventsTable =
         "validityPeriod INTEGER,"
         "contentLocation TEXT,"
         "messageParts TEXT,"
-        "targetCc TEXT,"
-        "targetBcc TEXT,"
+        "headers TEXT,"
         "readStatus INTEGER,"
         "reportRead INTEGER,"
         "reportedReadRequested INTEGER,"
         "mmsId INTEGER,"
-        "targetTo TEXT,"
         "FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE"
         ");";
 
