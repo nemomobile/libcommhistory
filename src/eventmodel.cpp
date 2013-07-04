@@ -470,7 +470,11 @@ void EventModel::enableContactChanges(bool enabled)
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)
 {
-    return addEvents(QList<Event>() << event, toModelOnly);
+    QList<Event> list;
+    list << event;
+    bool ok = addEvents(list, toModelOnly);
+    event = list.first();
+    return ok;
 }
 
 bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
@@ -481,8 +485,9 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
         // Insert the events into the database
         d->database()->transaction();
 
-        foreach (Event event, events) {
-            if (!d->database()->addEvent(event)) {
+        // Cannot be foreach, because addEvent modifies the events with their new ID
+        for (int i = 0; i < events.size(); i++) {
+            if (!d->database()->addEvent(events[i])) {
                 d->database()->rollback();
                 return false;
             }
@@ -500,12 +505,17 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
     }
 
     emit d->eventsAdded(events);
+    emit d->eventsCommitted(events, true);
     return true;
 }
 
 bool EventModel::modifyEvent(Event &event)
 {
-    return modifyEvents(QList<Event>() << event);
+    QList<Event> list;
+    list << event;
+    bool ok = modifyEvents(list);
+    event = list.first();
+    return ok;
 }
 
 bool EventModel::modifyEvents(QList<Event> &events)
