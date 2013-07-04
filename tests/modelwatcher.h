@@ -26,7 +26,6 @@
 #include "eventmodel.h"
 #include "event.h"
 #include "common.h"
-#include <QEventLoop>
 #include <QList>
 
 class ModelWatcher : public QObject
@@ -34,15 +33,23 @@ class ModelWatcher : public QObject
     Q_OBJECT
 
 public:
-    ModelWatcher(QEventLoop *loop = 0, QObject *parent = 0);
+    ModelWatcher(QObject *parent = 0);
     ~ModelWatcher();
 
-    void setLoop(QEventLoop *loop);
     void setModel(CommHistory::EventModel *model);
-    // -1 for minCommitted = don't care (for example status messages)
-    void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
-    bool waitForModelReady(int msec = WAIT_SIGNAL_TIMEOUT);
 
+    bool isFinished() const;
+    void reset();
+
+    // -1 for minCommitted = don't care (for example status messages)
+    bool waitForCommitted(int count = 1);
+    bool waitForAdded(int count = 1, int committed = -1);
+    bool waitForUpdated(int count = 1);
+    bool waitForDeleted(int count = 1);
+    bool waitForModelReady();
+    //void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
+
+#if 0
     int addedCount() { return m_addedCount; }
     int updatedCount() { return m_updatedCount; }
     int deletedCount() { return m_deletedCount; }
@@ -51,6 +58,7 @@ public:
     QList<CommHistory::Event> lastUpdated() { return m_lastUpdated; }
     int lastDeletedId() { return m_lastDeleted; }
     bool lastSuccess() {return m_success;}
+#endif
 
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);
@@ -77,7 +85,6 @@ public:
     bool m_dbusSignalReceived;
     bool m_modelReady;
     bool m_success;
-    QEventLoop *m_loop;
 };
 
 #endif

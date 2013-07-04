@@ -46,8 +46,6 @@ void ConversationModelTest::initTestCase()
 
     loop = new QEventLoop(this);
 
-    watcher.setLoop(loop);
-
     qsrand(QDateTime::currentDateTime().toTime_t());
 
     addTestGroups(group1, group2);
@@ -80,7 +78,7 @@ void ConversationModelTest::initTestCase()
                  group1.id(), "statue message", false, false,
                  QDateTime::currentDateTime(), QString(), true);
 
-    watcher.waitForSignals(13, 14);
+    QVERIFY(watcher.waitForAdded(14, 13));
 }
 
 void ConversationModelTest::getEvents_data()
@@ -123,7 +121,7 @@ void ConversationModelTest::getEvents()
     addTestEvent(model, Event::StatusMessageEvent, Event::Outbound, ACCOUNT1,
                  group1.id(), "status message", false, false,
                  QDateTime::currentDateTime(), QString(), true);
-    watcher.waitForSignals(-1, 1);
+    QVERIFY(watcher.waitForAdded(1, 0));
     QCOMPARE(model.rowCount(), 11);
     for (int i = 0; i < model.rowCount(); i++)
         QVERIFY(model.event(model.index(i, 0)).type() != Event::CallEvent);
@@ -193,7 +191,7 @@ void ConversationModelTest::addEvent()
 
     QVERIFY(addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                          group1.id(), "added event") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     rows++;
     QCOMPARE(model.rowCount(), rows);
     QCOMPARE(model.event(model.index(0, 0)).freeText(), QString("added event"));
@@ -201,55 +199,59 @@ void ConversationModelTest::addEvent()
     /* filtering by type */
     QVERIFY(model.setFilter(Event::IMEvent));
     rows = model.rowCount();
+    watcher.reset();
     QVERIFY(addTestEvent(model, Event::IMEvent, Event::Inbound, ACCOUNT1,
                          group1.id(), "im 1") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
                          group1.id(), "sms 1") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), rows + 1);
     QCOMPARE(model.event(model.index(0, 0)).freeText(), QString("im 1"));
 
     /* filtering by account */
     QVERIFY(model.setFilter(Event::UnknownType, ACCOUNT1));
     rows = model.rowCount();
+    watcher.reset();
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT2,
                          group1.id(), "account 2") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
                          group1.id(), "account 1") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                          group1.id(), "account 1") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), rows + 2);
     QCOMPARE(model.event(model.index(0, 0)).freeText(), QString("account 1"));
 
     /* filtering by direction */
     QVERIFY(model.setFilter(Event::UnknownType, "", Event::Inbound));
     rows = model.rowCount();
+    watcher.reset();
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT2,
                          group1.id(), "in") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Outbound, ACCOUNT1,
                          group1.id(), "out") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(addTestEvent(model, Event::IMEvent, Event::Inbound, ACCOUNT1,
                          group1.id(), "in") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), rows + 2);
     QCOMPARE(model.event(model.index(0, 0)).freeText(), QString("in"));
 
     /* mixed filtering */
     QVERIFY(model.setFilter(Event::SMSEvent, ACCOUNT2, Event::Inbound));
     rows = model.rowCount();
+    watcher.reset();
     QVERIFY(addTestEvent(model, Event::IMEvent, Event::Inbound, ACCOUNT2,
                          group1.id(), "added event") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), rows);
     QVERIFY(addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT2,
                          group1.id(), "filtering works") != -1);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), rows + 1);
     QCOMPARE(model.event(model.index(0, 0)).freeText(), QString("filtering works"));
 }
@@ -273,16 +275,12 @@ void ConversationModelTest::modifyEvent()
     qDebug() << row << event.id() << event.freeText();
     event.setFreeText("modified event");
     QDateTime modified = event.lastModified();
+    watcher.reset();
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForUpdated());
     QVERIFY(model.databaseIO().getEvent(event.id(), event));
     QCOMPARE(event.freeText(), QString("modified event"));
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    QSKIP("Make nie:contentLastUpdated handling consistent");
-#else
-    QSKIP("Make nie:contentLastUpdated handling consistent", SkipSingle);
-#endif
     event = model.event(model.index(row, 0));
     QCOMPARE(event.freeText(), QString("modified event"));
     QVERIFY(event.lastModified() > modified);
@@ -304,8 +302,9 @@ void ConversationModelTest::deleteEvent()
     int row = rand() % rows;
     event = model.event(model.index(row, 0));
     qDebug() << row << event.id();
+    watcher.reset();
     QVERIFY(model.deleteEvent(event.id()));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForDeleted());
     QVERIFY(!model.databaseIO().getEvent(event.id(), event));
     QVERIFY(model.event(model.index(row, 0)).id() != event.id());
     QVERIFY(model.rowCount() == rows - 1);
@@ -343,7 +342,7 @@ void ConversationModelTest::sorting()
     addTestEvent(model, Event::SMSEvent, Event::Inbound, ACCOUNT1,
                  group1.id(), "V", false, false, future);
 
-    watcher.waitForSignals(5, 5);
+    QVERIFY(watcher.waitForAdded(5));
 
     ConversationModel conv;
     conv.setQueryMode(EventModel::StreamedAsyncQuery);
@@ -357,6 +356,7 @@ void ConversationModelTest::sorting()
 
     QVERIFY(conv.rowCount() >= 5 );
 
+    qDebug() << conv.event(conv.index(0, 0)).endTime() << now << future;
     QCOMPARE(conv.event(conv.index(0, 0)).freeText(), QLatin1String("V"));
     QCOMPARE(conv.event(conv.index(1, 0)).freeText(), QLatin1String("IV"));
     QCOMPARE(conv.event(conv.index(2, 0)).freeText(), QLatin1String("III"));
@@ -441,7 +441,6 @@ void ConversationModelTest::reset() {
     watcher.setModel(&conv);
 
     QVERIFY(conv.getEvents(group1.id()));
-
     QVERIFY(watcher.waitForModelReady());
 
     QVERIFY(conv.rowCount() >= 5 );
