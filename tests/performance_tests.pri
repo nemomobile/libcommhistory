@@ -26,12 +26,12 @@ INCLUDEPATH += . ../../src ..
 DEPENDPATH  += $${INCLUDEPATH}
 
 equals(QT_MAJOR_VERSION, 4) {
-    LIBS += ../../src/libcommhistory.a
+    LIBS += ../../src/libcommhistory.so
     CONFIG += mobility
     MOBILITY += contacts
 }
 equals(QT_MAJOR_VERSION, 5) {
-    LIBS += ../../src/libcommhistory-qt5.a
+    LIBS += ../../src/libcommhistory-qt5.so
     QT += contacts
     DEFINES += USING_QTPIM
 }
