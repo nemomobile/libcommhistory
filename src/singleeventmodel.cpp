@@ -128,20 +128,24 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     QString q = DatabaseIOPrivate::eventQueryBase();
     q += "WHERE ";
 
-    QStringList pattern;
+    if (groupId > -1)
+        q += QString::fromLatin1("groupId = %1 AND ").arg(groupId);
+
     if (!token.isEmpty()) {
-        q += "messageToken = :messageToken AND ";
-        query.bindValue(":messageToken", token);
+        q += "( messageToken = :messageToken ";
+        if (!mmsId.isEmpty())
+            q += " OR ";
     }
     if (!mmsId.isEmpty()) {
-        q += QString::fromLatin1("mmsId = :mmsId AND direction = %1 AND ").arg(Event::Outbound);
-        query.bindValue(":mmsId", mmsId);
+        q += QString::fromLatin1("( mmsId = :mmsId AND direction = %1 ) ").arg(Event::Outbound);
+        if (token.isEmpty())
+            q += "AND ";
     }
+    if (!token.isEmpty())
+        q += " ) AND ";
 
-    if (groupId > -1)
-        q += QString::fromLatin1("groupId = %1").arg(groupId);
-    else
-        q += "1 = 1";
+    // Tailing AND
+    q += "1";
 
     if (!query.prepare(q)) {
         qWarning() << "Failed to execute query";
@@ -149,6 +153,11 @@ bool SingleEventModel::getEventByTokens(const QString &token,
         qWarning() << query.lastQuery();
         return false;
     }
+
+    if (!token.isEmpty())
+        query.bindValue(":messageToken", token);
+    if (!mmsId.isEmpty())
+        query.bindValue(":mmsId", mmsId);
 
     return d->executeQuery(query);
 }
