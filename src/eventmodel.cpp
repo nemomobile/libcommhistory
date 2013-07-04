@@ -557,6 +557,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
     emit d->eventsUpdated(events);
     if (!modifiedGroups.isEmpty())
         emit d->groupsUpdated(modifiedGroups);
+    emit d->eventsCommitted(events, true);
 
     return true;
 }
@@ -623,6 +624,8 @@ bool EventModel::deleteEvent(Event &event)
     else if (groupUpdated)
         emit d->groupsUpdated(QList<int>() << event.groupId());
 
+    emit d->eventsCommitted(QList<Event>() << event, true);
+
     return true;
 }
 
@@ -677,6 +680,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
     event.setGroupId(groupId);
     emit d->groupsUpdated(QList<int>() << groupId);
     emit d->eventsAdded(QList<Event>() << event);
+    emit d->eventsCommitted(QList<Event>() << event, true);
 
     return true;
 }
@@ -752,6 +756,7 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
 
     emit d->eventsUpdated(events);
     emit d->groupsUpdatedFull(QList<Group>() << group);
+    emit d->eventsCommitted(events, true);
     return true;
 }
 
