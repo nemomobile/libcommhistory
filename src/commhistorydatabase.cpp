@@ -90,6 +90,7 @@ static const char *createEventsTable =
         "reportRead INTEGER,"
         "reportedReadRequested INTEGER,"
         "mmsId INTEGER,"
+        "isAction INTEGER,"
         "FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE"
         ");";
 

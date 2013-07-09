@@ -77,6 +77,8 @@ void ModelWatcher::setModel(CommHistory::EventModel *model)
     connect(m_model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)),
             this, SLOT(eventsCommittedSlot(const QList<CommHistory::Event>&, bool)));
     connect(m_model, SIGNAL(modelReady(bool)), this, SLOT(modelReadySlot(bool)));
+
+    reset();
 }
 
 void ModelWatcher::waitForSignals(int minCommitted, int minAdded, int minDeleted)

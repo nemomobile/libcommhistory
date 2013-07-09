@@ -168,14 +168,17 @@ public:
                 case Event::MmsId:
                     fields.append(QueryHelper::Field("mmsId", event.mmsId()));
                     break;
+                case Event::IsAction:
+                    fields.append(QueryHelper::Field("isAction", event.isAction()));
+                    break;
                 case Event::Headers:
                     {
                         QHash<QString,QString> headers = event.headers();
                         QString re;
                         for (QHash<QString,QString>::iterator it = headers.begin(); it != headers.end(); it++) {
                             if (!re.isEmpty())
-                                re += '\x1e';
-                            re += it.key() + '\x1f' + it.value();
+                                re += '\x1c';
+                            re += it.key() + '\x1d' + it.value();
                         }
                         fields.append(QueryHelper::Field("headers", re));
                     }
@@ -187,7 +190,6 @@ public:
                     break;
                 /* XXX Disabled properties (remove?) */
                 case Event::EventCount:
-                case Event::IsAction:
                 case Event::To:
                 case Event::Cc:
                 case Event::Bcc:
@@ -362,7 +364,8 @@ static const char *baseEventQuery =
     "\n Events.readStatus, "
     "\n Events.reportRead, "
     "\n Events.reportedReadRequested, "
-    "\n Events.mmsId "
+    "\n Events.mmsId, "
+    "\n Events.isAction "
     "\n FROM Events ";
 
 QString DatabaseIOPrivate::eventQueryBase() 
@@ -388,7 +391,10 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
     event.setParentId(query.value(13).toInt());
     event.setSubject(query.value(14).toString());
     event.setFreeText(query.value(15).toString());
-    event.setGroupId(query.value(16).toInt());
+    if (query.value(16).isNull())
+        event.setGroupId(-1);
+    else
+        event.setGroupId(query.value(16).toInt());
     event.setMessageToken(query.value(17).toString());
     event.setLastModified(QDateTime::fromTime_t(query.value(18).toUInt()));
     event.setFromVCard(query.value(19).toString(), query.value(20).toString());
@@ -402,11 +408,12 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
     event.setReportRead(query.value(28).toBool());
     event.setReportReadRequested(query.value(29).toBool());
     event.setMmsId(query.value(30).toString());
+    event.setIsAction(query.value(31).toBool());
 
     QHash<QString,QString> headers;
-    QStringList hf = query.value(26).toString().split('\x1e');
+    QStringList hf = query.value(26).toString().split('\x1c');
     foreach (QString h, hf) {
-        QStringList fields = h.split('\x1f');
+        QStringList fields = h.split('\x1d');
         if (fields.size() == 2)
             headers.insert(fields.value(0), fields.value(1));
     }
@@ -618,7 +625,7 @@ static const char *baseGroupQuery =
     "\n   vCardLabel, "
     "\n   type, "
     "\n   status "
-    "\n  FROM Events GROUP BY groupId ORDER BY endTime, id DESC LIMIT 1 "
+    "\n  FROM Events GROUP BY groupId ORDER BY endTime DESC, id DESC LIMIT 1 "
     "\n ) AS LastEvent ON (LastEvent.groupId = Groups.id) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)
@@ -636,12 +643,15 @@ bool DatabaseIO::getGroup(int id, Group &group)
         return false;
     }
 
+    bool re = true;
     Group g;
     if (query.next())
         d->readGroupResult(query, g);
+    else
+        re = false;
 
     group = g;
-    return true;
+    return re;
 }
 
 bool DatabaseIO::getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &result)

@@ -505,7 +505,10 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
     }
 
     emit d->eventsAdded(events);
-    emit d->eventsCommitted(events, true);
+
+    if (!toModelOnly)
+        emit d->eventsCommitted(events, true);
+
     return true;
 }
 
@@ -642,6 +645,9 @@ bool EventModel::moveEvent(Event &event, int groupId)
     if (event.groupId() == groupId)
         return true;
 
+    // DatabaseIO::moveEvent changes groupId
+    int oldGroupId = event.groupId();
+
     d->database()->transaction();
     if (!d->database()->moveEvent(event, groupId)) {
         d->database()->rollback();
@@ -650,21 +656,21 @@ bool EventModel::moveEvent(Event &event, int groupId)
 
     int groupDeleted = -1;
     // update or delete old group
-    if (event.groupId() != -1 && !event.isDraft()) {
+    if (oldGroupId != -1 && !event.isDraft()) {
         int total;
-        if (!d->database()->totalEventsInGroup(event.groupId(), total)) {
+        if (!d->database()->totalEventsInGroup(oldGroupId, total)) {
             d->database()->rollback();
             return false;
         }
 
         if (total == 0) {
             qDebug() << __FUNCTION__ << ": deleting empty group";
-            if (!d->database()->deleteGroup(event.groupId())) {
+            if (!d->database()->deleteGroup(oldGroupId)) {
                 qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->database()->rollback();
                 return false;
             } else
-                groupDeleted = event.groupId();
+                groupDeleted = oldGroupId;
         }
     }
 
@@ -674,10 +680,9 @@ bool EventModel::moveEvent(Event &event, int groupId)
     emit d->eventDeleted(event.id());
     if (groupDeleted != -1)
         emit d->groupsDeleted(QList<int>() << groupDeleted);
-    else
-        emit d->groupsUpdated(QList<int>() << event.groupId());
+    else if (oldGroupId != -1)
+        emit d->groupsUpdated(QList<int>() << oldGroupId);
 
-    event.setGroupId(groupId);
     emit d->groupsUpdated(QList<int>() << groupId);
     emit d->eventsAdded(QList<Event>() << event);
     emit d->eventsCommitted(QList<Event>() << event, true);
