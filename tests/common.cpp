@@ -114,8 +114,6 @@ int addTestEvent(EventModel &model,
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
         event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
-    } else if (remoteUid == "<hidden>") {
-        event.setRemoteUid(QString());
     } else {
         event.setRemoteUid(remoteUid);
     }

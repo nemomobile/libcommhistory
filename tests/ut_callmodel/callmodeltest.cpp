@@ -330,7 +330,7 @@ void CallModelTest::testAddEvent()
 
     // add 1 received from hidden number
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(90), "<hidden>");
-    testCalls.insert(0, TestCallItem(QString(), CallEvent::ReceivedCallType, 1));
+    testCalls.insert(0, TestCallItem("<hidden>", CallEvent::ReceivedCallType, 1));
     watcher.waitForSignals();
 
     /* by contact:
@@ -381,7 +381,7 @@ void CallModelTest::testDeleteEvent()
     qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Inbound );
     QCOMPARE( e.isMissedCall(), false );
-    QCOMPARE( e.remoteUid(), QString() );
+    QCOMPARE( e.remoteUid(), QLatin1String("<hidden>") );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
     watcher.waitForSignals(-1, -1, 1);

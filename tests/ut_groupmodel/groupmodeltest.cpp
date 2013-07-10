@@ -377,31 +377,13 @@ void GroupModelTest::getGroups()
     /* filter out new group */
     group.setRemoteUids(QStringList() << "+99966607654321");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);
     QCOMPARE(listenerModel.rowCount(), 2);
-
-    /* filter out new group with hidden phone number */
-    group.setRemoteUids(QStringList() << QString(""));
-    group.setId(-1);
-    QVERIFY(model.addGroup(group));
-    groupsCommitted.clear();
-    loop->exec();
-    QVERIFY(waitSignal(groupsCommitted));
-    QVERIFY(groupsCommitted.first().at(1).toBool());
-    QCOMPARE(model.rowCount(), 2);
-    QCOMPARE(listenerModel.rowCount(), 2);
-
-    /* filter by hidden phone number */
-    modelReady.clear();
-    QVERIFY(model.getGroups(ACCOUNT1, ""));
-    QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.rowCount(), 1);
-    QCOMPARE(model.group(model.index(0, 0)).remoteUids().first(), QString(""));
 
     modelThread.quit();
     modelThread.wait(5000);
