@@ -52,9 +52,7 @@ static const char *createGroupsTable =
         "localUid TEXT,"
         "remoteUids TEXT,"
         "type INTEGER,"
-        "chatName TEXT,"
-        "startTime INTEGER,"
-        "endTime INTEGER"
+        "chatName TEXT"
         ");";
 
 static const char *createEventsTable =

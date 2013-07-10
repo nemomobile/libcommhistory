@@ -225,14 +225,10 @@ public:
                 case Group::ChatName:
                     fields.append(QueryHelper::Field("chatName", group.chatName()));
                     break;
-                case Group::StartTime:
-                    fields.append(QueryHelper::Field("startTime", group.startTime()));
-                    break;
-                case Group::EndTime:
-                    fields.append(QueryHelper::Field("endTime", group.endTime()));
-                    break;
                 /* Ignored properties (not settable) */
                 case Group::Id:
+                case Group::StartTime:
+                case Group::EndTime:
                 case Group::TotalMessages:
                 case Group::UnreadMessages:
                 case Group::SentMessages:
@@ -580,12 +576,26 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setRemoteUids(query.value(2).toString().split('\n'));
     group.setChatType(static_cast<Group::ChatType>(query.value(3).toInt()));
     group.setChatName(query.value(4).toString());
-    group.setStartTime(QDateTime::fromTime_t(query.value(5).toUInt()));
-    group.setEndTime(QDateTime::fromTime_t(query.value(6).toUInt()));
+    // startTime and endTime are below
     group.setTotalMessages(query.value(7).toInt());
     group.setUnreadMessages(query.value(8).toInt());
     group.setSentMessages(query.value(9).toInt());
-    group.setLastEventId(query.value(10).toInt());
+
+    if (query.value(5).isNull())
+        group.setStartTime(QDateTime());
+    else
+        group.setStartTime(QDateTime::fromTime_t(query.value(5).toUInt()));
+
+    if (query.value(6).isNull())
+        group.setEndTime(QDateTime());
+    else
+        group.setEndTime(QDateTime::fromTime_t(query.value(6).toUInt()));
+
+    if (query.value(10).isNull())
+        group.setLastEventId(-1);
+    else
+        group.setLastEventId(query.value(10).toInt());
+
     group.setLastMessageText(query.value(11).toString());
     group.setLastVCardFileName(query.value(12).toString());
     group.setLastVCardLabel(query.value(13).toString());
@@ -603,12 +613,17 @@ static const char *baseGroupQuery =
     "\n Groups.remoteUids, "
     "\n Groups.type, "
     "\n Groups.chatName, "
-    "\n Groups.startTime, "
-    "\n Groups.endTime, "
+    "\n LastEvent.startTime, "
+    "\n LastEvent.endTime, "
     "\n COUNT(Events.id), "
     "\n COUNT(NULLIF(Events.isRead = 0, 0)), "
     "\n COUNT(NULLIF(Events.direction = 2, 0)), "
-    "\n LastEvent.id, "
+    "\n ( "
+    "\n   SELECT id FROM Events "
+    "\n   WHERE groupId = Groups.id "
+    "\n   ORDER BY startTime DESC, id DESC "
+    "\n   LIMIT 1 "
+    "\n ) AS lastEventId, "
     "\n LastEvent.freeText, "
     "\n LastEvent.vCardFileName, "
     "\n LastEvent.vCardLabel, "
@@ -620,13 +635,15 @@ static const char *baseGroupQuery =
     "\n  SELECT "
     "\n   id, "
     "\n   groupId, "
+    "\n   startTime, "
+    "\n   endTime, "
     "\n   freeText, "
     "\n   vCardFileName, "
     "\n   vCardLabel, "
     "\n   type, "
     "\n   status "
-    "\n  FROM Events GROUP BY groupId ORDER BY endTime DESC, id DESC LIMIT 1 "
-    "\n ) AS LastEvent ON (LastEvent.groupId = Groups.id) ";
+    "\n  FROM Events "
+    "\n ) AS LastEvent ON (LastEvent.id = lastEventId) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)
 {
