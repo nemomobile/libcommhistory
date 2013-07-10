@@ -78,7 +78,6 @@ public:
     QSqlDatabase m_pConnection;
 
     MmsContentDeleter *m_MmsContentDeleter;
-    QSet<QString> m_mmsTokens;
 
     QThread *m_bgThread;
 };
