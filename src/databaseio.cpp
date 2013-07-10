@@ -684,7 +684,7 @@ bool DatabaseIO::getGroup(int id, Group &group)
     return re;
 }
 
-bool DatabaseIO::getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &result)
+bool DatabaseIO::getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &result, const QString &queryOrder)
 {
     QByteArray q = baseGroupQuery;
     if (!localUid.isEmpty() || !remoteUid.isEmpty()) {
@@ -694,15 +694,16 @@ bool DatabaseIO::getGroups(const QString &localUid, const QString &remoteUid, QL
             if (!remoteUid.isEmpty())
                 q += "AND ";
         }
+
         if (!remoteUid.isEmpty())
-            q += "Groups.remoteUids = :remoteUid";
+            q += "Groups.remoteUids = :remoteUid ";
     }
-    q += "GROUP BY Groups.id";
+    q += "GROUP BY Groups.id " + queryOrder;
 
     QSqlQuery query = CommHistoryDatabase::prepare(q.data(), d->connection());
     if (!localUid.isEmpty())
         query.bindValue(":localUid", localUid);
-    if (!remoteUid.isEmpty())
+    if (!remoteUid.isNull())
         query.bindValue(":remoteUid", remoteUid);
 
     if (!query.exec()) {

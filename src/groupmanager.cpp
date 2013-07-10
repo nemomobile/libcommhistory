@@ -39,8 +39,6 @@
 
 namespace {
 static const int defaultChunkSize = 50;
-
-static const int maxAddGroupsSize = 25;
 }
 
 using namespace CommHistory;
@@ -502,32 +500,29 @@ bool GroupManager::addGroups(QList<Group> &groups)
 
     QMutableListIterator<Group> i(groups);
 
+    d->database()->transaction();
+
     while (i.hasNext()) {
-        d->database()->transaction();
-
-        while (addedGroups.size() < maxAddGroupsSize && i.hasNext()) {
-            Group &group = i.next();
-            if (!d->database()->addGroup(group)) {
-                d->database()->rollback();
-                return false;
-            }
-
-            if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
-                && (d->filterRemoteUid.isEmpty()
-                    || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
-                d->add(group);
-            }
-
-            addedIds.append(group.id());
-            addedGroups.append(group);
+        Group &group = i.next();
+        if (!d->database()->addGroup(group)) {
+            d->database()->rollback();
+            return false;
         }
 
-        d->commitTransaction(addedIds);
-        d->emitter->groupsAdded(addedGroups);
-        addedIds.clear();
-        addedGroups.clear();
+        if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
+            && (d->filterRemoteUid.isEmpty()
+                || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
+            d->add(group);
+        }
+
+        addedIds.append(group.id());
+        addedGroups.append(group);
     }
 
+    if (!d->commitTransaction(addedIds))
+        return false;
+
+    d->emitter->groupsAdded(addedGroups);
     return true;
 }
 
@@ -574,8 +569,14 @@ bool GroupManager::getGroups(const QString &localUid,
 
     d->startContactListening();
 
+    QString queryOrder;
+    if (d->queryLimit > 0)
+        queryOrder += QString::fromLatin1("LIMIT %1 ").arg(d->queryLimit);
+    if (d->queryOffset > 0)
+        queryOrder += QString::fromLatin1("OFFSET %1 ").arg(d->queryOffset);
+
     QList<Group> results;
-    if (!d->database()->getGroups(localUid, remoteUid, results))
+    if (!d->database()->getGroups(localUid, remoteUid, results, queryOrder))
         return false;
 
     foreach (Group g, results) {

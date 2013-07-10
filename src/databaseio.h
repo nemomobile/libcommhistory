@@ -140,7 +140,8 @@ public:
      * \param groups Reference to container for results
      * \return true if successful, otherwise false
      */
-    bool getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &groups);
+    bool getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &groups,
+                   const QString &queryOrder = QString());
 
     /*!
      * Modifye a group.
