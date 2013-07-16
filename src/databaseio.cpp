@@ -227,6 +227,9 @@ public:
                 case Group::ChatName:
                     fields.append(QueryHelper::Field("chatName", group.chatName()));
                     break;
+                case Group::LastModified:
+                    fields.append(QueryHelper::Field("lastModified", group.lastModified().toTime_t()));
+                    break;
                 /* Ignored properties (not settable) */
                 case Group::Id:
                 case Group::StartTime:
@@ -242,7 +245,6 @@ public:
                 case Group::LastVCardLabel:
                 case Group::LastEventType:
                 case Group::LastEventStatus:
-                case Group::LastModified:
                 case Group::Contacts:
                     break;
                 default:
@@ -590,33 +592,32 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setRemoteUids(query.value(2).toString().split('\n'));
     group.setChatType(static_cast<Group::ChatType>(query.value(3).toInt()));
     group.setChatName(query.value(4).toString());
+    group.setLastModified(QDateTime::fromTime_t(query.value(5).toUInt()));
     // startTime and endTime are below
-    group.setTotalMessages(query.value(7).toInt());
-    group.setUnreadMessages(query.value(8).toInt());
-    group.setSentMessages(query.value(9).toInt());
-
-    if (query.value(5).isNull())
-        group.setStartTime(QDateTime());
-    else
-        group.setStartTime(QDateTime::fromTime_t(query.value(5).toUInt()));
+    group.setTotalMessages(query.value(8).toInt());
+    group.setUnreadMessages(query.value(9).toInt());
+    group.setSentMessages(query.value(10).toInt());
 
     if (query.value(6).isNull())
+        group.setStartTime(QDateTime());
+    else
+        group.setStartTime(QDateTime::fromTime_t(query.value(6).toUInt()));
+
+    if (query.value(7).isNull())
         group.setEndTime(QDateTime());
     else
-        group.setEndTime(QDateTime::fromTime_t(query.value(6).toUInt()));
+        group.setEndTime(QDateTime::fromTime_t(query.value(7).toUInt()));
 
-    if (query.value(10).isNull())
+    if (query.value(11).isNull())
         group.setLastEventId(-1);
     else
-        group.setLastEventId(query.value(10).toInt());
+        group.setLastEventId(query.value(11).toInt());
 
-    group.setLastMessageText(query.value(11).toString());
-    group.setLastVCardFileName(query.value(12).toString());
-    group.setLastVCardLabel(query.value(13).toString());
-    group.setLastEventType(static_cast<Event::EventType>(query.value(14).toInt()));
-    group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(15).toInt()));
-
-    // lastModified
+    group.setLastMessageText(query.value(12).toString());
+    group.setLastVCardFileName(query.value(13).toString());
+    group.setLastVCardLabel(query.value(14).toString());
+    group.setLastEventType(static_cast<Event::EventType>(query.value(15).toInt()));
+    group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(16).toInt()));
     
     // contacts
     foreach (const QString &remoteUid, group.remoteUids())
@@ -630,6 +631,7 @@ static const char *baseGroupQuery =
     "\n Groups.remoteUids, "
     "\n Groups.type, "
     "\n Groups.chatName, "
+    "\n Groups.lastModified, "
     "\n LastEvent.startTime, "
     "\n LastEvent.endTime, "
     "\n COUNT(Events.id), "
