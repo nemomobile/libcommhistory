@@ -266,6 +266,8 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
         if (!event.contacts().isEmpty()) {
             contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
+        }  else {
+            setContactFromCache(event);
         }
     }
 
@@ -413,9 +415,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
             Event::Contact newContact((int)contactId, contactName);
             // create cache key
             QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
-            // if contact is not yet in cache, add it there
-            if (!contactCache.contains(cacheKey))
-                contactCache.insert(cacheKey, QList<Event::Contact>() << newContact);
+            contactCache.insert(cacheKey, QList<Event::Contact>() << newContact);
 
             for (int i = 0; i < contacts.count(); i++)
                 // if contact is already resolved, change name to new one
@@ -538,10 +538,19 @@ DatabaseIO* EventModelPrivate::database()
 
 bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 {
-    QList<Event::Contact> contacts = contactCache.value(qMakePair(event.localUid(), event.remoteUid()));
-    if (!contacts.isEmpty()) {
-        event.setContacts(contacts);
-        return true;
+    QMap<QPair<QString,QString>, QList<Event::Contact> >::Iterator it = contactCache.find(qMakePair(event.localUid(), event.remoteUid()));
+    if (it != contactCache.end()) {
+        if (!it.value().isEmpty()) {
+            event.setContacts(it.value());
+            return true;
+        }
+    } else {
+        // Insert an empty item into the cache to prevent duplicate requests
+        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), QList<Event::Contact>());
+
+        startContactListening();
+        if (contactListener)
+            contactListener->resolveContact(event.localUid(), event.remoteUid());
     }
 
     return false;

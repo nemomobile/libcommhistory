@@ -487,11 +487,7 @@ void CallModelPrivate::addToModel( Event &event )
     if (!event.contacts().isEmpty()) {
         contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
     } else {
-        if (!setContactFromCache(event)) {
-            startContactListening();
-            if (contactListener)
-                contactListener->resolveContact(event.localUid(), event.remoteUid());
-        }
+        setContactFromCache(event);
     }
 
     switch ( sortBy )

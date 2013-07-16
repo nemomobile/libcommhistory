@@ -25,6 +25,7 @@
 #include "commhistorydatabase.h"
 #include "group.h"
 #include "mmscontentdeleter.h"
+#include "contactlistener.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QDebug>
@@ -616,7 +617,10 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(15).toInt()));
 
     // lastModified
+    
     // contacts
+    foreach (const QString &remoteUid, group.remoteUids())
+        ContactListener::instance()->resolveContact(group.localUid(), remoteUid);
 }
 
 static const char *baseGroupQuery =
