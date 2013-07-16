@@ -55,7 +55,6 @@ public:
         q.replace(":fields", fieldsStr);
         q.replace(":values", valuesStr);
 
-        // XXX
         QSqlQuery query = CommHistoryDatabase::prepare(q, DatabaseIOPrivate::instance()->connection());
         foreach (const Field &field, fields) 
             query.bindValue(QString::fromLatin1(":" + field.first), field.second);
@@ -71,9 +70,7 @@ public:
         fieldsStr.chop(2);
         q.replace(":fields", fieldsStr);
 
-        // XXX
         QSqlQuery query = CommHistoryDatabase::prepare(q, DatabaseIOPrivate::instance()->connection());
-
         foreach (const Field &field, fields)
             query.bindValue(QString::fromLatin1(":" + field.first), field.second);
 
@@ -424,10 +421,6 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
             headers.insert(fields.value(0), fields.value(1));
     }
     event.setHeaders(headers);
-
-    // contacts
-    // event count
-    // encoding, character set, language
 }
 
 bool DatabaseIO::getEvent(int id, Event &event)

@@ -371,7 +371,8 @@ void EventModelPrivate::canFetchMoreChangedSlot(bool canFetch)
 
 bool EventModelPrivate::canFetchMore() const
 {
-    return threadCanFetchMore;
+    //return threadCanFetchMore;
+    return false;
 }
 
 void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,

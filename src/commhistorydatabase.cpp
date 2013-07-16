@@ -21,85 +21,78 @@
 ******************************************************************************/
 
 #include "commhistorydatabase.h"
-
-#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QDebug>
 
-#include <QtDebug>
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#include <QDesktopServices>
+#else
+#include <QStandardPaths>
+#endif
 
 // Appended to GenericDataLocation (or a hardcoded equivalent on Qt4)
 #define COMMHISTORY_DATABASE_DIR "/commhistory/"
 #define COMMHISTORY_DATABASE_NAME "commhistory.db"
 
-static const char *setupEncoding =
-        "\n PRAGMA encoding = \"UTF-16\";";
-
-static const char *setupTempStore =
-        "\n PRAGMA temp_store = MEMORY;";
-
-static const char *setupJournal =
-        "\n PRAGMA journal_mode = WAL;";
-
-static const char *setupForeignKeys =
-        "\n PRAGMA foreign_keys = ON;";
-
-static const char *createGroupsTable =
-        "\n CREATE TABLE Groups ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "localUid TEXT,"
-        "remoteUids TEXT,"
-        "type INTEGER,"
-        "chatName TEXT,"
-        "lastModified INTEGER UNSIGNED"
-        ");";
-
-static const char *createEventsTable =
-        "\n CREATE TABLE Events ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "type INTEGER,"
-        "startTime INTEGER,"
-        "endTime INTEGER,"
-        "direction INTEGER,"
-        "isDraft INTEGER,"
-        "isRead INTEGER,"
-        "isMissedCall INTEGER,"
-        "isEmergencyCall INTEGER,"
-        "status INTEGER,"
-        "bytesReceived INTEGER,"
-        "localUid TEXT,"
-        "remoteUid TEXT,"
-        "parentId INTEGER,"
-        "subject TEXT,"
-        "freeText TEXT,"
-        "groupId INTEGER,"
-        "messageToken TEXT,"
-        "lastModified INTEGER,"
-        "vCardFileName TEXT,"
-        "vCardLabel TEXT,"
-        "isDeleted INTEGER,"
-        "reportDelivery INTEGER,"
-        "validityPeriod INTEGER,"
-        "contentLocation TEXT,"
-        "messageParts TEXT,"
-        "headers TEXT,"
-        "readStatus INTEGER,"
-        "reportRead INTEGER,"
-        "reportedReadRequested INTEGER,"
-        "mmsId INTEGER,"
-        "isAction INTEGER,"
-        "FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE"
-        ");";
-
-static const char *createTables[] =
-{
-    createGroupsTable,
-    createEventsTable
+static const char *db_setup[] = {
+    "PRAGMA temp_store = MEMORY",
+    "PRAGMA journal_mode = WAL",
+    "PRAGMA foreign_keys = ON"
 };
+static int db_setup_count = sizeof(db_setup) / sizeof(*db_setup);
 
-template <typename T, int N> static int lengthOf(const T(&)[N]) { return N; }
+static const char *db_schema[] = {
+    "PRAGMA encoding = \"UTF-16\"",
+
+    "CREATE TABLE Groups ( "
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    "  localUid TEXT, "
+    "  remoteUids TEXT, "
+    "  type INTEGER, "
+    "  chatName TEXT, "
+    "  lastModified INTEGER UNSIGNED "
+    ")",
+
+    "CREATE TABLE Events ( "
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    "  type INTEGER, "
+    "  startTime INTEGER, "
+    "  endTime INTEGER, "
+    "  direction INTEGER, "
+    "  isDraft INTEGER, "
+    "  isRead INTEGER, "
+    "  isMissedCall INTEGER, "
+    "  isEmergencyCall INTEGER, "
+    "  status INTEGER, "
+    "  bytesReceived INTEGER, "
+    "  localUid TEXT, "
+    "  remoteUid TEXT, "
+    "  parentId INTEGER, "
+    "  subject TEXT, "
+    "  freeText TEXT, "
+    "  groupId INTEGER, "
+    "  messageToken TEXT, "
+    "  lastModified INTEGER, "
+    "  vCardFileName TEXT, "
+    "  vCardLabel TEXT, "
+    "  isDeleted INTEGER, "
+    "  reportDelivery INTEGER, "
+    "  validityPeriod INTEGER, "
+    "  contentLocation TEXT, "
+    "  messageParts TEXT, "
+    "  headers TEXT, "
+    "  readStatus INTEGER, "
+    "  reportRead INTEGER, "
+    "  reportedReadRequested INTEGER, "
+    "  mmsId INTEGER, "
+    "  isAction INTEGER, "
+    "  FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE "
+    ")"
+};
+static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 
 static bool execute(QSqlDatabase &database, const QString &statement)
 {
@@ -116,24 +109,22 @@ static bool execute(QSqlDatabase &database, const QString &statement)
 
 static bool prepareDatabase(QSqlDatabase &database)
 {
-    if (!execute(database, QLatin1String(setupEncoding)))
-        return false;
-
     if (!database.transaction())
         return false;
 
     bool error = false;
-    for (int i = 0; i < lengthOf(createTables); ++i) {
+    for (int i = 0; i < db_schema_count; ++i) {
         QSqlQuery query(database);
 
-        if (!query.exec(QLatin1String(createTables[i]))) {
+        if (!query.exec(QLatin1String(db_schema[i]))) {
             qWarning() << "Table creation failed";
             qWarning() << query.lastError();
-            qWarning() << createTables[i];
+            qWarning() << db_schema[i];
             error = true;
             break;
         }
     }
+
     if (error) {
         database.rollback();
         return false;
@@ -168,21 +159,18 @@ QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
         qWarning() << "Opened commhistory database:" << databaseFile;
     }
 
-    if (!execute(database, QLatin1String(setupTempStore))
-            || !execute(database, QLatin1String(setupJournal))
-            || !execute(database, QLatin1String(setupForeignKeys))) {
-        database.close();
-        if (!exists)
-            QFile::remove(databaseFile);
-        return database;
+    for (int i = 0; i < db_setup_count; i++) {
+        if (!execute(database, QLatin1String(db_setup[i]))) {
+            database.close();
+            if (!exists)
+                QFile::remove(databaseFile);
+            return database;
+        }
     }
 
     if (!exists && !prepareDatabase(database)) {
         database.close();
-
         QFile::remove(databaseFile);
-
-        return database;
     }
 
     return database;

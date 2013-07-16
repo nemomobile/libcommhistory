@@ -776,8 +776,6 @@ bool EventModel::canFetchMore(const QModelIndex &parent) const
 void EventModel::fetchMore(const QModelIndex &parent)
 {
     Q_UNUSED(parent);
-
-    qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED";
 }
 
 void EventModel::setBackgroundThread(QThread *thread)

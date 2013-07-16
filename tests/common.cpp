@@ -263,7 +263,7 @@ void deleteTestContact(int id)
 
 void cleanUpTestContacts()
 {
-    qDebug() << Q_FUNC_INFO;
+    qWarning() << Q_FUNC_INFO << "Not implemented!";
 #if 0
     QString query("DELETE { ?r a rdfs:Resource } WHERE { GRAPH <commhistory-tests> { ?r a rdfs:Resource } }");
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
@@ -385,20 +385,6 @@ void deleteAll()
 
     if (!callModel.deleteAll())
         qCritical() << Q_FUNC_INFO << "callModel::deleteAll failed";
-}
-
-void deleteSmsMsgs()
-{
-    qDebug() << Q_FUNC_INFO << "Not implemented";
-#if 0
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String("DELETE {?n a rdfs:Resource} WHERE {?n rdf:type nmo:SMSMessage}"),
-                       QSparqlQuery::DeleteStatement);
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
-    if (result->hasError())
-        qDebug() << result->lastError().message();
-#endif
 }
 
 QString randomMessage(int words)

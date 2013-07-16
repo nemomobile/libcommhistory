@@ -2,6 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013 Jolla Ltd. <john.brooks@jollamobile.com>
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** Contact: Reto Zingg <reto.zingg@nokia.com>
 **

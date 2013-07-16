@@ -47,18 +47,6 @@ public:
     bool waitForUpdated(int count = 1);
     bool waitForDeleted(int count = 1);
     bool waitForModelReady();
-    //void waitForSignals(int minCommitted = 0, int minAdded = 0, int minDeleted = 0);
-
-#if 0
-    int addedCount() { return m_addedCount; }
-    int updatedCount() { return m_updatedCount; }
-    int deletedCount() { return m_deletedCount; }
-    int committedCount() { return m_committedCount; }
-    QList<CommHistory::Event> lastAdded() { return m_lastAdded; }
-    QList<CommHistory::Event> lastUpdated() { return m_lastUpdated; }
-    int lastDeletedId() { return m_lastDeleted; }
-    bool lastSuccess() {return m_success;}
-#endif
 
 public Q_SLOTS:
     void eventsAddedSlot(const QList<CommHistory::Event> &events);

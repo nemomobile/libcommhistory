@@ -292,7 +292,6 @@ void GroupManagerPrivate::groupsDeletedSlot(const QList<int> &groupIds)
 
 bool GroupManagerPrivate::canFetchMore() const
 {
-    qDebug() << Q_FUNC_INFO << "Not implemented";
     return false;
 }
 
@@ -671,7 +670,6 @@ bool GroupManager::canFetchMore() const
 
 void GroupManager::fetchMore()
 {
-    qDebug() << Q_FUNC_INFO << "Not implemented";
 }
 
 QList<GroupObject*> GroupManager::groups() const
@@ -712,8 +710,6 @@ int GroupManager::offset() const
 void GroupManager::setBackgroundThread(QThread *thread)
 {
     d->bgThread = thread;
-
-    qDebug() << Q_FUNC_INFO << "Not implemented" << thread;
 }
 
 QThread* GroupManager::backgroundThread()

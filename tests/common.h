@@ -64,7 +64,6 @@ void deleteTestContact(int id);
 void cleanUpTestContacts();
 bool compareEvents(Event &e1, Event &e2);
 void deleteAll();
-void deleteSmsMsgs();
 QString randomMessage(int words);
 double getSystemLoad();
 void waitForIdle(int pollInterval = IDLE_POLL_INTERVAL);

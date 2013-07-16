@@ -356,7 +356,6 @@ void ConversationModelTest::sorting()
 
     QVERIFY(conv.rowCount() >= 5 );
 
-    qDebug() << conv.event(conv.index(0, 0)).endTime() << now << future;
     QCOMPARE(conv.event(conv.index(0, 0)).freeText(), QLatin1String("V"));
     QCOMPARE(conv.event(conv.index(1, 0)).freeText(), QLatin1String("IV"));
     QCOMPARE(conv.event(conv.index(2, 0)).freeText(), QLatin1String("III"));
