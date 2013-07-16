@@ -1054,6 +1054,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             int numEvents;
             in >> numEvents;
             bool ok = true;
+            groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
                 qWarning() << "Error adding group ( local"
                            << group.localUid() << ", remote" << group.remoteUids() << ")";
@@ -1070,6 +1071,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             }
 
             if (ok) {
+                eventCatcher.reset();
                 if (!model.addEvents(events)) {
                     qWarning() << "Error adding events for group" << group.id();
                     continue;
@@ -1183,6 +1185,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         group.setRemoteUids(QStringList() << to);
         group.setChatType(Group::ChatTypeP2P);
 
+        groupCatcher.reset();
         if (!groupModel.addGroup(group)) {
             qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
             ok = false;
@@ -1234,6 +1237,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             events.append(event);
         }
 
+        eventCatcher.reset();
         if (!events.isEmpty() && !model.addEvents(events)) {
             qWarning() << "Error adding messages for conversation" << groupCount;
             ok = false;
