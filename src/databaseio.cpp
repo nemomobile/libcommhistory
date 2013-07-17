@@ -216,7 +216,7 @@ public:
                     fields.append(QueryHelper::Field("localUid", group.localUid()));
                     break;
                 case Group::RemoteUids:
-                    fields.append(QueryHelper::Field("remoteUids", group.remoteUids().join('\n')));
+                    fields.append(QueryHelper::Field("remoteUids", group.remoteUids().join(QString(QChar('\n')))));
                     break;
                 case Group::Type:
                     fields.append(QueryHelper::Field("type", group.chatType()));
