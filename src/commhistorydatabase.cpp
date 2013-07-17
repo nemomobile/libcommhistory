@@ -90,7 +90,12 @@ static const char *db_schema[] = {
     "  mmsId INTEGER, "
     "  isAction INTEGER, "
     "  FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE "
-    ")"
+    ")",
+
+    "CREATE INDEX events_remoteUid ON Events (remoteUid)",
+    "CREATE INDEX events_type ON Events (type)",
+    "CREATE INDEX events_groupId ON Events (groupId)",
+    "CREATE INDEX events_messageToken ON Events (messageToken)"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 

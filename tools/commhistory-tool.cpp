@@ -903,9 +903,8 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     }
  
     if (!hasAnyOption || options.contains("-reset")) {
-        // Note that reset does not emit signals, unlike -groups and -calls.
-        // Other clients will need to be restarted to refresh their view of the events db.
         DatabaseIO::instance()->deleteAllEvents(Event::UnknownType);
+        qWarning() << "Other clients must be restarted to refresh their view of the events database";
     }
 
     return 0;

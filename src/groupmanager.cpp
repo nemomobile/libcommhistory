@@ -103,7 +103,7 @@ GroupManagerPrivate::~GroupManagerPrivate()
 {
 }
 
-bool GroupManagerPrivate::commitTransaction(QList<int> groupIds)
+bool GroupManagerPrivate::commitTransaction(const QList<int> &groupIds)
 {
     if (!database()->commit()) {
         emit q_ptr->groupsCommitted(groupIds, false);

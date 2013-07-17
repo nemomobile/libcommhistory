@@ -21,7 +21,7 @@
 ###############################################################################
 
 # -----------------------------------------------------------------------------
-# libcommhistory/src/shared.pro
+# libcommhistory/src/src.pro
 # -----------------------------------------------------------------------------
 !include( ../common-project-config.pri ) : \
     error( "Unable to include common-project-config.pri" )

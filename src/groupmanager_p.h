@@ -56,7 +56,7 @@ public:
 
     bool canFetchMore() const;
 
-    bool commitTransaction(QList<int> groupIds);
+    bool commitTransaction(const QList<int> &groupIds);
 
     DatabaseIO* database();
     void startContactListening();

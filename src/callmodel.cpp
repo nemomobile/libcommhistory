@@ -930,6 +930,7 @@ bool CallModel::deleteAll()
     }
 
     d->slotAllCallsDeleted(-1);
+    emit d->eventsCommitted(QList<Event>(), true);
     return true;
 }
 
@@ -944,6 +945,7 @@ bool CallModel::markAllRead()
         return false;
     }
 
+    emit d->eventsCommitted(QList<Event>(), true);
     return true;
 }
 
@@ -1032,6 +1034,7 @@ bool CallModel::deleteEvent( int id )
             d->deleteFromModel( id );
             // signal delete in case someone else needs to know it
             emit d->eventDeleted( id );
+            emit d->eventsCommitted(deletedEvents, true);
 
             return true;
         }

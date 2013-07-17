@@ -630,12 +630,7 @@ static const char *baseGroupQuery =
     "\n COUNT(Events.id), "
     "\n COUNT(NULLIF(Events.isRead = 0, 0)), "
     "\n COUNT(NULLIF(Events.direction = 2, 0)), "
-    "\n ( "
-    "\n   SELECT id FROM Events "
-    "\n   WHERE groupId = Groups.id "
-    "\n   ORDER BY startTime DESC, id DESC "
-    "\n   LIMIT 1 "
-    "\n ) AS lastEventId, "
+    "\n LastEvent.id, "
     "\n LastEvent.freeText, "
     "\n LastEvent.vCardFileName, "
     "\n LastEvent.vCardLabel, "
@@ -655,7 +650,12 @@ static const char *baseGroupQuery =
     "\n   type, "
     "\n   status "
     "\n  FROM Events "
-    "\n ) AS LastEvent ON (LastEvent.id = lastEventId) ";
+    "\n ) AS LastEvent ON (LastEvent.id = ( "
+    "\n  SELECT id FROM Events "
+    "\n  WHERE groupId = Groups.id "
+    "\n  ORDER BY startTime DESC, id DESC "
+    "\n  LIMIT 1 "
+    "\n ) ) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)
 {
@@ -857,6 +857,23 @@ bool DatabaseIO::deleteAllEvents(Event::EventType eventType)
         qWarning() << query.lastQuery();
         return false;
     }
+
+    return d->deleteEmptyGroups();
+}
+
+bool DatabaseIOPrivate::deleteEmptyGroups()
+{
+    static const char *q = "DELETE FROM Groups WHERE (SELECT COUNT(id) FROM Events WHERE groupId=Groups.id) = 0";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, connection());
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    if (query.numRowsAffected() > 0)
+        qDebug() << Q_FUNC_INFO << "Deleted" << query.numRowsAffected() << "empty groups";
 
     return true;
 }

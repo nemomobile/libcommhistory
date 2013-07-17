@@ -128,24 +128,24 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     QString q = DatabaseIOPrivate::eventQueryBase();
     q += "WHERE ";
 
-    if (groupId > -1)
-        q += QString::fromLatin1("groupId = %1 AND ").arg(groupId);
+    if (groupId > -1) { 
+        q += QString::fromLatin1("groupId = %1 ").arg(groupId);
+
+        if (!token.isEmpty() || !mmsId.isEmpty())
+            q += "AND ";
+    }
 
     if (!token.isEmpty()) {
         q += "( messageToken = :messageToken ";
         if (!mmsId.isEmpty())
             q += " OR ";
     }
-    if (!mmsId.isEmpty()) {
-        q += QString::fromLatin1("( mmsId = :mmsId AND direction = %1 ) ").arg(Event::Outbound);
-        if (token.isEmpty())
-            q += "AND ";
-    }
-    if (!token.isEmpty())
-        q += " ) AND ";
 
-    // Tailing AND
-    q += "1";
+    if (!mmsId.isEmpty())
+        q += QString::fromLatin1("( mmsId = :mmsId AND direction = %1 ) ").arg(Event::Outbound);
+
+    if (!token.isEmpty())
+        q += " ) ";
 
     if (!query.prepare(q)) {
         qWarning() << "Failed to execute query";

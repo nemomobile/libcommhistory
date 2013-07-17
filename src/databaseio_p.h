@@ -71,6 +71,8 @@ public:
     MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
     bool isLastMmsEvent(const QString& messageToken);
 
+    bool deleteEmptyGroups();
+
     QSqlQuery createQuery();
     QSqlDatabase& connection();
 
