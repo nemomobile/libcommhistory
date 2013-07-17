@@ -442,7 +442,7 @@ bool GroupObject::deleteGroup()
         return false;
     }
 
-    return d->manager->deleteGroups(QList<int>() << id(), true);
+    return d->manager->deleteGroups(QList<int>() << id());
 }
 
 QString GroupObject::toString() const

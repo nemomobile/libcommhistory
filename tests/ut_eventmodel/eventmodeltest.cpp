@@ -22,11 +22,6 @@
 
 #include <QtTest/QtTest>
 
-#include <QSparqlConnection>
-#include <QSparqlResult>
-#include <QSparqlQuery>
-#include <QSparqlError>
-
 #include <time.h>
 #include "eventmodeltest.h"
 #include "eventmodel.h"
@@ -35,13 +30,12 @@
 #include "adaptor.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
+#include "databaseio.h"
 
 #include "modelwatcher.h"
 
 Group group1, group2;
 Event im, sms, call;
-QEventLoop loop;
 
 int groupUpdated = 0;
 int groupDeleted = 0;
@@ -72,8 +66,6 @@ void EventModelTest::initTestCase()
     QVERIFY(QDBusConnection::sessionBus().registerObject(
                 "/EventModelTest", this));
 
-    watcher.setLoop(&loop);
-
     QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", "groupsUpdated",
         this, SLOT(groupsUpdatedSlot(const QList<int> &)));
@@ -99,12 +91,10 @@ void EventModelTest::testMessageToken()
     sms.setFreeText("smstest");
     sms.setMessageToken("1234567890");
     QVERIFY(model.addEvent(sms));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(sms.id() != -1);
     Event event;
-    QVERIFY(model.trackerIO().getEventByMessageToken(sms.messageToken(), event));
+    QVERIFY(model.databaseIO().getEventByMessageToken(sms.messageToken(), event));
     QVERIFY(compareEvents(event, sms));
 }
 
@@ -130,25 +120,19 @@ void EventModelTest::testAddEvent()
     im.setRemoteUid("td@localhost");
     im.setFreeText("imtest");
     QVERIFY(model.addEvent(im));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(im.id() != -1);
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], im));
+    Event event;
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(event, im));
 
     im.setIsAction(true);
     im.setId(-1);
     QVERIFY(model.addEvent(im));
-    watcher.waitForSignals();
-    Event event;
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(watcher.waitForAdded());
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(event, im));
     QCOMPARE(event.isAction(), im.isAction());
-
-
-    // TODO: sync with tracker?
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
-    QVERIFY(compareEvents(event, im));
 
     sms.setGroupId(group1.id());
     sms.setType(Event::SMSEvent);
@@ -159,13 +143,10 @@ void EventModelTest::testAddEvent()
     sms.setRemoteUid("123456");
     sms.setFreeText("smstest awefawef\nawefawefaw fawefawef \tawefawefawef awefawefawef awefawef");
     QVERIFY(model.addEvent(sms));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(sms.id() != -1);
-    QCOMPARE(watcher.addedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], sms));
 
-    QVERIFY(model.trackerIO().getEvent(sms.id(), event));
+    QVERIFY(model.databaseIO().getEvent(sms.id(), event));
     QVERIFY(compareEvents(event, sms));
 
     call.setType(Event::CallEvent);
@@ -176,13 +157,10 @@ void EventModelTest::testAddEvent()
     call.setRemoteUid("td@localhost");
     call.setIsRead(true);
     QVERIFY(model.addEvent(call));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(call.id() != -1);
-    QCOMPARE(watcher.addedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], call));
 
-    QVERIFY(model.trackerIO().getEvent(call.id(), event));
+    QVERIFY(model.databaseIO().getEvent(call.id(), event));
     QVERIFY(compareEvents(event, call));
 
     // test setting non-existent group id
@@ -232,11 +210,13 @@ void EventModelTest::testAddEvents()
 
     events << e1 << e2;
     QVERIFY(model.addEvents(events));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.addedCount(), 2);
-    QCOMPARE(watcher.committedCount(), 2);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], e1));
-    QVERIFY(compareEvents(watcher.lastAdded()[1], e2));
+    QVERIFY(watcher.waitForAdded(events.size()));
+
+    Event event;
+    QVERIFY(model.databaseIO().getEvent(events[0].id(), event));
+    QVERIFY(compareEvents(event, events[0]));
+    QVERIFY(model.databaseIO().getEvent(events[1].id(), event));
+    QVERIFY(compareEvents(event, events[1]));
 
     e3.setGroupId(group1.id());
     e3.setType(Event::IMEvent);
@@ -250,10 +230,7 @@ void EventModelTest::testAddEvents()
     events.clear();
     events << e3;
     QVERIFY(model.addEvents(events,true)); // Add to model only, not into tracker.
-    watcher.waitForSignals(-1); // -1 -> Do not wait for committed signal because we do not store to tracker.
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 0);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], e3));
+    QVERIFY(watcher.waitForAdded(1, 0)); // 0 -> Do not wait for committed signal because we do not store
 }
 
 void EventModelTest::testModifyEvent()
@@ -270,15 +247,11 @@ void EventModelTest::testModifyEvent()
     im.setRemoteUid("td@localhost");
     im.setFreeText("imtest");
     QVERIFY(model.addEvent(im));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(im.id() != -1);
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], im));
 
     Event event;
     QVERIFY(!model.modifyEvent(event));
-    QCOMPARE(watcher.updatedCount(), 0);
 
     im.resetModifiedProperties();
     im.setFreeText("imtest \"q\" modified\t tabs");
@@ -287,24 +260,18 @@ void EventModelTest::testModifyEvent()
     im.setIsRead(false);
     // should we actually test more properties?
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.updatedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(im, event));
 
     // test mark read case
     im.resetModifiedProperties();
     im.setIsRead(true);
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(im, event));
 
     // test derlivery report case
@@ -314,36 +281,19 @@ void EventModelTest::testModifyEvent()
     im.setStartTime(QDateTime::currentDateTime());
 
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(im, event));
 
     im.setStatus(CommHistory::Event::DeliveredStatus);
     im.setEndTime(QDateTime::currentDateTime());
 
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(im.id(), event));
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
     QVERIFY(compareEvents(im, event));
-
-    int imId = im.id();
-    im.setId(imId + 999);
-    qWarning() << "****** Expect tracker warning ******";
-    QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QVERIFY(!watcher.lastSuccess());
-    QCOMPARE(watcher.updatedCount(), 0);
-    QCOMPARE(watcher.committedCount(), 0);
-    //
-    im.setId(imId);
 
     // headers
     QHash<QString, QString> headers;
@@ -352,18 +302,16 @@ void EventModelTest::testModifyEvent()
     headers.insert("x-mms-to", "foo@bar");
     im.setHeaders(headers);
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(event, im));
 
     im.resetModifiedProperties();
     im.setToList(QStringList() << "to1" << "to2");
     QVERIFY(model.modifyEvent(im));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], im));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(im.id(), event));
+    QVERIFY(compareEvents(event, im));
 
     // call properties
     call.resetModifiedProperties();
@@ -372,13 +320,8 @@ void EventModelTest::testModifyEvent()
     call.setIsVideoCall(true);
 
     QVERIFY(model.modifyEvent(call));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastUpdated()[0], call));
-
-    QVERIFY(model.trackerIO().getEvent(call.id(), event));
-
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(call.id(), event));
     QVERIFY(compareEvents(call, event));
 }
 
@@ -399,32 +342,26 @@ void EventModelTest::testDeleteEvent()
     event.setRemoteUid("td@localhost");
     event.setFreeText("deletetest");
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     QVERIFY(model.deleteEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event.id());
-    QVERIFY(!model.trackerIO().getEvent(event.id(), event));
+    QVERIFY(watcher.waitForDeleted());
+    QVERIFY(!model.databaseIO().getEvent(event.id(), event));
 
     event.setType(Event::SMSEvent);
     event.setFreeText("deletetest sms");
     event.setRemoteUid("555123456");
     event.setGroupId(group2.id()); //group1 is gone, cause last event in it gone
+    event.setDirection(Event::Inbound);
     event.setId(-1);
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
-    QVERIFY(model.deleteEvent(event));
 
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event.id());
-    QVERIFY(!model.trackerIO().getEvent(event.id(), event));
+    QVERIFY(model.deleteEvent(event));
+    QVERIFY(watcher.waitForDeleted());
+    QVERIFY(!model.databaseIO().getEvent(event.id(), event));
 }
 
 void EventModelTest::testDeleteEventVCard_data()
@@ -472,7 +409,7 @@ void EventModelTest::testDeleteEventVCard()
     event.setFromVCard(VCARD_FILE_1, VCARD_LABEL_1);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     int event1Id = event.id();
@@ -482,11 +419,12 @@ void EventModelTest::testDeleteEventVCard()
     event.setGroupId(groupId2);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     int event2Id = event.id();
 
+#if 0
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QSparqlQuery fileNameQuery(QLatin1String("SELECT ?f {?f a nfo:FileDataObject; nfo:fileName ?:fileName}"));
     fileNameQuery.bindValue("fileName", VCARD_FILE_1);
@@ -502,6 +440,7 @@ void EventModelTest::testDeleteEventVCard()
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
 
     RUN_QUERY(fileNameQuery, 1);
+#endif
 
     GroupModel groupModel;
     QSignalSpy groupsCommitted(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
@@ -513,17 +452,16 @@ void EventModelTest::testDeleteEventVCard()
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event1Id));
-        watcher.waitForSignals();
-        QCOMPARE(watcher.deletedCount(), 1);
-        QCOMPARE(watcher.committedCount(), 1);
-        QCOMPARE(watcher.lastDeletedId(), event1Id);
+        QVERIFY(watcher.waitForDeleted());
     }
 
+#if 0
     fileNameQuery.bindValue("fileName", VCARD_FILE_1);
     RUN_QUERY(fileNameQuery, 0);
 
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
     RUN_QUERY(fileNameQuery, 1);
+#endif
 
     if (deleteGroups) {
         groupsCommitted.clear();
@@ -533,16 +471,15 @@ void EventModelTest::testDeleteEventVCard()
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event2Id));
-        watcher.waitForSignals();
-        QCOMPARE(watcher.deletedCount(), 1);
-        QCOMPARE(watcher.committedCount(), 1);
-        QCOMPARE(watcher.lastDeletedId(), event2Id);
+        QVERIFY(watcher.waitForDeleted());
     }
 
+#if 0
     fileNameQuery.bindValue("fileName", VCARD_FILE_2);
     RUN_QUERY(fileNameQuery, 0);
 
     #undef RUN_QUERY
+#endif
 }
 
 void EventModelTest::testDeleteEventMmsParts_data()
@@ -602,7 +539,7 @@ void EventModelTest::testDeleteEventMmsParts()
     event.setToList(toList1);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     int event1Id = event.id();
@@ -627,11 +564,12 @@ void EventModelTest::testDeleteEventMmsParts()
     event.setMessageToken("mms2token");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     int event2Id = event.id();
 
+#if 0
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
 
     #define RUN_QUERY(query, resultSize) {\
@@ -672,6 +610,7 @@ void EventModelTest::testDeleteEventMmsParts()
 
     CHECK_CONTENT(part1, 1);
     CHECK_CONTENT(part3, 1);
+#endif
 
     GroupModel groupModel;
     QSignalSpy groupsCommitted(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
@@ -683,12 +622,10 @@ void EventModelTest::testDeleteEventMmsParts()
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event1Id));
-        watcher.waitForSignals();
-        QCOMPARE(watcher.deletedCount(), 1);
-        QCOMPARE(watcher.committedCount(), 1);
-        QCOMPARE(watcher.lastDeletedId(), event1Id);
+        QVERIFY(watcher.waitForDeleted());
     }
 
+#if 0
     headerQuery.bindValue("pattern", toList1.first());
     RUN_QUERY(headerQuery, 0);
 
@@ -702,6 +639,7 @@ void EventModelTest::testDeleteEventMmsParts()
 
     CHECK_CONTENT(part1, 0);
     CHECK_CONTENT(part3, 1);
+#endif
 
     if (deleteGroups) {
         groupsCommitted.clear();
@@ -711,12 +649,10 @@ void EventModelTest::testDeleteEventMmsParts()
         QVERIFY(groupsCommitted.first().at(1).toBool());
     } else {
         QVERIFY(model.deleteEvent(event2Id));
-        watcher.waitForSignals();
-        QCOMPARE(watcher.deletedCount(), 1);
-        QCOMPARE(watcher.committedCount(), 1);
-        QCOMPARE(watcher.lastDeletedId(), event2Id);
+        QVERIFY(watcher.waitForDeleted());
     }
 
+#if 0
     headerQuery.bindValue("pattern", toList2.first());
     RUN_QUERY(headerQuery, 0);
 
@@ -728,6 +664,7 @@ void EventModelTest::testDeleteEventMmsParts()
     #undef RUN_QUERY
     #undef CHECK_PART
     #undef CHECK_CONTENT
+#endif
 }
 
 
@@ -743,7 +680,7 @@ void EventModelTest::testDeleteEventGroupUpdated()
     const QString REMOTE_ID("12345");
     addTestGroup(group, LOCAL_ID, REMOTE_ID);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
     int total = group.totalMessages();
     QCOMPARE(total, 0);
 
@@ -760,11 +697,10 @@ void EventModelTest::testDeleteEventGroupUpdated()
     event1.setRemoteUid(REMOTE_ID);
     event1.setFreeText("deletetest1");
     QVERIFY(model.addEvent(event1));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event1.id() != -1);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
     total = group.totalMessages();
     QCOMPARE(total, 1);
 
@@ -772,56 +708,45 @@ void EventModelTest::testDeleteEventGroupUpdated()
     event2.setId(-1);
     event2.setFreeText("deletetest2");
     QVERIFY(model.addEvent(event2));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event2.id() != -1);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
     total = group.totalMessages();
     QCOMPARE(total, 2);
 
     QVERIFY(model.deleteEvent(event1.id()));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event1.id());
-    QTime timer;
-    while (timer.elapsed() < 2000 && groupUpdated == -1)
-        QCoreApplication::processEvents();
-    QCOMPARE(groupUpdated, group.id());
+    QVERIFY(watcher.waitForDeleted());
+    QTRY_COMPARE(groupUpdated, group.id());
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
 
     QVERIFY(model.deleteEvent(event2.id()));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event2.id());
+    QVERIFY(watcher.waitForDeleted());
     QCOMPARE(groupDeleted, group.id());
 
-    QVERIFY(!groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(!groupModel.databaseIO().getGroup(group.id(), group));
 
     addTestGroup(group, LOCAL_ID, REMOTE_ID);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
     total = group.totalMessages();
     QCOMPARE(total, 0);
 
     event1.setId(-1);
     event1.setGroupId(group.id());
     QVERIFY(model.addEvent(event1));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event1.id() != -1);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
     total = group.totalMessages();
     QCOMPARE(total, 1);
 
     QVERIFY(model.deleteEvent(event1));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(), event1.id());
+    QVERIFY(watcher.waitForDeleted());
 
-    QVERIFY(!groupModel.trackerIO().getGroup(group.id(), group));
+    QVERIFY(!groupModel.databaseIO().getGroup(group.id(), group));
 }
 
 void EventModelTest::testVCard()
@@ -850,15 +775,14 @@ void EventModelTest::testVCard()
     // add event with vcard
     QVERIFY( model.addEvent( event ) );
     // test is event was added successfully
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY( watcher.waitForAdded() );
     QVERIFY( event.id() != -1 );
 
     // fetch event to check vcard data
     {
         Event test_event;
         QVERIFY( !test_event.isValid() );
-        QVERIFY( model.trackerIO().getEvent( event.id(), test_event ) );
+        QVERIFY( model.databaseIO().getEvent( event.id(), test_event ) );
 
         QVERIFY( test_event.isValid() );
         QVERIFY( compareEvents( event, test_event ) );
@@ -867,24 +791,21 @@ void EventModelTest::testVCard()
     // modify data
     event.setFromVCard( vcardFilename2 );
     QVERIFY( model.modifyEvent( event ) );
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY( watcher.waitForUpdated() );
 
     // fetch event to check vcard data
     {
         Event test_event;
         QVERIFY( !test_event.isValid() );
-        QVERIFY( model.trackerIO().getEvent( event.id(), test_event ) );
+        QVERIFY( model.databaseIO().getEvent( event.id(), test_event ) );
 
         QVERIFY( test_event.isValid() );
         QVERIFY( compareEvents( event, test_event ) );
     }
 
     QVERIFY( model.deleteEvent( event ) );
-
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(!model.trackerIO().getEvent(event.id(), event));
+    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY(!model.databaseIO().getEvent(event.id(), event));
 }
 
 void EventModelTest::testDeliveryStatus()
@@ -903,54 +824,47 @@ void EventModelTest::testDeliveryStatus()
     event.setFreeText("delivery status test");
     event.setStatus(Event::SendingStatus);
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::SendingStatus);
 
     event.setStatus(Event::SentStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::SentStatus);
 
     event.setStatus(Event::DeliveredStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::DeliveredStatus);
 
     event.setStatus(Event::TemporarilyFailedStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::TemporarilyFailedStatus);
 
     event.setStatus(Event::TemporarilyFailedOfflineStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::TemporarilyFailedOfflineStatus);
 
     event.setStatus(Event::PermanentlyFailedStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::PermanentlyFailedStatus);
 
     event.setStatus(Event::SendingStatus);
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(watcher.waitForUpdated());
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.status() == Event::SendingStatus);
 }
 
@@ -971,22 +885,20 @@ void EventModelTest::testReportDelivery()
     event.setReportDelivery(true);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.reportDelivery());
 
     event.setReportDelivery(false);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(!e.reportDelivery());
 }
 
@@ -1034,12 +946,11 @@ void EventModelTest::testMessageParts()
     event.setMessageParts(parts);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
@@ -1051,10 +962,9 @@ void EventModelTest::testMessageParts()
     event.setMessageParts(parts);
 
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
@@ -1064,15 +974,15 @@ void EventModelTest::testMessageParts()
     parts.clear();
     parts << part1 << part5;
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
         QVERIFY(parts.indexOf(part) >= 0);
 
+#if 0
     // delete leftovers
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QSparqlQuery deletePartsQuery(QLatin1String("DELETE {?a a rdfs:Resource} WHERE {"
@@ -1083,6 +993,7 @@ void EventModelTest::testMessageParts()
     QSparqlResult* result = conn->exec(deletePartsQuery);
     result->waitForFinished();
     QVERIFY(!result->hasError());
+#endif
 }
 
 void EventModelTest::testDeleteMessageParts()
@@ -1107,12 +1018,11 @@ void EventModelTest::testDeleteMessageParts()
     event1.setMessageParts(QList<MessagePart>() << part1);
 
     QVERIFY(model.addEvent(event1));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event1.id() != -1);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event1.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event1.id(), e));
     QVERIFY(compareEvents(event1, e));
     QCOMPARE(e.messageParts().size(), 1);
     QCOMPARE(e.messageParts()[0].plainTextContent(), part1.plainTextContent());
@@ -1136,11 +1046,10 @@ void EventModelTest::testDeleteMessageParts()
     event2.setMessageParts(QList<MessagePart>() << part2);
 
     QVERIFY(model.addEvent(event2));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event2.id() != -1);
 
-    QVERIFY(model.trackerIO().getEvent(event2.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event2.id(), e));
     QVERIFY(compareEvents(event2, e));
     QCOMPARE(e.messageParts().size(), 1);
     QCOMPARE(e.messageParts()[0].plainTextContent(), part2.plainTextContent());
@@ -1149,14 +1058,13 @@ void EventModelTest::testDeleteMessageParts()
     event1.setMessageParts(QList<MessagePart>());
 
     QVERIFY(model.modifyEvent(event1));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.trackerIO().getEvent(event1.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event1.id(), e));
     QVERIFY(compareEvents(event1, e));
     QCOMPARE(e.messageParts().size(), 0);
 
-    QVERIFY(model.trackerIO().getEvent(event2.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event2.id(), e));
     QVERIFY(compareEvents(event2, e));
     QCOMPARE(e.messageParts().size(), 1);
 }
@@ -1232,8 +1140,7 @@ void EventModelTest::testMessagePartsQuery()
     event.setMessageParts(parts1);
     event.setMessageToken("MSGTOKEN1");
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     event.setId(-1);
@@ -1257,8 +1164,7 @@ void EventModelTest::testMessagePartsQuery()
     event.setMessageToken("MSGTOKEN2");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     event.setId(-1);
@@ -1278,13 +1184,12 @@ void EventModelTest::testMessagePartsQuery()
     event.setMessageToken("MSGTOKEN3");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     QDir::setCurrent(prevDir);
 
-    ModelWatcher convWatcher(&loop);
+    ModelWatcher convWatcher;
     ConversationModel convModel;
     convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
@@ -1328,10 +1233,8 @@ void EventModelTest::testMessagePartsQuery()
     // check mms deleter
     foreach (int eventId, eventIds) {
         qDebug() << "DELETE" << eventId;
-        convModel.deleteEvent(eventId);
-        convWatcher.waitForSignals();
-        QCOMPARE(convWatcher.committedCount(), 1);
-        QCOMPARE(convWatcher.deletedCount(), 1);
+        QVERIFY(convModel.deleteEvent(eventId));
+        QVERIFY(convWatcher.waitForDeleted());
     }
 
     qDebug() << "wait thread";
@@ -1377,12 +1280,11 @@ void EventModelTest::testCcBcc()
     event.setToList(toList);
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
@@ -1402,11 +1304,10 @@ void EventModelTest::testCcBcc()
     event.setToList(toList);
 
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
     QVERIFY(event.id() != -1);
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.ccList().toSet(), ccList.toSet());
     QCOMPARE(e.bccList().toSet(), bccList.toSet());
@@ -1419,11 +1320,10 @@ void EventModelTest::testCcBcc()
     event.setToList(ccList);
 
     QVERIFY(model.modifyEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
     QVERIFY(event.id() != -1);
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(e.ccList().isEmpty());
     QVERIFY(e.bccList().isEmpty());
     QVERIFY(e.toList().isEmpty());
@@ -1548,22 +1448,15 @@ void EventModelTest::testMoveEvent()
     event.setFreeText("moveEvent 1");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], event));
+    QVERIFY(watcher.waitForAdded());
 
     QVERIFY(model.moveEvent(event,group2.id()));
-
-    watcher.waitForSignals();
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(),event.id());
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForCommitted());
+    QCOMPARE(event.groupId(), group2.id());
 
     Event eventFromTracker;
-    QVERIFY(model.trackerIO().getEvent(event.id(), eventFromTracker));
-    QCOMPARE(eventFromTracker.groupId(),group2.id());
+    QVERIFY(model.databaseIO().getEvent(event.id(), eventFromTracker));
+    QCOMPARE(eventFromTracker.groupId(), group2.id());
 
     // Try with invalid event:
     Event invalidEvent;
@@ -1576,12 +1469,8 @@ void EventModelTest::testMoveEvent()
     // Then the empty group should be deleted:
     QVERIFY(model.moveEvent(eventFromTracker,group1.id()));
 
-    watcher.waitForSignals(1, 1, 1);
-    QCOMPARE(watcher.deletedCount(), 1);
-    QCOMPARE(watcher.lastDeletedId(),eventFromTracker.id());
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QCOMPARE(groupDeleted,group2.id());
+    QVERIFY(watcher.waitForCommitted());
+    QTRY_COMPARE(groupDeleted, group2.id());
 }
 
 void EventModelTest::testStreaming_data()
@@ -1595,7 +1484,12 @@ void EventModelTest::testStreaming_data()
 
 void EventModelTest::testStreaming()
 {
-    //::tracker()->setVerbosity(5);
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
+#else
+    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
+#endif
+
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
@@ -1604,7 +1498,7 @@ void EventModelTest::testStreaming()
 
     QThread modelThread;
 
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     int total = group.totalMessages();
 
     qDebug() << "total msgs: " << total;
@@ -1698,8 +1592,6 @@ void EventModelTest::testModifyInGroup()
     EventModel model;
     watcher.setModel(&model);
 
-    // workaround - added DESC(tracker:id) in qsparql branch
-    sleep(1);
     Event event;
     event.setType(Event::SMSEvent);
     event.setGroupId(group1.id());
@@ -1710,16 +1602,13 @@ void EventModelTest::testModifyInGroup()
     event.setFreeText("imtest");
     event.setDirection(Event::Outbound);
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForAdded());
 
     Group group;
     GroupModel groupModel;
     groupModel.enableContactChanges(false);
 
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), event.id());
     QCOMPARE(group.lastMessageText(), event.freeText());
     QCOMPARE(group.lastEventType(), event.type());
@@ -1728,60 +1617,50 @@ void EventModelTest::testModifyInGroup()
     // change status
     event.setStatus(Event::SentStatus);
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForUpdated());
 
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), event.id());
     QCOMPARE(group.lastMessageText(), event.freeText());
     QCOMPARE(group.lastEventType(), event.type());
     QCOMPARE(group.lastEventStatus(), Event::SentStatus);
 
     Event e;
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
 
 
     // change text
     event.setFreeText("modified text");
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForUpdated());
 
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), event.id());
     QVERIFY(group.lastMessageText() == "modified text");
     QCOMPARE(group.lastEventType(), event.type());
     QCOMPARE(group.lastEventStatus(), Event::SentStatus);
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
 
     // change vcard
     event.setFromVCard("vcard.txt", "Oki Doki");
 
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << event, group));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForUpdated());
 
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), event.id());
     QVERIFY(group.lastVCardFileName() == "vcard.txt");
     QVERIFY(group.lastVCardLabel() == "Oki Doki");
 
-    QVERIFY(model.trackerIO().getEvent(event.id(), e));
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
 
     // test unread count updating
     int unread = group.unreadMessages();
 
-    sleep(1);
     Event newEvent;
     newEvent.setGroupId(group1.id());
     newEvent.setType(Event::IMEvent);
@@ -1793,12 +1672,9 @@ void EventModelTest::testModifyInGroup()
     newEvent.setFreeText("addEvents 2");
 
     QVERIFY(model.addEvent(newEvent));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
 
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), newEvent.id());
     QCOMPARE(group.unreadMessages(), unread + 1);
 
@@ -1806,12 +1682,9 @@ void EventModelTest::testModifyInGroup()
     newEvent.setIsRead(true);
 
     QVERIFY(model.modifyEventsInGroup(QList<Event>() << newEvent, group));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForUpdated());
 
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-
-    QVERIFY(groupModel.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), newEvent.id());
     QCOMPARE(group.unreadMessages(), unread);
 }
@@ -1842,11 +1715,11 @@ void EventModelTest::testContactMatching()
 
     int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
                  "text", false, false, QDateTime::currentDateTime(), remoteId);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(eventId != -1);
 
     Event event;
-    model.trackerIO().getEvent(eventId, event);
+    model.databaseIO().getEvent(eventId, event);
     QCOMPARE(event.contactId(), 0);
 
     QString noMatch = remoteId;
@@ -1856,12 +1729,12 @@ void EventModelTest::testContactMatching()
                    noMatch,
                    localId);
 
-    model.trackerIO().getEvent(eventId, event);
+    model.databaseIO().getEvent(eventId, event);
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
 
-    model.trackerIO().getEvent(eventId, event);
+    model.databaseIO().getEvent(eventId, event);
     QCOMPARE(event.contactId(), contactId);
     QCOMPARE(event.contactName(), QString("Really Bad"));
 
@@ -1888,7 +1761,7 @@ void EventModelTest::testAddNonDigitRemoteId()
 
     EventModel model;
     Group tg;
-    QVERIFY(model.trackerIO().getGroup(g.id(), tg));
+    QVERIFY(model.databaseIO().getGroup(g.id(), tg));
     QCOMPARE(tg.id(), g.id());
     QCOMPARE(tg.localUid(), tg.localUid());
     QCOMPARE(tg.remoteUids(), tg.remoteUids());
@@ -1905,13 +1778,10 @@ void EventModelTest::testAddNonDigitRemoteId()
     event.setFreeText("you have a new voicemail");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.addedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
-    QVERIFY(compareEvents(watcher.lastAdded()[0], event));
+    QVERIFY(watcher.waitForAdded());
 
     Event tevent;
-    QVERIFY(model.trackerIO().getEvent(event.id(), tevent));
+    QVERIFY(model.databaseIO().getEvent(event.id(), tevent));
     QVERIFY(compareEvents(event, tevent));
 }
 

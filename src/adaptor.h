@@ -26,10 +26,11 @@
 #include <QtDBus/QtDBus>
 #include "event.h"
 #include "group.h"
+#include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
-class Adaptor : public QDBusAbstractAdaptor
+class LIBCOMMHISTORY_EXPORT Adaptor : public QDBusAbstractAdaptor
 {
     Q_OBJECT
 

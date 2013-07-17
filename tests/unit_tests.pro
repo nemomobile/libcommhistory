@@ -27,13 +27,8 @@ SUBDIRS = ut_eventmodel \
           ut_callmodel \
           ut_conversationmodel \
           ut_groupmodel \
-          ut_outboxmodel \
-          ut_smsinboxmodel \
-          ut_syncmodel \
-          ut_unreadeventsmodel \
           ut_classzerosmsmodel \
-          ut_singleeventmodel \
-          ut_eventsquery
+          ut_singleeventmodel
 
 # make sure the destination path exists
 !system( mkdir -p $${OUT_PWD}/bin ) : \

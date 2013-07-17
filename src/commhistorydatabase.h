@@ -2,8 +2,8 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Copyright (C) 2013 Jolla Ltd.
+** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -20,50 +20,16 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_SMSINBOXMODEL_H
-#define COMMHISTORY_SMSINBOXMODEL_H
+#ifndef COMMHISTORYDATABASE_H
+#define COMMHISTORYDATABASE_H
 
-#include "eventmodel.h"
-#include "libcommhistoryexport.h"
+#include <QSqlDatabase>
 
-namespace CommHistory {
-
-class SMSInboxModelPrivate;
-
-/*!
- * \class SMSInboxModel
- * \deprecated Do not use this class.
- *
- * Model for accessing received SMS messages. Initialize with getEvents().
- */
-class LIBCOMMHISTORY_EXPORT SMSInboxModel: public EventModel
+class CommHistoryDatabase
 {
-    Q_OBJECT
-
 public:
-    /*!
-     * Model constructor.
-     *
-     * \param parent Parent object.
-     */
-    SMSInboxModel(QObject *parent = 0);
-
-    /*!
-     * Destructor.
-     */
-    ~SMSInboxModel();
-
-    /*!
-     * Reset model and fetch draft events.
-     *
-     * \return true if successful, otherwise false
-     */
-    bool getEvents();
-
-private:
-    Q_DECLARE_PRIVATE(SMSInboxModel);
+    static QSqlDatabase open(const QString &databaseName);
+    static QSqlQuery prepare(const char *statement, const QSqlDatabase &database);
 };
-
-}
 
 #endif

@@ -9,5 +9,5 @@ Version: 1.1.1
 Libs: -L${libdir} -lcommhistory-qt5
 Libs.private: -L/usr/lib
 Cflags:  -I${includedir}
-Requires: Qt5Core, Qt5Sparql, tracker-sparql-0.14
+Requires: Qt5Core
 
