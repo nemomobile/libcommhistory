@@ -1014,7 +1014,8 @@ bool CallModel::deleteEvent( int id )
         {
             EventTreeItem *item = d->eventRootItem->child( index.row() );
 
-            d->database()->transaction();
+            if (!d->database()->transaction())
+                return false;
 
             QList<Event> deletedEvents;
 
@@ -1029,7 +1030,9 @@ bool CallModel::deleteEvent( int id )
                 deletedEvents << item->child( i )->event();
             }
 
-            d->database()->commit();
+            if (!d->database()->commit())
+                return false;
+
             // delete event from model (not only from db)
             d->deleteFromModel( id );
             // signal delete in case someone else needs to know it

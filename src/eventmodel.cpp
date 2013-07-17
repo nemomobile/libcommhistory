@@ -483,7 +483,8 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
 
     if (!toModelOnly) {
         // Insert the events into the database
-        d->database()->transaction();
+        if (!d->database()->transaction())
+            return false;
 
         // Cannot be foreach, because addEvent modifies the events with their new ID
         for (int i = 0; i < events.size(); i++) {
@@ -493,10 +494,8 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
             }
         }
 
-        if (!d->database()->commit()) {
-            d->database()->rollback();
+        if (!d->database()->commit())
             return false;
-        }
     }
 
     foreach (Event event, events) {
@@ -525,9 +524,10 @@ bool EventModel::modifyEvents(QList<Event> &events)
 {
     Q_D(EventModel);
 
-    d->database()->transaction();
-    QList<int> modifiedGroups;
+    if (!d->database()->transaction())
+        return false;
 
+    QList<int> modifiedGroups;
     for (QList<Event>::Iterator it = events.begin(); it != events.end(); it++) {
         Event &event = *it;
         if (event.id() == -1) {
@@ -552,10 +552,8 @@ bool EventModel::modifyEvents(QList<Event> &events)
         }
     }
 
-    if (!d->database()->commit()) {
-        d->database()->rollback();
+    if (!d->database()->commit())
         return false;
-    }
 
     emit d->eventsUpdated(events);
     if (!modifiedGroups.isEmpty())
@@ -591,7 +589,8 @@ bool EventModel::deleteEvent(Event &event)
         return false;
     }
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
     if (!d->database()->deleteEvent(event, d->bgThread)) {
         d->database()->rollback();
@@ -648,7 +647,9 @@ bool EventModel::moveEvent(Event &event, int groupId)
     // DatabaseIO::moveEvent changes groupId
     int oldGroupId = event.groupId();
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
+
     if (!d->database()->moveEvent(event, groupId)) {
         d->database()->rollback();
         return false;
@@ -697,9 +698,9 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
     if (events.isEmpty())
         return true;
 
-    qDebug() << Q_FUNC_INFO;
+    if (!d->database()->transaction())
+        return false;
 
-    d->database()->transaction();
     for (QList<Event>::Iterator it = events.begin(); it != events.end(); it++) {
         Event &event = *it;
         if (event.id() == -1) {

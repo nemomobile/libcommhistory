@@ -878,12 +878,14 @@ bool DatabaseIOPrivate::deleteEmptyGroups()
     return true;
 }
 
-void DatabaseIO::transaction()
+bool DatabaseIO::transaction()
 {
-    if (!d->connection().transaction()) {
+    bool re = d->connection().transaction();
+    if (!re) {
         qWarning() << "Failed to start transaction";
         qWarning() << d->connection().lastError();
     }
+    return re;
 }
 
 bool DatabaseIO::commit()
@@ -892,6 +894,7 @@ bool DatabaseIO::commit()
     if (!re) {
         qWarning() << "Failed to commit transaction";
         qWarning() << d->connection().lastError();
+        rollback();
     }
     return re;
 }

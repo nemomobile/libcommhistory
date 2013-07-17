@@ -472,7 +472,9 @@ void GroupManagerPrivate::add(Group &group)
 
 bool GroupManager::addGroup(Group &group)
 {
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
+
     if (!d->database()->addGroup(group)) {
         d->database()->rollback();
         return false;
@@ -499,7 +501,8 @@ bool GroupManager::addGroups(QList<Group> &groups)
 
     QMutableListIterator<Group> i(groups);
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
     while (i.hasNext()) {
         Group &group = i.next();
@@ -534,7 +537,8 @@ bool GroupManager::modifyGroup(Group &group)
         return false;
     }
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
     if (group.lastModified() == QDateTime::fromTime_t(0)) {
          group.setLastModified(QDateTime::currentDateTime());
@@ -595,7 +599,8 @@ bool GroupManager::markAsReadGroup(int id)
 {
     qDebug() << Q_FUNC_INFO << id;
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
     if (!d->database()->markAsReadGroup(id)) {
         d->database()->rollback();
@@ -634,15 +639,16 @@ bool GroupManager::deleteGroups(const QList<int> &groupIds)
 {
     qDebug() << Q_FUNC_INFO << groupIds;
 
-    d->database()->transaction();
+    if (!d->database()->transaction())
+        return false;
+
     if (!d->database()->deleteGroups(groupIds, d->bgThread)) {
         d->database()->rollback();
         return false;
     }
 
-    if (!d->commitTransaction(groupIds)) {
+    if (!d->commitTransaction(groupIds))
         return false;
-    }
 
     emit d->emitter->groupsDeleted(groupIds);
     return true;

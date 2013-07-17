@@ -222,7 +222,7 @@ public:
     /*!
      * Initate a new database transaction.
      */
-    void transaction();
+    bool transaction();
 
     /*!
      * Commits the current transaction.

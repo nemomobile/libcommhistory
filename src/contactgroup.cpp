@@ -322,7 +322,8 @@ bool ContactGroup::markAsRead()
         return true;
 
     DatabaseIO *database = DatabaseIO::instance();
-    database->transaction();
+    if (!database->transaction())
+        return false;
 
     foreach (GroupObject *group, d->groups) {
         if (group->unreadMessages() && !database->markAsReadGroup(group->id())) {
@@ -331,7 +332,8 @@ bool ContactGroup::markAsRead()
         }
     }
 
-    database->commit();
+    if (!database->commit())
+        return false;
 
     QList<Group> updated;
     foreach (GroupObject *group, d->groups) {
@@ -358,17 +360,16 @@ bool ContactGroup::deleteGroups()
         return true;
 
     DatabaseIO *database = DatabaseIO::instance();
-    database->transaction();
+    if (!database->transaction())
+        return false;
 
     if (!database->deleteGroups(ids)) {
         database->rollback();
         return false;
     }
 
-    if (!database->commit()) {
-        qWarning() << Q_FUNC_INFO << "Query failed";
+    if (!database->commit())
         return false;
-    }
 
     emit UpdatesEmitter::instance()->groupsDeleted(ids);
     return true;
