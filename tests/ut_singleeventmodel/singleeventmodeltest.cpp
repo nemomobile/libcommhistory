@@ -6,7 +6,6 @@
 #include "adaptor.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
 
 #include "modelwatcher.h"
 
@@ -23,12 +22,10 @@ void SingleEventModelTest::initTestCase()
 
     qsrand(QDateTime::currentDateTime().toTime_t());
 
-    watcher.setLoop(&loop);
-
     addTestGroups(group1, group2);
 }
 
-void SingleEventModelTest::getEventByUri()
+void SingleEventModelTest::getEventById()
 {
     SingleEventModel model;
 
@@ -53,10 +50,10 @@ void SingleEventModelTest::getEventByUri()
 
     //TODO: add reading invalid id
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
 
     QVERIFY(event.id() != -1);
-    QVERIFY(model.getEventByUri(event.url()));
+    QVERIFY(model.getEventById(event.id()));
     QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
@@ -74,7 +71,6 @@ void SingleEventModelTest::getEventByTokens()
     p.remove(Event::IsMissedCall);
     model.setPropertyMask(p);
 
-
     watcher.setModel(&model);
 
     Event event;
@@ -89,7 +85,7 @@ void SingleEventModelTest::getEventByTokens()
     event.setMessageToken("messageTokenB1");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     Event mms(event);
@@ -97,7 +93,7 @@ void SingleEventModelTest::getEventByTokens()
     mms.setMmsId("mmsId");
 
     QVERIFY(model.addEvent(mms));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(mms.id() != -1);
 
     Event mms2(event);
@@ -106,7 +102,7 @@ void SingleEventModelTest::getEventByTokens()
     mms2.setGroupId(group2.id());
 
     QVERIFY(model.addEvent(mms2));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(mms2.id() != -1);
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", -1));
@@ -198,13 +194,12 @@ void SingleEventModelTest::contactMatching()
 
     watcher.setModel(&model);
 
-
     int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
                  "text", false, false, QDateTime::currentDateTime(), remoteId);
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(eventId != -1);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     Event event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -217,7 +212,7 @@ void SingleEventModelTest::contactMatching()
                    noMatch,
                    localId);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -225,7 +220,7 @@ void SingleEventModelTest::contactMatching()
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
 
-    QVERIFY(model.getEventByUri(Event::idToUrl(eventId)));
+    QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
     event = model.event(model.index(0, 0));
     QCOMPARE(event.id(), eventId);
@@ -258,7 +253,7 @@ void SingleEventModelTest::updateStatus()
     event.setMessageToken("messageTokenB");
 
     QVERIFY(model.addEvent(event));
-    watcher.waitForSignals();
+    QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
     CommHistory::Event::PropertySet props = CommHistory::Event::PropertySet()
@@ -270,7 +265,7 @@ void SingleEventModelTest::updateStatus()
                                                       << CommHistory::Event::ReportDelivery
                                                       << CommHistory::Event::MmsId;
     model.setPropertyMask(props);
-    QVERIFY(model.getEventByUri(event.url()));
+    QVERIFY(model.getEventById(event.id()));
     QVERIFY(watcher.waitForModelReady());
 
     QCOMPARE(model.rowCount(), 1);
@@ -279,15 +274,13 @@ void SingleEventModelTest::updateStatus()
 
     QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::Status));
     QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::MessageToken));
-    QVERIFY(!modelEvent.validProperties().contains(CommHistory::Event::FreeText));
-    QVERIFY(!modelEvent.validProperties().contains(CommHistory::Event::ContactId));
 
     QCOMPARE(event.status(), modelEvent.status());
     QCOMPARE(event.messageToken(), modelEvent.messageToken());
 
 
     // init observer model with the same event and all properties
-    QVERIFY(observer.getEventByUri(event.url()));
+    QVERIFY(observer.getEventById(event.id()));
     QVERIFY(watcherObserver.waitForModelReady());
 
     QCOMPARE(observer.rowCount(), 1);
@@ -299,9 +292,7 @@ void SingleEventModelTest::updateStatus()
     // modify event with new status only
     modelEvent.setStatus(Event::SentStatus);
     QVERIFY(model.modifyEvent(modelEvent));
-    watcher.waitForSignals();
-    QCOMPARE(watcher.updatedCount(), 1);
-    QCOMPARE(watcher.committedCount(), 1);
+    QVERIFY(watcher.waitForUpdated());
 
     //check observer model
     QTest::qWait(100);

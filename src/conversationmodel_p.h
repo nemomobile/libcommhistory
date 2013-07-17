@@ -28,6 +28,8 @@
 #include "group.h"
 #include <QSet>
 
+class QSqlQuery;
+
 namespace CommHistory
 {
 
@@ -43,7 +45,7 @@ public:
                       const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
     bool fillModel(int start, int end, QList<CommHistory::Event> events);
-    EventsQuery buildQuery() const;
+    QSqlQuery buildQuery() const;
     bool isModelReady() const;
 
 public Q_SLOTS:

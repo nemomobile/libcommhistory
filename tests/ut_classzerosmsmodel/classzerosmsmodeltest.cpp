@@ -66,7 +66,6 @@ void ClassZeroSMSModelTest::initTestCase()
     m_pModel = new ClassZeroSMSModel;
     qsrand(QDateTime::currentDateTime().toTime_t());
 
-    watcher.setLoop(&m_eventLoop);
     watcher.setModel(m_pModel);
 }
 
@@ -79,8 +78,7 @@ void ClassZeroSMSModelTest::addEvent()
         QVERIFY(m_pModel->addEvent(e,true));
         id = e.id();
         QVERIFY(id != -1);
-        watcher.waitForSignals(-1, 1);
-        QCOMPARE(watcher.addedCount(), 1);
+        QVERIFY(watcher.waitForAdded(1, 0));
     }
 }
 
@@ -99,14 +97,13 @@ void ClassZeroSMSModelTest::deleteEvents()
         Event event = m_pModel->event(m_pModel->index(0, 0));
         QVERIFY(event.id() != -1);
         m_pModel->deleteEvent(event.id());
-        watcher.waitForSignals(-1, 1);
+        QVERIFY(watcher.waitForDeleted(1));
     }
     QVERIFY( m_pModel->rowCount() == 0);
 }
 
 void ClassZeroSMSModelTest::cleanupTestCase()
 {
-    QProcess::execute("pkill messaging-ui");
     deleteAll();
 }
 

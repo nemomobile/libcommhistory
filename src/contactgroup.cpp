@@ -21,10 +21,9 @@
 ******************************************************************************/
 
 #include "contactgroup.h"
-#include "trackerio.h"
 #include "updatesemitter.h"
 #include "commonutils.h"
-#include "committingtransaction.h"
+#include "databaseio.h"
 
 namespace CommHistory {
 
@@ -322,17 +321,19 @@ bool ContactGroup::markAsRead()
     if (d->groups.isEmpty() || !unreadMessages())
         return true;
 
-    TrackerIO *tracker = TrackerIO::instance();
-    tracker->transaction();
+    DatabaseIO *database = DatabaseIO::instance();
+    if (!database->transaction())
+        return false;
 
     foreach (GroupObject *group, d->groups) {
-        if (group->unreadMessages() && !tracker->markAsReadGroup(group->id())) {
-            tracker->rollback();
+        if (group->unreadMessages() && !database->markAsReadGroup(group->id())) {
+            database->rollback();
             return false;
         }
     }
 
-    tracker->commit();
+    if (!database->commit())
+        return false;
 
     QList<Group> updated;
     foreach (GroupObject *group, d->groups) {
@@ -358,20 +359,20 @@ bool ContactGroup::deleteGroups()
     if (ids.isEmpty())
         return true;
 
-    TrackerIO *tracker = TrackerIO::instance();
-    tracker->transaction();
+    DatabaseIO *database = DatabaseIO::instance();
+    if (!database->transaction())
+        return false;
 
-    if (!tracker->deleteGroups(ids, true, 0)) {
-        tracker->rollback();
+    if (!database->deleteGroups(ids)) {
+        database->rollback();
         return false;
     }
 
-    CommittingTransaction *t = tracker->commit();
+    if (!database->commit())
+        return false;
 
-    if (t)
-        t->addSignal(false, UpdatesEmitter::instance().data(), "groupsDeleted", Q_ARG(QList<int>, ids));
-
-    return t != 0;
+    emit UpdatesEmitter::instance()->groupsDeleted(ids);
+    return true;
 }
 
 GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)

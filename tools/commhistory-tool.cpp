@@ -28,15 +28,10 @@
 #include "../src/groupmodel.h"
 #include "../src/conversationmodel.h"
 #include "../src/callmodel.h"
-#include "../src/draftmodel.h"
 #include "../src/event.h"
 #include "../src/callevent.h"
 #include "../src/group.h"
-#include "../src/trackerio.h"
-
-#include <QSparqlConnection>
-#include <QSparqlResult>
-#include <QSparqlQuery>
+#include "../src/databaseio.h"
 
 #include "catcher.h"
 
@@ -133,7 +128,6 @@ void printUsage()
     std::cout << "Usage:"                                                                                                                                  << std::endl;
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
-    std::cout << "                 listdrafts"                                                                                                             << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
@@ -442,7 +436,7 @@ int doAddVCard(const QStringList &arguments, const QVariantMap &options)
     }
     EventModel model;
     Event e;
-    if(!model.trackerIO().getEvent(id, e)) {
+    if(!model.databaseIO().getEvent(id, e)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -584,13 +578,15 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         qCritical() << "Error fetching groups";
         return -1;
     }
+
+    Q_UNUSED(showParts);
     EventModel eventModel;
     for (int i = 0; i < model.rowCount(); i++) {
         Group g = model.group(model.index(i, 0));
         std::cout << qPrintable(g.toString()) << std::endl;
 
         Event e;
-        if (eventModel.trackerIO().getEvent(g.lastEventId(), e)) {
+        if (eventModel.databaseIO().getEvent(g.lastEventId(), e)) {
             printEvent(e, showParts);
         } else {
             qCritical() << "getEvent error ";
@@ -665,7 +661,7 @@ int doIsRead(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -705,7 +701,7 @@ int doIsVideo(const QStringList &arguments, const QVariantMap &options)
 
     CallModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -741,7 +737,7 @@ int doReportDelivery(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -773,7 +769,7 @@ int doSetStatus(const QStringList &arguments, const QVariantMap &options)
 
     EventModel model;
     Event event;
-    if (!model.trackerIO().getEvent(id, event)) {
+    if (!model.databaseIO().getEvent(id, event)) {
         qCritical() << "Error getting event" << id;
         return -1;
     }
@@ -907,14 +903,8 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
     }
  
     if (!hasAnyOption || options.contains("-reset")) {
-        QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-        QSparqlQuery query(QLatin1String(
-                "DELETE {?n a rdfs:Resource}"
-                "WHERE {?n rdf:type ?t FILTER(?t IN (nmo:Message,"
-                                                    "nmo:CommunicationChannel))}"),
-                           QSparqlQuery::DeleteStatement);
-        QSparqlResult* result = conn->exec(query);
-        result->waitForFinished();
+        DatabaseIO::instance()->deleteAllEvents(Event::UnknownType);
+        qWarning() << "Other clients must be restarted to refresh their view of the events database";
     }
 
     return 0;
@@ -992,7 +982,7 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
         }
 
         Group group;
-        if (!groupModel.trackerIO().getGroup(id, group)) {
+        if (!groupModel.databaseIO().getGroup(id, group)) {
             qCritical() << "Error reading group" << id;
             return -1;
         }
@@ -1063,6 +1053,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             int numEvents;
             in >> numEvents;
             bool ok = true;
+            groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
                 qWarning() << "Error adding group ( local"
                            << group.localUid() << ", remote" << group.remoteUids() << ")";
@@ -1079,6 +1070,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             }
 
             if (ok) {
+                eventCatcher.reset();
                 if (!model.addEvents(events)) {
                     qWarning() << "Error adding events for group" << group.id();
                     continue;
@@ -1192,6 +1184,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         group.setRemoteUids(QStringList() << to);
         group.setChatType(Group::ChatTypeP2P);
 
+        groupCatcher.reset();
         if (!groupModel.addGroup(group)) {
             qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
             ok = false;
@@ -1243,6 +1236,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             events.append(event);
         }
 
+        eventCatcher.reset();
         if (!events.isEmpty() && !model.addEvents(events)) {
             qWarning() << "Error adding messages for conversation" << groupCount;
             ok = false;

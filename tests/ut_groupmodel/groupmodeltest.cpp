@@ -27,7 +27,7 @@
 #include "groupmodel.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
+#include "databaseio.h"
 
 using namespace CommHistory;
 
@@ -173,7 +173,7 @@ void GroupModelTest::addGroups()
     QVERIFY(group1.id() != -1);
 
     Group group;
-    QVERIFY(model.trackerIO().getGroup(group1.id(), group));
+    QVERIFY(model.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.id(), group1.id());
     QCOMPARE(group.localUid(), group1.localUid());
     QCOMPARE(group.remoteUids(), group1.remoteUids());
@@ -220,7 +220,7 @@ void GroupModelTest::modifyGroup()
     QVERIFY(group5.id() != -1);
 
     Group testGroupA;
-    QVERIFY(model.trackerIO().getGroup(group5.id(), testGroupA));
+    QVERIFY(model.databaseIO().getGroup(group5.id(), testGroupA));
     QCOMPARE(testGroupA.id(), group5.id());
     QCOMPARE(testGroupA.localUid(), group5.localUid());
     QCOMPARE(testGroupA.remoteUids(), group5.remoteUids());
@@ -235,11 +235,11 @@ void GroupModelTest::modifyGroup()
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
 
-    QCOMPARE(modifiedGroupId,group5.id());
+    QTRY_COMPARE(modifiedGroupId, group5.id());
     modifiedGroupId = -1;
 
     Group testGroupB;
-    QVERIFY(model.trackerIO().getGroup(group5.id(), testGroupB));
+    QVERIFY(model.databaseIO().getGroup(group5.id(), testGroupB));
     QCOMPARE(testGroupB.id(), group5.id());
     QCOMPARE(testGroupB.localUid(), group5.localUid());
     QCOMPARE(testGroupB.remoteUids(), group5.remoteUids());
@@ -290,7 +290,7 @@ void GroupModelTest::getGroups()
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 5);
-    QCOMPARE(listenerModel.rowCount(), 5);
+    QTRY_COMPARE(listenerModel.rowCount(), 5);
 
     /* filter by localUid */
     modelReady.clear();
@@ -304,8 +304,8 @@ void GroupModelTest::getGroups()
     group.setLocalUid(ACCOUNT2);
     group.setRemoteUids(QStringList() << "td@localhost");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
@@ -316,8 +316,8 @@ void GroupModelTest::getGroups()
     group.setLocalUid(ACCOUNT1);
     group.setRemoteUids(QStringList() << "55566601234567");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
@@ -346,8 +346,8 @@ void GroupModelTest::getGroups()
     /* filter out new group */
     group.setRemoteUids(QStringList() << "no@match");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
@@ -366,8 +366,8 @@ void GroupModelTest::getGroups()
     group.setLocalUid(ACCOUNT1);
     group.setRemoteUids(QStringList() << "+99966601234567");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
@@ -377,31 +377,13 @@ void GroupModelTest::getGroups()
     /* filter out new group */
     group.setRemoteUids(QStringList() << "+99966607654321");
     group.setId(-1);
-    QVERIFY(model.addGroup(group));
     groupsCommitted.clear();
+    QVERIFY(model.addGroup(group));
     loop->exec();
     QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
     QCOMPARE(model.rowCount(), 2);
     QCOMPARE(listenerModel.rowCount(), 2);
-
-    /* filter out new group with hidden phone number */
-    group.setRemoteUids(QStringList() << QString(""));
-    group.setId(-1);
-    QVERIFY(model.addGroup(group));
-    groupsCommitted.clear();
-    loop->exec();
-    QVERIFY(waitSignal(groupsCommitted));
-    QVERIFY(groupsCommitted.first().at(1).toBool());
-    QCOMPARE(model.rowCount(), 2);
-    QCOMPARE(listenerModel.rowCount(), 2);
-
-    /* filter by hidden phone number */
-    modelReady.clear();
-    QVERIFY(model.getGroups(ACCOUNT1, ""));
-    QVERIFY(waitSignal(modelReady));
-    QCOMPARE(model.rowCount(), 1);
-    QCOMPARE(model.group(model.index(0, 0)).remoteUids().first(), QString(""));
 
     modelThread.quit();
     modelThread.wait(5000);
@@ -420,15 +402,17 @@ void GroupModelTest::updateGroups()
     QTest::qWait(1000); // separate event from the rest
     EventModel model;
     QSignalSpy eventsCommitted(&model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
+    QSignalSpy groupMoved(&groupModel, SIGNAL(rowsMoved(QModelIndex,int,int,QModelIndex,int)));
+    QSignalSpy groupChanged(&groupModel, SIGNAL(dataChanged(QModelIndex,QModelIndex)));
 
     int eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                  groupModel.group(groupModel.index(0, 0)).id(), "added to group");
     QVERIFY(waitSignal(eventsCommitted));
-    eventsCommitted.clear();
+    QVERIFY(waitSignal(groupChanged));
     Group group = groupModel.group(groupModel.index(0, 0));
     Event event;
     QVERIFY(group.lastEventId() != -1);
-    QVERIFY(model.trackerIO().getEvent(eventId, event));
+    QVERIFY(model.databaseIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), eventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
     QCOMPARE(group.startTime().toTime_t(), event.startTime().toTime_t());
@@ -438,14 +422,16 @@ void GroupModelTest::updateGroups()
     int lastEventId = eventId;
     uint lastStartTime = group.startTime().toTime_t();
     uint lastEndTime = group.endTime().toTime_t();
+    eventsCommitted.clear();
+    groupMoved.clear();
     eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
                  groupModel.group(groupModel.index(0, 0)).id(), "older added to group",
                  false, false, QDateTime::currentDateTime().addMonths(-1));
     QVERIFY(waitSignal(eventsCommitted));
-    eventsCommitted.clear();
+    QVERIFY(waitSignal(groupChanged));
     group = groupModel.group(groupModel.index(0, 0));
     QVERIFY(group.lastEventId() != eventId);
-    QVERIFY(model.trackerIO().getEvent(eventId, event));
+    QVERIFY(model.databaseIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), lastEventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
     QCOMPARE(group.startTime().toTime_t(), lastStartTime);
@@ -455,14 +441,16 @@ void GroupModelTest::updateGroups()
     QTest::qWait(1000);
     int id = groupModel.group(groupModel.index(1, 0)).id();
     QDateTime modified = groupModel.index(1, GroupModel::EndTime).data().toDateTime();
+    eventsCommitted.clear();
+    groupMoved.clear();
     addTestEvent(model, Event::SMSEvent, Event::Outbound, ACCOUNT1, id, "sms");
     QVERIFY(waitSignal(eventsCommitted));
-    eventsCommitted.clear();
+    QVERIFY(waitSignal(groupMoved));
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.id(), id);
     QVERIFY(group.endTime() > modified);
     Group testGroup;
-    QVERIFY(groupModel.trackerIO().getGroup(id, testGroup));
+    QVERIFY(groupModel.databaseIO().getGroup(id, testGroup));
     QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
 
@@ -470,14 +458,16 @@ void GroupModelTest::updateGroups()
     QTest::qWait(1000);
     id = groupModel.group(groupModel.index(1, 0)).id();
     modified = groupModel.index(1, GroupModel::EndTime).data().toDateTime();
+    eventsCommitted.clear();
+    groupMoved.clear();
     addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1, id, "sort");
     QVERIFY(waitSignal(eventsCommitted));
-    eventsCommitted.clear();
+    QVERIFY(waitSignal(groupMoved));
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.id(), id);
     QVERIFY(group.endTime() > modified);
 
-    QVERIFY(groupModel.trackerIO().getGroup(id, testGroup));
+    QVERIFY(groupModel.databaseIO().getGroup(id, testGroup));
     QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
 
@@ -497,7 +487,7 @@ void GroupModelTest::updateGroups()
     group = groupModel.group(groupModel.index(0, 0));
     QVERIFY(group.lastEventId() != -1);
     // we can get the last event
-    QVERIFY(model.trackerIO().getEvent(group.lastEventId(), event));
+    QVERIFY(model.databaseIO().getEvent(group.lastEventId(), event));
     QVERIFY(group.lastEventId() == event.id());
     // but it is not our status event
     QVERIFY(group.lastMessageText() != QString("status message"));
@@ -513,6 +503,7 @@ void GroupModelTest::deleteGroups()
 
     qRegisterMetaType<QModelIndex>("QModelIndex");
     QSignalSpy groupsCommitted(&deleterModel, SIGNAL(groupsCommitted(QList<int>,bool)));
+    QSignalSpy rowsRemoved(&groupModel, SIGNAL(rowsRemoved(QModelIndex,int,int)));
 
     groupModel.enableContactChanges(false);
     groupModel.setQueryMode(EventModel::SyncQuery);
@@ -520,7 +511,7 @@ void GroupModelTest::deleteGroups()
     int numGroups = groupModel.rowCount();
 
     // delete non-existing group
-    deleterModel.deleteGroups(QList<int>() << 0);
+    deleterModel.deleteGroups(QList<int>() << -1);
     loop->exec();
     QCOMPARE(groupModel.rowCount(), numGroups);
 
@@ -528,23 +519,11 @@ void GroupModelTest::deleteGroups()
     messageId = groupModel.group(groupModel.index(0, 0)).lastEventId();
     deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id());
     loop->exec();
-    if (groupsCommitted.isEmpty())
-        QVERIFY(waitSignal(groupsCommitted));
+    QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
+    QVERIFY(waitSignal(rowsRemoved));
     QCOMPARE(groupModel.rowCount(), numGroups - 1);
-    QVERIFY(!model.trackerIO().getEvent(messageId, event));
-
-    // delete group without deleting messages
-    messageId = groupModel.group(groupModel.index(0, 0)).lastEventId();
-    groupsCommitted.clear();
-    deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id(),
-                              false);
-    loop->exec();
-    if (groupsCommitted.isEmpty())
-        QVERIFY(waitSignal(groupsCommitted));
-    QVERIFY(groupsCommitted.first().at(1).toBool());
-    QCOMPARE(groupModel.rowCount(), numGroups - 2);
-    QVERIFY(model.trackerIO().getEvent(messageId, event));
+    QVERIFY(!model.databaseIO().getEvent(messageId, event));
 
     // delete group with SMS/MMS, check that messages are flagged as deleted
     QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
@@ -576,15 +555,16 @@ void GroupModelTest::deleteGroups()
     groupDataChanged.clear();
 
     groupsCommitted.clear();
+    rowsRemoved.clear();
     deleterModel.deleteGroups(QList<int>() << groupModel.group(groupModel.index(0, 0)).id());
     loop->exec();
-    if (groupsCommitted.isEmpty())
-        QVERIFY(waitSignal(groupsCommitted));
+    QVERIFY(waitSignal(groupsCommitted));
     QVERIFY(groupsCommitted.first().at(1).toBool());
-    QCOMPARE(groupModel.rowCount(), numGroups - 3);
+    QVERIFY(waitSignal(rowsRemoved));
+    QCOMPARE(groupModel.rowCount(), numGroups - 2);
 
-    QVERIFY(!model.trackerIO().getEvent(sms.id(), event));
-    QVERIFY(!model.trackerIO().getEvent(mms.id(), event));
+    QVERIFY(!model.databaseIO().getEvent(sms.id(), event));
+    QVERIFY(!model.databaseIO().getEvent(mms.id(), event));
 }
 
 void GroupModelTest::streamingQuery_data()
@@ -597,6 +577,11 @@ void GroupModelTest::streamingQuery_data()
 
 void GroupModelTest::streamingQuery()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
+#else
+    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
+#endif
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
@@ -727,7 +712,6 @@ void GroupModelTest::addMultipleGroups()
     model.setQueryMode(EventModel::SyncQuery);
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>, bool)));
     QVERIFY(model.addGroups(groups));
-    QVERIFY(waitSignal(groupsCommitted));
     QList<int> committedIds;
     while (committedIds.count() < ADD_GROUPS_NUM) {
         QVERIFY(waitSignal(groupsCommitted));
@@ -886,21 +870,24 @@ void GroupModelTest::deleteMmsContent()
     addTestMms(eventModel, Event::Inbound, ACCOUNT1, group3.id(), mms_token3, "test MMS to delete");
     QVERIFY(waitSignal(eventsCommitted));
 
-    QVERIFY(model.trackerIO().getEvent(id1, e));
-    QVERIFY(model.trackerIO().deleteEvent(e, 0));
+    QVERIFY(model.databaseIO().getEvent(id1, e));
+    QVERIFY(model.databaseIO().deleteEvent(e, 0));
     QTest::qWait(1000);
     QVERIFY(content_dir.exists(mms_token1) == false); // folder shall be removed since no more events reffers to the token
 
-    QVERIFY(model.trackerIO().getEvent(id2, e));
-    QVERIFY(model.trackerIO().deleteEvent(e, 0));
+    QVERIFY(model.databaseIO().getEvent(id2, e));
+    QVERIFY(model.databaseIO().deleteEvent(e, 0));
     QTest::qWait(1000);
     QVERIFY(content_dir.exists(mms_token2) == true);  // one more events refers to token2
 
-    QVERIFY(model.trackerIO().getEvent(id3, e));
-    QVERIFY(model.trackerIO().deleteEvent(e, 0));
+    QVERIFY(model.databaseIO().getEvent(id3, e));
+    QVERIFY(model.databaseIO().deleteEvent(e, 0));
     QTest::qWait(1000);
     QVERIFY(content_dir.exists(mms_token2) == false);  // no more events with token2
 
+    // Group deleting behvaior is disabled currently, because it should be implemented in a
+    // smarter and less synchronous way.
+#if 0
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>,bool)));
     model.deleteGroups(QList<int>() << group1.id());
     if (groupsCommitted.isEmpty())
@@ -917,6 +904,7 @@ void GroupModelTest::deleteMmsContent()
     QTest::qWait(1000); // folders deleted after transaction, wait a bit
 
     QVERIFY(content_dir.exists(mms_token3) == false);
+#endif
 }
 
 void GroupModelTest::markGroupAsRead()
@@ -943,14 +931,14 @@ void GroupModelTest::markGroupAsRead()
     QVERIFY(groupsCommitted.first().at(1).toBool());
 
     Event e1, e2;
-    QVERIFY(groupModel.trackerIO().getEvent(eventId1, e1));
+    QVERIFY(groupModel.databaseIO().getEvent(eventId1, e1));
     QVERIFY(e1.isRead());
 
-    QVERIFY(groupModel.trackerIO().getEvent(eventId2, e2));
+    QVERIFY(groupModel.databaseIO().getEvent(eventId2, e2));
     QVERIFY(e2.isRead());
 
     Group testGroup;
-    QVERIFY(groupModel.trackerIO().getGroup(group.id(), testGroup));
+    QVERIFY(groupModel.databaseIO().getGroup(group.id(), testGroup));
     QCOMPARE(testGroup.id(), group.id());
     QCOMPARE(testGroup.unreadMessages(),0);
 }
@@ -991,7 +979,7 @@ void GroupModelTest::resolveContact()
 
     // Check that tracker is updated:
     Group group;
-    QVERIFY(groupModel.trackerIO().getGroup(grp.id(), group));
+    QVERIFY(groupModel.databaseIO().getGroup(grp.id(), group));
     QCOMPARE(group.id(), grp.id());
     QCOMPARE(group.localUid(), grp.localUid());
     QCOMPARE(group.remoteUids(), grp.remoteUids());
@@ -1322,14 +1310,14 @@ void GroupModelTest::endTimeUpdate()
     // verify run-time update
     QVERIFY(!groupUpdated.isEmpty());
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
 
-    // and tracker update
+    // and database update
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
 
     // add an event to each group to get them to show up in getGroups()
     eventsCommitted.clear();
@@ -1347,22 +1335,22 @@ void GroupModelTest::endTimeUpdate()
     QVERIFY(!groupUpdated.isEmpty());
     QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
 
-    // and tracker update
+    // and database update
     modelReady.clear();
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestDate.toTime_t());
 
     // check group updates on modify event
     Event event;
-    QVERIFY(model.trackerIO().getEvent(latestEventId, event));
+    QVERIFY(model.databaseIO().getEvent(latestEventId, event));
     QDateTime latestestDate = event.startTime().addDays(5);
     event.setStartTime(latestestDate);
-    event.setEndTime(latestestDate.addSecs(100));
+    event.setEndTime(latestestDate);
 
     eventsCommitted.clear();
     eventModel.modifyEvent(event);
@@ -1373,7 +1361,7 @@ void GroupModelTest::endTimeUpdate()
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).lastEventId(), latestEventId);
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), latestestDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestestDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), latestestDate.toTime_t());
 
     // check group updates on delete event
     eventsCommitted.clear();
@@ -1384,7 +1372,7 @@ void GroupModelTest::endTimeUpdate()
     QVERIFY(model.getGroups("endTimeUpdate"));
     QVERIFY(waitSignal(modelReady));
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), oldDate.toTime_t());
-    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.addSecs(100).toTime_t());
+    QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.toTime_t());
 
     // add overlapping event with send time older than oldDate but the newest received time
     // the event should not be picked up as the last event because of the old send time

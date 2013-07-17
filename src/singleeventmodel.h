@@ -26,17 +26,14 @@
 #include "eventmodel.h"
 #include "libcommhistoryexport.h"
 
-class QUrl;
-
 namespace CommHistory {
 
 class SingleEventModelPrivate;
 
 /*!
- * \class UnreadEventsModel
+ * \class SingleEventModel
  * \brief Model representing single event
  * e.g. phone number or IM user id
- * todo: currently model is flat, doesnt group events by contacts
  */
 class LIBCOMMHISTORY_EXPORT SingleEventModel : public EventModel
 {
@@ -58,14 +55,14 @@ public:
     /*!
      * Polulate model with existing event.
      *
-     * \param uri, event uri to be fetched from database
+     * \param id, event id to be fetched from database
      *
      * \return true if successful, otherwise false
      */
-    bool getEventByUri(const QUrl &uri);
+    bool getEventById(int eventId);
 
     /*!
-     * Polulate model with existing event identified by message token or mms id.
+     * Populate model with existing event identified by message token or mms id.
      *
      * \param token, message token or empty string
      * \param mmsId, mms id or empty string
@@ -83,4 +80,4 @@ private:
 
 } // namespace CommHistory
 
-#endif // UNREADEVENTSMODEL_H
+#endif // SINGLEEVENTMODEL_H

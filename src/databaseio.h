@@ -2,6 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013 Jolla Ltd. <john.brooks@jollamobile.com>
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
 ** Contact: Reto Zingg <reto.zingg@nokia.com>
 **
@@ -20,8 +21,8 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_TRACKERIO_H
-#define COMMHISTORY_TRACKERIO_H
+#ifndef COMMHISTORY_DATABASEIO_H
+#define COMMHISTORY_DATABASEIO_H
 
 #include <QObject>
 #include <QUrl>
@@ -29,34 +30,25 @@
 #include "event.h"
 #include "libcommhistoryexport.h"
 
-class QSparqlResult;
-
 namespace CommHistory {
 
-class TrackerIOPrivate;
+class DatabaseIOPrivate;
 class Group;
-class UpdateQuery;
-class CommittingTransaction;
 
 /**
- * \class TrackerIO
+ * \class DatabaseIO
  *
- * Class for handling events with tracker. You can use this if you are
+ * Class for handling events with the database. You can use this if you are
  * implementing your own model.
  */
-class LIBCOMMHISTORY_EXPORT TrackerIO : public QObject
+class LIBCOMMHISTORY_EXPORT DatabaseIO : public QObject
 {
     Q_OBJECT
 
 public:
-    TrackerIO();
-    ~TrackerIO();
-    static TrackerIO* instance();
-
-    /*!
-     * Returns and increases the next available event id.
-     */
-    int nextEventId();
+    DatabaseIO();
+    ~DatabaseIO();
+    static DatabaseIO* instance();
 
     /*!
      * Add a new event into the database. The id field of the event is
@@ -86,15 +78,6 @@ public:
     bool getEvent(int id, Event &event);
 
     /*!
-     * Query a single event by uri.
-     *
-     * \param Uri of the message to be fetched
-     * \param event Return value for event details.
-     * \return true if successful, otherwise false
-     */
-    bool getEventByUri(const QUrl &uri, Event &event);
-
-    /*!
      * Query a single event by message token.
      *
      * \param token Message token
@@ -102,16 +85,6 @@ public:
      * \return true if successful, otherwise false
      */
     bool getEventByMessageToken(const QString &token, Event &event);
-
-    /*!
-     * Query a single event by message token and group ID.
-     *
-     * \param token Message token
-     * \param groupId Group ID
-     * \param event Return value for event details.
-     * \return true if successful, otherwise false
-     */
-    bool getEventByMessageToken(const QString &token, int groupId, Event &event);
 
     /*!
      * Query a single event by mms id.
@@ -161,6 +134,17 @@ public:
     bool getGroup(int id, Group &group);
 
     /*!
+     * Query groups, optionally by local or remote UID
+     *
+     * \param localUid Optional local UID to limit results
+     * \param remoteUid Optional remote UID to limit results
+     * \param groups Reference to container for results
+     * \return true if successful, otherwise false
+     */
+    bool getGroups(const QString &localUid, const QString &remoteUid, QList<Group> &groups,
+                   const QString &queryOrder = QString());
+
+    /*!
      * Modifye a group.
      *
      * \param event Existing group.
@@ -172,23 +156,21 @@ public:
      * Delete a group
      *
      * \param groupId Existing group id
-     * \param deleteMessages flag to delete group's messages
      * \param backgroundThread optional thread (to delete mms attachments)
      *
      * \return true if successful, otherwise false
      */
-    bool deleteGroup(int groupId, bool deleteMessages = true, QThread *backgroundThread = 0);
+    bool deleteGroup(int groupId, QThread *backgroundThread = 0);
 
     /*!
      * Delete groups
      *
      * \param groupIds Existing group ids
-     * \param deleteMessages flag to delete group's messages
      * \param backgroundThread optional thread (to delete mms attachments)
      *
      * \return true if successful, otherwise false
      */
-    bool deleteGroups(QList<int> groupIds, bool deleteMessages = true, QThread *backgroundThread = 0);
+    bool deleteGroups(QList<int> groupIds, QThread *backgroundThread = 0);
 
     /*!
      * Query the number of events in a group
@@ -208,15 +190,6 @@ public:
      * \return true if successful, otherwise false
      */
     bool markAsReadGroup(int groupId);
-
-    /*!
-     * Mark all calls in the same call group as read
-     *
-     * \param event Call event
-     *
-     * \return true if successful, otherwise false
-     */
-    bool markAsReadCallGroup(Event &event);
 
     /*!
      * Mark messages as read
@@ -239,18 +212,17 @@ public:
     /*!
      * Delete events of a certain type
      *
-     * \param eventType
+     * If Event::UnknownType is passed, all events are deleted.
      *
+     * \param eventType
      * \return true if successful, otherwise false
      */
     bool deleteAllEvents(Event::EventType eventType);
 
     /*!
-     * Initate a new tracker transaction.
-     *
-     * \param syncOnCommit set to perform tracker sync after commit
+     * Initate a new database transaction.
      */
-    void transaction(bool syncOnCommit = false);
+    bool transaction();
 
     /*!
      * Commits the current transaction.
@@ -259,27 +231,16 @@ public:
      *                   if false, the call is asynchronous and returns immediately
      * \return transaction object to track commit progress for non-blocking call
      */
-    CommittingTransaction* commit(bool isBlocking=false);
+    bool commit();
 
     /*!
      * Cancels the current transaction.
      */
-    void rollback();
-
-    /*!
-     * Do NOT call this unless you know what you are doing.
-     */
-    void recreateIds();
-
-    /*!
-     * Get the ongoing transaction.
-     */
-    CommittingTransaction *currentTransaction() const;
+    bool rollback();
 
 private:
-    friend class TrackerIOPrivate;
-    friend class QueryRunner;
-    TrackerIOPrivate * const d;
+    friend class DatabaseIOPrivate;
+    DatabaseIOPrivate * const d;
 };
 
 } // namespace

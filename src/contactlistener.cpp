@@ -32,6 +32,7 @@
 #include <QContactNickname>
 #include <QContactPresence>
 #include <QContactDisplayLabel>
+#include <QContactIntersectionFilter>
 
 #include "commonutils.h"
 
@@ -252,23 +253,21 @@ void ContactListener::slotStartContactRequest()
                                                                NormalizeFlagKeepDialString);
 
             if (number.isEmpty()) {
-                QContactDetailFilter filterLocal;
-                filterLocal.setValue(contact.first);
-
                 QContactDetailFilter filterRemote;
                 filterRemote.setValue(contact.second);
+                filterRemote.setMatchFlags(QContactFilter::MatchExactly);
 
 #ifdef USING_QTPIM
-                filterLocal.setDetailType(QContactOnlineAccount::Type, QContactTpMetadata::FieldAccountId);
-                filterRemote.setDetailType(QContactOnlineAccount::Type, QContactTpMetadata::FieldContactId);
+                filterRemote.setDetailType(QContactOnlineAccount::Type, QContactOnlineAccount::FieldAccountUri);
 #else
-                filterLocal.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
-                                                    QLatin1String("AccountPath"));
                 filterRemote.setDetailDefinitionName(QContactOnlineAccount::DefinitionName,
                                                      QContactOnlineAccount::FieldAccountUri);
 #endif
 
-                filter = addContactFilter(filter, filterLocal & filterRemote);
+                QContactIntersectionFilter tpFilter;
+                tpFilter << QContactTpMetadata::matchAccountId(contact.first);
+                tpFilter << filterRemote;
+                filter = addContactFilter(filter, tpFilter);
             } else {
                 filter = addContactFilter(filter, QContactPhoneNumber::match(number));
             }

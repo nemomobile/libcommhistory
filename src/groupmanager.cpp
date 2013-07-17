@@ -23,11 +23,11 @@
 
 #include <QtDBus/QtDBus>
 #include <QDebug>
+#include <QSqlQuery>
 
 #include "commonutils.h"
-#include "trackerio.h"
-#include "trackerio_p.h"
-#include "queryrunner.h"
+#include "databaseio.h"
+#include "databaseio_p.h"
 #include "eventmodel.h"
 #include "groupmanager.h"
 #include "groupmanager_p.h"
@@ -35,13 +35,10 @@
 #include "group.h"
 #include "event.h"
 #include "constants.h"
-#include "committingtransaction.h"
 #include "contactlistener.h"
 
 namespace {
 static const int defaultChunkSize = 50;
-
-static const int maxAddGroupsSize = 25;
 }
 
 using namespace CommHistory;
@@ -56,10 +53,7 @@ GroupManagerPrivate::GroupManagerPrivate(GroupManager *manager)
         , isReady(true)
         , filterLocalUid(QString())
         , filterRemoteUid(QString())
-        , queryRunner(0)
-        , threadCanFetchMore(false)
         , bgThread(0)
-        , m_pTracker(0)
         , contactChangesEnabled(true)
 {
     qRegisterMetaType<QList<CommHistory::Event> >();
@@ -103,70 +97,21 @@ GroupManagerPrivate::GroupManagerPrivate(GroupManager *manager)
         GROUPS_DELETED_SIGNAL,
         this,
         SLOT(groupsDeletedSlot(const QList<int> &)));
-
-    resetQueryRunner();
 }
 
 GroupManagerPrivate::~GroupManagerPrivate()
 {
-    deleteQueryRunner();
 }
 
-void GroupManagerPrivate::resetQueryRunner()
+bool GroupManagerPrivate::commitTransaction(const QList<int> &groupIds)
 {
-    deleteQueryRunner();
-
-    queryRunner = new QueryRunner(tracker());
-
-    connect(queryRunner,
-            SIGNAL(groupsReceived(int, int, QList<CommHistory::Group>)),
-            this,
-            SLOT(groupsReceivedSlot(int, int, QList<CommHistory::Group>)));
-    connect(queryRunner,
-            SIGNAL(canFetchMoreChanged(bool)),
-            this,
-            SLOT(canFetchMoreChangedSlot(bool)));
-    connect(queryRunner,
-            SIGNAL(modelUpdated(bool)),
-            this,
-            SLOT(modelUpdatedSlot(bool)));
-
-    if (bgThread) {
-        qDebug() << Q_FUNC_INFO << "MOVE" << queryRunner;
-        queryRunner->moveToThread(bgThread);
+    if (!database()->commit()) {
+        emit q_ptr->groupsCommitted(groupIds, false);
+        return false;
+    } else {
+        emit q_ptr->groupsCommitted(groupIds, true);
+        return true;
     }
-
-    qDebug() << Q_FUNC_INFO << this << queryRunner;
-}
-
-void GroupManagerPrivate::deleteQueryRunner()
-{
-    if (queryRunner) {
-        qDebug() << Q_FUNC_INFO << "DELETE" << queryRunner;
-        queryRunner->disconnect(this);
-        queryRunner->deleteLater();
-        queryRunner = 0;
-    }
-}
-
-CommittingTransaction* GroupManagerPrivate::commitTransaction(QList<int> groupIds)
-{
-    CommittingTransaction *t = tracker()->commit();
-
-    if (t) {
-        t->addSignal(false,
-                     q_ptr,
-                     "groupsCommitted",
-                     Q_ARG(QList<int>, groupIds),
-                     Q_ARG(bool, true));
-        t->addSignal(true,
-                     q_ptr,
-                     "groupsCommitted",
-                     Q_ARG(QList<int>, groupIds),
-                     Q_ARG(bool, false));
-    }
-
-    return t;
 }
 
 void GroupManagerPrivate::modifyInModel(Group &group, bool query)
@@ -178,7 +123,7 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
 
     if (query) {
         Group newGroup;
-        if (!tracker()->getGroup(group.id(), newGroup))
+        if (!database()->getGroup(group.id(), newGroup))
             return;
 
         // preserve contact info if necessary
@@ -193,56 +138,6 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
 
     emit q->groupUpdated(go);
     qDebug() << __PRETTY_FUNCTION__ << ": updated" << go->toString();
-}
-
-void GroupManagerPrivate::groupsReceivedSlot(int start,
-                                           int end,
-                                           QList<CommHistory::Group> result)
-{
-    Q_UNUSED(start);
-    Q_UNUSED(end);
-
-    Q_Q(GroupManager);
-    qDebug() << __PRETTY_FUNCTION__ << ": read" << result.count() << "groups";
-
-    foreach (Group g, result) {
-        GroupObject *go = new GroupObject(g, q);
-        groups.insert(g.id(), go);
-        emit q->groupAdded(go);
-    }
-}
-
-void GroupManagerPrivate::modelUpdatedSlot(bool successful)
-{
-    Q_Q(GroupManager);
-
-    isReady = true;
-    emit q->modelReady(successful);
-}
-
-void GroupManagerPrivate::executeQuery(const QString query)
-{
-    isReady = false;
-    QString finalQuery(query);
-    if (queryMode == EventModel::StreamedAsyncQuery) {
-        queryRunner->setStreamedMode(true);
-        queryRunner->setChunkSize(chunkSize);
-        queryRunner->setFirstChunkSize(firstChunkSize);
-    } else {
-        if (queryLimit)
-            finalQuery.append(QLatin1String(" LIMIT ") + QString::number(queryLimit));
-        if (queryOffset)
-            finalQuery.append(QLatin1String(" OFFSET ") + QString::number(queryOffset));
-    }
-    qDebug() << Q_FUNC_INFO << this << queryRunner;
-    queryRunner->runGroupQuery(finalQuery);
-
-    if (queryMode == EventModel::SyncQuery) {
-        QEventLoop loop;
-        while (!isReady) {
-            loop.processEvents(QEventLoop::WaitForMoreEvents);
-        }
-    }
 }
 
 void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
@@ -395,19 +290,14 @@ void GroupManagerPrivate::groupsDeletedSlot(const QList<int> &groupIds)
     }
 }
 
-void GroupManagerPrivate::canFetchMoreChangedSlot(bool canFetch)
-{
-    threadCanFetchMore = canFetch;
-}
-
 bool GroupManagerPrivate::canFetchMore() const
 {
-    return threadCanFetchMore;
+    return false;
 }
 
-TrackerIO* GroupManagerPrivate::tracker()
+DatabaseIO* GroupManagerPrivate::database()
 {
-    return TrackerIO::instance();
+    return DatabaseIO::instance();
 }
 
 void GroupManagerPrivate::slotContactUpdated(quint32 localId,
@@ -582,9 +472,11 @@ void GroupManagerPrivate::add(Group &group)
 
 bool GroupManager::addGroup(Group &group)
 {
-    d->tracker()->transaction();
-    if (!d->tracker()->addGroup(group)) {
-        d->tracker()->rollback();
+    if (!d->database()->transaction())
+        return false;
+
+    if (!d->database()->addGroup(group)) {
+        d->database()->rollback();
         return false;
     }
 
@@ -609,32 +501,30 @@ bool GroupManager::addGroups(QList<Group> &groups)
 
     QMutableListIterator<Group> i(groups);
 
+    if (!d->database()->transaction())
+        return false;
+
     while (i.hasNext()) {
-        d->tracker()->transaction();
-
-        while (addedGroups.size() < maxAddGroupsSize && i.hasNext()) {
-            Group &group = i.next();
-            if (!d->tracker()->addGroup(group)) {
-                d->tracker()->rollback();
-                return false;
-            }
-
-            if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
-                && (d->filterRemoteUid.isEmpty()
-                    || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
-                d->add(group);
-            }
-
-            addedIds.append(group.id());
-            addedGroups.append(group);
+        Group &group = i.next();
+        if (!d->database()->addGroup(group)) {
+            d->database()->rollback();
+            return false;
         }
 
-        d->commitTransaction(addedIds);
-        d->emitter->groupsAdded(addedGroups);
-        addedIds.clear();
-        addedGroups.clear();
+        if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
+            && (d->filterRemoteUid.isEmpty()
+                || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
+            d->add(group);
+        }
+
+        addedIds.append(group.id());
+        addedGroups.append(group);
     }
 
+    if (!d->commitTransaction(addedIds))
+        return false;
+
+    d->emitter->groupsAdded(addedGroups);
     return true;
 }
 
@@ -647,25 +537,23 @@ bool GroupManager::modifyGroup(Group &group)
         return false;
     }
 
-    d->tracker()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
     if (group.lastModified() == QDateTime::fromTime_t(0)) {
          group.setLastModified(QDateTime::currentDateTime());
     }
 
-    if (!d->tracker()->modifyGroup(group)) {
-        d->tracker()->rollback();
+    if (!d->database()->modifyGroup(group)) {
+        d->database()->rollback();
         return false;
     }
 
-    CommittingTransaction *t = d->commitTransaction(QList<int>() << group.id());
-    if (t)
-        t->addSignal(false,
-                     d->emitter.data(),
-                     "groupsUpdatedFull",
-                     Q_ARG(QList<CommHistory::Group>, QList<Group>() << group));
+    if (!d->commitTransaction(QList<int>() << group.id()))
+        return false;
 
-    return t != 0;
+    emit d->emitter->groupsUpdatedFull(QList<Group>() << group);
+    return true;
 }
 
 bool GroupManager::getGroups(const QString &localUid,
@@ -673,6 +561,7 @@ bool GroupManager::getGroups(const QString &localUid,
 {
     d->filterLocalUid = localUid;
     d->filterRemoteUid = remoteUid;
+    d->isReady = false;
 
     if (!d->groups.isEmpty()) {
         foreach (GroupObject *go, d->groups)
@@ -683,9 +572,26 @@ bool GroupManager::getGroups(const QString &localUid,
 
     d->startContactListening();
 
-    QSparqlQuery query(TrackerIOPrivate::prepareGroupQuery(localUid, remoteUid));
-    d->executeQuery(query.preparedQueryText());
+    QString queryOrder;
+    if (d->queryLimit > 0)
+        queryOrder += QString::fromLatin1("LIMIT %1 ").arg(d->queryLimit);
+    if (d->queryOffset > 0)
+        queryOrder += QString::fromLatin1("OFFSET %1 ").arg(d->queryOffset);
 
+    QList<Group> results;
+    if (!d->database()->getGroups(localUid, remoteUid, results, queryOrder))
+        return false;
+
+    foreach (Group g, results) {
+        GroupObject *go = new GroupObject(g, this);
+        d->groups.insert(g.id(), go);
+        emit groupAdded(go);
+    }
+
+    if (!d->isReady) {
+        d->isReady = true;
+        emit modelReady(true);
+    }
     return true;
 }
 
@@ -693,10 +599,11 @@ bool GroupManager::markAsReadGroup(int id)
 {
     qDebug() << Q_FUNC_INFO << id;
 
-    d->tracker()->transaction();
+    if (!d->database()->transaction())
+        return false;
 
-    if (!d->tracker()->markAsReadGroup(id)) {
-        d->tracker()->rollback();
+    if (!d->database()->markAsReadGroup(id)) {
+        d->database()->rollback();
         return false;
     }
 
@@ -728,21 +635,23 @@ void GroupManager::updateGroups(QList<Group> &groups)
         emit d->emitter->groupsUpdatedFull(groups);
 }
 
-bool GroupManager::deleteGroups(const QList<int> &groupIds, bool deleteMessages)
+bool GroupManager::deleteGroups(const QList<int> &groupIds)
 {
     qDebug() << Q_FUNC_INFO << groupIds;
 
-    d->tracker()->transaction();
-    if (!d->tracker()->deleteGroups(groupIds, deleteMessages, d->bgThread)) {
-        d->tracker()->rollback();
+    if (!d->database()->transaction())
+        return false;
+
+    if (!d->database()->deleteGroups(groupIds, d->bgThread)) {
+        d->database()->rollback();
         return false;
     }
-    CommittingTransaction *t = d->commitTransaction(groupIds);
 
-    if (t)
-        t->addSignal(false, d->emitter.data(), "groupsDeleted", Q_ARG(QList<int>, groupIds));
+    if (!d->commitTransaction(groupIds))
+        return false;
 
-    return t != 0;
+    emit d->emitter->groupsDeleted(groupIds);
+    return true;
 }
 
 bool GroupManager::deleteAll()
@@ -757,21 +666,16 @@ bool GroupManager::deleteAll()
     if (ids.isEmpty())
         return true;
 
-    return deleteGroups(ids, true);
+    return deleteGroups(ids);
 }
 
 bool GroupManager::canFetchMore() const
 {
-    if (!d->queryRunner)
-        return false;
-
     return d->canFetchMore();
 }
 
 void GroupManager::fetchMore()
 {
-    if (d->queryRunner)
-        d->queryRunner->fetchMore();
 }
 
 QList<GroupObject*> GroupManager::groups() const
@@ -812,10 +716,6 @@ int GroupManager::offset() const
 void GroupManager::setBackgroundThread(QThread *thread)
 {
     d->bgThread = thread;
-
-    qDebug() << Q_FUNC_INFO << thread;
-
-    d->resetQueryRunner();
 }
 
 QThread* GroupManager::backgroundThread()
@@ -823,9 +723,9 @@ QThread* GroupManager::backgroundThread()
     return d->bgThread;
 }
 
-TrackerIO& GroupManager::trackerIO()
+DatabaseIO& GroupManager::databaseIO()
 {
-    return *d->tracker();
+    return *d->database();
 }
 
 void GroupManager::enableContactChanges(bool enabled)

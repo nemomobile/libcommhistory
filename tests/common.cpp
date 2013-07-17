@@ -22,11 +22,6 @@
 
 #include <QtTest/QtTest>
 
-#include <QSparqlConnection>
-#include <QSparqlResult>
-#include <QSparqlQuery>
-#include <QSparqlError>
-
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -49,7 +44,6 @@
 #include "callmodel.h"
 #include "event.h"
 #include "common.h"
-#include "trackerio.h"
 #include "commonutils.h"
 #include "contactlistener.h"
 
@@ -116,12 +110,13 @@ int addTestEvent(EventModel &model,
     event.setDirection(direction);
     event.setGroupId(groupId);
     event.setStartTime(when);
-    event.setEndTime(when.addSecs(100));
+    if (type == Event::CallEvent)
+        event.setEndTime(when.addSecs(100));
+    else
+        event.setEndTime(event.startTime());
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
         event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
-    } else if (remoteUid == "<hidden>") {
-        event.setRemoteUid(QString());
     } else {
         event.setRemoteUid(remoteUid);
     }
@@ -268,7 +263,8 @@ void deleteTestContact(int id)
 
 void cleanUpTestContacts()
 {
-    qDebug() << Q_FUNC_INFO;
+    qWarning() << Q_FUNC_INFO << "Not implemented!";
+#if 0
     QString query("DELETE { ?r a rdfs:Resource } WHERE { GRAPH <commhistory-tests> { ?r a rdfs:Resource } }");
     QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
     QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query,
@@ -278,6 +274,7 @@ void cleanUpTestContacts()
         qWarning() << "error deleting contacts:" << result->lastError().message();
         return;
     }
+#endif
 }
 
 bool compareEvents(Event &e1, Event &e2)
@@ -388,17 +385,6 @@ void deleteAll()
 
     if (!callModel.deleteAll())
         qCritical() << Q_FUNC_INFO << "callModel::deleteAll failed";
-}
-
-void deleteSmsMsgs()
-{
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery query(QLatin1String("DELETE {?n a rdfs:Resource} WHERE {?n rdf:type nmo:SMSMessage}"),
-                       QSparqlQuery::DeleteStatement);
-    QSparqlResult* result = conn->exec(query);
-    result->waitForFinished();
-    if (result->hasError())
-        qDebug() << result->lastError().message();
 }
 
 QString randomMessage(int words)

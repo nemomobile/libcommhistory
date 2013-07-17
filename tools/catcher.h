@@ -38,19 +38,23 @@ class Catcher : public QObject
 {
     Q_OBJECT
 public:
-    Catcher(CommHistory::EventModel *model) : count(0) {
+    Catcher(CommHistory::EventModel *model) : ok(true), count(0), stop(false) {
         connect(model, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
                 this, SLOT(eventsCommittedSlot(QList<CommHistory::Event>,bool)));
     };
 
-    Catcher(CommHistory::GroupModel *model) : count(0) {
+    Catcher(CommHistory::GroupModel *model) : ok(true), count(0), stop(false) {
         connect((QObject*)model, SIGNAL(groupsCommitted(QList<int>,bool)),
                 this, SLOT(groupsCommittedSlot(QList<int>,bool)));
     };
 
-    void waitCommit(int numEvents = 1) {
+    void reset() {
+        ok = true;
         count = 0;
         stop = false;
+    }
+
+    void waitCommit(int numEvents = 1) {
         while(count < numEvents || (numEvents == 0 && !stop)) {
             qDebug() << ".";
             QCoreApplication::instance()->processEvents(QEventLoop::WaitForMoreEvents);

@@ -28,14 +28,11 @@
 #include "event.h"
 #include "libcommhistoryexport.h"
 
-// Forward declaration
-class QUrl;
-
 namespace CommHistory {
 
 class EventModelPrivate;
 class Group;
-class TrackerIO;
+class DatabaseIO;
 
 /*!
  * \class EventModel
@@ -54,7 +51,7 @@ class TrackerIO;
  * All operations modify underlying storage and emit signals
  * to sync models in the current and other processes. addEvent() will
  * send the signal right away, while other methods emit it only
- * on a sucessful commit to the tracker db.
+ * on a sucessful commit to the database.
  */
 class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
 {
@@ -68,7 +65,6 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
     Q_PROPERTY(uint firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
     Q_PROPERTY(int limit READ limit WRITE setLimit)
     Q_PROPERTY(int offset READ offset WRITE setOffset)
-    Q_PROPERTY(bool syncMode READ syncMode WRITE setSyncMode)
 
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
@@ -211,14 +207,6 @@ public:
     virtual void setOffset(int offset);
 
     /*!
-     * Set whether underlying storage should sync after
-     * each commit.
-     *
-     * \param mode true to sync after each change
-     */
-    void setSyncMode(bool mode);
-
-    /*!
      * If enabled, Event::contactId and Event::contactName in model
      * contents will be updated live (emitting dataChanged()) when
      * contacts are added, changed or deleted.
@@ -323,7 +311,6 @@ public:
     virtual int limit() const;
     virtual int offset() const;
     virtual bool isReady() const;
-    bool syncMode() const;
 
     /*** reimp from QAbstractItemModel ***/
     virtual QModelIndex parent(const QModelIndex &index) const;
@@ -360,14 +347,14 @@ public:
     QThread* backgroundThread();
 
     /*!
-     * Return an instance of TrackerIO that can be used for low-level queries.
-     * \return a TrackerIO
+     * Return an instance of DatabaseIO that can be used for low-level queries.
+     * \return a DatabaseIO
      */
-    TrackerIO& trackerIO();
+    DatabaseIO& databaseIO();
 
 Q_SIGNALS:
     /*!
-     * Emitted when an async query is finished and the model has been filled.
+     * Emitted when a query is finished and the model has been filled.
      *
      * \param successful or false in case of an error
      *

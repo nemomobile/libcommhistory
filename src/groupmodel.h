@@ -34,7 +34,7 @@
 namespace CommHistory {
 
 class GroupModelPrivate;
-class TrackerIO;
+class DatabaseIO;
 
 /*!
  * \class GroupModel
@@ -198,10 +198,9 @@ public:
      * Delete groups from database.
      *
      * \param groupIds List of group ids to be deleted.
-     * \param deleteMessages If true (default), also delete all messages in the groups.
      * \return true if successful, otherwise false
      */
-    bool deleteGroups(const QList<int> &groupIds, bool deleteMessages = true);
+    bool deleteGroups(const QList<int> &groupIds);
 
     /*!
      * Delete all groups from database.
@@ -249,10 +248,10 @@ public:
     QThread* backgroundThread();
 
     /*!
-     * Return an instance of TrackerIO that can be used for low-level queries.
-     * \return a TrackerIO
+     * Return an instance of DatabaseIO that can be used for low-level queries.
+     * \return a DatabaseIO
      */
-    TrackerIO& trackerIO();
+    DatabaseIO& databaseIO();
 
     /*!
      * If enabled (default), Group::contactId and Group::contactName in model

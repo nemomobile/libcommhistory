@@ -29,7 +29,6 @@ TARGET = commhistory-tool
 QT -= gui
 QT += dbus
 CONFIG += debug \
-    qtsparql \
     pkgconfig
 
 equals(QT_MAJOR_VERSION, 4) {
