@@ -262,7 +262,7 @@ public:
      * \param id id of the event to be deleted.
      * \return true if successful
      */
-    virtual bool deleteEvent(int id);
+    Q_INVOKABLE virtual bool deleteEvent(int id);
 
     /*!
      * Delete an event from the model and the database.
