@@ -135,8 +135,6 @@ void ContactGroupModelPrivate::groupAdded(GroupObject *group)
 {
     Q_Q(ContactGroupModel);
 
-    qDebug() << Q_FUNC_INFO << group->id() << group->contactIds();
-
     int index = indexForContacts(group->contactIds());
 
     if (index < 0) {
@@ -181,16 +179,12 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
             break;
     }
 
-    qDebug() << Q_FUNC_INFO << index << newIndex;
-
     if (newIndex != index) {
         q->beginMoveRows(QModelIndex(), index, index, QModelIndex(), newIndex > index ? newIndex + 1 : newIndex);
-        qDebug() << Q_FUNC_INFO << "move" << index << newIndex;
         items.move(index, newIndex);
         q->endMoveRows();
     }
 
-    qDebug() << Q_FUNC_INFO << "changed" << newIndex;
     emit q->dataChanged(q->index(newIndex, 0, QModelIndex()),
                         q->index(newIndex, ContactGroupModel::NumberOfColumns-1, QModelIndex()));
 
@@ -207,15 +201,13 @@ void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
     if (oldIndex >= 0) {
         if (!group->contactIds().isEmpty())
             newIndex = indexForContacts(group->contactIds());
-        if (newIndex < 0)
+
+        if (newIndex < 0) {
             newIndex = oldIndex;
-    }
-
-    qDebug() << Q_FUNC_INFO << group->id() << group->contactIds() << oldIndex << newIndex;
-
-    if (oldIndex >= 0 && oldIndex != newIndex) {
-        // Remove from old
-        groupDeleted(group);
+        } else if (oldIndex != newIndex) {
+            // Remove from old
+            groupDeleted(group);
+        }
     }
 
     if (newIndex < 0 || oldIndex != newIndex) {
@@ -231,8 +223,6 @@ void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
 {
     Q_Q(ContactGroupModel);
-
-    qDebug() << Q_FUNC_INFO << group->id() << group->contactIds();
 
     int index = indexForObject(group);
     if (index < 0)
