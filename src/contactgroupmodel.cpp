@@ -200,14 +200,16 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
 void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 {
     int oldIndex = indexForObject(group);
-    int newIndex;
+    int newIndex = -1;
     
-    // If the group has any contact information, and there is more than one group in this contactgroup,
-    // check for a new contactgroup. Otherwise, the current one is used.
-    if (!group->contactIds().isEmpty() && (oldIndex >= 0 && items[oldIndex]->groups().size() > 1))
-        newIndex = indexForContacts(group->contactIds());
-    else
-        newIndex = oldIndex;
+    // If the group has any contact information, check for a new contactgroup.
+    // Otherwise, the current one is used.
+    if (oldIndex >= 0) {
+        if (!group->contactIds().isEmpty())
+            newIndex = indexForContacts(group->contactIds());
+        if (newIndex < 0)
+            newIndex = oldIndex;
+    }
 
     qDebug() << Q_FUNC_INFO << group->id() << group->contactIds() << oldIndex << newIndex;
 
