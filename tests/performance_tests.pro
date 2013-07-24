@@ -35,7 +35,8 @@ SUBDIRS = perf_callmodel \
 # generate test xml
 #-----------------------------------------------------------------------------
 !system( ./do_tests_xml.sh $${OUT_PWD}/perf_bin \
-                    $${PROJECT_NAME}-performance-tests \
+                    $${PROJECT_NAME} \
+                    performance \
                      \"$${SUBDIRS}\" ) : \
      error("Error running do_tests_xml.sh")
 QMAKE_CLEAN += $${OUT_PWD}/perf_bin/tests.xml
