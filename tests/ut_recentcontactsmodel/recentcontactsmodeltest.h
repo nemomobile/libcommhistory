@@ -16,6 +16,7 @@ private slots:
     void repeated();
     void limitedDynamic();
     void differentTypes();
+    void selectionProperty();
 
     void cleanup();
     void cleanupTestCase();

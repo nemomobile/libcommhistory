@@ -42,6 +42,7 @@ static const int defaultChunkSize = 50;
 }
 
 using namespace CommHistory;
+typedef ContactListener::ContactAddress ContactAddress;
 
 GroupManagerPrivate::GroupManagerPrivate(GroupManager *manager)
         : q_ptr(manager)
@@ -302,7 +303,7 @@ DatabaseIO* GroupManagerPrivate::database()
 
 void GroupManagerPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
-                                           const QList< QPair<QString,QString> > &contactAddresses)
+                                           const QList<ContactAddress> &contactAddresses)
 {
     Q_Q(GroupManager);
 
@@ -398,7 +399,7 @@ void GroupManagerPrivate::startContactListening()
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
                 this,
-                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)));
+                SLOT(slotContactUpdated(quint32, const QString&, const QList<ContactAddress>&)));
         connect(contactListener.data(),
                 SIGNAL(contactRemoved(quint32)),
                 this,

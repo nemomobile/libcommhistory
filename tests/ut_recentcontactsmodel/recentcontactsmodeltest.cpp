@@ -302,6 +302,117 @@ void RecentContactsModelTest::differentTypes()
     QCOMPARE(e.remoteUid(), alicePhone2);
 }
 
+void RecentContactsModelTest::selectionProperty()
+{
+    RecentContactsModel phoneModel;
+    phoneModel.setSelectionProperty(QString::fromLatin1("phoneNumber"));
+
+    RecentContactsModel imModel;
+    imModel.setSelectionProperty(QString::fromLatin1("accountUri"));
+
+    RecentContactsModel emailModel;
+    emailModel.setSelectionProperty(QString::fromLatin1("emailAddress"));
+
+    QVERIFY(phoneModel.getEvents());
+    QVERIFY(imModel.getEvents());
+    QVERIFY(emailModel.getEvents());
+
+    QCOMPARE(phoneModel.rowCount(), 0);
+    QCOMPARE(imModel.rowCount(), 0);
+    QCOMPARE(emailModel.rowCount(), 0);
+
+    for (int count = 1; count <= 7; ++count) {
+        addEvents(count, count);
+        QTest::qWait(10000);
+    }
+
+    // Two contacts have phone numbers, two have IM addresses, none have email
+    QCOMPARE(phoneModel.rowCount(), 2);
+    QCOMPARE(imModel.rowCount(), 2);
+    QCOMPARE(emailModel.rowCount(), 0);
+
+    Event e;
+
+    // Phone contacts (not events)
+    e = phoneModel.event(phoneModel.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    QCOMPARE(e.type(), Event::IMEvent);
+    QCOMPARE(e.direction(), Event::Outbound);
+    QCOMPARE(e.localUid(), bobIm.first);
+    QCOMPARE(e.remoteUid(), bobIm.second);
+
+    e = phoneModel.event(phoneModel.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+    QCOMPARE(e.type(), Event::SMSEvent);
+    QCOMPARE(e.direction(), Event::Outbound);
+    QCOMPARE(e.localUid(), phoneAccount);
+    QCOMPARE(e.remoteUid(), alicePhone2);
+
+    // IM contacts
+    e = imModel.event(imModel.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    QCOMPARE(e.type(), Event::IMEvent);
+    QCOMPARE(e.direction(), Event::Outbound);
+    QCOMPARE(e.localUid(), bobIm.first);
+    QCOMPARE(e.remoteUid(), bobIm.second);
+
+    e = imModel.event(imModel.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
+    QCOMPARE(e.type(), Event::IMEvent);
+    QCOMPARE(e.direction(), Event::Outbound);
+    QCOMPARE(e.localUid(), charlieIm2.first);
+    QCOMPARE(e.remoteUid(), charlieIm2.second);
+
+    {
+        // Repeat the tests to test filtering on fill
+        RecentContactsModel phoneModel;
+        phoneModel.setSelectionProperty(QString::fromLatin1("phoneNumber"));
+
+        RecentContactsModel imModel;
+        imModel.setSelectionProperty(QString::fromLatin1("accountUri"));
+
+        RecentContactsModel emailModel;
+        emailModel.setSelectionProperty(QString::fromLatin1("emailAddress"));
+
+        QVERIFY(phoneModel.getEvents());
+        QVERIFY(imModel.getEvents());
+        QVERIFY(emailModel.getEvents());
+
+        QTRY_COMPARE(phoneModel.rowCount(), 2);
+        QTRY_COMPARE(imModel.rowCount(), 2);
+        QCOMPARE(emailModel.rowCount(), 0);
+
+        // Results should be indentical
+        e = phoneModel.event(phoneModel.index(0, 0));
+        QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+        QCOMPARE(e.type(), Event::IMEvent);
+        QCOMPARE(e.direction(), Event::Outbound);
+        QCOMPARE(e.localUid(), bobIm.first);
+        QCOMPARE(e.remoteUid(), bobIm.second);
+
+        e = phoneModel.event(phoneModel.index(1, 0));
+        QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+        QCOMPARE(e.type(), Event::SMSEvent);
+        QCOMPARE(e.direction(), Event::Outbound);
+        QCOMPARE(e.localUid(), phoneAccount);
+        QCOMPARE(e.remoteUid(), alicePhone2);
+
+        e = imModel.event(imModel.index(0, 0));
+        QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+        QCOMPARE(e.type(), Event::IMEvent);
+        QCOMPARE(e.direction(), Event::Outbound);
+        QCOMPARE(e.localUid(), bobIm.first);
+        QCOMPARE(e.remoteUid(), bobIm.second);
+
+        e = imModel.event(imModel.index(1, 0));
+        QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
+        QCOMPARE(e.type(), Event::IMEvent);
+        QCOMPARE(e.direction(), Event::Outbound);
+        QCOMPARE(e.localUid(), charlieIm2.first);
+        QCOMPARE(e.remoteUid(), charlieIm2.second);
+    }
+}
+
 void RecentContactsModelTest::cleanup()
 {
     cleanupTestEvents();
