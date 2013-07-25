@@ -35,6 +35,7 @@ TEMPLATE = lib
 VERSION  = $$LIBRARY_VERSION
 
 CONFIG  += shared \
+           no_install_prl \
            debug
 
 QT += dbus sql
@@ -67,6 +68,7 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/GroupModel \
                    headers/ClassZeroSMSModel \
                    headers/SingleEventModel \
+                   headers/RecentContactsModel \
                    headers/Events \
                    headers/Models \
                    headers/DatabaseIO

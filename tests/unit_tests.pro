@@ -28,6 +28,7 @@ SUBDIRS = ut_eventmodel \
           ut_conversationmodel \
           ut_groupmodel \
           ut_classzerosmsmodel \
+          ut_recentcontactsmodel \
           ut_singleeventmodel
 
 # make sure the destination path exists
@@ -38,7 +39,8 @@ SUBDIRS = ut_eventmodel \
 # generate test xml
 #-----------------------------------------------------------------------------
 !system( ./do_tests_xml.sh $${OUT_PWD}/bin \
-                    $${PROJECT_NAME}-tests \
+                    $${PROJECT_NAME} \
+                    unit \
                      \"$${SUBDIRS}\" ) : \
      error("Error running do_tests_xml.sh")
 QMAKE_CLEAN += $${OUT_PWD}/bin/tests.xml

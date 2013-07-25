@@ -103,6 +103,7 @@ Q_SIGNALS:
                         const QString &contactName,
                         const QList< QPair<QString,QString> > &contactAddresses);
     void contactRemoved(quint32 localId);
+    void contactUnknown(const QPair<QString, QString> &address);
 
 private Q_SLOTS:
 #ifdef USING_QTPIM
@@ -129,7 +130,8 @@ private:
     QTimer m_ContactTimer;
     QPointer<QContactManager> m_ContactManager;
     QList<QContactIdType> m_PendingContactIds;
-    QList<QPair<QString,QString> > m_PendingUnresolvedContacts;
+    QSet<QPair<QString,QString> > m_PendingUnresolvedContacts;
+    QSet<QPair<QString,QString> > m_RequestedContacts;
 };
 
 }

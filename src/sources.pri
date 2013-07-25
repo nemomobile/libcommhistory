@@ -18,6 +18,7 @@ HEADERS += commonutils.h \
            contactlistener.h \
            libcommhistoryexport.h \
            singleeventmodel.h \
+           recentcontactsmodel.h \
            updatesemitter.h \
            constants.h \
            groupobject.h \
@@ -46,6 +47,7 @@ SOURCES += commonutils.cpp \
            mmscontentdeleter.cpp \
            contactlistener.cpp \
            singleeventmodel.cpp \
+           recentcontactsmodel.cpp \
            updatesemitter.cpp \
            groupmanager.cpp \
            groupobject.cpp \

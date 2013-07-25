@@ -1,5 +1,5 @@
-<set description="libcommhistory-tests:ut_classzerosmsmodel" name="ut_classzerosmssmodel">
-    <case description="libcommhistory-tests:ut_classzerosmsmodel:" name="classzerosmsmodel" level="Component" type="Functional">
-        <step expected_result="0">/opt/tests/libcommhistory-unit-tests/ut_classzerosmsmodel</step>
+<set description="@TEST_SUITE_NAME@:ut_classzerosmsmodel" name="ut_classzerosmssmodel">
+    <case description="@TEST_SUITE_NAME@:ut_classzerosmsmodel:" name="classzerosmsmodel" level="Component" type="Functional">
+        <step expected_result="0">/opt/tests/@TEST_SUITE_NAME@/ut_classzerosmsmodel</step>
     </case>
 </set>

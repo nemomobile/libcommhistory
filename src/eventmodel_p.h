@@ -190,13 +190,15 @@ public Q_SLOTS:
 
     virtual void eventDeletedSlot(int id);
 
-    void canFetchMoreChangedSlot(bool canFetch);
+    virtual void canFetchMoreChangedSlot(bool canFetch);
 
-    void slotContactUpdated(quint32 localId,
-                            const QString &contactName,
-                            const QList< QPair<QString,QString> > &contactAddresses);
+    virtual void slotContactUpdated(quint32 localId,
+                                    const QString &contactName,
+                                    const QList< QPair<QString,QString> > &contactAddresses);
 
-    void slotContactRemoved(quint32 localId);
+    virtual void slotContactRemoved(quint32 localId);
+
+    virtual void slotContactUnknown(const QPair<QString, QString> &address);
 
 Q_SIGNALS:
     void eventsAdded(const QList<CommHistory::Event> &events);
