@@ -41,7 +41,7 @@
 
 #include "eventmodel.h"
 #include "groupmodel.h"
-#include "callmodel.h"
+#include "singleeventmodel.h"
 #include "event.h"
 #include "common.h"
 #include "commonutils.h"
@@ -92,6 +92,9 @@ const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
 int ticks = 0;
 int idleTicks = 0;
 
+QSet<QContactIdType> addedContactIds;
+QSet<int> addedEventIds;
+
 int addTestEvent(EventModel &model,
                  Event::EventType type,
                  Event::EventDirection direction,
@@ -125,6 +128,7 @@ int addTestEvent(EventModel &model,
     event.setIsMissedCall( isMissedCall );
     event.setMessageToken(messageToken);
     if (model.addEvent(event, toModelOnly)) {
+        addedEventIds.insert(event.id());
         return event.id();
     }
     return -1;
@@ -168,15 +172,15 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
         return -1;
     }
 
-    if (!localUid.isEmpty()) {
+    if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
         // Create a metadata detail to link the contact with the account
         QContactTpMetadata metadata;
-        metadata.setContactId(remoteUid);
         metadata.setAccountId(localUid);
+        metadata.setContactId(remoteUid);
         metadata.setAccountEnabled(true);
         if (!contact.saveDetail(&metadata)) {
             qWarning() << "Unable to add metadata to contact:" << contactUri;
-            return -1;
+            return false;
         }
     }
 
@@ -224,11 +228,60 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     foreach (const QContactIdType &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
+        addedContactIds.insert(id);
         return ContactListener::internalContactId(id);
     }
 
     qWarning() << "Could not find aggregator";
     return ContactListener::internalContactId(contact);
+}
+
+bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid)
+{
+    QContact existing = manager()->contact(ContactListener::apiContactId(contactId));
+    if (ContactListener::internalContactId(existing) != contactId) {
+        qWarning() << "Could not retrieve contact:" << contactId;
+        return false;
+    }
+
+    if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
+        QContactTpMetadata metadata = existing.detail<QContactTpMetadata>();
+        if (metadata.accountId().isEmpty()) {
+            // Create a metadata detail to link the contact with the account
+            metadata.setAccountId(localUid);
+            metadata.setContactId(remoteUid);
+            metadata.setAccountEnabled(true);
+            if (!existing.saveDetail(&metadata)) {
+                qWarning() << "Unable to add metadata to contact:" << contactId;
+                return false;
+            }
+        }
+    }
+
+    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
+    if (normal.isEmpty()) {
+        QContactOnlineAccount qcoa;
+        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
+        qcoa.setAccountUri(remoteUid);
+        if (!existing.saveDetail(&qcoa)) {
+            qWarning() << "Unable to add online account to contact:" << contactId;
+            return false;
+        }
+    } else {
+        QContactPhoneNumber phoneNumberDetail;
+        phoneNumberDetail.setNumber(remoteUid);
+        if (!existing.saveDetail(&phoneNumberDetail)) {
+            qWarning() << "Unable to add phone number to contact:" << contactId;
+            return false;
+        }
+    }
+
+    if (!manager()->saveContact(&existing)) {
+        qWarning() << "Unable to store contact:" << contactId;
+        return false;
+    }
+
+    return true;
 }
 
 void modifyTestContact(int id, const QString &name)
@@ -263,18 +316,54 @@ void deleteTestContact(int id)
 
 void cleanUpTestContacts()
 {
-    qWarning() << Q_FUNC_INFO << "Not implemented!";
-#if 0
-    QString query("DELETE { ?r a rdfs:Resource } WHERE { GRAPH <commhistory-tests> { ?r a rdfs:Resource } }");
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QScopedPointer<QSparqlResult> result(conn->exec(QSparqlQuery(query,
-                                                                 QSparqlQuery::DeleteStatement)));
-    result->waitForFinished();
-    if (result->hasError()) {
-        qWarning() << "error deleting contacts:" << result->lastError().message();
+    if (!addedContactIds.isEmpty()) {
+#ifdef USING_QTPIM
+        QString aggregatesType = QContactRelationship::Aggregates();
+#else
+        QString aggregatesType = QContactRelationship::Aggregates;
+#endif
+
+        foreach (const QContactRelationship &rel, manager()->relationships(aggregatesType)) {
+#ifdef USING_QTPIM
+            QContactIdType firstId = rel.first().id();
+            QContactIdType secondId = rel.second().id();
+#else
+            QContactIdType firstId = rel.first().localId();
+            QContactIdType secondId = rel.second().localId();
+#endif
+            if (addedContactIds.contains(firstId)) {
+                addedContactIds.insert(secondId);
+            }
+        }
+
+        if (!manager()->removeContacts(addedContactIds.toList())) {
+            qWarning() << "Unable to remove test contacts:" << addedContactIds;
+        }
+    }
+}
+
+void cleanupTestGroups()
+{
+    GroupModel groupModel;
+    groupModel.enableContactChanges(false);
+    groupModel.setQueryMode(EventModel::SyncQuery);
+    if (!groupModel.getGroups()) {
+        qCritical() << Q_FUNC_INFO << "groupModel::getGroups failed";
         return;
     }
-#endif
+
+    if (!groupModel.deleteAll())
+        qCritical() << Q_FUNC_INFO << "groupModel::deleteAll failed";
+}
+
+void cleanupTestEvents()
+{
+    SingleEventModel model;
+
+    QSet<int>::const_iterator it = addedEventIds.constBegin(), end = addedEventIds.constEnd();
+    for ( ; it != end; ++it) {
+        model.deleteEvent(*it);
+    }
 }
 
 bool compareEvents(Event &e1, Event &e2)
@@ -363,28 +452,8 @@ void deleteAll()
     qDebug() << __FUNCTION__ << "- Deleting all";
 
     cleanUpTestContacts();
-
-    GroupModel groupModel;
-    groupModel.enableContactChanges(false);
-    groupModel.setQueryMode(EventModel::SyncQuery);
-    if (!groupModel.getGroups()) {
-        qCritical() << Q_FUNC_INFO << "getGroups failed";
-        return;
-    }
-
-    if (!groupModel.deleteAll())
-        qCritical() << Q_FUNC_INFO << "deleteAll failed";
-
-    CallModel callModel;
-    callModel.enableContactChanges(false);
-    callModel.setQueryMode(EventModel::SyncQuery);
-    if (!callModel.getEvents(CallModel::SortByContact)) {
-        qCritical() << Q_FUNC_INFO << "callModel::getEvents failed";
-        return;
-    }
-
-    if (!callModel.deleteAll())
-        qCritical() << Q_FUNC_INFO << "callModel::deleteAll failed";
+    cleanupTestGroups();
+    cleanupTestEvents();
 }
 
 QString randomMessage(int words)

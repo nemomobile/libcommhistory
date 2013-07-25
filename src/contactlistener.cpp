@@ -247,10 +247,21 @@ void ContactListener::slotStartContactRequest()
         QContactFilter filter;
 
         for (int i = 0; i < REQUEST_BATCH_SIZE && !m_PendingUnresolvedContacts.isEmpty(); i++) {
-            QPair<QString,QString> contact = m_PendingUnresolvedContacts.takeFirst();
+            QPair<QString,QString> contact = *m_PendingUnresolvedContacts.begin();
+            m_PendingUnresolvedContacts.erase(m_PendingUnresolvedContacts.begin());
 
             QString number = CommHistory::normalizePhoneNumber(contact.second,
                                                                NormalizeFlagKeepDialString);
+
+            QPair<QString,QString> address = contact;
+            if (address.first.indexOf("/ring/tel/") >= 0) {
+                // The resolved result will be an empty localUid
+                address.first = QString();
+            }
+            if (!number.isEmpty()) {
+                address.second = number;
+            }
+            m_RequestedContacts.insert(address);
 
             if (number.isEmpty()) {
                 QContactDetailFilter filterRemote;
@@ -304,34 +315,35 @@ void ContactListener::slotResultsAvailable()
 
     foreach (const QContact &contact, request->contacts()) {
 #ifdef USING_QTPIM
-        if (contact.id() != m_ContactManager->selfContactId()) {
-            QList< QPair<QString,QString> > addresses;
-            foreach (const QContactOnlineAccount &account,
-                    contact.details(QContactOnlineAccount::Type)) {
-                addresses += qMakePair(account.value(QContactOnlineAccount__FieldAccountPath).toString(),
-                                       account.accountUri());
-            }
-            foreach (const QContactPhoneNumber &phoneNumber,
-                    contact.details(QContactPhoneNumber::Type)) {
-                addresses += qMakePair(QString(), phoneNumber.number());
-            }
+        if (contact.id() != m_ContactManager->selfContactId())
 #else
-        if (contact.localId() != m_ContactManager->selfContactId()) {
-            QList< QPair<QString,QString> > addresses;
-            foreach (const QContactOnlineAccount &account,
-                     contact.details(QContactOnlineAccount::DefinitionName)) {
-                addresses += qMakePair(account.value(QLatin1String("AccountPath")),
-                                       account.accountUri());
-            }
-            foreach (const QContactPhoneNumber &phoneNumber,
-                     contact.details(QContactPhoneNumber::DefinitionName)) {
-                addresses += qMakePair(QString(), phoneNumber.number());
-            }
+        if (contact.localId() != m_ContactManager->selfContactId())
 #endif
-
+        {
+            QList< QPair<QString,QString> > addresses;
+            foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
+#ifdef USING_QTPIM
+                QString localUid = account.value(QContactOnlineAccount__FieldAccountPath).toString();
+#else
+                QString localUid = account.value(QLatin1String("AccountPath"));
+#endif
+                addresses += qMakePair(localUid, account.accountUri());
+                m_RequestedContacts.remove(addresses.last());
+            }
+            foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
+                addresses += qMakePair(QString(), phoneNumber.number());
+                m_RequestedContacts.remove(qMakePair(QString(), CommHistory::normalizePhoneNumber(phoneNumber.number(), NormalizeFlagKeepDialString)));
+            }
             emit contactUpdated(internalContactId(contact), contactName(contact), addresses);
         } // if
     }
+
+    // Report any unresolved contacts as unknown
+    QSet<QPair<QString, QString> >::const_iterator it = m_RequestedContacts.constBegin(), end = m_RequestedContacts.constEnd();
+    for ( ; it != end; ++it) {
+        emit contactUnknown(*it);
+    }
+    m_RequestedContacts.clear();
 
     request->deleteLater();
 
@@ -364,7 +376,7 @@ void ContactListener::resolveContact(const QString &localUid,
 
     QPair<QString, QString> unresolved(localUid, remoteUid);
     if (!m_PendingUnresolvedContacts.contains(unresolved)) {
-        m_PendingUnresolvedContacts << unresolved;
+        m_PendingUnresolvedContacts.insert(unresolved);
         startRequestOrTimer();
     }
 }

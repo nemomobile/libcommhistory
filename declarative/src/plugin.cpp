@@ -48,6 +48,7 @@
 #include "contactgroupmodel.h"
 #include "callproxymodel.h"
 #include "conversationproxymodel.h"
+#include "recentcontactsmodel.h"
 #include "declarativegroupmanager.h"
 #include "contactaddresslookup.h"
 
@@ -78,6 +79,7 @@ public:
         qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
         qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
         qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
+        qmlRegisterType<CommHistory::RecentContactsModel>(uri, 1, 0, "CommRecentContactsModel");
         qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
         qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
 

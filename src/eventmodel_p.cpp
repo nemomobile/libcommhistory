@@ -532,6 +532,11 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
                             eventRootItem);
 }
 
+void EventModelPrivate::slotContactUnknown(const QPair<QString, QString> &address)
+{
+    Q_UNUSED(address)
+}
+
 DatabaseIO* EventModelPrivate::database()
 {
     return DatabaseIO::instance();
@@ -570,6 +575,11 @@ void EventModelPrivate::startContactListening()
                 SIGNAL(contactRemoved(quint32)),
                 this,
                 SLOT(slotContactRemoved(quint32)),
+                Qt::UniqueConnection);
+        connect(contactListener.data(),
+                SIGNAL(contactUnknown(const QPair<QString, QString>&)),
+                this,
+                SLOT(slotContactUnknown(const QPair<QString, QString>&)),
                 Qt::UniqueConnection);
     }
 }

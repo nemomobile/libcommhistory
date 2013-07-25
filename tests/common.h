@@ -50,7 +50,7 @@ using namespace CommHistory;
 
 const QString ACCOUNT1 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0";
 const QString ACCOUNT2 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut2_40localhost0";
-const QString RING_ACCOUNT = "ring/tel/ring";
+const QString RING_ACCOUNT = "/ring/tel/ring";
 
 /* The default load polling interval when waiting system to become idle */
 const int IDLE_POLL_INTERVAL = 2000;
@@ -76,9 +76,12 @@ int addTestEvent(EventModel &model,
 void addTestGroups(Group &group1, Group &group2);
 void addTestGroup(Group& grp, QString localUid, QString remoteUid);
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid=QString());
+bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid=QString());
 void modifyTestContact(int id, const QString &name);
 void deleteTestContact(int id);
 void cleanUpTestContacts();
+void cleanupTestGroups();
+void cleanupTestEvents();
 bool compareEvents(Event &e1, Event &e2);
 void deleteAll();
 QString randomMessage(int words);

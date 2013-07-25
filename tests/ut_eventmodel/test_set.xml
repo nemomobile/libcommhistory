@@ -1,5 +1,5 @@
-<set description="libcommhistory-tests:ut_eventmodel" name="ut_eventmodel">
-    <case description="libcommhistory-tests:ut_eventmodel:" name="eventmodel" level="Component" type="Functional" insignificant="true">
-        <step expected_result="0">/opt/tests/libcommhistory-unit-tests/ut_eventmodel</step>
+<set description="@TEST_SUITE_NAME@:ut_eventmodel" name="ut_eventmodel">
+    <case description="@TEST_SUITE_NAME@:ut_eventmodel:" name="eventmodel" level="Component" type="Functional" insignificant="true">
+        <step expected_result="0">/opt/tests/@TEST_SUITE_NAME@/ut_eventmodel</step>
     </case>
 </set>
