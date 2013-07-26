@@ -66,6 +66,30 @@ class LIBCOMMHISTORY_EXPORT ContactListener : public QObject
     Q_OBJECT
 
 public:
+    enum ContactAddressType {
+        UnknownType = 0,
+        IMAccountType,
+        PhoneNumberType,
+        EmailAddressType
+    };
+
+    struct ContactAddress {
+        QString localUid;
+        QString remoteUid;
+        ContactAddressType type;
+
+        QPair<QString, QString> uidPair() const { return qMakePair(localUid, remoteUid); }
+    };
+
+    template<typename T1, typename T2, typename T3>
+    ContactAddress makeContactAddress(T1 localUid, T2 remoteUid, T3 type) {
+        ContactAddress addr;
+        addr.localUid = localUid;
+        addr.remoteUid = remoteUid;
+        addr.type = type;
+        return addr;
+    }
+
     /*!
      *  \returns Contact listener
      */
@@ -76,6 +100,9 @@ public:
     static bool addressMatchesList(const QString &localUid,
                                    const QString &remoteUid,
                                    const QList< QPair<QString,QString> > &contactAddresses);
+    static bool addressMatchesList(const QString &localUid,
+                                   const QString &remoteUid,
+                                   const QList<ContactAddress> &contactAddresses);
 
     static int internalContactId(const QContactIdType &id);
     static int internalContactId(const QContact &contact);
@@ -101,7 +128,7 @@ public:
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,
-                        const QList< QPair<QString,QString> > &contactAddresses);
+                        const QList<ContactAddress> &contactAddresses);
     void contactRemoved(quint32 localId);
     void contactUnknown(const QPair<QString, QString> &address);
 

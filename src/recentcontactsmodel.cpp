@@ -34,6 +34,10 @@ namespace CommHistory {
 
 using namespace CommHistory;
 
+static const QString imAccountType(QString::fromLatin1("accountUri"));
+static const QString phoneNumberType(QString::fromLatin1("phoneNumber"));
+static const QString emailAddressType(QString::fromLatin1("emailAddress"));
+
 static int eventContact(const Event &event)
 {
     return event.contacts().first().first;
@@ -44,7 +48,8 @@ public:
     Q_DECLARE_PUBLIC(RecentContactsModel);
 
     RecentContactsModelPrivate(EventModel *model)
-        : EventModelPrivate(model)
+        : EventModelPrivate(model),
+          selectionProperty(ContactListener::UnknownType)
     {
         contactChangesEnabled = true;
     }
@@ -56,7 +61,7 @@ public:
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
-                            const QList<QPair<QString, QString> > &contactAddresses);
+                            const QList<ContactAddress> &contactAddresses);
     void slotContactUnknown(const QPair<QString, QString> &address);
 
 private:
@@ -68,6 +73,9 @@ private:
 
     void pendingEventsResolved();
 
+    bool skipIrrelevantContact(const Event &event);
+
+    ContactListener::ContactAddressType selectionProperty;
     mutable QList<Event> pendingEvents;
 };
 
@@ -75,13 +83,23 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
 {
     Q_UNUSED(end)
 
+    bool unresolved = false;
     if (!events.isEmpty()) {
-        foreach (const Event &event, events) {
+        for (QList<Event>::iterator it = events.begin(); it != events.end(); ) {
+            const Event &event(*it);
             if (event.contacts().isEmpty()) {
-                // We need to resolve all contacts before filling the model
-                pendingEvents.append(events);
-                return false;
+                unresolved = true;
+            } else if (skipIrrelevantContact(event)) {
+                it = events.erase(it);
+                continue;
             }
+            ++it;
+        }
+
+        if (unresolved) {
+            // We need to resolve all contacts before filling the model
+            pendingEvents.append(events);
+            return false;
         }
 
         // Nothing to resolve
@@ -108,15 +126,14 @@ void RecentContactsModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 
 void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
                                                     const QString &contactName,
-                                                    const QList< QPair<QString,QString> > &contactAddresses)
+                                                    const QList<ContactAddress> &contactAddresses)
 {
     EventModelPrivate::slotContactUpdated(localId, contactName, contactAddresses);
 
     if (!pendingEvents.isEmpty()) {
         // See if we have resolved our pending events
         bool unresolved = false;
-        QList<Event>::iterator it = pendingEvents.begin(), end = pendingEvents.end();
-        for ( ; it != end; ++it) {
+        for (QList<Event>::iterator it = pendingEvents.begin(); it != pendingEvents.end(); ) {
             Event &event(*it);
 
             if (event.contacts().isEmpty()) {
@@ -124,10 +141,17 @@ void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
                                                         event.remoteUid(),
                                                         contactAddresses)) {
                     setContactFromCache(event);
+
+                    if (skipIrrelevantContact(event)) {
+                        it = pendingEvents.erase(it);
+                        continue;
+                    }
                 } else {
                     unresolved = true;
                 }
             }
+
+            ++it;
         }
 
         if (!unresolved) {
@@ -187,23 +211,32 @@ void RecentContactsModelPrivate::updatePendingEvent(Event *event)
         setContactFromCache(*event);
     }
 
+    bool addEvent = true;
+    if (!event->contacts().isEmpty() && skipIrrelevantContact(*event)) {
+        // Ignore this contact/event
+        addEvent = false;
+    }
+
     if (!pendingEvents.isEmpty()) {
-        bool alreadyPresent = false;
         bool unresolved = false;
-        QList<Event>::iterator it = pendingEvents.begin(), end = pendingEvents.end();
-        for ( ; it != end; ++it) {
+        for (QList<Event>::iterator it = pendingEvents.begin(); it != pendingEvents.end(); ) {
             Event &pending(*it);
             if (pending.id() == event->id()) {
                 // This event is already pending - this is an update
                 pending = *event;
-                alreadyPresent = true;
+                addEvent = false;
             }
+
             if (pending.contacts().isEmpty()) {
                 unresolved = true;
+            } else if (skipIrrelevantContact(pending)) {
+                it = pendingEvents.erase(it);
+                continue;
             }
+            ++it;
         }
 
-        if (!alreadyPresent) {
+        if (addEvent) {
             // With previous events not yet added, we can't insert this one out of order
             pendingEvents.prepend(*event);
             if (!unresolved && event->contacts().isEmpty()) {
@@ -215,7 +248,7 @@ void RecentContactsModelPrivate::updatePendingEvent(Event *event)
             // All events are now resolved
             const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
         }
-    } else {
+    } else if (addEvent) {
         pendingEvents.prepend(*event);
         if (!event->contacts().isEmpty()) {
             const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
@@ -321,6 +354,18 @@ void RecentContactsModelPrivate::prependEvents(const QList<Event> &events)
     q->endInsertRows();
 }
 
+bool RecentContactsModelPrivate::skipIrrelevantContact(const Event &event)
+{
+    if (selectionProperty != ContactListener::UnknownType) {
+        int contactId = eventContact(event);
+        if (!contactHasAddressType(selectionProperty, contactId)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 RecentContactsModel::RecentContactsModel(QObject *parent)
     : EventModel(*new RecentContactsModelPrivate(this), parent)
 {
@@ -328,6 +373,37 @@ RecentContactsModel::RecentContactsModel(QObject *parent)
 
 RecentContactsModel::~RecentContactsModel()
 {
+}
+
+QString RecentContactsModel::selectionProperty() const
+{
+    Q_D(const RecentContactsModel);
+
+    return d->selectionProperty == ContactListener::IMAccountType
+                                ? imAccountType
+                                : (d->selectionProperty == ContactListener::PhoneNumberType
+                                                        ? phoneNumberType
+                                                        : (d->selectionProperty == ContactListener::EmailAddressType
+                                                                                ? emailAddressType
+                                                                                : QString()));
+}
+
+void RecentContactsModel::setSelectionProperty(const QString &name)
+{
+    Q_D(RecentContactsModel);
+
+    if (name == imAccountType) {
+        d->selectionProperty = ContactListener::IMAccountType;
+    } else if (name == phoneNumberType) {
+        d->selectionProperty = ContactListener::PhoneNumberType;
+    } else if (name == emailAddressType) {
+        d->selectionProperty = ContactListener::EmailAddressType;
+    } else {
+        d->selectionProperty = ContactListener::UnknownType;
+        if (!name.isEmpty()) {
+            qWarning() << "Unknown selection property type:" << name;
+        }
+    }
 }
 
 bool RecentContactsModel::getEvents()
