@@ -35,7 +35,6 @@
 #include "eventtreeitem.h"
 #include "constants.h"
 #include "commonutils.h"
-#include "contactlistener.h"
 
 using namespace CommHistory;
 
@@ -464,7 +463,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
 
 void EventModelPrivate::slotContactUpdated(quint32 localId,
                                            const QString &contactName,
-                                           const QList< QPair<QString,QString> > &contactAddresses)
+                                           const QList<ContactAddress> &contactAddresses)
 {
     // (local id, remote id) -> (contact id, name)
     QMutableMapIterator<QPair<QString,QString>, QList<Event::Contact> > i(contactCache);
@@ -505,7 +504,26 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
         }
     }
 
-    changeContactsRecursive(ContactUpdated, localId, contactName, contactAddresses, eventRootItem);
+    QList<QPair<QString, QString> > uidPairs;
+
+    bool hasAddressType[3] = { false, false, false };
+    foreach (const ContactAddress &address, contactAddresses) {
+        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
+
+        hasAddressType[address.type - 1] = true;
+        uidPairs.append(address.uidPair());
+    }
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        if (hasAddressType[i]) {
+            typeSet[i]->insert(localId);
+        } else {
+            typeSet[i]->remove(localId);
+        }
+    }
+
+    changeContactsRecursive(ContactUpdated, localId, contactName, uidPairs, eventRootItem);
 }
 
 void EventModelPrivate::slotContactRemoved(quint32 localId)
@@ -523,6 +541,11 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
 
         if (i.value().isEmpty())
             i.remove();
+    }
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        typeSet[i]->remove(localId);
     }
 
     changeContactsRecursive(ContactRemoved,
@@ -567,9 +590,9 @@ void EventModelPrivate::startContactListening()
     if (contactChangesEnabled && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
-                SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                SIGNAL(contactUpdated(quint32, const QString&, const QList<ContactAddress>&)),
                 this,
-                SLOT(slotContactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                SLOT(slotContactUpdated(quint32, const QString&, const QList<ContactAddress>&)),
                 Qt::UniqueConnection);
         connect(contactListener.data(),
                 SIGNAL(contactRemoved(quint32)),
@@ -583,3 +606,12 @@ void EventModelPrivate::startContactListening()
                 Qt::UniqueConnection);
     }
 }
+
+bool EventModelPrivate::contactHasAddressType(ContactListener::ContactAddressType type, quint32 localId) const
+{
+    Q_ASSERT((type >= ContactListener::IMAccountType) && (type <= ContactListener::EmailAddressType));
+
+    const QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    return typeSet[type - 1]->contains(localId);
+}
+

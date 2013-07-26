@@ -39,6 +39,8 @@ class LIBCOMMHISTORY_EXPORT RecentContactsModel : public EventModel
 {
     Q_OBJECT
 
+    Q_PROPERTY(QString selectionProperty READ selectionProperty WRITE setSelectionProperty)
+
 public:
     /*!
      * Model constructor.
@@ -58,6 +60,27 @@ public:
      * \return true if successful, otherwise false
      */
     Q_INVOKABLE bool getEvents();
+
+    /*!
+     * Return the name of the property type that contacts must possess to be included in the model.
+     *
+     * \return Property type name
+     */
+    QString selectionProperty() const;
+
+    /*!
+     * Set the property type that contacts must possess to be included in the model.
+     *
+     * Valid values are: [ 'accountUri' - contacts must possess an IM account,
+     *                     'phoneNumber' - contacts must possess a phone number,
+     *                     'emailAddress' - contacts must possess an email address ]
+     *
+     * The property names correspond to the property names by which these attributes
+     * are exposed in 'org.nemomobile.contacts.Person'.
+     *
+     * \param name Property type name
+     */
+    void setSelectionProperty(const QString &name);
 
 private:
     Q_DECLARE_PRIVATE(RecentContactsModel);

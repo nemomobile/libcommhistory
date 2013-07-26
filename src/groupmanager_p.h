@@ -30,6 +30,7 @@
 #include "groupmanager.h"
 #include "eventmodel.h"
 #include "group.h"
+#include "contactlistener.h"
 
 namespace CommHistory {
 
@@ -73,7 +74,7 @@ public Q_SLOTS:
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
-                            const QList< QPair<QString,QString> > &contactAddresses);
+                            const QList<ContactListener::ContactAddress> &contactAddresses);
 
     void slotContactRemoved(quint32 localId);
 

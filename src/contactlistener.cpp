@@ -32,6 +32,7 @@
 #include <QContactNickname>
 #include <QContactPresence>
 #include <QContactDisplayLabel>
+#include <QContactEmailAddress>
 #include <QContactIntersectionFilter>
 
 #include "commonutils.h"
@@ -190,6 +191,7 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     details << QContactName::Type
             << QContactOnlineAccount::Type
             << QContactPhoneNumber::Type
+            << QContactEmailAddress::Type
             << QContactNickname::Type
             << QContactPresence::Type
             << QContactDisplayLabel::Type;
@@ -201,6 +203,7 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     details << QContactName::DefinitionName
             << QContactOnlineAccount::DefinitionName
             << QContactPhoneNumber::DefinitionName
+            << QContactEmailAddress::DefinitionName
             << QContactNickname::DefinitionName
             << QContactPresence::DefinitionName 
             << QContactDisplayLabel::DefinitionName;
@@ -320,19 +323,22 @@ void ContactListener::slotResultsAvailable()
         if (contact.localId() != m_ContactManager->selfContactId())
 #endif
         {
-            QList< QPair<QString,QString> > addresses;
+            QList<ContactAddress> addresses;
             foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
 #ifdef USING_QTPIM
                 QString localUid = account.value(QContactOnlineAccount__FieldAccountPath).toString();
 #else
                 QString localUid = account.value(QLatin1String("AccountPath"));
 #endif
-                addresses += qMakePair(localUid, account.accountUri());
-                m_RequestedContacts.remove(addresses.last());
+                addresses += makeContactAddress(localUid, account.accountUri(), IMAccountType);
+                m_RequestedContacts.remove(qMakePair(localUid, account.accountUri()));
             }
             foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
-                addresses += qMakePair(QString(), phoneNumber.number());
+                addresses += makeContactAddress(QString(), phoneNumber.number(), PhoneNumberType);
                 m_RequestedContacts.remove(qMakePair(QString(), CommHistory::normalizePhoneNumber(phoneNumber.number(), NormalizeFlagKeepDialString)));
+            }
+            foreach (const QContactEmailAddress &emailAddress, contact.details<QContactEmailAddress>()) {
+                addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), EmailAddressType);
             }
             emit contactUpdated(internalContactId(contact), contactName(contact), addresses);
         } // if
@@ -354,19 +360,32 @@ bool ContactListener::addressMatchesList(const QString &localUid,
                                          const QString &remoteUid,
                                          const QList< QPair<QString,QString> > &contactAddresses)
 {
-    bool found = false;
-
     QListIterator<QPair<QString,QString> > i(contactAddresses);
     while (i.hasNext()) {
         QPair<QString,QString> address = i.next();
         if ((address.first.isEmpty() || address.first == localUid)
             && CommHistory::remoteAddressMatch(remoteUid, address.second)) {
-            found = true;
-            break;
+            return true;
         }
     }
 
-    return found;
+    return false;
+}
+
+bool ContactListener::addressMatchesList(const QString &localUid,
+                                         const QString &remoteUid,
+                                         const QList<ContactAddress> &contactAddresses)
+{
+    QListIterator<ContactAddress> i(contactAddresses);
+    while (i.hasNext()) {
+        ContactAddress address = i.next();
+        if ((address.localUid.isEmpty() || address.localUid == localUid)
+            && CommHistory::remoteAddressMatch(remoteUid, address.remoteUid)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void ContactListener::resolveContact(const QString &localUid,

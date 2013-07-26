@@ -33,12 +33,12 @@
 #include "eventtreeitem.h"
 #include "databaseio.h"
 #include "libcommhistoryexport.h"
+#include "contactlistener.h"
 
 class QSqlQuery;
 
 namespace CommHistory {
 
-class ContactListener;
 class UpdatesEmitter;
 
 /*!
@@ -58,6 +58,8 @@ class LIBCOMMHISTORY_EXPORT EventModelPrivate : public QObject
     } ContactChangeType;
 
 public:
+    typedef ContactListener::ContactAddress ContactAddress;
+
     EventModel *q_ptr;
 
     EventModelPrivate(EventModel *model = 0);
@@ -147,6 +149,8 @@ public:
     bool setContactFromCache(CommHistory::Event &event);
     void startContactListening();
 
+    bool contactHasAddressType(ContactListener::ContactAddressType type, quint32 contactId) const;
+
     // This is the root node for the internal event tree. In a standard
     // flat model, eventRootNode has rowCount() children with events.
     // Use this in fillModel() and other methods if you're implementing
@@ -171,6 +175,10 @@ public:
     // (local id, remote id) -> (contact id, name)
     QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
 
+    QSet<quint32> phoneContacts;
+    QSet<quint32> imContacts;
+    QSet<quint32> emailContacts;
+
     QThread *bgThread;
 
     QSharedPointer<UpdatesEmitter> emitter;
@@ -194,7 +202,7 @@ public Q_SLOTS:
 
     virtual void slotContactUpdated(quint32 localId,
                                     const QString &contactName,
-                                    const QList< QPair<QString,QString> > &contactAddresses);
+                                    const QList<ContactAddress> &contactAddresses);
 
     virtual void slotContactRemoved(quint32 localId);
 
