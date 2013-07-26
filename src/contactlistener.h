@@ -29,6 +29,8 @@
 #include <QList>
 #include <QTimer>
 #include <QPointer>
+#include <QSet>
+#include <QPair>
 
 #include "libcommhistoryexport.h"
 
