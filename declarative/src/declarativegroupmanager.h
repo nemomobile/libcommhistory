@@ -56,6 +56,8 @@ public:
      * inline if necessary. */
     Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QString &remoteUid, const QString &text);
 
+    Q_INVOKABLE bool setEventStatus(int eventId, int status);
+
 public slots:
     void reload();
 
