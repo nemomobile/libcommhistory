@@ -37,8 +37,8 @@ ContactAddressLookup::ContactAddressLookup(QObject *parent)
     : QObject(parent), mContactId(0), requestPending(false)
 {
     listener = ContactListener::instance();
-    connect(listener.data(), SIGNAL(contactUpdated(quint32,QString,QList<QPair<QString,QString> >)),
-            SLOT(contactUpdated(quint32,QString,QList<QPair<QString,QString> >)));
+    connect(listener.data(), SIGNAL(contactUpdated(quint32,QString,QList<ContactAddress>)),
+            SLOT(contactUpdated(quint32,QString,QList<ContactAddress>)));
 }
 
 void ContactAddressLookup::setLocalUid(const QString &uid)
@@ -91,7 +91,7 @@ void ContactAddressLookup::request()
     listener->resolveContact(mLocalUid, mRemoteUid);
 }
 
-void ContactAddressLookup::contactUpdated(quint32 id, const QString &name, const QList<QPair<QString, QString> > &addresses)
+void ContactAddressLookup::contactUpdated(quint32 id, const QString &name, const QList<ContactAddress> &addresses)
 {
     Q_UNUSED(name);
 
