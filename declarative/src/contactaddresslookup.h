@@ -41,6 +41,8 @@ class ContactAddressLookup : public QObject
     Q_OBJECT
 
 public:
+    typedef CommHistory::ContactListener::ContactAddress ContactAddress;
+
     ContactAddressLookup(QObject *parent = 0);
 
     Q_PROPERTY(QString localUid READ localUid WRITE setLocalUid NOTIFY localUidChanged)
@@ -61,7 +63,7 @@ signals:
 
 private slots:
     void request();
-    void contactUpdated(quint32 id, const QString &name, const QList<QPair<QString, QString> > &addresses);
+    void contactUpdated(quint32 id, const QString &name, const QList<ContactAddress> &addresses);
 
 private:
     QString mLocalUid, mRemoteUid;

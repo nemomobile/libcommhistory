@@ -397,7 +397,7 @@ void GroupManagerPrivate::startContactListening()
     if (contactChangesEnabled && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
-                SIGNAL(contactUpdated(quint32, const QString&, const QList<QPair<QString,QString> >&)),
+                SIGNAL(contactUpdated(quint32, const QString&, const QList<ContactAddress>&)),
                 this,
                 SLOT(slotContactUpdated(quint32, const QString&, const QList<ContactAddress>&)));
         connect(contactListener.data(),
