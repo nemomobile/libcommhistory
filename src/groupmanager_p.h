@@ -35,7 +35,6 @@
 namespace CommHistory {
 
 class DatabaseIO;
-class ContactListener;
 class UpdatesEmitter;
 
 class GroupManagerPrivate : public QObject
@@ -45,6 +44,8 @@ class GroupManagerPrivate : public QObject
     Q_DECLARE_PUBLIC(GroupManager)
 
 public:
+    typedef ContactListener::ContactAddress ContactAddress;
+
     GroupManager *q_ptr;
 
     GroupManagerPrivate(GroupManager *parent = 0);
@@ -74,7 +75,7 @@ public Q_SLOTS:
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
-                            const QList<ContactListener::ContactAddress> &contactAddresses);
+                            const QList<ContactAddress> &contactAddresses);
 
     void slotContactRemoved(quint32 localId);
 
