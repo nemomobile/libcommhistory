@@ -27,47 +27,34 @@
 #include <QObject>
 #include <QString>
 #include <QList>
-#include <QTimer>
-#include <QPointer>
-#include <QSet>
 #include <QPair>
 
 #include "libcommhistoryexport.h"
 
+#include <seasidecache.h>
+
 // contacts
 #include <QContact>
-#include <QContactFetchRequest>
+#include <QContactId>
 
 #ifdef USING_QTPIM
-# include <QContactId>
-# include <QContactIdFilter>
-
 QTCONTACTS_USE_NAMESPACE
-
-typedef QContactId QContactIdType;
-typedef QContactIdFilter QContactIdTypeFilter;
-
 #else
-# include <QContactLocalIdFilter>
-
 QTM_USE_NAMESPACE
-QTM_BEGIN_NAMESPACE
-class QContactManager;
-class QContactFetchRequest;
-QTM_END_NAMESPACE
-
-typedef QContactLocalId QContactIdType;
-typedef QContactLocalIdFilter QContactIdTypeFilter;
-
 #endif
 
 namespace CommHistory {
 
-class LIBCOMMHISTORY_EXPORT ContactListener : public QObject
+class LIBCOMMHISTORY_EXPORT ContactListener
+    : public QObject,
+      public SeasideCache::ResolveListener,
+      public SeasideCache::ChangeListener
 {
     Q_OBJECT
 
 public:
+    typedef QtContactsSqliteExtensions::ApiContactIdType ApiContactIdType;
+
     enum ContactAddressType {
         UnknownType = 0,
         IMAccountType,
@@ -84,7 +71,7 @@ public:
     };
 
     template<typename T1, typename T2, typename T3>
-    ContactAddress makeContactAddress(T1 localUid, T2 remoteUid, T3 type) {
+    static ContactAddress makeContactAddress(T1 localUid, T2 remoteUid, T3 type) {
         ContactAddress addr;
         addr.localUid = localUid;
         addr.remoteUid = remoteUid;
@@ -106,9 +93,9 @@ public:
                                    const QString &remoteUid,
                                    const QList<ContactAddress> &contactAddresses);
 
-    static int internalContactId(const QContactIdType &id);
+    static int internalContactId(const ApiContactIdType &id);
     static int internalContactId(const QContact &contact);
-    static QContactIdType apiContactId(int internalId);
+    static ApiContactIdType apiContactId(int internalId);
 
     /**
      * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.
@@ -134,33 +121,26 @@ Q_SIGNALS:
     void contactRemoved(quint32 localId);
     void contactUnknown(const QPair<QString, QString> &address);
 
-private Q_SLOTS:
-#ifdef USING_QTPIM
-    void slotContactsUpdated(const QList<QContactId> &contactIds);
-    void slotContactsRemoved(const QList<QContactId> &contactIds);
-#else
-    void slotContactsUpdated(const QList<QContactLocalId> &contactIds);
-    void slotContactsRemoved(const QList<QContactLocalId> &contactIds);
-#endif
-
-    void slotStartContactRequest();
-    void slotResultsAvailable();
+    // Private:
+    void contactInCache(quint32 localId,
+                        const QString &contactName,
+                        const QList<ContactAddress> &contactAddresses);
 
 private:
     ContactListener(QObject *parent = 0);
 
     void init();
-    QContactFetchRequest *buildRequest(const QContactFilter &filter);
-    void startRequestOrTimer();
+
+    QList<ContactAddress> contactAddresses(const QContact &contact) const;
+
+    void addressResolved(const QString &first, const QString &second, SeasideCache::CacheItem *item);
+    void itemUpdated(SeasideCache::CacheItem *item);
+    void itemAboutToBeRemoved(SeasideCache::CacheItem *item);
 
 private:
     static QWeakPointer<ContactListener> m_Instance;
     bool m_Initialized;
-    QTimer m_ContactTimer;
-    QPointer<QContactManager> m_ContactManager;
-    QList<QContactIdType> m_PendingContactIds;
-    QSet<QPair<QString,QString> > m_PendingUnresolvedContacts;
-    QSet<QPair<QString,QString> > m_RequestedContacts;
+    QHash<QPair<QString, QString>, QPair<QString, QString> > m_pending;
 };
 
 }

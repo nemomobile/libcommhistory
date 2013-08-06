@@ -27,7 +27,6 @@ HEADERS += commonutils.h \
            contactgroupmodel.h \
            contactgroupmodel_p.h \
            contactgroup.h \
-           qcontacttpmetadata_p.h \
            databaseio.h \
            databaseio_p.h \
            commhistorydatabase.h
@@ -53,6 +52,5 @@ SOURCES += commonutils.cpp \
            groupobject.cpp \
            contactgroupmodel.cpp \
            contactgroup.cpp \
-           qcontacttpmetadata.cpp \
            databaseio.cpp \
            commhistorydatabase.cpp

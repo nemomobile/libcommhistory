@@ -10,6 +10,8 @@ BuildRequires:  pkgconfig(QtCore) >= 4.7.0
 BuildRequires:  pkgconfig(QtContacts)
 BuildRequires:  pkgconfig(QtDeclarative)
 BuildRequires:  pkgconfig(QJson)
+BuildRequires:  pkgconfig(qtcontacts-sqlite-extensions)
+BuildRequires:  pkgconfig(contactcache)
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.

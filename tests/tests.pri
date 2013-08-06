@@ -29,10 +29,12 @@ equals(QT_MAJOR_VERSION, 4) {
     LIBS += ../../src/libcommhistory.so
     CONFIG += mobility
     MOBILITY += contacts
+    PKGCONFIG += qtcontacts-sqlite-extensions contactcache
 }
 equals(QT_MAJOR_VERSION, 5) {
     LIBS += ../../src/libcommhistory-qt5.so
     QT += contacts
+    PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
     DEFINES += USING_QTPIM
 }
 

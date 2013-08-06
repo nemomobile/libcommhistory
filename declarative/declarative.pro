@@ -29,12 +29,14 @@ equals(QT_MAJOR_VERSION, 4) {
     QT += declarative
     CONFIG += mobility
     MOBILITY += contacts
+    PKGCONFIG += qtcontacts-sqlite-extensions contactcache
     target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
 }
 
 equals(QT_MAJOR_VERSION, 5) {
     LIBS += -L../src ../src/libcommhistory-qt5.so
     QT += qml contacts
+    PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
     DEFINES += USING_QTPIM
     target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 }

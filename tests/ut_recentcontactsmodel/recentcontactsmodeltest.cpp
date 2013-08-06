@@ -238,7 +238,7 @@ void RecentContactsModelTest::limitedDynamic()
     // Add more events; we have to wait for each one to be sure of when we're done
     for (int count = 3; count <= 5; ++count) {
         addEvents(count, count);
-        QTRY_COMPARE_WITH_TIMEOUT(insert.count(), count, 10000);
+        QTRY_COMPARE(insert.count(), count);
     }
 
     QTRY_COMPARE(insert.count(), 5);
@@ -271,7 +271,7 @@ void RecentContactsModelTest::differentTypes()
 
     for (int count = 1; count <= 7; ++count) {
         addEvents(count, count);
-        QTRY_COMPARE_WITH_TIMEOUT(insert.count(), count, 10000);
+        QTRY_COMPARE(insert.count(), count);
     }
 
     // We should have one row for each contact
@@ -323,7 +323,7 @@ void RecentContactsModelTest::selectionProperty()
 
     for (int count = 1; count <= 7; ++count) {
         addEvents(count, count);
-        QTest::qWait(10000);
+        QTest::qWait(1000);
     }
 
     // Two contacts have phone numbers, two have IM addresses, none have email
