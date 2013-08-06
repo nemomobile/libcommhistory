@@ -31,6 +31,8 @@
 
 #include "contactaddresslookup.h"
 
+#include <QTimer>
+
 using namespace CommHistory;
 
 ContactAddressLookup::ContactAddressLookup(QObject *parent)

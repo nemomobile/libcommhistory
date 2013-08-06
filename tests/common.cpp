@@ -22,6 +22,12 @@
 
 #include <QtTest/QtTest>
 
+#include <qtcontacts-extensions.h>
+#include <qtcontacts-extensions_impl.h>
+
+#include <QContactOriginMetadata>
+#include <qcontactoriginmetadata_impl.h>
+
 #include <QContact>
 #include <QContactManager>
 #include <QContactDetail>
@@ -47,14 +53,10 @@
 #include "commonutils.h"
 #include "contactlistener.h"
 
-#include "qcontacttpmetadata_p.h"
-
 #ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-typedef QContactId QContactIdType;
 #else
 QTM_USE_NAMESPACE
-typedef QContactLocalId QContactIdType;
 #endif
 
 namespace {
@@ -92,7 +94,7 @@ const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
 int ticks = 0;
 int idleTicks = 0;
 
-QSet<QContactIdType> addedContactIds;
+QSet<ContactListener::ApiContactIdType> addedContactIds;
 QSet<int> addedEventIds;
 
 int addTestEvent(EventModel &model,
@@ -174,10 +176,10 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 
     if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
         // Create a metadata detail to link the contact with the account
-        QContactTpMetadata metadata;
-        metadata.setAccountId(localUid);
-        metadata.setContactId(remoteUid);
-        metadata.setAccountEnabled(true);
+        QContactOriginMetadata metadata;
+        metadata.setGroupId(localUid);
+        metadata.setId(remoteUid);
+        metadata.setEnabled(true);
         if (!contact.saveDetail(&metadata)) {
             qWarning() << "Unable to add metadata to contact:" << contactUri;
             return false;
@@ -226,7 +228,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     filter.setRelationshipType(QContactRelationship::Aggregates);
 #endif
 
-    foreach (const QContactIdType &id, manager()->contactIds(filter)) {
+    foreach (const ContactListener::ApiContactIdType &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
         addedContactIds.insert(id);
         return ContactListener::internalContactId(id);
@@ -245,12 +247,12 @@ bool addTestContactAddress(int contactId, const QString &remoteUid, const QStrin
     }
 
     if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
-        QContactTpMetadata metadata = existing.detail<QContactTpMetadata>();
-        if (metadata.accountId().isEmpty()) {
+        QContactOriginMetadata metadata = existing.detail<QContactOriginMetadata>();
+        if (metadata.groupId().isEmpty()) {
             // Create a metadata detail to link the contact with the account
-            metadata.setAccountId(localUid);
-            metadata.setContactId(remoteUid);
-            metadata.setAccountEnabled(true);
+            metadata.setGroupId(localUid);
+            metadata.setId(remoteUid);
+            metadata.setEnabled(true);
             if (!existing.saveDetail(&metadata)) {
                 qWarning() << "Unable to add metadata to contact:" << contactId;
                 return false;
@@ -325,11 +327,11 @@ void cleanUpTestContacts()
 
         foreach (const QContactRelationship &rel, manager()->relationships(aggregatesType)) {
 #ifdef USING_QTPIM
-            QContactIdType firstId = rel.first().id();
-            QContactIdType secondId = rel.second().id();
+            ContactListener::ApiContactIdType firstId = rel.first().id();
+            ContactListener::ApiContactIdType secondId = rel.second().id();
 #else
-            QContactIdType firstId = rel.first().localId();
-            QContactIdType secondId = rel.second().localId();
+            ContactListener::ApiContactIdType firstId = rel.first().localId();
+            ContactListener::ApiContactIdType secondId = rel.second().localId();
 #endif
             if (addedContactIds.contains(firstId)) {
                 addedContactIds.insert(secondId);
@@ -339,6 +341,8 @@ void cleanUpTestContacts()
         if (!manager()->removeContacts(addedContactIds.toList())) {
             qWarning() << "Unable to remove test contacts:" << addedContactIds;
         }
+
+        addedContactIds.clear();
     }
 }
 
