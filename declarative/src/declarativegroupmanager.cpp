@@ -31,6 +31,7 @@
 
 #include "declarativegroupmanager.h"
 #include "sharedbackgroundthread.h"
+#include "singleeventmodel.h"
 #include <QTimer>
 
 using namespace CommHistory;
@@ -111,5 +112,21 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
 
     qWarning() << Q_FUNC_INFO << "Failed creating event";
     return -1;
+}
+
+bool DeclarativeGroupManager::setEventStatus(int eventId, int status)
+{
+    SingleEventModel model;
+    if (!model.getEventById(eventId)) {
+        qWarning() << Q_FUNC_INFO << "No event with id" << eventId;
+        return false;
+    }
+
+    Event ev = model.event(model.index(0, 0));
+    if (ev.status() == status)
+        return true;
+
+    ev.setStatus(static_cast<Event::EventStatus>(status));
+    return model.modifyEvent(ev);
 }
 
