@@ -169,15 +169,6 @@ void RecentContactsModelPrivate::slotContactUnknown(const QPair<QString, QString
             Event &event(*it);
 
             QPair<QString, QString> eventAddress = qMakePair(event.localUid(), event.remoteUid());
-            if (eventAddress.first.indexOf("/ring/tel/") >= 0) {
-                // Transform this address to the form that contactUnknown reports
-                eventAddress.first = QString();
-                QString number = CommHistory::normalizePhoneNumber(eventAddress.second, NormalizeFlagKeepDialString);
-                if (!number.isEmpty()) {
-                    eventAddress.second = number;
-                }
-            }
-
             if (eventAddress == address) {
                 qDebug() << "Could not resolve contact address:" << address;
                 it = pendingEvents.erase(it);
