@@ -17,6 +17,7 @@ private slots:
     void limitedDynamic();
     void differentTypes();
     void selectionProperty();
+    void contactRemoved();
 
     void cleanup();
     void cleanupTestCase();

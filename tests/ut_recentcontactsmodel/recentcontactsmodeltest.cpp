@@ -95,6 +95,30 @@ private:
     int insertionCount;
 };
 
+class RemovalSpy : public QObject
+{
+    Q_OBJECT
+
+public:
+    RemovalSpy(QAbstractItemModel &m, QObject *parent = 0)
+        : QObject(parent),
+          model(m),
+          removalCount(0)
+    {
+        QObject::connect(&model, SIGNAL(rowsRemoved(const QModelIndex &, int, int)),
+                         this, SLOT(rowsRemoved(const QModelIndex &, int, int)));
+    }
+
+    int count() const { return removalCount; }
+
+private Q_SLOTS:
+    void rowsRemoved(const QModelIndex &, int start, int end) { removalCount += (end - start + 1); }
+
+private:
+    QAbstractItemModel &model;
+    int removalCount;
+};
+
 void RecentContactsModelTest::initTestCase()
 {
     QVERIFY(QDBusConnection::sessionBus().isConnected());
@@ -411,6 +435,53 @@ void RecentContactsModelTest::selectionProperty()
         QCOMPARE(e.localUid(), charlieIm2.first);
         QCOMPARE(e.remoteUid(), charlieIm2.second);
     }
+}
+
+void RecentContactsModelTest::contactRemoved()
+{
+    QString dougalName("Dougal");
+    QString dougalPhone("5550000");
+    int dougalId = addTestContact(dougalName, dougalPhone);
+    QVERIFY(dougalId != -1);
+
+    addEvents(2);
+
+    // Add an event for the new contact
+    EventModel eventsModel;
+    QTest::qWait(1000);
+    addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), dougalPhone);
+
+    RecentContactsModel model;
+    InsertionSpy insert(model);
+    RemovalSpy remove(model);
+
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(insert.count(), 3);
+
+    // We should have one row for each contact
+    QCOMPARE(model.rowCount(), 3);
+
+    Event e;
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(dougalId, dougalName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+
+    QCOMPARE(remove.count(), 0);
+    deleteTestContact(dougalId);
+
+    // The removed contact's event should be removed
+    QTRY_COMPARE(remove.count(), 1);
+
+    QCOMPARE(model.rowCount(), 2);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
 }
 
 void RecentContactsModelTest::cleanup()
