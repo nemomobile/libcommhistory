@@ -314,6 +314,7 @@ void deleteTestContact(int id)
     if (!manager()->removeContact(ContactListener::apiContactId(id))) {
         qWarning() << "error deleting contact:" << id;
     }
+    addedContactIds.remove(ContactListener::apiContactId(id));
 }
 
 void cleanUpTestContacts()
