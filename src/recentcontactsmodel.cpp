@@ -62,6 +62,7 @@ public:
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
                             const QList<ContactAddress> &contactAddresses);
+    void slotContactRemoved(quint32 localId);
     void slotContactUnknown(const QPair<QString, QString> &address);
 
 private:
@@ -156,6 +157,21 @@ void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
 
         if (!unresolved) {
             pendingEventsResolved();
+        }
+    }
+}
+
+void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
+{
+    EventModelPrivate::slotContactRemoved(localId);
+
+    // Remove any event for this contact (there can only be one)
+    const int rowCount = eventRootItem->childCount();
+    for (int row = 0; row < rowCount; ++row) {
+        const Event &existing(eventRootItem->eventAt(row));
+        if (existing.contacts().isEmpty()) {
+            deleteFromModel(existing.id());
+            break;
         }
     }
 }
