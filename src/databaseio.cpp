@@ -924,7 +924,7 @@ QString DatabaseIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
         callGroupRemoteId = event.remoteUid();
     } else {
         // keep dial string in group uris for separate history entries
-        callGroupRemoteId = makeShortNumber(event.remoteUid(), NormalizeFlagKeepDialString);
+        callGroupRemoteId = makeShortNumber(event.remoteUid());
     }
 
     QString videoSuffix;

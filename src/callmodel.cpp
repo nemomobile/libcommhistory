@@ -217,14 +217,14 @@ void CallModelPrivate::modelUpdatedSlot( bool successful )
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
 {
     if (sortBy == CallModel::SortByContact
-        && remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
+        && remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
         && e1.localUid() == e2.localUid()
         && e1.isVideoCall() == e2.isVideoCall())
     {
         return true;
     }
     else if ((sortBy == CallModel::SortByTime || sortBy == CallModel::SortByContactAndType)
-             && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid(), NormalizeFlagKeepDialString)
+             && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
                  && e1.localUid() == e2.localUid()
                  && e1.direction() == e2.direction()
                  && e1.isMissedCall() == e2.isMissedCall()
@@ -422,9 +422,11 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                         // for last row and add a new row if event is
                         // acceptable
                         if (last) {
-                            if (!countedUids.contains(last->event().remoteUid()))
+                            const QString shortNumber(makeShortNumber(last->event().remoteUid()));
+                            if (!countedUids.contains(shortNumber)) {
                                 last->event().setEventCount(calculateEventCount(last));
-                            countedUids.insert(last->event().remoteUid());
+                                countedUids.insert(shortNumber);
+                            }
 
                             if (last != previousLastItem && eventMatchesFilter(last->event()))
                                 newItems.append(last);
@@ -441,9 +443,11 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 }
 
                 if (last && last != previousLastItem && eventMatchesFilter(last->event())) {
-                    if (!countedUids.contains(last->event().remoteUid()))
+                    const QString shortNumber(makeShortNumber(last->event().remoteUid()));
+                    if (!countedUids.contains(shortNumber)) {
                         last->event().setEventCount(calculateEventCount(last));
-                    countedUids.insert(last->event().remoteUid());
+                        countedUids.insert(shortNumber);
+                    }
                     newItems.append(last);
                 } else  if (last != previousLastItem) {
                     delete last;
@@ -542,8 +546,7 @@ void CallModelPrivate::addToModel( Event &event )
             // reset event count if type doesn't match top event
             if (!eventMatchesFilter(event) && eventRootItem->childCount()) {
                 EventTreeItem *topItem = eventRootItem->child(0);
-                if (remoteAddressMatch(topItem->event().remoteUid(),
-                                       event.remoteUid(), NormalizeFlagKeepDialString)
+                if (remoteAddressMatch(topItem->event().remoteUid(), event.remoteUid())
                     && topItem->event().localUid() == event.localUid()) {
                     EventTreeItem *newTopItem = new EventTreeItem(topItem->event());
                     newTopItem->event().setEventCount(1);

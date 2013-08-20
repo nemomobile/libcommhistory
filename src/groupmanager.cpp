@@ -174,7 +174,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setEndTime(event.endTime());
 
             if ((event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) &&
-                go->remoteUids().first() != event.remoteUid()) {
+                !CommHistory::remoteAddressMatch(go->remoteUids().first(), event.remoteUid())) {
 
                 qDebug() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
                 QStringList updatedUids;
@@ -192,8 +192,8 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
         bool found = false;
         QString phoneNumber = normalizePhoneNumber(event.remoteUid());
         if (!phoneNumber.isEmpty()) {
-            foreach (QString uid, go->remoteUids()) {
-                if (uid.endsWith(phoneNumber.right(CommHistory::phoneNumberMatchLength()))) {
+            foreach (const QString &uid, go->remoteUids()) {
+                if (CommHistory::remoteAddressMatch(uid, event.remoteUid())) {
                     found = true;
                     break;
                 }
