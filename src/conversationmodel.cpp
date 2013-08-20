@@ -113,7 +113,7 @@ void ConversationModelPrivate::updateEvents(const Group &group,
         if (event.groupId() == group.id()
             && event.contacts() != contacts
             && event.direction() == Event::Inbound
-            && event.remoteUid() == remoteUid) {
+            && remoteAddressMatch(event.remoteUid(), remoteUid)) {
             //update and continue
             event.setContacts(contacts);
 

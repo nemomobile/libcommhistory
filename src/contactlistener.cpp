@@ -26,7 +26,6 @@
 #include <QDebug>
 
 #include <qtcontacts-extensions.h>
-#include <qtcontacts-extensions_impl.h>
 
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
@@ -143,10 +142,10 @@ void ContactListener::resolveContact(const QString &localUid,
     SeasideCache::CacheItem *item = 0;
 
     // TODO: maybe better to switch on localUid value rather than numeric quality?
-    QString number = CommHistory::normalizePhoneNumber(remoteUid, NormalizeFlagKeepDialString);
+    QString number = CommHistory::normalizePhoneNumber(remoteUid);
     if (!number.isEmpty()) {
-        m_pending.insert(qMakePair(QString(), number), input);
-        item = SeasideCache::resolvePhoneNumber(this, number, true);
+        m_pending.insert(qMakePair(QString(), remoteUid), input);
+        item = SeasideCache::resolvePhoneNumber(this, remoteUid, true);
     } else {
         item = SeasideCache::resolveOnlineAccount(this, localUid, remoteUid, true);
     }
