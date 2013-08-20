@@ -10,7 +10,7 @@ BuildRequires:  pkgconfig(QtCore) >= 4.7.0
 BuildRequires:  pkgconfig(QtContacts)
 BuildRequires:  pkgconfig(QtDeclarative)
 BuildRequires:  pkgconfig(QJson)
-BuildRequires:  pkgconfig(qtcontacts-sqlite-extensions)
+BuildRequires:  pkgconfig(qtcontacts-sqlite-extensions) >= 0.1.8
 BuildRequires:  pkgconfig(contactcache)
 
 %description
