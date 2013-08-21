@@ -82,6 +82,7 @@ private:
 
 bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> events)
 {
+    Q_Q(RecentContactsModel);
     Q_UNUSED(end)
 
     bool unresolved = false;
@@ -99,7 +100,11 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
 
         if (unresolved) {
             // We need to resolve all contacts before filling the model
+            bool wasResolving = !pendingEvents.isEmpty();
             pendingEvents.append(events);
+            if (!wasResolving) {
+                emit q->resolvingChanged();
+            }
             return false;
         }
 
@@ -213,6 +218,8 @@ void RecentContactsModelPrivate::updatePendingEvents(const QList<Event> &events)
 
 void RecentContactsModelPrivate::updatePendingEvent(Event *event)
 {
+    Q_Q(RecentContactsModel);
+
     if (event->contacts().isEmpty()) {
         // Fetch or request contact information for this event
         setContactFromCache(*event);
@@ -245,7 +252,12 @@ void RecentContactsModelPrivate::updatePendingEvent(Event *event)
 
         if (addEvent) {
             // With previous events not yet added, we can't insert this one out of order
+            bool wasResolving = !pendingEvents.isEmpty();
             pendingEvents.prepend(*event);
+            if (!wasResolving) {
+                emit q->resolvingChanged();
+            }
+
             if (!unresolved && event->contacts().isEmpty()) {
                 unresolved = true;
             }
@@ -256,7 +268,12 @@ void RecentContactsModelPrivate::updatePendingEvent(Event *event)
             const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
         }
     } else if (addEvent) {
+        bool wasResolving = !pendingEvents.isEmpty();
         pendingEvents.prepend(*event);
+        if (!wasResolving) {
+            emit q->resolvingChanged();
+        }
+
         if (!event->contacts().isEmpty()) {
             const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
         }
@@ -265,11 +282,15 @@ void RecentContactsModelPrivate::updatePendingEvent(Event *event)
 
 void RecentContactsModelPrivate::pendingEventsResolved()
 {
+    Q_Q(RecentContactsModel);
+
     if (!pendingEvents.isEmpty()) {
         // We have resolved all contacts
         prependEvents(pendingEvents);
         pendingEvents.clear();
     }
+
+    emit q->resolvingChanged();
 }
 
 void RecentContactsModelPrivate::prependEvent(const Event &event)
@@ -411,6 +432,13 @@ void RecentContactsModel::setSelectionProperty(const QString &name)
             qWarning() << "Unknown selection property type:" << name;
         }
     }
+}
+
+bool RecentContactsModel::resolving() const
+{
+    Q_D(const RecentContactsModel);
+
+    return !d->pendingEvents.isEmpty();
 }
 
 bool RecentContactsModel::getEvents()

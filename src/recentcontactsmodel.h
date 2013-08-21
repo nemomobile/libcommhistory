@@ -40,6 +40,7 @@ class LIBCOMMHISTORY_EXPORT RecentContactsModel : public EventModel
     Q_OBJECT
 
     Q_PROPERTY(QString selectionProperty READ selectionProperty WRITE setSelectionProperty)
+    Q_PROPERTY(bool resolving READ resolving NOTIFY resolvingChanged)
 
 public:
     /*!
@@ -81,6 +82,15 @@ public:
      * \param name Property type name
      */
     void setSelectionProperty(const QString &name);
+
+    /*!
+     * Returns true if the model is engaged in resolving contacts, or false if all
+     * relevant contacts have been resolved.
+     */
+    bool resolving() const;
+
+Q_SIGNALS:
+    void resolvingChanged();
 
 private:
     Q_DECLARE_PRIVATE(RecentContactsModel);
