@@ -157,7 +157,8 @@ void RecentContactsModelTest::simple()
     InsertionSpy insert(model);
 
     QVERIFY(model.getEvents());
-    QTRY_COMPARE(insert.count(), 3);
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 3);
 
     // We should have one row for each contact
     QCOMPARE(model.rowCount(), 3);
@@ -183,7 +184,8 @@ void RecentContactsModelTest::limitedFill()
     InsertionSpy insert(model);
 
     QVERIFY(model.getEvents());
-    QTRY_COMPARE(insert.count(), 2);
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 2);
 
     // We should have one row for each contact, limited to 2
     QCOMPARE(model.rowCount(), 2);
@@ -207,7 +209,8 @@ void RecentContactsModelTest::repeated()
     InsertionSpy insert(model);
 
     QVERIFY(model.getEvents());
-    QTRY_COMPARE(insert.count(), 3);
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 3);
 
     // We should have one row for each contact
     QCOMPARE(model.rowCount(), 3);
@@ -247,7 +250,8 @@ void RecentContactsModelTest::limitedDynamic()
     InsertionSpy insert(model);
 
     QVERIFY(model.getEvents());
-    QTRY_COMPARE(insert.count(), 2);
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 2);
 
     // We should have one row for each contact, limited to 2
     QCOMPARE(model.rowCount(), 2);
@@ -262,7 +266,8 @@ void RecentContactsModelTest::limitedDynamic()
     // Add more events; we have to wait for each one to be sure of when we're done
     for (int count = 3; count <= 5; ++count) {
         addEvents(count, count);
-        QTRY_COMPARE(insert.count(), count);
+        QTRY_COMPARE(model.resolving(), false);
+        QCOMPARE(insert.count(), count);
     }
 
     QTRY_COMPARE(insert.count(), 5);
@@ -289,13 +294,15 @@ void RecentContactsModelTest::differentTypes()
     model.setLimit(3);
 
     QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
     QCOMPARE(model.rowCount(), 0);
 
     InsertionSpy insert(model);
 
     for (int count = 1; count <= 7; ++count) {
         addEvents(count, count);
-        QTRY_COMPARE(insert.count(), count);
+        QTRY_COMPARE(model.resolving(), false);
+        QCOMPARE(insert.count(), count);
     }
 
     // We should have one row for each contact
@@ -347,7 +354,9 @@ void RecentContactsModelTest::selectionProperty()
 
     for (int count = 1; count <= 7; ++count) {
         addEvents(count, count);
-        QTest::qWait(1000);
+        QTRY_COMPARE(phoneModel.resolving(), false);
+        QTRY_COMPARE(imModel.resolving(), false);
+        QTRY_COMPARE(emailModel.resolving(), false);
     }
 
     // Two contacts have phone numbers, two have IM addresses, none have email
@@ -402,8 +411,13 @@ void RecentContactsModelTest::selectionProperty()
         QVERIFY(imModel.getEvents());
         QVERIFY(emailModel.getEvents());
 
-        QTRY_COMPARE(phoneModel.rowCount(), 2);
-        QTRY_COMPARE(imModel.rowCount(), 2);
+        QTRY_COMPARE(phoneModel.resolving(), false);
+        QCOMPARE(phoneModel.rowCount(), 2);
+
+        QTRY_COMPARE(imModel.resolving(), false);
+        QCOMPARE(imModel.rowCount(), 2);
+
+        QTRY_COMPARE(emailModel.resolving(), false);
         QCOMPARE(emailModel.rowCount(), 0);
 
         // Results should be indentical
@@ -456,7 +470,8 @@ void RecentContactsModelTest::contactRemoved()
     RemovalSpy remove(model);
 
     QVERIFY(model.getEvents());
-    QTRY_COMPARE(insert.count(), 3);
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 3);
 
     // We should have one row for each contact
     QCOMPARE(model.rowCount(), 3);
