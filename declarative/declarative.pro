@@ -19,7 +19,8 @@ HEADERS += src/constants.h \
     src/conversationproxymodel.h \
     src/declarativegroupmanager.h \
     src/sharedbackgroundthread.h \
-    src/contactaddresslookup.h
+    src/contactaddresslookup.h \
+    src/debug.h
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols

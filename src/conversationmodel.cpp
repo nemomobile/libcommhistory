@@ -32,6 +32,7 @@
 #include "commhistorydatabase.h"
 #include "databaseio_p.h"
 #include "contactlistener.h"
+#include "debug.h"
 
 namespace {
 static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
@@ -67,7 +68,7 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
 
 void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
-    qDebug() << Q_FUNC_INFO;
+    DEBUG() << Q_FUNC_INFO;
     if (filterDirection == Event::Outbound
         || filterGroupIds.isEmpty()
         || !propertyMask.contains(Event::Contacts))
@@ -130,7 +131,7 @@ void ConversationModelPrivate::updateEvents(const Group &group,
 
 bool ConversationModelPrivate::acceptsEvent(const Event &event) const
 {
-    qDebug() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << __PRETTY_FUNCTION__ << event.id();
     if ((event.type() != Event::IMEvent
          && event.type() != Event::SMSEvent
          && event.type() != Event::MMSEvent
@@ -148,7 +149,7 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
 
     if (!filterGroupIds.contains(event.groupId())) return false;
 
-    qDebug() << __PRETTY_FUNCTION__ << ": true";
+    DEBUG() << __PRETTY_FUNCTION__ << ": true";
     return true;
 }
 
@@ -157,7 +158,7 @@ bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::
     Q_UNUSED(start);
     Q_UNUSED(end);
 
-    qDebug() << __FUNCTION__ << ": read" << events.count() << "messages";
+    DEBUG() << __FUNCTION__ << ": read" << events.count() << "messages";
 
     Q_Q(ConversationModel);
 

@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QtDebug>
 
 #include "databaseio.h"
 #include "eventmodel.h"
@@ -29,6 +28,7 @@
 #include "adaptor.h"
 #include "event.h"
 #include "eventtreeitem.h"
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -312,7 +312,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(event.isDeleted());
             break;
         default:
-            qDebug() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
+            DEBUG() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
             var = QVariant();
             break;
     }
@@ -566,7 +566,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
 bool EventModel::deleteEvent(int id)
 {
     Q_D(EventModel);
-    qDebug() << __FUNCTION__ << ":" << id;
+    DEBUG() << __FUNCTION__ << ":" << id;
 
     QModelIndex index = d->findEvent(id);
     Event event;
@@ -582,7 +582,7 @@ bool EventModel::deleteEvent(int id)
 bool EventModel::deleteEvent(Event &event)
 {
     Q_D(EventModel);
-    qDebug() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << __FUNCTION__ << ":" << event.id();
 
     if (!event.isValid()) {
         qWarning() << __FUNCTION__ << "Invalid event";
@@ -606,7 +606,7 @@ bool EventModel::deleteEvent(Event &event)
         }
 
         if (total == 0) {
-            qDebug() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << __FUNCTION__ << ": deleting empty group";
             if (!d->database()->deleteGroup(event.groupId())) {
                 d->database()->rollback();
                 return false;
@@ -634,7 +634,7 @@ bool EventModel::deleteEvent(Event &event)
 bool EventModel::moveEvent(Event &event, int groupId)
 {
     Q_D(EventModel);
-    qDebug() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << __FUNCTION__ << ":" << event.id();
 
     if (!event.isValid()) {
         qWarning() << __FUNCTION__ << "Invalid event";
@@ -665,7 +665,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
         }
 
         if (total == 0) {
-            qDebug() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << __FUNCTION__ << ": deleting empty group";
             if (!d->database()->deleteGroup(oldGroupId)) {
                 qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->database()->rollback();
@@ -784,7 +784,7 @@ void EventModel::setBackgroundThread(QThread *thread)
     Q_D(EventModel);
 
     d->bgThread = thread;
-    qDebug() << Q_FUNC_INFO << thread;
+    DEBUG() << Q_FUNC_INFO << thread;
 }
 
 QThread* EventModel::backgroundThread()

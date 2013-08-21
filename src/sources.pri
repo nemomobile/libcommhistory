@@ -29,7 +29,8 @@ HEADERS += commonutils.h \
            contactgroup.h \
            databaseio.h \
            databaseio_p.h \
-           commhistorydatabase.h
+           commhistorydatabase.h \
+           debug.h
 
 SOURCES += commonutils.cpp \
            eventmodel.cpp \

@@ -26,12 +26,13 @@
 #include <QProcess>
 #include <QDir>
 #include <QDateTime>
+#include "debug.h"
 
 void MmsContentDeleter::deleteMessage(const QString &messageToken)
 {
     if (!messageToken.isEmpty())
     {
-        qDebug() << "[MMS-DELETER] Schedule message" << messageToken;
+        DEBUG() << "[MMS-DELETER] Schedule message" << messageToken;
         QMetaObject::invokeMethod(this,
                                   "doMessageDelete",
                                   Qt::QueuedConnection,
@@ -41,7 +42,7 @@ void MmsContentDeleter::deleteMessage(const QString &messageToken)
 
 void MmsContentDeleter::cleanMmsPlace()
 {
-    qDebug() << "[MMS-DELETER] Schedule cleaning mms place";
+    DEBUG() << "[MMS-DELETER] Schedule cleaning mms place";
 
     QFileInfoList topEntryes;
     QDir public_dir(QString("%1/.mms/msg/").arg(QDir::homePath()));
@@ -60,11 +61,11 @@ void MmsContentDeleter::cleanMmsPlace()
     }
 
     QDateTime garbageTime = QDateTime::currentDateTime().addDays(-1);
-    qDebug() << "[MMS-DELETER] Garbage time is" << garbageTime;
+    DEBUG() << "[MMS-DELETER] Garbage time is" << garbageTime;
 
     foreach (QFileInfo fi, topEntryes)
     {
-        qDebug() << "[MMS-DELETER]" << fi.absoluteFilePath() << "time is" << fi.created();
+        DEBUG() << "[MMS-DELETER]" << fi.absoluteFilePath() << "time is" << fi.created();
         if(fi.created() <= garbageTime)
         {
             QMetaObject::invokeMethod(this,"doDeleteContent",
@@ -100,7 +101,7 @@ void MmsContentDeleter::doMessageDelete(const QString &messageToken)
     if (messagePath.isEmpty()) {
         qWarning() << "[MMS-DELETER] Failed to get message folder. " << messageToken;
     } else {
-        qDebug() << "[MMS-DELETER] Delete message folder " << messagePath   << " Thread: " << thread();
+        DEBUG() << "[MMS-DELETER] Delete message folder " << messagePath   << " Thread: " << thread();
 
         doDeleteContent(messagePath);
     }
@@ -108,7 +109,7 @@ void MmsContentDeleter::doMessageDelete(const QString &messageToken)
 
 void MmsContentDeleter::doDeleteContent(const QString &path)
 {
-    qDebug() << "[MMS-DELETER] Delete content. Path" << path;
+    DEBUG() << "[MMS-DELETER] Delete content. Path" << path;
     QFileInfo entry(path);
     if (!entry.exists())
     {

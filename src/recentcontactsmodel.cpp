@@ -19,7 +19,6 @@
 **
 ******************************************************************************/
 
-#include <QDebug>
 #include <QSqlQuery>
 #include <QSqlError>
 
@@ -29,6 +28,7 @@
 #include "contactlistener.h"
 
 #include "recentcontactsmodel.h"
+#include "debug.h"
 
 namespace CommHistory {
 
@@ -191,7 +191,7 @@ void RecentContactsModelPrivate::slotContactUnknown(const QPair<QString, QString
 
             QPair<QString, QString> eventAddress = qMakePair(event.localUid(), event.remoteUid());
             if (eventAddress == address) {
-                qDebug() << "Could not resolve contact address:" << address;
+                DEBUG() << "Could not resolve contact address:" << address;
                 it = pendingEvents.erase(it);
             } else {
                 if (event.contacts().isEmpty()) {

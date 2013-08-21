@@ -22,7 +22,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QDebug>
 #include <QSqlQuery>
 
 #include "commonutils.h"
@@ -36,6 +35,7 @@
 #include "event.h"
 #include "constants.h"
 #include "contactlistener.h"
+#include "debug.h"
 
 namespace {
 static const int defaultChunkSize = 50;
@@ -138,13 +138,13 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
     }
 
     emit q->groupUpdated(go);
-    qDebug() << __PRETTY_FUNCTION__ << ": updated" << go->toString();
+    DEBUG() << __PRETTY_FUNCTION__ << ": updated" << go->toString();
 }
 
 void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
 {
     Q_Q(GroupManager);
-    qDebug() << __PRETTY_FUNCTION__ << events.count();
+    DEBUG() << __PRETTY_FUNCTION__ << events.count();
 
     foreach (const Event &event, events) {
         // drafts and statusmessages are not shown in group model
@@ -159,7 +159,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             continue;
 
         if (event.startTime() >= go->startTime()) {
-            qDebug() << __PRETTY_FUNCTION__ << ": updating group" << go->id();
+            DEBUG() << __PRETTY_FUNCTION__ << ": updating group" << go->id();
             go->setLastEventId(event.id());
             if (event.type() == Event::MMSEvent) {
                 go->setLastMessageText(event.subject().isEmpty() ? event.freeText() : event.subject());
@@ -176,7 +176,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             if ((event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) &&
                 !CommHistory::remoteAddressMatch(go->remoteUids().first(), event.remoteUid())) {
 
-                qDebug() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
+                DEBUG() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
                 QStringList updatedUids;
                 foreach (const QString& uid, go->remoteUids()) {
                     if (CommHistory::remoteAddressMatch(uid, event.remoteUid())) {
@@ -225,7 +225,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
 void GroupManagerPrivate::groupsAddedSlot(const QList<CommHistory::Group> &addedGroups)
 {
     Q_Q(GroupManager);
-    qDebug() << Q_FUNC_INFO << addedGroups.count();
+    DEBUG() << Q_FUNC_INFO << addedGroups.count();
 
     foreach (Group group, addedGroups) {
         GroupObject *go = groups.value(group.id());
@@ -254,7 +254,7 @@ void GroupManagerPrivate::groupsAddedSlot(const QList<CommHistory::Group> &added
 
 void GroupManagerPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
 {
-    qDebug() << __PRETTY_FUNCTION__ << groupIds.count();
+    DEBUG() << __PRETTY_FUNCTION__ << groupIds.count();
 
     foreach (int id, groupIds) {
         Group g;
@@ -266,7 +266,7 @@ void GroupManagerPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
 
 void GroupManagerPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
-    qDebug() << __PRETTY_FUNCTION__ << groups.count();
+    DEBUG() << __PRETTY_FUNCTION__ << groups.count();
 
     foreach (Group g, groups) {
         modifyInModel(g, false);
@@ -277,7 +277,7 @@ void GroupManagerPrivate::groupsDeletedSlot(const QList<int> &groupIds)
 {
     Q_Q(GroupManager);
 
-    qDebug() << __PRETTY_FUNCTION__ << groupIds.count();
+    DEBUG() << __PRETTY_FUNCTION__ << groupIds.count();
 
     foreach (int id, groupIds) {
         GroupObject *go = groups.value(id);
@@ -464,7 +464,7 @@ void GroupManagerPrivate::add(Group &group)
 {
     Q_Q(GroupManager);
 
-    qDebug() << __PRETTY_FUNCTION__ << ": added" << group.toString();
+    DEBUG() << __PRETTY_FUNCTION__ << ": added" << group.toString();
 
     GroupObject *go = new GroupObject(group, q);
     groups.insert(go->id(), go);
@@ -531,7 +531,7 @@ bool GroupManager::addGroups(QList<Group> &groups)
 
 bool GroupManager::modifyGroup(Group &group)
 {
-    qDebug() << Q_FUNC_INFO << group.id();
+    DEBUG() << Q_FUNC_INFO << group.id();
 
     if (group.id() == -1) {
         qWarning() << __FUNCTION__ << "Group id not set";
@@ -598,7 +598,7 @@ bool GroupManager::getGroups(const QString &localUid,
 
 bool GroupManager::markAsReadGroup(int id)
 {
-    qDebug() << Q_FUNC_INFO << id;
+    DEBUG() << Q_FUNC_INFO << id;
 
     if (!d->database()->transaction())
         return false;
@@ -638,7 +638,7 @@ void GroupManager::updateGroups(QList<Group> &groups)
 
 bool GroupManager::deleteGroups(const QList<int> &groupIds)
 {
-    qDebug() << Q_FUNC_INFO << groupIds;
+    DEBUG() << Q_FUNC_INFO << groupIds;
 
     if (!d->database()->transaction())
         return false;
@@ -657,7 +657,7 @@ bool GroupManager::deleteGroups(const QList<int> &groupIds)
 
 bool GroupManager::deleteAll()
 {
-    qDebug() << Q_FUNC_INFO;
+    DEBUG() << Q_FUNC_INFO;
 
     QList<int> ids;
     foreach (GroupObject *group, d->groups) {
