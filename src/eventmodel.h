@@ -65,6 +65,7 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
     Q_PROPERTY(uint firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
     Q_PROPERTY(int limit READ limit WRITE setLimit)
     Q_PROPERTY(int offset READ offset WRITE setOffset)
+    Q_PROPERTY(bool ready READ isReady NOTIFY modelReady)
 
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
