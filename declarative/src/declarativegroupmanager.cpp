@@ -33,6 +33,7 @@
 #include "sharedbackgroundthread.h"
 #include "singleeventmodel.h"
 #include <QTimer>
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -80,7 +81,7 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
             g.setLocalUid(localUid);
             g.setRemoteUids(QStringList() << remoteUid);
             g.setChatType(Group::ChatTypeP2P);
-            qDebug() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUid;
+            DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUid;
             if (!addGroup(g)) {
                 qWarning() << Q_FUNC_INFO << "Failed creating group";
                 return -1;
@@ -105,7 +106,7 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
     event.setStatus(Event::SendingStatus);
     event.setGroupId(groupId);
 
-    qDebug() << Q_FUNC_INFO << groupId << localUid << remoteUid << text;
+    DEBUG() << Q_FUNC_INFO << groupId << localUid << remoteUid << text;
     EventModel model;
     if (model.addEvent(event))
         return event.id();

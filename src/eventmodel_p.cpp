@@ -22,7 +22,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QDebug>
 #include <QSqlQuery>
 #include <QSqlError>
 
@@ -35,6 +34,7 @@
 #include "eventtreeitem.h"
 #include "constants.h"
 #include "commonutils.h"
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -89,7 +89,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
 
 EventModelPrivate::~EventModelPrivate()
 {
-    qDebug() << Q_FUNC_INFO;
+    DEBUG() << Q_FUNC_INFO;
 
     delete eventRootItem;
 }
@@ -127,7 +127,7 @@ QModelIndex EventModelPrivate::findParent(const Event &event)
 
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
-    qDebug() << __PRETTY_FUNCTION__;
+    DEBUG() << __PRETTY_FUNCTION__;
 
     startContactListening();
 
@@ -159,7 +159,7 @@ bool EventModelPrivate::fillModel(int start,
     Q_UNUSED(end);
 
     Q_Q(EventModel);
-    qDebug() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
+    DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
 
     q->beginInsertRows(QModelIndex(), q->rowCount(), q->rowCount() + events.count() - 1);
     foreach (Event event, events) {
@@ -172,7 +172,7 @@ bool EventModelPrivate::fillModel(int start,
 
 void EventModelPrivate::clearEvents()
 {
-    qDebug() << __PRETTY_FUNCTION__;
+    DEBUG() << __PRETTY_FUNCTION__;
     delete eventRootItem;
     eventRootItem = new EventTreeItem(Event());
 }
@@ -180,7 +180,7 @@ void EventModelPrivate::clearEvents()
 void EventModelPrivate::addToModel(Event &event)
 {
     Q_Q(EventModel);
-    qDebug() << Q_FUNC_INFO << event.toString();
+    DEBUG() << Q_FUNC_INFO << event.toString();
 
     if (!event.contacts().isEmpty()) {
         contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
@@ -203,7 +203,7 @@ void EventModelPrivate::addToModel(Event &event)
 void EventModelPrivate::modifyInModel(Event &event)
 {
     Q_Q(EventModel);
-    qDebug() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << __PRETTY_FUNCTION__ << event.id();
 
     if (!event.validProperties().contains(Event::Contacts)) {
         setContactFromCache(event);
@@ -238,7 +238,7 @@ void EventModelPrivate::modifyInModel(Event &event)
 void EventModelPrivate::deleteFromModel(int id)
 {
     Q_Q(EventModel);
-    qDebug() << __PRETTY_FUNCTION__ << id;
+    DEBUG() << __PRETTY_FUNCTION__ << id;
     QModelIndex index = findEvent(id);
     if (index.isValid()) {
         q->beginRemoveRows(index.parent(), index.row(), index.row());
@@ -251,7 +251,7 @@ void EventModelPrivate::deleteFromModel(int id)
 
 void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> events)
 {
-    qDebug() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
+    DEBUG() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
 
     QMutableListIterator<Event> i(events);
     while (i.hasNext()) {
@@ -282,7 +282,7 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
                                                  QList<CommHistory::MessagePart> parts)
 {
     Q_Q(EventModel);
-    qDebug() << __PRETTY_FUNCTION__ << ":" << eventId << parts.count();
+    DEBUG() << __PRETTY_FUNCTION__ << ":" << eventId << parts.count();
 
     QModelIndex index = findEvent(eventId);
     if (index.isValid()) {
@@ -299,7 +299,7 @@ void EventModelPrivate::messagePartsReceivedSlot(int eventId,
 
 void EventModelPrivate::modelUpdatedSlot(bool successful)
 {
-    qDebug() << __PRETTY_FUNCTION__;
+    DEBUG() << __PRETTY_FUNCTION__;
 
     isReady = true;
     if (successful) {
@@ -312,7 +312,7 @@ void EventModelPrivate::modelUpdatedSlot(bool successful)
 
 void EventModelPrivate::partsUpdatedSlot(bool successful)
 {
-    qDebug() << __PRETTY_FUNCTION__;
+    DEBUG() << __PRETTY_FUNCTION__;
 
     messagePartsReady = true;
     if (successful) {
@@ -325,7 +325,7 @@ void EventModelPrivate::partsUpdatedSlot(bool successful)
 
 void EventModelPrivate::eventsAddedSlot(const QList<Event> &events)
 {
-    qDebug() << __PRETTY_FUNCTION__ << ":" << events.count() << "events";
+    DEBUG() << __PRETTY_FUNCTION__ << ":" << events.count() << "events";
 
     foreach (const Event &event, events) {
         QModelIndex index = findEvent(event.id());
@@ -339,7 +339,7 @@ void EventModelPrivate::eventsAddedSlot(const QList<Event> &events)
 
 void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 {
-    qDebug() << __PRETTY_FUNCTION__ << ":" << events.count();
+    DEBUG() << __PRETTY_FUNCTION__ << ":" << events.count();
 
     foreach (const Event &event, events) {
         QModelIndex index = findEvent(event.id());
@@ -358,7 +358,7 @@ void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 
 void EventModelPrivate::eventDeletedSlot(int id)
 {
-    qDebug() << __PRETTY_FUNCTION__ << ":" << id;
+    DEBUG() << __PRETTY_FUNCTION__ << ":" << id;
 
     deleteFromModel(id);
 }
@@ -380,7 +380,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                                                 const QList< QPair<QString,QString> > &contactAddresses,
                                                 EventTreeItem *parent)
 {
-    qDebug() << Q_FUNC_INFO;
+    DEBUG() << Q_FUNC_INFO;
 
     Q_Q(EventModel);
 

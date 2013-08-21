@@ -34,6 +34,7 @@
 #include "event.h"
 #include "commonutils.h"
 #include "contactlistener.h"
+#include "debug.h"
 
 namespace {
     static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
@@ -104,7 +105,7 @@ bool CallModelPrivate::eventMatchesFilter( const Event &event ) const
 
 bool CallModelPrivate::acceptsEvent( const Event &event ) const
 {
-    qDebug() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << __PRETTY_FUNCTION__ << event.id();
     if ( event.type() != Event::CallEvent || (!isInTreeMode && !eventMatchesFilter(event) ))
     {
         return false;
@@ -122,7 +123,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
 {
     Q_Q( CallModel );
 
-    qDebug() << Q_FUNC_INFO << start << end << events.count();
+    DEBUG() << Q_FUNC_INFO << start << end << events.count();
 
     if ((sortBy != CallModel::SortByContact && sortBy != CallModel::SortByContactAndType)
             || updatedGroups.isEmpty())
@@ -141,7 +142,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         for (int row = 0; row < eventRootItem->childCount(); row++) {
             if (belongToSameGroup(eventRootItem->eventAt(row), event)
                 || eventRootItem->eventAt(row).id() == event.id()) {
-                qDebug() << "replacing row" << row;
+                DEBUG() << "replacing row" << row;
                 replaced = true;
                 index = q->createIndex(row, 0, eventRootItem->child(row));
 
@@ -159,7 +160,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
                 for (int dupe = index.row() + 1; dupe < eventRootItem->childCount(); dupe++) {
                     Event e = eventRootItem->eventAt(dupe);
                     if (belongToSameGroup(e, event)) {
-                        qDebug() << Q_FUNC_INFO << "remove" << dupe << e.toString();
+                        DEBUG() << Q_FUNC_INFO << "remove" << dupe << e.toString();
                         emit q->beginRemoveRows(QModelIndex(), dupe, dupe);
                         eventRootItem->removeAt(dupe);
                         emit q->endRemoveRows();
@@ -191,12 +192,12 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
     }
 
     if (!updatedGroups.isEmpty()) {
-        qDebug() << Q_FUNC_INFO << "remaining call groups:" << updatedGroups;
+        DEBUG() << Q_FUNC_INFO << "remaining call groups:" << updatedGroups;
         // no results for call group means it has been emptied, remove from list
         foreach (QString group, updatedGroups.values()) {
             for (int row = 0; row < eventRootItem->childCount(); row++) {
                 if (DatabaseIOPrivate::makeCallGroupURI(eventRootItem->eventAt(row)) == group) {
-                    qDebug() << Q_FUNC_INFO << "remove" << row << eventRootItem->eventAt(row).toString();
+                    DEBUG() << Q_FUNC_INFO << "remove" << row << eventRootItem->eventAt(row).toString();
                     emit q->beginRemoveRows(QModelIndex(), row, row);
                     eventRootItem->removeAt(row);
                     emit q->endRemoveRows();
@@ -481,7 +482,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
 void CallModelPrivate::addToModel( Event &event )
 {
     Q_Q(CallModel);
-    qDebug() << __PRETTY_FUNCTION__ << event.toString();
+    DEBUG() << __PRETTY_FUNCTION__ << event.toString();
 
     if(!isInTreeMode)
     {
@@ -605,7 +606,7 @@ void CallModelPrivate::addToModel( Event &event )
 
 void CallModelPrivate::eventsAddedSlot( const QList<Event> &events )
 {
-    qDebug() << __PRETTY_FUNCTION__ << events.count();
+    DEBUG() << __PRETTY_FUNCTION__ << events.count();
     // TODO: sorting?
     EventModelPrivate::eventsAddedSlot(events);
 }
@@ -618,7 +619,7 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
 
     // reimp from EventModelPrivate, plus additional isVideoCall processing
     foreach (const Event &event, events) {
-        qDebug() << Q_FUNC_INFO << "updated" << event.toString();
+        DEBUG() << Q_FUNC_INFO << "updated" << event.toString();
         QModelIndex index = findEvent(event.id());
         Event e = event;
 
@@ -644,7 +645,7 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
         }
     }
 
-    qDebug() << Q_FUNC_INFO << "updatedGroups" << updatedGroups;
+    DEBUG() << Q_FUNC_INFO << "updatedGroups" << updatedGroups;
 
     if (!updatedGroups.isEmpty()) {
         /*
@@ -708,7 +709,7 @@ void CallModelPrivate::deleteFromModel( int id )
     // if id was not found, do nothing
     if ( !index.isValid() )
     {
-        qDebug() << __PRETTY_FUNCTION__ << "*** Invalid";
+        DEBUG() << __PRETTY_FUNCTION__ << "*** Invalid";
         return;
     }
 
@@ -738,7 +739,7 @@ void CallModelPrivate::deleteFromModel( int id )
             }
         }
 
-        qDebug() << __PRETTY_FUNCTION__ << "*** Top level" << row;
+        DEBUG() << __PRETTY_FUNCTION__ << "*** Top level" << row;
         // if there is no need to regroup the previous and following items,
         // then delete only one row
         if ( !isRegroupingNeeded )
@@ -761,7 +762,7 @@ void CallModelPrivate::deleteFromModel( int id )
     // otherwise item is a grouped event
     else
     {
-        qDebug() << __PRETTY_FUNCTION__ << "*** Sth else";
+        DEBUG() << __PRETTY_FUNCTION__ << "*** Sth else";
         // TODO :
         // delete it from the model
         // update top level item
@@ -970,7 +971,7 @@ bool CallModel::modifyEvent( Event &event )
         return false;
     }
 
-    qDebug() << Q_FUNC_INFO << "setting isRead for call group";
+    DEBUG() << Q_FUNC_INFO << "setting isRead for call group";
     // isRead has changed, modify the event and set isRead for nested events
     bool isRead = event.isRead();
 
@@ -1004,7 +1005,7 @@ bool CallModel::deleteEvent( int id )
         return EventModel::deleteEvent(id);
     }
 
-    qDebug() << Q_FUNC_INFO << id;
+    DEBUG() << Q_FUNC_INFO << id;
     QModelIndex index = d->findEvent(id);
     if (!index.isValid())
         return false;

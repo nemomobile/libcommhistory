@@ -21,7 +21,6 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QDebug>
 
 #include "commonutils.h"
 #include "groupmodel.h"
@@ -30,6 +29,7 @@
 #include "group.h"
 #include "groupmanager.h"
 #include "groupobject.h"
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -129,11 +129,11 @@ void GroupModelPrivate::groupUpdated(GroupObject *group)
             break;
     }
 
-    qDebug() << Q_FUNC_INFO << index << newIndex;
+    DEBUG() << Q_FUNC_INFO << index << newIndex;
 
     if (newIndex != index) {
         q->beginMoveRows(QModelIndex(), index, index, QModelIndex(), newIndex > index ? newIndex + 1 : newIndex);
-        qDebug() << Q_FUNC_INFO << "move" << index << newIndex;
+        DEBUG() << Q_FUNC_INFO << "move" << index << newIndex;
         groups.move(index, newIndex);
         q->endMoveRows();
     }
@@ -347,7 +347,7 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(group->startTime());
             break;
         default:
-            qDebug() << "Group::data: invalid column id??" << column;
+            DEBUG() << "Group::data: invalid column id??" << column;
             break;
     }
 

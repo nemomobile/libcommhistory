@@ -30,11 +30,11 @@
  */
 
 #include "sharedbackgroundthread.h"
-#include <QDebug>
+#include "debug.h"
 
 static void stopAndDeleteThread(QThread *thread)
 {
-    qDebug() << "libcommhistory-declarative SharedBackgroundThread deleted";
+    DEBUG() << "libcommhistory-declarative SharedBackgroundThread deleted";
     QObject::connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
     thread->quit();
 }

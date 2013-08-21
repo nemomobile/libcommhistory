@@ -26,6 +26,7 @@
 #include "groupobject.h"
 #include "groupmanager.h"
 #include "event.h"
+#include "debug.h"
 
 namespace CommHistory {
 
@@ -428,7 +429,7 @@ void GroupObject::setLastModified(const QDateTime &modified)
 bool GroupObject::markAsRead()
 {
     if (!d->manager) {
-        qDebug() << Q_FUNC_INFO << "No manager for object instance";
+        DEBUG() << Q_FUNC_INFO << "No manager for object instance";
         return false;
     }
 
@@ -438,7 +439,7 @@ bool GroupObject::markAsRead()
 bool GroupObject::deleteGroup()
 {
     if (!d->manager) {
-        qDebug() << Q_FUNC_INFO << "No manager for object instance";
+        DEBUG() << Q_FUNC_INFO << "No manager for object instance";
         return false;
     }
 
