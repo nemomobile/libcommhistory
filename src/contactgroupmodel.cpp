@@ -28,6 +28,7 @@
 #include "contactgroupmodel_p.h"
 #include "groupmanager.h"
 #include "contactgroup.h"
+#include "debug.h"
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 Q_DECLARE_METATYPE(QList<QObject*>)
@@ -397,7 +398,7 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
             var = g->startTime();
             break;
         default:
-            qDebug() << "ContactGroupModel::data: invalid column id??" << column;
+            DEBUG() << "ContactGroupModel::data: invalid column id??" << column;
             break;
     }
 

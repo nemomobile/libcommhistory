@@ -32,6 +32,7 @@
 #include <QContactEmailAddress>
 
 #include "commonutils.h"
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -93,7 +94,7 @@ void ContactListener::init()
     if (m_Initialized)
         return;
 
-    qDebug() << Q_FUNC_INFO;
+    DEBUG() << Q_FUNC_INFO;
 
     SeasideCache::registerChangeListener(this);
 
@@ -135,7 +136,7 @@ bool ContactListener::addressMatchesList(const QString &localUid,
 void ContactListener::resolveContact(const QString &localUid,
                                      const QString &remoteUid)
 {
-    qDebug() << Q_FUNC_INFO << localUid << remoteUid;
+    DEBUG() << Q_FUNC_INFO << localUid << remoteUid;
 
     const StringPair input(qMakePair(localUid, remoteUid));
 

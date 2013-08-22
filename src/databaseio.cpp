@@ -28,7 +28,7 @@
 #include "contactlistener.h"
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QDebug>
+#include "debug.h"
 
 using namespace CommHistory;
 
@@ -880,7 +880,7 @@ bool DatabaseIOPrivate::deleteEmptyGroups()
     }
 
     if (query.numRowsAffected() > 0)
-        qDebug() << Q_FUNC_INFO << "Deleted" << query.numRowsAffected() << "empty groups";
+        DEBUG() << Q_FUNC_INFO << "Deleted" << query.numRowsAffected() << "empty groups";
 
     return true;
 }
