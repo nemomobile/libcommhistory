@@ -201,7 +201,7 @@ void RecentContactsModelPrivate::slotContactUnknown(const QPair<QString, QString
             }
         }
 
-        if (!unresolved && !pendingEvents.isEmpty()) {
+        if (!unresolved) {
             pendingEventsResolved();
         }
     }
