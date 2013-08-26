@@ -149,7 +149,7 @@ public:
     bool setContactFromCache(CommHistory::Event &event);
     void startContactListening();
 
-    bool contactHasAddressType(ContactListener::ContactAddressType type, quint32 contactId) const;
+    bool contactHasAddress(int types, quint32 contactId) const;
 
     // This is the root node for the internal event tree. In a standard
     // flat model, eventRootNode has rowCount() children with events.

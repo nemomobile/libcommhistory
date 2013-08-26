@@ -16,7 +16,7 @@ private slots:
     void repeated();
     void limitedDynamic();
     void differentTypes();
-    void selectionProperty();
+    void requiredProperty();
     void contactRemoved();
 
     void cleanup();

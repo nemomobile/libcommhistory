@@ -333,36 +333,43 @@ void RecentContactsModelTest::differentTypes()
     QCOMPARE(e.remoteUid(), alicePhone2);
 }
 
-void RecentContactsModelTest::selectionProperty()
+void RecentContactsModelTest::requiredProperty()
 {
     RecentContactsModel phoneModel;
-    phoneModel.setSelectionProperty(QString::fromLatin1("phoneNumber"));
+    phoneModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired);
 
     RecentContactsModel imModel;
-    imModel.setSelectionProperty(QString::fromLatin1("accountUri"));
+    imModel.setRequiredProperty(RecentContactsModel::AccountUriRequired);
 
     RecentContactsModel emailModel;
-    emailModel.setSelectionProperty(QString::fromLatin1("emailAddress"));
+    emailModel.setRequiredProperty(RecentContactsModel::EmailAddressRequired);
+
+    RecentContactsModel phoneAndImModel;
+    phoneAndImModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired | RecentContactsModel::AccountUriRequired);
 
     QVERIFY(phoneModel.getEvents());
     QVERIFY(imModel.getEvents());
     QVERIFY(emailModel.getEvents());
+    QVERIFY(phoneAndImModel.getEvents());
 
     QCOMPARE(phoneModel.rowCount(), 0);
     QCOMPARE(imModel.rowCount(), 0);
     QCOMPARE(emailModel.rowCount(), 0);
+    QCOMPARE(phoneAndImModel.rowCount(), 0);
 
     for (int count = 1; count <= 7; ++count) {
         addEvents(count, count);
         QTRY_COMPARE(phoneModel.resolving(), false);
         QTRY_COMPARE(imModel.resolving(), false);
         QTRY_COMPARE(emailModel.resolving(), false);
+        QTRY_COMPARE(phoneAndImModel.resolving(), false);
     }
 
     // Two contacts have phone numbers, two have IM addresses, none have email
     QCOMPARE(phoneModel.rowCount(), 2);
     QCOMPARE(imModel.rowCount(), 2);
     QCOMPARE(emailModel.rowCount(), 0);
+    QCOMPARE(phoneAndImModel.rowCount(), 3);
 
     Event e;
 
@@ -399,17 +406,21 @@ void RecentContactsModelTest::selectionProperty()
     {
         // Repeat the tests to test filtering on fill
         RecentContactsModel phoneModel;
-        phoneModel.setSelectionProperty(QString::fromLatin1("phoneNumber"));
+        phoneModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired);
 
         RecentContactsModel imModel;
-        imModel.setSelectionProperty(QString::fromLatin1("accountUri"));
+        imModel.setRequiredProperty(RecentContactsModel::AccountUriRequired);
 
         RecentContactsModel emailModel;
-        emailModel.setSelectionProperty(QString::fromLatin1("emailAddress"));
+        emailModel.setRequiredProperty(RecentContactsModel::EmailAddressRequired);
+
+        RecentContactsModel phoneAndImModel;
+        phoneAndImModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired | RecentContactsModel::AccountUriRequired);
 
         QVERIFY(phoneModel.getEvents());
         QVERIFY(imModel.getEvents());
         QVERIFY(emailModel.getEvents());
+        QVERIFY(phoneAndImModel.getEvents());
 
         QTRY_COMPARE(phoneModel.resolving(), false);
         QCOMPARE(phoneModel.rowCount(), 2);
@@ -419,6 +430,9 @@ void RecentContactsModelTest::selectionProperty()
 
         QTRY_COMPARE(emailModel.resolving(), false);
         QCOMPARE(emailModel.rowCount(), 0);
+
+        QTRY_COMPARE(phoneAndImModel.resolving(), false);
+        QCOMPARE(phoneAndImModel.rowCount(), 3);
 
         // Results should be indentical
         e = phoneModel.event(phoneModel.index(0, 0));
