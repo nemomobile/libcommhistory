@@ -34,10 +34,6 @@ namespace CommHistory {
 
 using namespace CommHistory;
 
-static const QString imAccountType(QString::fromLatin1("accountUri"));
-static const QString phoneNumberType(QString::fromLatin1("phoneNumber"));
-static const QString emailAddressType(QString::fromLatin1("emailAddress"));
-
 static int eventContact(const Event &event)
 {
     return event.contacts().first().first;
@@ -49,7 +45,7 @@ public:
 
     RecentContactsModelPrivate(EventModel *model)
         : EventModelPrivate(model),
-          selectionProperty(ContactListener::UnknownType)
+          requiredProperty(RecentContactsModel::NoPropertyRequired)
     {
         contactChangesEnabled = true;
     }
@@ -76,7 +72,7 @@ private:
 
     bool skipIrrelevantContact(const Event &event);
 
-    ContactListener::ContactAddressType selectionProperty;
+    int requiredProperty;
     mutable QList<Event> pendingEvents;
 };
 
@@ -384,9 +380,9 @@ void RecentContactsModelPrivate::prependEvents(const QList<Event> &events)
 
 bool RecentContactsModelPrivate::skipIrrelevantContact(const Event &event)
 {
-    if (selectionProperty != ContactListener::UnknownType) {
+    if (requiredProperty != RecentContactsModel::NoPropertyRequired) {
         int contactId = eventContact(event);
-        if (!contactHasAddressType(selectionProperty, contactId)) {
+        if (!contactHasAddress(requiredProperty, contactId)) {
             return true;
         }
     }
@@ -403,35 +399,16 @@ RecentContactsModel::~RecentContactsModel()
 {
 }
 
-QString RecentContactsModel::selectionProperty() const
+int RecentContactsModel::requiredProperty() const
 {
     Q_D(const RecentContactsModel);
-
-    return d->selectionProperty == ContactListener::IMAccountType
-                                ? imAccountType
-                                : (d->selectionProperty == ContactListener::PhoneNumberType
-                                                        ? phoneNumberType
-                                                        : (d->selectionProperty == ContactListener::EmailAddressType
-                                                                                ? emailAddressType
-                                                                                : QString()));
+    return d->requiredProperty;
 }
 
-void RecentContactsModel::setSelectionProperty(const QString &name)
+void RecentContactsModel::setRequiredProperty(int requiredProperty)
 {
     Q_D(RecentContactsModel);
-
-    if (name == imAccountType) {
-        d->selectionProperty = ContactListener::IMAccountType;
-    } else if (name == phoneNumberType) {
-        d->selectionProperty = ContactListener::PhoneNumberType;
-    } else if (name == emailAddressType) {
-        d->selectionProperty = ContactListener::EmailAddressType;
-    } else {
-        d->selectionProperty = ContactListener::UnknownType;
-        if (!name.isEmpty()) {
-            qWarning() << "Unknown selection property type:" << name;
-        }
-    }
+    d->requiredProperty = requiredProperty;
 }
 
 bool RecentContactsModel::resolving() const

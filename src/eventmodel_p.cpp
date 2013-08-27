@@ -35,6 +35,7 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "debug.h"
+#include "recentcontactsmodel.h"
 
 using namespace CommHistory;
 
@@ -607,11 +608,14 @@ void EventModelPrivate::startContactListening()
     }
 }
 
-bool EventModelPrivate::contactHasAddressType(ContactListener::ContactAddressType type, quint32 localId) const
+bool EventModelPrivate::contactHasAddress(int types, quint32 localId) const
 {
-    Q_ASSERT((type >= ContactListener::IMAccountType) && (type <= ContactListener::EmailAddressType));
-
-    const QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    return typeSet[type - 1]->contains(localId);
+    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
+        return true;
+    return false;
 }
 

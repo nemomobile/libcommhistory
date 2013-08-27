@@ -24,6 +24,7 @@
 
 #include "eventmodel.h"
 #include "libcommhistoryexport.h"
+#include <seasidecache.h>
 
 namespace CommHistory {
 
@@ -39,8 +40,9 @@ class LIBCOMMHISTORY_EXPORT RecentContactsModel : public EventModel
 {
     Q_OBJECT
 
-    Q_PROPERTY(QString selectionProperty READ selectionProperty WRITE setSelectionProperty)
+    Q_PROPERTY(int requiredProperty READ requiredProperty WRITE setRequiredProperty)
     Q_PROPERTY(bool resolving READ resolving NOTIFY resolvingChanged)
+    Q_ENUMS(RequiredPropertyType)
 
 public:
     /*!
@@ -62,26 +64,31 @@ public:
      */
     Q_INVOKABLE bool getEvents();
 
-    /*!
-     * Return the name of the property type that contacts must possess to be included in the model.
-     *
-     * \return Property type name
-     */
-    QString selectionProperty() const;
+    enum RequiredPropertyType {
+        NoPropertyRequired = 0,
+        AccountUriRequired = SeasideCache::FetchAccountUri,
+        PhoneNumberRequired = SeasideCache::FetchPhoneNumber,
+        EmailAddressRequired = SeasideCache::FetchEmailAddress
+    };
 
     /*!
-     * Set the property type that contacts must possess to be included in the model.
+     * Returns the property type(s) that contacts must possess to be included in the model.
      *
-     * Valid values are: [ 'accountUri' - contacts must possess an IM account,
-     *                     'phoneNumber' - contacts must possess a phone number,
-     *                     'emailAddress' - contacts must possess an email address ]
-     *
-     * The property names correspond to the property names by which these attributes
-     * are exposed in 'org.nemomobile.contacts.Person'.
-     *
-     * \param name Property type name
+     * \return Property type mask
      */
-    void setSelectionProperty(const QString &name);
+    int requiredProperty() const;
+
+    /*!
+     * Set the property type(s) that contacts must possess to be included in the model.
+     *
+     * Valid values are a combination of: [
+     *   CommRecentContactsModel.AccountUriRequired - contacts possessing an IM account are included,
+     *   CommRecentContactsModel.PhoneNumberRequired - contacts possessing a phone number are included,
+     *   CommRecentContactsModel.EmailAddressRequired - contacts possessing an email address account are included ]
+     *
+     * \param name Property type mask
+     */
+    void setRequiredProperty(int properties);
 
     /*!
      * Returns true if the model is engaged in resolving contacts, or false if all
