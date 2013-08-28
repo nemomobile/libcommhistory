@@ -30,6 +30,7 @@
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
 #include <QContactEmailAddress>
+#include <QContactSyncTarget>
 
 #include "commonutils.h"
 #include "debug.h"
@@ -211,7 +212,13 @@ void ContactListener::addressResolved(const QString &first, const QString &secon
 
 void ContactListener::itemUpdated(SeasideCache::CacheItem *item)
 {
-    emit contactUpdated(item->iid, contactName(item->contact), contactAddresses(item->contact));
+    static const QString aggregateTarget(QString::fromLatin1("aggregate"));
+
+    // Only aggregate contacts are relevant
+    QContactSyncTarget syncTarget(item->contact.detail<QContactSyncTarget>());
+    if (syncTarget.syncTarget() == aggregateTarget) {
+        emit contactUpdated(item->iid, contactName(item->contact), contactAddresses(item->contact));
+    }
 }
 
 void ContactListener::itemAboutToBeRemoved(SeasideCache::CacheItem *item)
