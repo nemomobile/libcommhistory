@@ -151,6 +151,8 @@ public:
 
     bool contactHasAddress(int types, quint32 contactId) const;
 
+    void emitDataChanged(int row, void *data);
+
     // This is the root node for the internal event tree. In a standard
     // flat model, eventRootNode has rowCount() children with events.
     // Use this in fillModel() and other methods if you're implementing
