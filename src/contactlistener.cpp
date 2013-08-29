@@ -40,7 +40,7 @@ using namespace CommHistory;
 Q_DECLARE_METATYPE(ContactListener::ContactAddress);
 Q_DECLARE_METATYPE(QList<ContactListener::ContactAddress>);
 
-QWeakPointer<ContactListener> ContactListener::m_Instance;
+QWeakPointer<ContactListener> ContactListener::m_instance;
 
 typedef QPair<QString, QString> StringPair;
 
@@ -61,11 +61,11 @@ ContactListener::ApiContactIdType ContactListener::apiContactId(int id)
 
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
-      m_Initialized(false)
+      m_initialized(false)
 {
     qRegisterMetaType<QList<ContactListener::ContactAddress> >("QList<ContactAddress>");
 
-    connect(this, SIGNAL(contactInCache(quint32, const QString &, const QList<ContactAddress> &)),
+    connect(this, SIGNAL(contactAlreadyInCache(quint32, const QString &, const QList<ContactAddress> &)),
             this, SIGNAL(contactUpdated(quint32, const QString &, const QList<ContactAddress> &)),
             Qt::QueuedConnection);
 }
@@ -79,12 +79,12 @@ ContactListener::~ContactListener()
 QSharedPointer<ContactListener> ContactListener::instance()
 {
     QSharedPointer<ContactListener> result;
-    if (!m_Instance) {
+    if (!m_instance) {
         result = QSharedPointer<ContactListener>(new ContactListener());
         result->init();
-        m_Instance = result.toWeakRef();
+        m_instance = result.toWeakRef();
     } else {
-        result = m_Instance.toStrongRef();
+        result = m_instance.toStrongRef();
     }
 
     return result;
@@ -92,14 +92,14 @@ QSharedPointer<ContactListener> ContactListener::instance()
 
 void ContactListener::init()
 {
-    if (m_Initialized)
+    if (m_initialized)
         return;
 
     DEBUG() << Q_FUNC_INFO;
 
     SeasideCache::registerChangeListener(this);
 
-    m_Initialized = true;
+    m_initialized = true;
 }
 
 bool ContactListener::addressMatchesList(const QString &localUid,
@@ -154,18 +154,8 @@ void ContactListener::resolveContact(const QString &localUid,
 
     if (item && (item->contactState == SeasideCache::ContactComplete)) {
         // This contact must be reported asynchronously
-        emit contactInCache(item->iid, contactName(item->contact), contactAddresses(item->contact));
+        emit contactAlreadyInCache(item->iid, contactName(item->contact), contactAddresses(item->contact));
     }
-}
-
-bool ContactListener::isLastNameFirst()
-{
-    return (SeasideCache::displayLabelOrder() == SeasideCache::LastNameFirst);
-}
-
-bool ContactListener::preferNickname()
-{
-    return false;
 }
 
 QString ContactListener::contactName(const QContact &contact)
