@@ -61,9 +61,13 @@ signals:
     void remoteUidChanged();
     void contactIdChanged();
 
+    void contactUpdated(int contactId);
+    void contactRemoved(int contactId);
+
 private slots:
     void request();
-    void contactUpdated(quint32 id, const QString &name, const QList<ContactAddress> &addresses);
+    void onContactUpdated(quint32 id, const QString &name, const QList<ContactAddress> &addresses);
+    void onContactRemoved(quint32 id);
 
 private:
     QString mLocalUid, mRemoteUid;
