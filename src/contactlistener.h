@@ -28,6 +28,7 @@
 #include <QString>
 #include <QList>
 #include <QPair>
+#include <QHash>
 
 #include "libcommhistoryexport.h"
 
@@ -108,12 +109,6 @@ public:
      * and QContactPresence details. */
     QString contactName(const QContact &contact);
 
-    /**
-     * Get address book settings.
-     */
-    bool isLastNameFirst();
-    bool preferNickname();
-
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,
@@ -122,9 +117,9 @@ Q_SIGNALS:
     void contactUnknown(const QPair<QString, QString> &address);
 
     // Private:
-    void contactInCache(quint32 localId,
-                        const QString &contactName,
-                        const QList<ContactAddress> &contactAddresses);
+    void contactAlreadyInCache(quint32 localId,
+                               const QString &contactName,
+                               const QList<ContactAddress> &contactAddresses);
 
 private:
     ContactListener(QObject *parent = 0);
@@ -138,8 +133,8 @@ private:
     void itemAboutToBeRemoved(SeasideCache::CacheItem *item);
 
 private:
-    static QWeakPointer<ContactListener> m_Instance;
-    bool m_Initialized;
+    static QWeakPointer<ContactListener> m_instance;
+    bool m_initialized;
     QHash<QPair<QString, QString>, QPair<QString, QString> > m_pending;
 };
 
