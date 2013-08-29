@@ -13,7 +13,7 @@ BuildRequires:  pkgconfig(Qt5DBus)
 BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Test)
 BuildRequires:  pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.8
-BuildRequires:  pkgconfig(contactcache-qt5)
+BuildRequires:  pkgconfig(contactcache-qt5) >= 0.0.17
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.
