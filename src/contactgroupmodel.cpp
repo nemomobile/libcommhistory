@@ -83,7 +83,7 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
 
         // Create data without sorting
         foreach (GroupObject *group, manager->groups()) {
-            int index = indexForContacts(group->contactIds());
+            int index = indexForContacts(group);
 
             if (index < 0) {
                 ContactGroup *item = new ContactGroup(this);
@@ -104,21 +104,22 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
         emit q->modelReady(true);
 }
 
-int ContactGroupModelPrivate::indexForContacts(QList<int> contacts)
+int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
 {
-    if (contacts.isEmpty())
+    if (group->remoteUids().size() != 1 || group->contactIds().isEmpty())
         return -1;
 
-    std::sort(contacts.begin(), contacts.end());
+    int contactId = group->contactIds().at(0);
 
     for (int i = 0; i < items.size(); i++) {
-        QList<int> ic = items[i]->contactIds();
-        std::sort(ic.begin(), ic.end());
+        QList<GroupObject*> groups = items[i]->groups();
+        if (groups.isEmpty() || (groups.size() == 1 && groups[0] == group))
+            continue;
 
-        if (contacts == ic)
+        if (groups[0]->remoteUids().size() == 1 && items[i]->contactIds().value(0) == contactId)
             return i;
     }
-    
+ 
     return -1;
 }
 
@@ -136,7 +137,7 @@ void ContactGroupModelPrivate::groupAdded(GroupObject *group)
 {
     Q_Q(ContactGroupModel);
 
-    int index = indexForContacts(group->contactIds());
+    int index = indexForContacts(group);
 
     if (index < 0) {
         ContactGroup *item = new ContactGroup(this);
@@ -201,7 +202,7 @@ void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
     // Otherwise, the current one is used.
     if (oldIndex >= 0) {
         if (!group->contactIds().isEmpty())
-            newIndex = indexForContacts(group->contactIds());
+            newIndex = indexForContacts(group);
 
         if (newIndex < 0) {
             newIndex = oldIndex;
