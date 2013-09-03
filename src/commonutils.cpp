@@ -69,7 +69,7 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
     QString phone = normalizePhoneNumber(uid);
 
     // IM
-    if (phone.isEmpty() && uid != match)
+    if (phone.isEmpty() && match.compare(uid, Qt::CaseInsensitive) != 0)
         return false;
 
     // phone number
@@ -77,6 +77,36 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
     QString matchRight = makeShortNumber(match);
 
     return uidRight == matchRight;
+}
+
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &uids, const QStringList &originalMatches)
+{
+    if (uids.size() != originalMatches.size())
+        return false;
+
+    QStringList matches = originalMatches;
+    QStringList shortMatches;
+    shortMatches.reserve(matches.size());
+    foreach (const QString &m, matches)
+        shortMatches.append(makeShortNumber(m));
+
+    foreach (const QString &uid, uids) {
+        QString phone = normalizePhoneNumber(uid);
+        int matchIndex = -1;
+
+        if (phone.isEmpty())
+            matchIndex = matches.indexOf(uid, Qt::CaseInsensitive);
+        else
+            matchIndex = shortMatches.indexOf(makeShortNumber(uid));
+
+        if (matchIndex < 0)
+            return false;
+
+        matches.removeAt(matchIndex);
+        shortMatches.removeAt(matchIndex);
+    }
+
+    return true;
 }
 
 LIBCOMMHISTORY_EXPORT QString makeShortNumber(const QString &number)

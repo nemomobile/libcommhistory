@@ -451,9 +451,14 @@ GroupObject *GroupManager::group(int groupId) const
 
 GroupObject *GroupManager::findGroup(const QString &localUid, const QString &remoteUid) const
 {
+    return findGroup(localUid, QStringList() << remoteUid);
+}
+
+GroupObject *GroupManager::findGroup(const QString &localUid, const QStringList &remoteUids) const
+{
     foreach (GroupObject *g, d->groups) {
-        if (g->localUid() == localUid && g->remoteUids().size() == 1
-                && CommHistory::remoteAddressMatch(g->remoteUids().first(), remoteUid))
+        if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
+                && CommHistory::remoteAddressMatch(g->remoteUids(), remoteUids))
             return g;
     }
 

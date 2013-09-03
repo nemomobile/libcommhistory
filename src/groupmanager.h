@@ -107,6 +107,7 @@ public:
      * \return group
      */
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid) const;
+    Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids) const;
 
     /*!
      * Get a list of all loaded group objects
