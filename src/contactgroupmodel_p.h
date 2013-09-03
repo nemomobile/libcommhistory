@@ -50,7 +50,7 @@ public:
 
     void setManager(GroupManager *manager);
 
-    int indexForContacts(QList<int> contacts);
+    int indexForContacts(GroupObject *group);
     int indexForObject(GroupObject *group);
 
 private slots:

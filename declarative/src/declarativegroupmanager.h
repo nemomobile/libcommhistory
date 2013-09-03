@@ -55,6 +55,7 @@ public:
      * If groupId is negative, an appropriate group will be found or created
      * inline if necessary. */
     Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QString &remoteUid, const QString &text);
+    Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QStringList &remoteUids, const QString &text);
 
     Q_INVOKABLE bool setEventStatus(int eventId, int status);
 

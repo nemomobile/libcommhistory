@@ -378,14 +378,17 @@ bool ContactGroup::deleteGroups()
 
 GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)
 {
+    return findGroup(localUid, QStringList() << remoteUid);
+}
+
+GroupObject *ContactGroup::findGroup(const QString &localUid, const QStringList &remoteUids)
+{
     Q_D(ContactGroup);
 
     foreach (GroupObject *g, d->groups) {
-        if (g->localUid() == localUid && g->remoteUids().size() == 1
-            && CommHistory::remoteAddressMatch(g->remoteUids().at(0), remoteUid))
-        {
+        if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
+                && CommHistory::remoteAddressMatch(g->remoteUids(), remoteUids))
             return g;
-        }
     }
 
     return 0;

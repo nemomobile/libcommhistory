@@ -45,6 +45,7 @@ QString normalizePhoneNumber(const QString &number);
  * \return true if addresses match.
  */
 bool remoteAddressMatch(const QString &uid, const QString &match);
+bool remoteAddressMatch(const QStringList &uids, const QStringList &match);
 
 /*!
  * Get the last digits (see phoneNumberMatchLength) of a phone number
