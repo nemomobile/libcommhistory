@@ -89,8 +89,8 @@ public:
     QList<GroupObject*> groups() const;
     QList<QObject*> groupObjects() const;
 
-    // Does not work for multi-target groups
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid);
+    Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids);
 
 public slots:
     void addGroup(GroupObject *group);

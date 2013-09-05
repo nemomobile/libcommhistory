@@ -71,17 +71,23 @@ void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
 int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
                                                         const QString &remoteUid, const QString &text)
 {
+    return createOutgoingMessageEvent(groupId, localUid, QStringList() << remoteUid, text);
+}
+
+int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
+                                                        const QStringList &remoteUids, const QString &text)
+{
     if (groupId < 0) {
         // Try to find an appropriate group
-        GroupObject *group = findGroup(localUid, remoteUid);
+        GroupObject *group = findGroup(localUid, remoteUids);
         if (group) {
             groupId = group->id();
         } else {
             Group g;
             g.setLocalUid(localUid);
-            g.setRemoteUids(QStringList() << remoteUid);
+            g.setRemoteUids(remoteUids);
             g.setChatType(Group::ChatTypeP2P);
-            DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUid;
+            DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUids;
             if (!addGroup(g)) {
                 qWarning() << Q_FUNC_INFO << "Failed creating group";
                 return -1;
@@ -99,14 +105,15 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
     event.setDirection(Event::Outbound);
     event.setIsRead(true);
     event.setLocalUid(localUid);
-    event.setRemoteUid(remoteUid);
+    if (remoteUids.size() == 1)
+        event.setRemoteUid(remoteUids[0]);
     event.setFreeText(text);
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(event.startTime());
     event.setStatus(Event::SendingStatus);
     event.setGroupId(groupId);
 
-    DEBUG() << Q_FUNC_INFO << groupId << localUid << remoteUid << text;
+    DEBUG() << Q_FUNC_INFO << groupId << localUid << remoteUids << text;
     EventModel model;
     if (model.addEvent(event))
         return event.id();

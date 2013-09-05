@@ -174,6 +174,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setEndTime(event.endTime());
 
             if ((event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) &&
+                !event.remoteUid().isEmpty() &&
                 !CommHistory::remoteAddressMatch(go->remoteUids().first(), event.remoteUid())) {
 
                 DEBUG() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
@@ -451,9 +452,14 @@ GroupObject *GroupManager::group(int groupId) const
 
 GroupObject *GroupManager::findGroup(const QString &localUid, const QString &remoteUid) const
 {
+    return findGroup(localUid, QStringList() << remoteUid);
+}
+
+GroupObject *GroupManager::findGroup(const QString &localUid, const QStringList &remoteUids) const
+{
     foreach (GroupObject *g, d->groups) {
-        if (g->localUid() == localUid && g->remoteUids().size() == 1
-                && CommHistory::remoteAddressMatch(g->remoteUids().first(), remoteUid))
+        if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
+                && CommHistory::remoteAddressMatch(g->remoteUids(), remoteUids))
             return g;
     }
 
