@@ -28,13 +28,13 @@
 
 namespace CommHistory {
 
-class LIBCOMMHISTORY_EXPORT ClassZeroSMSModelPrivate;
+class ClassZeroSMSModelPrivate;
 
 /*!
  * \class ClassZeroSMSModel
  * \brief In-memory model containing class 0 SMS events
  */
-class ClassZeroSMSModel : public EventModel
+class LIBCOMMHISTORY_EXPORT ClassZeroSMSModel : public EventModel
 {
     Q_OBJECT
 

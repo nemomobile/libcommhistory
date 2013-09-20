@@ -105,6 +105,9 @@ QModelIndex EventModelPrivate::findEventRecursive(int id, EventTreeItem *parent)
 {
     Q_Q(const EventModel);
 
+    if (id < 0)
+        return QModelIndex();
+
     for (int row = 0; row < parent->childCount(); row++) {
         if (parent->eventAt(row).id() == id) {
             return q->createIndex(row, 0, parent->child(row));
