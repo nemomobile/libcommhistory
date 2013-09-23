@@ -93,13 +93,8 @@ void ClassZeroSMSModelTest::getEvents()
 
 void ClassZeroSMSModelTest::deleteEvents()
 {
-    while(m_pModel->rowCount()) {
-        Event event = m_pModel->event(m_pModel->index(0, 0));
-        QVERIFY(event.id() != -1);
-        m_pModel->deleteEvent(event.id());
-        QVERIFY(watcher.waitForDeleted(1));
-    }
-    QVERIFY( m_pModel->rowCount() == 0);
+    m_pModel->clear();
+    QVERIFY(m_pModel->rowCount() == 0);
 }
 
 void ClassZeroSMSModelTest::cleanupTestCase()

@@ -28,13 +28,13 @@
 
 namespace CommHistory {
 
-class LIBCOMMHISTORY_EXPORT ClassZeroSMSModelPrivate;
+class ClassZeroSMSModelPrivate;
 
 /*!
  * \class ClassZeroSMSModel
  * \brief In-memory model containing class 0 SMS events
  */
-class ClassZeroSMSModel : public EventModel
+class LIBCOMMHISTORY_EXPORT ClassZeroSMSModel : public EventModel
 {
     Q_OBJECT
 
@@ -46,10 +46,13 @@ public:
      */
     ClassZeroSMSModel(QObject *parent = 0);
 
+    Q_INVOKABLE void clear();
+
+signals:
     /*!
-     * reimp EventModel::deleteEvent()
+     * Emitted for new class 0 messages
      */
-    bool deleteEvent(int id);
+    void newMessage(const QString &messageToken, const QString &text);
 
 private:
     Q_DECLARE_PRIVATE(ClassZeroSMSModel);
