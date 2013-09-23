@@ -46,10 +46,13 @@ public:
      */
     ClassZeroSMSModel(QObject *parent = 0);
 
+    Q_INVOKABLE void clear();
+
+signals:
     /*!
-     * reimp EventModel::deleteEvent()
+     * Emitted for new class 0 messages
      */
-    bool deleteEvent(int id);
+    void newMessage(const QString &messageToken, const QString &text);
 
 private:
     Q_DECLARE_PRIVATE(ClassZeroSMSModel);
