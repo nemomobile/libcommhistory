@@ -44,6 +44,16 @@ public:
         }
         return false;
     }
+
+    virtual void addToModel(Event &event)
+    {
+        Q_Q(ClassZeroSMSModel);
+
+        EventModelPrivate::addToModel(event);
+        if (acceptsEvent(event)) {
+            emit q->newMessage(event.messageToken(), event.freeText());
+        }
+    }
 };
 
 LIBCOMMHISTORY_EXPORT ClassZeroSMSModel::ClassZeroSMSModel(QObject *parent)
@@ -51,14 +61,10 @@ LIBCOMMHISTORY_EXPORT ClassZeroSMSModel::ClassZeroSMSModel(QObject *parent)
 {
 }
 
-bool ClassZeroSMSModel::deleteEvent(int id)
+void ClassZeroSMSModel::clear()
 {
     Q_D(ClassZeroSMSModel);
-
-    d->deleteFromModel(id);
-    emit d->eventDeleted(id);
-
-    return true;
+    d->clearEvents();
 }
 
 } // namespace CommHistory
