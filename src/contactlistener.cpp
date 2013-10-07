@@ -21,6 +21,7 @@
 ******************************************************************************/
 
 #include "contactlistener.h"
+#include "contactlistener_p.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -40,7 +41,7 @@ using namespace CommHistory;
 Q_DECLARE_METATYPE(ContactListener::ContactAddress);
 Q_DECLARE_METATYPE(QList<ContactListener::ContactAddress>);
 
-QWeakPointer<ContactListener> ContactListener::m_instance;
+Q_GLOBAL_STATIC(QWeakPointer<ContactListener>, contactListenerInstance);
 
 typedef QPair<QString, QString> StringPair;
 
@@ -61,45 +62,40 @@ ContactListener::ApiContactIdType ContactListener::apiContactId(int id)
 
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
-      m_initialized(false)
+      d_ptr(new ContactListenerPrivate(this))
 {
     qRegisterMetaType<QList<ContactListener::ContactAddress> >("QList<ContactAddress>");
 
-    connect(this, SIGNAL(contactAlreadyInCache(quint32, const QString &, const QList<ContactAddress> &)),
-            this, SIGNAL(contactUpdated(quint32, const QString &, const QList<ContactAddress> &)),
+    connect(d_ptr, SIGNAL(contactAlreadyInCache(quint32,QString,QList<ContactAddress>)),
+            this, SIGNAL(contactUpdated(quint32,QString,QList<ContactAddress>)),
             Qt::QueuedConnection);
 }
 
 ContactListener::~ContactListener()
 {
-    SeasideCache::unregisterResolveListener(this);
-    SeasideCache::unregisterChangeListener(this);
 }
 
 QSharedPointer<ContactListener> ContactListener::instance()
 {
-    QSharedPointer<ContactListener> result;
-    if (!m_instance) {
-        result = QSharedPointer<ContactListener>(new ContactListener());
-        result->init();
-        m_instance = result.toWeakRef();
-    } else {
-        result = m_instance.toStrongRef();
+    QSharedPointer<ContactListener> result = contactListenerInstance->toStrongRef();
+    if (!result) {
+        result = QSharedPointer<ContactListener>(new ContactListener);
+        *contactListenerInstance = result.toWeakRef();
     }
 
     return result;
 }
 
-void ContactListener::init()
+ContactListenerPrivate::ContactListenerPrivate(ContactListener *q)
+    : QObject(q), q_ptr(q)
 {
-    if (m_initialized)
-        return;
-
-    DEBUG() << Q_FUNC_INFO;
-
     SeasideCache::registerChangeListener(this);
+}
 
-    m_initialized = true;
+ContactListenerPrivate::~ContactListenerPrivate()
+{
+    SeasideCache::unregisterResolveListener(this);
+    SeasideCache::unregisterChangeListener(this);
 }
 
 bool ContactListener::addressMatchesList(const QString &localUid,
@@ -137,6 +133,7 @@ bool ContactListener::addressMatchesList(const QString &localUid,
 void ContactListener::resolveContact(const QString &localUid,
                                      const QString &remoteUid)
 {
+    Q_D(ContactListener);
     DEBUG() << Q_FUNC_INFO << localUid << remoteUid;
 
     const StringPair input(qMakePair(localUid, remoteUid));
@@ -146,43 +143,46 @@ void ContactListener::resolveContact(const QString &localUid,
     // TODO: maybe better to switch on localUid value rather than numeric quality?
     QString number = CommHistory::normalizePhoneNumber(remoteUid);
     if (!number.isEmpty()) {
-        m_pending.insert(qMakePair(QString(), remoteUid), input);
-        item = SeasideCache::resolvePhoneNumber(this, remoteUid, true);
+        d->m_pending.insert(qMakePair(QString(), remoteUid), input);
+        item = SeasideCache::resolvePhoneNumber(d, remoteUid, true);
     } else {
-        item = SeasideCache::resolveOnlineAccount(this, localUid, remoteUid, true);
+        item = SeasideCache::resolveOnlineAccount(d, localUid, remoteUid, true);
     }
 
     if (item && (item->contactState == SeasideCache::ContactComplete)) {
         // This contact must be reported asynchronously
-        emit contactAlreadyInCache(item->iid, contactName(item->contact), contactAddresses(item->contact));
+        emit d->contactAlreadyInCache(item->iid, d->contactName(item->contact), d->contactAddresses(item->contact));
     }
 }
 
-QString ContactListener::contactName(const QContact &contact)
+QString ContactListenerPrivate::contactName(const QContact &contact) const
 {
     return SeasideCache::generateDisplayLabel(contact, SeasideCache::displayLabelOrder());
 }
 
-QList<ContactListener::ContactAddress> ContactListener::contactAddresses(const QContact &contact) const
+QList<ContactListener::ContactAddress> ContactListenerPrivate::contactAddresses(const QContact &contact) const
 {
     QList<ContactAddress> addresses;
 
     foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
         QString localUid = account.value<QString>(QContactOnlineAccount__FieldAccountPath);
-        addresses += makeContactAddress(localUid, account.accountUri(), IMAccountType);
+        addresses += makeContactAddress(localUid, account.accountUri(), ContactListener::IMAccountType);
     }
     foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
-        addresses += makeContactAddress(QString(), phoneNumber.number(), PhoneNumberType);
+        addresses += makeContactAddress(QString(), phoneNumber.number(), ContactListener::PhoneNumberType);
     }
     foreach (const QContactEmailAddress &emailAddress, contact.details<QContactEmailAddress>()) {
-        addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), EmailAddressType);
+        addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), ContactListener::EmailAddressType);
     }
 
     return addresses;
 }
 
-void ContactListener::addressResolved(const QString &first, const QString &second, SeasideCache::CacheItem *item)
+void ContactListenerPrivate::addressResolved(const QString &first, const QString &second,
+                                             SeasideCache::CacheItem *item)
 {
+    Q_Q(ContactListener);
+
     if (item) {
         itemUpdated(item);
     } else {
@@ -196,23 +196,25 @@ void ContactListener::addressResolved(const QString &first, const QString &secon
             m_pending.erase(it);
         }
 
-        emit contactUnknown(address);
+        emit q->contactUnknown(address);
     }
 }
 
-void ContactListener::itemUpdated(SeasideCache::CacheItem *item)
+void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
 {
     static const QString aggregateTarget(QString::fromLatin1("aggregate"));
+    Q_Q(ContactListener);
 
     // Only aggregate contacts are relevant
     QContactSyncTarget syncTarget(item->contact.detail<QContactSyncTarget>());
     if (syncTarget.syncTarget() == aggregateTarget) {
-        emit contactUpdated(item->iid, contactName(item->contact), contactAddresses(item->contact));
+        emit q->contactUpdated(item->iid, contactName(item->contact), contactAddresses(item->contact));
     }
 }
 
-void ContactListener::itemAboutToBeRemoved(SeasideCache::CacheItem *item)
+void ContactListenerPrivate::itemAboutToBeRemoved(SeasideCache::CacheItem *item)
 {
-    emit contactRemoved(item->iid);
+    Q_Q(ContactListener);
+    emit q->contactRemoved(item->iid);
 }
 
