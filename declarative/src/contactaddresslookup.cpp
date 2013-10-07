@@ -30,6 +30,7 @@
  */
 
 #include "contactaddresslookup.h"
+#include <QTimer>
 
 using namespace CommHistory;
 

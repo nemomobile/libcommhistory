@@ -36,15 +36,14 @@
 #include <QContactIntersectionFilter>
 
 #include "commonutils.h"
-
 #include "contactlistener.h"
+#include "contactlistener_p.h"
 #include "qcontacttpmetadata_p.h"
 
 using namespace CommHistory;
 
-QWeakPointer<ContactListener> ContactListener::m_Instance;
-
 namespace {
+    Q_GLOBAL_STATIC(QWeakPointer<ContactListener>, contactListenerInstance)
 
     static const int CONTACT_REQUEST_THRESHOLD = 5000;
     static const int REQUEST_BATCH_SIZE = 10;
@@ -112,7 +111,7 @@ QContactIdType ContactListener::apiContactId(int id)
 
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
-      m_Initialized(false)
+      d_ptr(new ContactListenerPrivate(this))
 {
 }
 
@@ -122,64 +121,54 @@ ContactListener::~ContactListener()
 
 QSharedPointer<ContactListener> ContactListener::instance()
 {
-    QSharedPointer<ContactListener> result;
-    if (!m_Instance) {
-        result = QSharedPointer<ContactListener>(new ContactListener());
-        result->init();
-        m_Instance = result.toWeakRef();
-    } else {
-        result = m_Instance.toStrongRef();
+    QSharedPointer<ContactListener> result = contactListenerInstance->toStrongRef();
+    if (!result) {
+        result = QSharedPointer<ContactListener>(new ContactListener);
+        *contactListenerInstance = result.toWeakRef();
     }
 
     return result;
 }
 
-void ContactListener::init()
+ContactListenerPrivate::ContactListenerPrivate(ContactListener *q)
+    : q_ptr(q)
 {
-    if (m_Initialized)
-        return;
-
-    qDebug() << Q_FUNC_INFO;
-
-    if (!m_ContactManager) {
 #ifdef USING_QTPIM
-        // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
-        QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
+    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
+    QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
 #else
-        QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
+    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
 #endif
-        if (!envspec.isEmpty()) {
-            qDebug() << "Using contact manager:" << envspec;
-            m_ContactManager = new QContactManager(envspec);
-        } else {
-            m_ContactManager = new QContactManager;
-        }
-        m_ContactManager->setParent(this);
-#ifdef USING_QTPIM
-        connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactId>)),
-                this, SLOT(slotContactsUpdated(QList<QContactId>)));
-        connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactId>)),
-                this, SLOT(slotContactsUpdated(QList<QContactId>)));
-        connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactId>)),
-                this, SLOT(slotContactsRemoved(QList<QContactId>)));
-#else
-        connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactLocalId>)),
-                this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
-        connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactLocalId>)),
-                this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
-        connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactLocalId>)),
-                this, SLOT(slotContactsRemoved(QList<QContactLocalId>)));
-#endif
+    if (!envspec.isEmpty()) {
+        qDebug() << "Using contact manager:" << envspec;
+        m_ContactManager = new QContactManager(envspec);
+    } else {
+        m_ContactManager = new QContactManager;
     }
+    m_ContactManager->setParent(this);
+
+#ifdef USING_QTPIM
+    connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactId>)),
+            this, SLOT(slotContactsUpdated(QList<QContactId>)));
+    connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactId>)),
+            this, SLOT(slotContactsUpdated(QList<QContactId>)));
+    connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactId>)),
+            this, SLOT(slotContactsRemoved(QList<QContactId>)));
+#else
+    connect(m_ContactManager, SIGNAL(contactsAdded(QList<QContactLocalId>)),
+            this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
+    connect(m_ContactManager, SIGNAL(contactsChanged(QList<QContactLocalId>)),
+            this, SLOT(slotContactsUpdated(QList<QContactLocalId>)));
+    connect(m_ContactManager, SIGNAL(contactsRemoved(QList<QContactLocalId>)),
+            this, SLOT(slotContactsRemoved(QList<QContactLocalId>)));
+#endif
 
     m_ContactTimer.setSingleShot(true);
     m_ContactTimer.setInterval(CONTACT_REQUEST_THRESHOLD);
     connect(&m_ContactTimer, SIGNAL(timeout()), this, SLOT(slotStartContactRequest()));
-
-    m_Initialized = true;
 }
 
-QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter)
+QContactFetchRequest *ContactListenerPrivate::buildRequest(const QContactFilter &filter)
 {
     QContactFetchRequest *request = new QContactFetchRequest();
     request->setManager(m_ContactManager);
@@ -219,7 +208,7 @@ QContactFetchRequest* ContactListener::buildRequest(const QContactFilter &filter
     return request;
 }
 
-void ContactListener::slotContactsUpdated(const QList<QContactIdType> &contactIds)
+void ContactListenerPrivate::slotContactsUpdated(const QList<QContactIdType> &contactIds)
 {
     if (contactIds.isEmpty())
         return;
@@ -230,18 +219,20 @@ void ContactListener::slotContactsUpdated(const QList<QContactIdType> &contactId
     startRequestOrTimer();
 }
 
-void ContactListener::slotContactsRemoved(const QList<QContactIdType> &contactIds)
+void ContactListenerPrivate::slotContactsRemoved(const QList<QContactIdType> &contactIds)
 {
+    Q_Q(ContactListener);
+
     if (contactIds.isEmpty())
         return;
 
     qDebug() << Q_FUNC_INFO << contactIds;
 
     foreach (const QContactIdType &localId, contactIds)
-        emit contactRemoved(internalContactId(localId));
+        emit q->contactRemoved(ContactListener::internalContactId(localId));
 }
 
-void ContactListener::slotStartContactRequest()
+void ContactListenerPrivate::slotStartContactRequest()
 {
     qDebug() << Q_FUNC_INFO;
     QContactFetchRequest *request = 0;
@@ -307,8 +298,9 @@ void ContactListener::slotStartContactRequest()
     }
 }
 
-void ContactListener::slotResultsAvailable()
+void ContactListenerPrivate::slotResultsAvailable()
 {
+    Q_Q(ContactListener);
     QContactFetchRequest *request = qobject_cast<QContactFetchRequest *>(sender());
 
     if (!request || !request->isFinished())
@@ -323,31 +315,31 @@ void ContactListener::slotResultsAvailable()
         if (contact.localId() != m_ContactManager->selfContactId())
 #endif
         {
-            QList<ContactAddress> addresses;
+            QList<ContactListener::ContactAddress> addresses;
             foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
 #ifdef USING_QTPIM
                 QString localUid = account.value(QContactOnlineAccount__FieldAccountPath).toString();
 #else
                 QString localUid = account.value(QLatin1String("AccountPath"));
 #endif
-                addresses += makeContactAddress(localUid, account.accountUri(), IMAccountType);
+                addresses += makeContactAddress(localUid, account.accountUri(), ContactListener::IMAccountType);
                 m_RequestedContacts.remove(qMakePair(localUid, account.accountUri()));
             }
             foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
-                addresses += makeContactAddress(QString(), phoneNumber.number(), PhoneNumberType);
+                addresses += makeContactAddress(QString(), phoneNumber.number(), ContactListener::PhoneNumberType);
                 m_RequestedContacts.remove(qMakePair(QString(), CommHistory::normalizePhoneNumber(phoneNumber.number(), NormalizeFlagKeepDialString)));
             }
             foreach (const QContactEmailAddress &emailAddress, contact.details<QContactEmailAddress>()) {
-                addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), EmailAddressType);
+                addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), ContactListener::EmailAddressType);
             }
-            emit contactUpdated(internalContactId(contact), contactName(contact), addresses);
+            emit q->contactUpdated(ContactListener::internalContactId(contact), contactName(contact), addresses);
         } // if
     }
 
     // Report any unresolved contacts as unknown
     QSet<QPair<QString, QString> >::const_iterator it = m_RequestedContacts.constBegin(), end = m_RequestedContacts.constEnd();
     for ( ; it != end; ++it) {
-        emit contactUnknown(*it);
+        emit q->contactUnknown(*it);
     }
     m_RequestedContacts.clear();
 
@@ -391,16 +383,17 @@ bool ContactListener::addressMatchesList(const QString &localUid,
 void ContactListener::resolveContact(const QString &localUid,
                                      const QString &remoteUid)
 {
+    Q_D(ContactListener);
     qDebug() << Q_FUNC_INFO << localUid << remoteUid;
 
     QPair<QString, QString> unresolved(localUid, remoteUid);
-    if (!m_PendingUnresolvedContacts.contains(unresolved)) {
-        m_PendingUnresolvedContacts.insert(unresolved);
-        startRequestOrTimer();
+    if (!d->m_PendingUnresolvedContacts.contains(unresolved)) {
+        d->m_PendingUnresolvedContacts.insert(unresolved);
+        d->startRequestOrTimer();
     }
 }
 
-void ContactListener::startRequestOrTimer()
+void ContactListenerPrivate::startRequestOrTimer()
 {
     // if it's only one new contact or conversation it's probably hand-added
     // than start request right away and start timer to avoid subsequent requests if it's mass update
@@ -420,8 +413,10 @@ bool ContactListener::preferNickname()
     return false;
 }
 
-QString ContactListener::contactName(const QContact &contact)
+QString ContactListenerPrivate::contactName(const QContact &contact)
 {
+    Q_Q(ContactListener);
+
     QString displayLabel, firstName, lastName, contactNickname, imNickname;
 
     /* Use the CustomLabel field if present, otherwise get first/last name */
@@ -468,7 +463,7 @@ QString ContactListener::contactName(const QContact &contact)
     QString realName;
     if (!firstName.isEmpty() || !lastName.isEmpty()) {
         QString lname;
-        if (isLastNameFirst())  {
+        if (q->isLastNameFirst())  {
             realName = lastName;
             lname = firstName;
         } else {
@@ -483,7 +478,7 @@ QString ContactListener::contactName(const QContact &contact)
         }
     }
 
-    if (preferNickname() && !contactNickname.isEmpty())
+    if (q->preferNickname() && !contactNickname.isEmpty())
         return contactNickname;
     else if (!realName.isEmpty())
         return realName;

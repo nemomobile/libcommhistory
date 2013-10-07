@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -23,13 +24,8 @@
 #ifndef COMMHISTORY_CONTACTLISTENER_H
 #define COMMHISTORY_CONTACTLISTENER_H
 
-// QT includes
 #include <QObject>
-#include <QString>
-#include <QList>
-#include <QTimer>
-#include <QPointer>
-
+#include <QSharedPointer>
 #include "libcommhistoryexport.h"
 
 // contacts
@@ -61,9 +57,12 @@ typedef QContactLocalIdFilter QContactIdTypeFilter;
 
 namespace CommHistory {
 
+class ContactListenerPrivate;
+
 class LIBCOMMHISTORY_EXPORT ContactListener : public QObject
 {
     Q_OBJECT
+    Q_DECLARE_PRIVATE(ContactListener)
 
 public:
     enum ContactAddressType {
@@ -81,21 +80,11 @@ public:
         QPair<QString, QString> uidPair() const { return qMakePair(localUid, remoteUid); }
     };
 
-    template<typename T1, typename T2, typename T3>
-    ContactAddress makeContactAddress(T1 localUid, T2 remoteUid, T3 type) {
-        ContactAddress addr;
-        addr.localUid = localUid;
-        addr.remoteUid = remoteUid;
-        addr.type = type;
-        return addr;
-    }
-
     /*!
      *  \returns Contact listener
      */
     static QSharedPointer<ContactListener> instance();
-
-    ~ContactListener();
+    virtual ~ContactListener();
 
     static bool addressMatchesList(const QString &localUid,
                                    const QString &remoteUid,
@@ -109,15 +98,10 @@ public:
     static QContactIdType apiContactId(int internalId);
 
     /**
-     * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.
+     * Find a contact for (localUid, remoteUid), result provided via contactUpdate() signal.
      */
     void resolveContact(const QString &localUid,
                         const QString &remoteUid);
-
-    /**
-     * Get contact name from a QContact. Should have QContactName, QContactNickname,
-     * and QContactPresence details. */
-    QString contactName(const QContact &contact);
 
     /**
      * Get address book settings.
@@ -132,33 +116,10 @@ Q_SIGNALS:
     void contactRemoved(quint32 localId);
     void contactUnknown(const QPair<QString, QString> &address);
 
-private Q_SLOTS:
-#ifdef USING_QTPIM
-    void slotContactsUpdated(const QList<QContactId> &contactIds);
-    void slotContactsRemoved(const QList<QContactId> &contactIds);
-#else
-    void slotContactsUpdated(const QList<QContactLocalId> &contactIds);
-    void slotContactsRemoved(const QList<QContactLocalId> &contactIds);
-#endif
-
-    void slotStartContactRequest();
-    void slotResultsAvailable();
-
 private:
+    ContactListenerPrivate *d_ptr;
+
     ContactListener(QObject *parent = 0);
-
-    void init();
-    QContactFetchRequest *buildRequest(const QContactFilter &filter);
-    void startRequestOrTimer();
-
-private:
-    static QWeakPointer<ContactListener> m_Instance;
-    bool m_Initialized;
-    QTimer m_ContactTimer;
-    QPointer<QContactManager> m_ContactManager;
-    QList<QContactIdType> m_PendingContactIds;
-    QSet<QPair<QString,QString> > m_PendingUnresolvedContacts;
-    QSet<QPair<QString,QString> > m_RequestedContacts;
 };
 
 }
