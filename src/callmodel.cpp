@@ -536,7 +536,11 @@ void CallModelPrivate::addToModel( Event &event )
                 // no match, insert new row at top
                 emit q->beginInsertRows(QModelIndex(), 0, 0);
                 event.setEventCount(1);
-                eventRootItem->prependChild(new EventTreeItem(event));
+
+                EventTreeItem *newParent = new EventTreeItem(event);
+                newParent->appendChild(new EventTreeItem(event, newParent));
+                eventRootItem->prependChild(newParent);
+
                 emit q->endInsertRows();
             }
 
