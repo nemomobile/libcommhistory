@@ -1040,7 +1040,8 @@ bool CallModel::deleteEvent( int id )
             // delete event from model (not only from db)
             d->deleteFromModel( id );
             // signal delete in case someone else needs to know it
-            emit d->eventDeleted( id );
+            foreach (const Event &e, deletedEvents)
+                emit d->eventDeleted(e.id());
             emit d->eventsCommitted(deletedEvents, true);
 
             return true;
