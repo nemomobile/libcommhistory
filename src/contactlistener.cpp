@@ -45,21 +45,6 @@ Q_GLOBAL_STATIC(QWeakPointer<ContactListener>, contactListenerInstance);
 
 typedef QPair<QString, QString> StringPair;
 
-int ContactListener::internalContactId(const ApiContactIdType &id)
-{
-    return QtContactsSqliteExtensions::internalContactId(id);
-}
-
-int ContactListener::internalContactId(const QContact &contact)
-{
-    return QtContactsSqliteExtensions::internalContactId(contact.id());
-}
-
-ContactListener::ApiContactIdType ContactListener::apiContactId(int id)
-{
-    return QtContactsSqliteExtensions::apiContactId(static_cast<quint32>(id));
-}
-
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
       d_ptr(new ContactListenerPrivate(this))
