@@ -32,17 +32,6 @@
 
 #include "libcommhistoryexport.h"
 
-// contacts
-#include <QContact>
-#include <QContactId>
-#include "qtcontacts-extensions.h"
-
-#ifdef USING_QTPIM
-QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
-
 namespace CommHistory {
 
 class ContactListenerPrivate;
@@ -53,8 +42,6 @@ class LIBCOMMHISTORY_EXPORT ContactListener : public QObject
     Q_DECLARE_PRIVATE(ContactListener)
 
 public:
-    typedef QtContactsSqliteExtensions::ApiContactIdType ApiContactIdType;
-
     enum ContactAddressType {
         UnknownType = 0,
         IMAccountType,
@@ -82,10 +69,6 @@ public:
     static bool addressMatchesList(const QString &localUid,
                                    const QString &remoteUid,
                                    const QList<ContactAddress> &contactAddresses);
-
-    static int internalContactId(const ApiContactIdType &id);
-    static int internalContactId(const QContact &contact);
-    static ApiContactIdType apiContactId(int internalId);
 
     /**
      * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.

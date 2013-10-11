@@ -59,6 +59,8 @@ QTCONTACTS_USE_NAMESPACE
 QTM_USE_NAMESPACE
 #endif
 
+using namespace QtContactsSqliteExtensions;
+
 namespace {
 static int contactNumber = 0;
 
@@ -94,7 +96,7 @@ const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
 int ticks = 0;
 int idleTicks = 0;
 
-QSet<ContactListener::ApiContactIdType> addedContactIds;
+QSet<ApiContactIdType> addedContactIds;
 QSet<int> addedEventIds;
 
 int addTestEvent(EventModel &model,
@@ -228,20 +230,20 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     filter.setRelationshipType(QContactRelationship::Aggregates);
 #endif
 
-    foreach (const ContactListener::ApiContactIdType &id, manager()->contactIds(filter)) {
+    foreach (const ApiContactIdType &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
         addedContactIds.insert(id);
-        return ContactListener::internalContactId(id);
+        return internalContactId(id);
     }
 
     qWarning() << "Could not find aggregator";
-    return ContactListener::internalContactId(contact);
+    return internalContactId(contact.id());
 }
 
 bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid)
 {
-    QContact existing = manager()->contact(ContactListener::apiContactId(contactId));
-    if (ContactListener::internalContactId(existing) != contactId) {
+    QContact existing = manager()->contact(apiContactId(contactId));
+    if (internalContactId(existing.id()) != (unsigned)contactId) {
         qWarning() << "Could not retrieve contact:" << contactId;
         return false;
     }
@@ -290,7 +292,7 @@ void modifyTestContact(int id, const QString &name)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
-    QContact contact = manager()->contact(ContactListener::apiContactId(id));
+    QContact contact = manager()->contact(apiContactId(id));
     if (!contact.isEmpty()) {
         qWarning() << "unable to retrieve contact:" << id;
         return;
@@ -311,10 +313,10 @@ void modifyTestContact(int id, const QString &name)
 
 void deleteTestContact(int id)
 {
-    if (!manager()->removeContact(ContactListener::apiContactId(id))) {
+    if (!manager()->removeContact(apiContactId(id))) {
         qWarning() << "error deleting contact:" << id;
     }
-    addedContactIds.remove(ContactListener::apiContactId(id));
+    addedContactIds.remove(apiContactId(id));
 }
 
 void cleanUpTestContacts()
@@ -328,11 +330,11 @@ void cleanUpTestContacts()
 
         foreach (const QContactRelationship &rel, manager()->relationships(aggregatesType)) {
 #ifdef USING_QTPIM
-            ContactListener::ApiContactIdType firstId = rel.first().id();
-            ContactListener::ApiContactIdType secondId = rel.second().id();
+            ApiContactIdType firstId = rel.first().id();
+            ApiContactIdType secondId = rel.second().id();
 #else
-            ContactListener::ApiContactIdType firstId = rel.first().localId();
-            ContactListener::ApiContactIdType secondId = rel.second().localId();
+            ApiContactIdType firstId = rel.first().localId();
+            ApiContactIdType secondId = rel.second().localId();
 #endif
             if (addedContactIds.contains(firstId)) {
                 addedContactIds.insert(secondId);
