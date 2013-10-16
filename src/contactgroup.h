@@ -64,7 +64,7 @@ public:
     Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventChanged);
     int lastEventId() const;
 
-    Q_PROPERTY(GroupObject* lastEventGroup READ lastEventGroup NOTIFY lastEventChanged);
+    Q_PROPERTY(CommHistory::GroupObject* lastEventGroup READ lastEventGroup NOTIFY lastEventChanged);
     GroupObject *lastEventGroup() const;
 
     Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastEventChanged);
@@ -93,9 +93,9 @@ public:
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids);
 
 public slots:
-    void addGroup(GroupObject *group);
-    bool removeGroup(GroupObject *group);
-    void updateGroup(GroupObject *group);
+    void addGroup(CommHistory::GroupObject *group);
+    bool removeGroup(CommHistory::GroupObject *group);
+    void updateGroup(CommHistory::GroupObject *group);
 
     bool markAsRead();
     bool deleteGroups();
