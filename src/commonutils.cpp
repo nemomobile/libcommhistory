@@ -31,23 +31,10 @@
 
 namespace {
 
-const int DEFAULT_PHONE_NUMBER_MATCH_LENGTH = 7;
-int numberMatchLength = 0;
-
 int phoneNumberMatchLength()
 {
-    if (!numberMatchLength) {
-        QSettings settings(QSettings::IniFormat, QSettings::UserScope,
-                           QLatin1String("Nokia"), QLatin1String("Contacts"));
-        bool valid;
-        int length = settings.value(QLatin1String("numberMatchLength")).toInt(&valid);
-
-        if (valid && length)
-            numberMatchLength = length;
-        else
-            numberMatchLength = DEFAULT_PHONE_NUMBER_MATCH_LENGTH;
-    }
-
+    // TODO: use a configuration variable to make this configurable
+    static int numberMatchLength = QtContactsSqliteExtensions::DefaultMaximumPhoneNumberCharacters;
     return numberMatchLength;
 }
 
