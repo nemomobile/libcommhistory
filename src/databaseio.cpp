@@ -465,11 +465,14 @@ bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
     }
 
     Event e;
+    bool re = true;
     if (query.next())
         d->readEventResult(query, e);
+    else
+        re = false;
 
     event = e;
-    return true;
+    return re;
 }
 
 bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event)
@@ -489,11 +492,14 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
     }
 
     Event e;
+    bool re = true;
     if (query.next())
         d->readEventResult(query, e);
+    else
+        re = false;
 
     event = e;
-    return true;
+    return re;
 }
 
 bool DatabaseIO::modifyEvent(Event &event)
