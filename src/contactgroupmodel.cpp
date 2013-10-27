@@ -28,6 +28,7 @@
 #include "contactgroupmodel_p.h"
 #include "groupmanager.h"
 #include "contactgroup.h"
+#include "commonutils.h"
 #include "debug.h"
 
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
@@ -106,20 +107,38 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
 
 int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
 {
-    if (group->remoteUids().size() != 1 || group->contactIds().isEmpty())
-        return -1;
+    if (group->remoteUids().size() == 1 && !group->contactIds().isEmpty()) {
+        int contactId = group->contactIds().at(0);
 
-    int contactId = group->contactIds().at(0);
+        for (int i = 0; i < items.size(); i++) {
+            QList<GroupObject*> groups = items[i]->groups();
+            if (groups.isEmpty() || (groups.size() == 1 && groups[0] == group))
+                continue;
 
-    for (int i = 0; i < items.size(); i++) {
-        QList<GroupObject*> groups = items[i]->groups();
-        if (groups.isEmpty() || (groups.size() == 1 && groups[0] == group))
-            continue;
+            if (groups[0]->remoteUids().size() == 1 && items[i]->contactIds().value(0) == contactId)
+                return i;
+        }
+    } else if (group->remoteUids().size() == 1) {
+        // Use the minimized form of phone numbers to combine groups for unresolved contacts
+        // This is important because responses to a SMS may come from a number formatted slightly
+        // differently.
+        QString phone = CommHistory::normalizePhoneNumber(group->remoteUids()[0]);
+        if (phone.isEmpty())
+            return -1;
+        phone = makeShortNumber(phone);
 
-        if (groups[0]->remoteUids().size() == 1 && items[i]->contactIds().value(0) == contactId)
-            return i;
+        for (int i = 0; i < items.size(); i++) {
+            QList<GroupObject*> groups = items[i]->groups();
+            // Ignore any group with contact matches
+            if (!groups[0]->contactIds().isEmpty() || groups[0]->remoteUids().size() > 1)
+                continue;
+
+            QString match = CommHistory::makeShortNumber(groups[0]->remoteUids()[0]);
+            if (phone == match)
+                return i;
+        }
     }
- 
+
     return -1;
 }
 
