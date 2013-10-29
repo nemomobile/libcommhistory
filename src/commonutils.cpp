@@ -54,43 +54,27 @@ LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
 LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString &match)
 {
     QString phone = normalizePhoneNumber(uid);
+    QString phoneMatch = normalizePhoneNumber(match);
 
-    // IM
-    if (phone.isEmpty() && match.compare(uid, Qt::CaseInsensitive) != 0)
-        return false;
-
-    // phone number
-    QString uidRight = makeShortNumber(uid);
-    QString matchRight = makeShortNumber(match);
-
-    return uidRight == matchRight;
+    if (!phone.isEmpty() && !phoneMatch.isEmpty())
+        return phoneMatch.compare(phone, Qt::CaseInsensitive) == 0;
+    else
+        return match.compare(uid, Qt::CaseInsensitive) == 0;
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &uids, const QStringList &originalMatches)
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, const QStringList &originalMatches)
 {
-    if (uids.size() != originalMatches.size())
+    if (originalUids.size() != originalMatches.size())
         return false;
 
+    QStringList uids = originalUids;
     QStringList matches = originalMatches;
-    QStringList shortMatches;
-    shortMatches.reserve(matches.size());
-    foreach (const QString &m, matches)
-        shortMatches.append(makeShortNumber(m));
+    uids.sort(Qt::CaseInsensitive);
+    matches.sort(Qt::CaseInsensitive);
 
-    foreach (const QString &uid, uids) {
-        QString phone = normalizePhoneNumber(uid);
-        int matchIndex = -1;
-
-        if (phone.isEmpty())
-            matchIndex = matches.indexOf(uid, Qt::CaseInsensitive);
-        else
-            matchIndex = shortMatches.indexOf(makeShortNumber(uid));
-
-        if (matchIndex < 0)
+    for (int i = 0; i < uids.size(); i++) {
+        if (!remoteAddressMatch(uids[i], matches[i]))
             return false;
-
-        matches.removeAt(matchIndex);
-        shortMatches.removeAt(matchIndex);
     }
 
     return true;
