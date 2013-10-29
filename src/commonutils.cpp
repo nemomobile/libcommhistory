@@ -51,38 +51,61 @@ LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
     return QtContactsSqliteExtensions::normalizePhoneNumber(number, flags);
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString &match)
+LIBCOMMHISTORY_EXPORT QString minimizePhoneNumber(const QString &number)
+{
+    return QtContactsSqliteExtensions::minimizePhoneNumber(number, phoneNumberMatchLength());
+}
+
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString &match, bool minimizedComparison)
 {
     QString phone = normalizePhoneNumber(uid);
     QString phoneMatch = normalizePhoneNumber(match);
 
-    if (!phone.isEmpty() && !phoneMatch.isEmpty())
+    if (!phone.isEmpty() && !phoneMatch.isEmpty()) {
+        if (minimizedComparison) {
+            phone = minimizePhoneNumber(phone);
+            phoneMatch = minimizePhoneNumber(phoneMatch);
+        }
         return phoneMatch.compare(phone, Qt::CaseInsensitive) == 0;
-    else
+    } else {
         return match.compare(uid, Qt::CaseInsensitive) == 0;
+    }
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, const QStringList &originalMatches)
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, const QStringList &originalMatches, bool minimizedComparison)
 {
     if (originalUids.size() != originalMatches.size())
         return false;
 
-    QStringList uids = originalUids;
-    QStringList matches = originalMatches;
+    QStringList uids;
+    foreach (const QString &uid, originalUids) {
+        QString phone = normalizePhoneNumber(uid);
+        if (phone.isEmpty()) {
+            uids.append(uid);
+        } else {
+            uids.append(phone);
+        }
+    }
+
+    QStringList matches;
+    foreach (const QString &match, originalMatches) {
+        QString phone = normalizePhoneNumber(match);
+        if (phone.isEmpty()) {
+            matches.append(match);
+        } else {
+            matches.append(phone);
+        }
+    }
+
     uids.sort(Qt::CaseInsensitive);
     matches.sort(Qt::CaseInsensitive);
 
     for (int i = 0; i < uids.size(); i++) {
-        if (!remoteAddressMatch(uids[i], matches[i]))
+        if (!remoteAddressMatch(uids[i], matches[i], minimizedComparison))
             return false;
     }
 
     return true;
-}
-
-LIBCOMMHISTORY_EXPORT QString makeShortNumber(const QString &number)
-{
-    return QtContactsSqliteExtensions::minimizePhoneNumber(number, phoneNumberMatchLength());
 }
 
 }

@@ -423,7 +423,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                         // for last row and add a new row if event is
                         // acceptable
                         if (last) {
-                            const QString shortNumber(makeShortNumber(last->event().remoteUid()));
+                            const QString shortNumber(minimizePhoneNumber(last->event().remoteUid()));
                             if (!countedUids.contains(shortNumber)) {
                                 last->event().setEventCount(calculateEventCount(last));
                                 countedUids.insert(shortNumber);
@@ -444,7 +444,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 }
 
                 if (last && last != previousLastItem && eventMatchesFilter(last->event())) {
-                    const QString shortNumber(makeShortNumber(last->event().remoteUid()));
+                    const QString shortNumber(minimizePhoneNumber(last->event().remoteUid()));
                     if (!countedUids.contains(shortNumber)) {
                         last->event().setEventCount(calculateEventCount(last));
                         countedUids.insert(shortNumber);
