@@ -77,8 +77,26 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, c
     if (originalUids.size() != originalMatches.size())
         return false;
 
-    QStringList uids = originalUids;
-    QStringList matches = originalMatches;
+    QStringList uids;
+    foreach (const QString &uid, originalUids) {
+        QString phone = normalizePhoneNumber(uid);
+        if (phone.isEmpty()) {
+            uids.append(uid);
+        } else {
+            uids.append(phone);
+        }
+    }
+
+    QStringList matches;
+    foreach (const QString &match, originalMatches) {
+        QString phone = normalizePhoneNumber(match);
+        if (phone.isEmpty()) {
+            matches.append(match);
+        } else {
+            matches.append(phone);
+        }
+    }
+
     uids.sort(Qt::CaseInsensitive);
     matches.sort(Qt::CaseInsensitive);
 
