@@ -125,7 +125,7 @@ int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
         QString phone = CommHistory::normalizePhoneNumber(group->remoteUids()[0]);
         if (phone.isEmpty())
             return -1;
-        phone = makeShortNumber(phone);
+        phone = minimizePhoneNumber(phone);
 
         for (int i = 0; i < items.size(); i++) {
             QList<GroupObject*> groups = items[i]->groups();
@@ -133,7 +133,7 @@ int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
             if (!groups[0]->contactIds().isEmpty() || groups[0]->remoteUids().size() > 1)
                 continue;
 
-            QString match = CommHistory::makeShortNumber(groups[0]->remoteUids()[0]);
+            QString match = CommHistory::minimizePhoneNumber(groups[0]->remoteUids()[0]);
             if (phone == match)
                 return i;
         }

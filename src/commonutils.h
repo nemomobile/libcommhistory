@@ -37,25 +37,24 @@ namespace CommHistory {
 QString normalizePhoneNumber(const QString &number);
 
 /*!
+ * Get the last digits of a phone number for comparison purposes.
+ *
+ * \param number Phone number.
+ * \return Last digits of the number.
+ */
+QString minimizePhoneNumber(const QString &number);
+
+/*!
  * Compares the two remote ids. In case of phone numbers, last digits
  * are compared.
  *
  * \param uid First remote id.
  * \param match Second remote id.
+ * \param minimizedComparison Compare numbers in minimized form.
  * \return true if addresses match.
  */
-bool remoteAddressMatch(const QString &uid, const QString &match);
-bool remoteAddressMatch(const QStringList &uids, const QStringList &match);
-
-/*!
- * Get the last digits (see phoneNumberMatchLength) of a phone number
- * for comparison purposes.
- *
- * \param number Phone number.
- * \return Last digits of the number.
- */
-
-QString makeShortNumber(const QString &number);
+bool remoteAddressMatch(const QString &uid, const QString &match, bool minimizedComparison = false);
+bool remoteAddressMatch(const QStringList &uids, const QStringList &match, bool minimizedComparison = false);
 
 }
 

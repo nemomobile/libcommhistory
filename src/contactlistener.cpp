@@ -91,7 +91,7 @@ bool ContactListener::addressMatchesList(const QString &localUid,
     while (i.hasNext()) {
         StringPair address = i.next();
         if ((address.first.isEmpty() || address.first == localUid)
-            && CommHistory::remoteAddressMatch(remoteUid, address.second)) {
+            && CommHistory::remoteAddressMatch(remoteUid, address.second, true)) {
             return true;
         }
     }
@@ -107,7 +107,7 @@ bool ContactListener::addressMatchesList(const QString &localUid,
     while (i.hasNext()) {
         ContactAddress address = i.next();
         if ((address.localUid.isEmpty() || address.localUid == localUid)
-            && CommHistory::remoteAddressMatch(remoteUid, address.remoteUid)) {
+            && CommHistory::remoteAddressMatch(remoteUid, address.remoteUid, true)) {
             return true;
         }
     }
