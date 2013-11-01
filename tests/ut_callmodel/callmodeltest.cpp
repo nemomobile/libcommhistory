@@ -814,10 +814,10 @@ void CallModelTest::testSIPAddress()
     QString account("/org/freedesktop/Telepathy/Account/ring/tel/ring");
     QString contactName("Donkey Kong");
     QString phoneNumber("012345678");
-    QString sipAddress("sip:012345678@voip.com");
+    QString sipAddress("sips:012345678@voip.com");
 
     QString contactName2("Mario");
-    QString sipAddress2("sip:mario@voip.com");
+    QString sipAddress2("sips:mario@voip.com");
 
     QDateTime when = QDateTime::currentDateTime();
     int contactId = addTestContact(contactName, phoneNumber, account);
