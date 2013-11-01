@@ -403,7 +403,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.remoteUid(), REMOTEUID2 );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(2) );
     // correct test helper lists to match current situation
     i = QMutableListIterator<TestCallItem>(testCalls);
     while (i.hasNext()) {
@@ -447,7 +447,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(6) );
     // correct test helper lists to match current situation
     foreach (TestCallItem item, testCalls) {
         qDebug() << item.remoteUid << item.callType << item.eventCount;
@@ -485,7 +485,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), true );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(2) );
     // correct test helper lists to match current situation
     testCalls.takeFirst(); testCalls.takeFirst(); testCalls.first().eventCount = 2;
     // test if model contains what we want it does
@@ -513,7 +513,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(7) );
     // correct test helper lists to match current situation
     testCalls.clear();
     // test if model contains what we want it does
