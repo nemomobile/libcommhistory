@@ -990,7 +990,7 @@ void CallModelTest::testModifyEvent()
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(1), REMOTEUID2);
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(2), REMOTEUID1);
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(3), REMOTEUID1);
-    QVERIFY(watcher.waitForAdded(4));
+    QVERIFY(watcher.waitForAdded(6, 4)); // always grouped by contact -> +2
 
     QVERIFY(model.setFilter(CallModel::SortByContact));
     QVERIFY(model.getEvents());
