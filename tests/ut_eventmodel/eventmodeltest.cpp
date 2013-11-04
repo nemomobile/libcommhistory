@@ -1808,6 +1808,14 @@ void EventModelTest::testAddNonDigitRemoteId()
 void EventModelTest::cleanupTestCase()
 {
     deleteAll();
+
+    // TODO: clean-up is broken. Other test events are only cleaned up because
+    // they are assigned a groupId (compare cleanupTestGroups() with
+    // cleanupTestEvents from common.cpp).  'call' event is not set a groupId
+    // and so it is not cleaned-up upon exit. Deleting 'call' event here as
+    // a QUICK FIX!
+    QVERIFY(EventModel().deleteEvent(call));
+
 }
 
 QTEST_MAIN(EventModelTest)
