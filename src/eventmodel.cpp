@@ -496,6 +496,13 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
 
         if (!d->database()->commit())
             return false;
+    } else {
+        // Set ids to have valid events
+        int firstReservedId;
+        if (!d->database()->reserveEventIds(events.size(), &firstReservedId))
+            return false;
+        for (int i = 0; i < events.size(); i++)
+            events[i].setId(firstReservedId + i);
     }
 
     foreach (Event event, events) {
