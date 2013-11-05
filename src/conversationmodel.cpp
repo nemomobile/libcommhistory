@@ -49,10 +49,12 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
             , firstFetch(true)
             , eventsFilled(0)
             , lastEventTrackerId(0)
             , activeQueries(0)
+#endif
 
 {
     contactChangesEnabled = true;
@@ -153,6 +155,7 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     return true;
 }
 
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
 bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::Event> events)
 {
     Q_UNUSED(start);
@@ -173,6 +176,7 @@ bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::
 
     return true;
 }
+#endif
 
 QSqlQuery ConversationModelPrivate::buildQuery() const
 {
@@ -212,6 +216,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     return query;
 }
 
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
 void ConversationModelPrivate::modelUpdatedSlot(bool successful)
 {
     if (queryMode == EventModel::StreamedAsyncQuery) {
@@ -248,6 +253,7 @@ bool ConversationModelPrivate::isModelReady() const
     return activeQueries == 0
            && eventsFilled < (firstFetch ? firstChunkSize : chunkSize);
 }
+#endif
 
 ConversationModel::ConversationModel(QObject *parent)
         : EventModel(*new ConversationModelPrivate(this), parent)
@@ -300,9 +306,13 @@ bool ConversationModel::getEvents(QList<int> groupIds)
 bool ConversationModel::canFetchMore(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     Q_D(const ConversationModel);
 
     return !d->isModelReady();
+#else
+    return false;
+#endif
 }
 
 void ConversationModel::fetchMore(const QModelIndex &parent)
@@ -311,7 +321,7 @@ void ConversationModel::fetchMore(const QModelIndex &parent)
 
     qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED";
 
-#if 0
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     // isModelReady() is true when there are no more events to request
     if (d->isModelReady() || d->eventRootItem->childCount() < 1)
         return;

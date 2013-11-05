@@ -44,14 +44,20 @@ public:
                       const QList<Event::Contact> &contacts,
                       const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     bool fillModel(int start, int end, QList<CommHistory::Event> events);
+#endif
     QSqlQuery buildQuery() const;
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     bool isModelReady() const;
+#endif
 
 public Q_SLOTS:
     void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     virtual void modelUpdatedSlot(bool successful);
     void extraReceivedSlot(QList<CommHistory::Event> events, QVariantList extra);
+#endif
     void groupsDeletedSlot(const QList<int> &groupIds);
 
 public:
@@ -59,11 +65,13 @@ public:
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;
+#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     bool firstFetch;
     uint eventsFilled;
     uint lastEventTrackerId;
 
     int activeQueries;
+#endif
 };
 
 }
