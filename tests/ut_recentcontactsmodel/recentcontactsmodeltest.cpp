@@ -476,8 +476,10 @@ void RecentContactsModelTest::contactRemoved()
 
     // Add an event for the new contact
     EventModel eventsModel;
+    watcher.setModel(&eventsModel);
     QTest::qWait(1000);
     addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), dougalPhone);
+    QVERIFY(watcher.waitForAdded());
 
     RecentContactsModel model;
     InsertionSpy insert(model);
