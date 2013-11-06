@@ -69,16 +69,13 @@ void ConversationModelTest::initTestCase()
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1);
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1);
 
-    addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1, group1.id(),
-                 "draft", true);
-
     // status message:
     // NOTE: this event is not visible in any of the further tests
     addTestEvent(model, Event::StatusMessageEvent, Event::Outbound, ACCOUNT1,
                  group1.id(), "statue message", false, false,
                  QDateTime::currentDateTime(), QString(), true);
 
-    QVERIFY(watcher.waitForAdded(14, 13));
+    QVERIFY(watcher.waitForAdded(13, 12));
 }
 
 void ConversationModelTest::getEvents_data()
