@@ -364,7 +364,7 @@ void GroupModelTest::getGroups()
 
     /* add new matching group */
     group.setLocalUid(ACCOUNT1);
-    group.setRemoteUids(QStringList() << "+99966601234567");
+    group.setRemoteUids(QStringList() << "55566601234567");
     group.setId(-1);
     groupsCommitted.clear();
     QVERIFY(model.addGroup(group));
