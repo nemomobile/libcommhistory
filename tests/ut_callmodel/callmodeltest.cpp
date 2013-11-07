@@ -403,7 +403,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.remoteUid(), REMOTEUID2 );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(2) );
     // correct test helper lists to match current situation
     i = QMutableListIterator<TestCallItem>(testCalls);
     while (i.hasNext()) {
@@ -447,7 +447,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(6) );
     // correct test helper lists to match current situation
     foreach (TestCallItem item, testCalls) {
         qDebug() << item.remoteUid << item.callType << item.eventCount;
@@ -485,7 +485,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), true );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(2) );
     // correct test helper lists to match current situation
     testCalls.takeFirst(); testCalls.takeFirst(); testCalls.first().eventCount = 2;
     // test if model contains what we want it does
@@ -513,7 +513,7 @@ void CallModelTest::testDeleteEvent()
     QCOMPARE( e.isMissedCall(), false );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    QVERIFY( watcher.waitForDeleted(7) );
     // correct test helper lists to match current situation
     testCalls.clear();
     // test if model contains what we want it does
@@ -799,6 +799,11 @@ void CallModelTest::testSortByTimeUpdate()
 
 void CallModelTest::testSIPAddress()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Contact matching is not yet supported with SQLite");
+#else
+    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
+#endif
     deleteAll();
 
     CallModel model;
@@ -809,10 +814,10 @@ void CallModelTest::testSIPAddress()
     QString account("/org/freedesktop/Telepathy/Account/ring/tel/ring");
     QString contactName("Donkey Kong");
     QString phoneNumber("012345678");
-    QString sipAddress("sip:012345678@voip.com");
+    QString sipAddress("sips:012345678@voip.com");
 
     QString contactName2("Mario");
-    QString sipAddress2("sip:mario@voip.com");
+    QString sipAddress2("sips:mario@voip.com");
 
     QDateTime when = QDateTime::currentDateTime();
     int contactId = addTestContact(contactName, phoneNumber, account);
@@ -931,6 +936,11 @@ void CallModelTest::testMarkAllRead()
 
 void CallModelTest::testLimit()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Query limit not yet supported with SQLite");
+#else
+    QSKIP("Query limit not yet supported with SQLite", SkipAll);
+#endif
     CallModel model;
     model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
@@ -980,7 +990,7 @@ void CallModelTest::testModifyEvent()
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(1), REMOTEUID2);
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(2), REMOTEUID1);
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(3), REMOTEUID1);
-    QVERIFY(watcher.waitForAdded(4));
+    QVERIFY(watcher.waitForAdded(6, 4)); // always grouped by contact -> +2
 
     QVERIFY(model.setFilter(CallModel::SortByContact));
     QVERIFY(model.getEvents());

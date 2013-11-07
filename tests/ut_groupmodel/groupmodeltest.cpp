@@ -364,7 +364,7 @@ void GroupModelTest::getGroups()
 
     /* add new matching group */
     group.setLocalUid(ACCOUNT1);
-    group.setRemoteUids(QStringList() << "+99966601234567");
+    group.setRemoteUids(QStringList() << "55566601234567");
     group.setId(-1);
     groupsCommitted.clear();
     QVERIFY(model.addGroup(group));
@@ -945,6 +945,11 @@ void GroupModelTest::markGroupAsRead()
 
 void GroupModelTest::resolveContact()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Contact matching is not yet supported with SQLite");
+#else
+    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
+#endif
     GroupModel groupModel;
 
     QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
@@ -1026,6 +1031,11 @@ void GroupModelTest::resolveContact()
 
 void GroupModelTest::queryContacts()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Contact matching is not yet supported with SQLite");
+#else
+    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
+#endif
     GroupModel model;
     model.enableContactChanges(false);
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
@@ -1160,6 +1170,11 @@ void GroupModelTest::queryContacts()
 
 void GroupModelTest::changeRemoteUid()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Contact matching is not yet supported with SQLite");
+#else
+    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
+#endif
     const QString oldRemoteUid = "+1117654321";
     const QString newRemoteUid = "+2227654321";
     bool oldContactFound = false;

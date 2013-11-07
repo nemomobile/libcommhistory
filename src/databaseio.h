@@ -60,6 +60,16 @@ public:
     bool addEvent(Event &event);
 
     /*!
+     * Reserves a sequence of \a count event id(s) starting from \a firstReservedId. Main use case
+     * is reservation of ids for events which are only stored in model and not saved in database.
+     *
+     * \param count Number of ids to reserve.
+     * \param firstReservedId First reserved event id.
+     * \return true if successful, otherwise false
+     */
+    bool reserveEventIds(int count, int *firstReservedId);
+
+    /*!
      * Add a new group into the database. The id field of the group is
      * updated if successfully added.
      *

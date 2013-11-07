@@ -371,6 +371,8 @@ void cleanupTestEvents()
     for ( ; it != end; ++it) {
         model.deleteEvent(*it);
     }
+
+    addedEventIds.clear();
 }
 
 bool compareEvents(Event &e1, Event &e2)

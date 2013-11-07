@@ -904,6 +904,11 @@ void EventModelTest::testReportDelivery()
 
 void EventModelTest::testMessageParts()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Message parts are not yet supported with SQLite");
+#else
+    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
+#endif
     EventModel model;
     watcher.setModel(&model);
 
@@ -998,6 +1003,11 @@ void EventModelTest::testMessageParts()
 
 void EventModelTest::testDeleteMessageParts()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Message parts are not yet supported with SQLite");
+#else
+    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
+#endif
     EventModel model;
     watcher.setModel(&model);
 
@@ -1079,6 +1089,11 @@ void EventModelTest::testMessagePartsQuery_data()
 
 void EventModelTest::testMessagePartsQuery()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Message parts are not yet supported with SQLite");
+#else
+    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
+#endif
     QFETCH(bool, useThread);
     QString threadPrefix;
     if (useThread) threadPrefix = "thread_";
@@ -1705,6 +1720,11 @@ void EventModelTest::testContactMatching_data()
 
 void EventModelTest::testContactMatching()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+    QSKIP("Contact matching is not yet supported with SQLite");
+#else
+    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
+#endif
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);
@@ -1788,6 +1808,14 @@ void EventModelTest::testAddNonDigitRemoteId()
 void EventModelTest::cleanupTestCase()
 {
     deleteAll();
+
+    // TODO: clean-up is broken. Other test events are only cleaned up because
+    // they are assigned a groupId (compare cleanupTestGroups() with
+    // cleanupTestEvents from common.cpp).  'call' event is not set a groupId
+    // and so it is not cleaned-up upon exit. Deleting 'call' event here as
+    // a QUICK FIX!
+    QVERIFY(EventModel().deleteEvent(call));
+
 }
 
 QTEST_MAIN(EventModelTest)

@@ -335,6 +335,53 @@ bool DatabaseIO::addEvent(Event &event)
     return true;
 }
 
+// See http://www.sqlite.org/fileformat2.html#seqtab
+bool DatabaseIO::reserveEventIds(int count, int *firstReservedId)
+{
+    Q_ASSERT(count > 0);
+    Q_ASSERT(firstReservedId != 0);
+
+    if (!transaction())
+        return false;
+
+    QSqlQuery query = CommHistoryDatabase::prepare(
+            "SELECT seq FROM sqlite_sequence WHERE name = 'Events'",
+            DatabaseIOPrivate::instance()->connection());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        rollback();
+        return false;
+    }
+
+    int lastId = query.next() ? query.value(0).toInt() : 0;
+
+    query.finish();
+
+    *firstReservedId = lastId + 1;
+    int lastReservedId = *firstReservedId + count - 1;
+
+    QSqlQuery update = CommHistoryDatabase::prepare(
+            "INSERT OR REPLACE INTO sqlite_sequence VALUES ('Events', :seq)",
+            DatabaseIOPrivate::instance()->connection());
+    update.bindValue(":seq", lastReservedId);
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        rollback();
+        return false;
+    }
+
+    if (!commit())
+        return false;
+
+    return true;
+}
+
 static const char *baseEventQuery =
     "\n SELECT "
     "\n Events.id, "
