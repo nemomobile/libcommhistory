@@ -94,10 +94,28 @@ static const char *db_schema[] = {
 
     "CREATE INDEX events_remoteUid ON Events (remoteUid)",
     "CREATE INDEX events_type ON Events (type)",
-    "CREATE INDEX events_groupId ON Events (groupId)",
-    "CREATE INDEX events_messageToken ON Events (messageToken)"
+    "CREATE INDEX events_messageToken ON Events (messageToken)",
+    "CREATE INDEX events_sorting ON Events (groupId, startTime DESC, id DESC)",
+    "CREATE INDEX events_unread ON Events (isRead)",
+
+    "PRAGMA user_version=1"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
+
+// Upgrade queries indexed by old version
+static const char *db_upgrade_0[] = {
+    "DROP INDEX events_groupId",
+    "CREATE INDEX events_sorting ON Events (groupId, startTime DESC, id DESC)",
+    "CREATE INDEX events_unread ON Events (isRead)",
+    "PRAGMA user_version=1",
+    0
+};
+
+// REMEMBER TO UPDATE THE SCHEMA AND USER_VERSION!
+static const char **db_upgrade[] = {
+    db_upgrade_0
+};
+static int db_upgrade_count = sizeof(db_upgrade) / sizeof(*db_upgrade);
 
 static bool execute(QSqlDatabase &database, const QString &statement)
 {
@@ -138,6 +156,41 @@ static bool prepareDatabase(QSqlDatabase &database)
     }
 }
 
+static bool upgradeDatabase(QSqlDatabase &database)
+{
+    QSqlQuery query(database);
+    query.prepare("PRAGMA user_version");
+    if (!query.exec() || !query.next()) {
+        qWarning() << "User version query failed:" << query.lastError();
+        return false;
+    }
+
+    int user_version = query.value(0).toInt();
+    query.finish();
+
+    while (user_version < db_upgrade_count) {
+        qWarning() << "Upgrading commhistory database from schema version" << user_version;
+
+        for (unsigned i = 0; db_upgrade[user_version][i]; i++) {
+            if (!execute(database, QLatin1String(db_upgrade[user_version][i])))
+                return false;
+        }
+
+        if (!query.exec() || !query.next()) {
+            qWarning() << "User version query failed:" << query.lastError();
+            return false;
+        }
+
+        user_version = query.value(0).toInt();
+        query.finish();
+    }
+
+    if (user_version > db_upgrade_count)
+        qWarning() << "Commhistory database schema is newer than expected - this may result in failures or corruption";
+
+    return true;
+}
+
 QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
 {
     // horrible hack: Qt4 didn't have GenericDataLocation so we hardcode database location.
@@ -173,9 +226,21 @@ QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
         }
     }
 
-    if (!exists && !prepareDatabase(database)) {
-        database.close();
-        QFile::remove(databaseFile);
+    if (!exists) {
+        if (!prepareDatabase(database)) {
+            database.close();
+            QFile::remove(databaseFile);
+        }
+    } else {
+        if (!execute(database, "BEGIN EXCLUSIVE TRANSACTION")) {
+            database.close();
+            return database;
+        }
+
+        if (!upgradeDatabase(database) || !execute(database, "END TRANSACTION")) {
+            execute(database, "ROLLBACK");
+            qCritical() << "Database upgrade failed! Everything may break catastrophically.";
+        }
     }
 
     return database;
