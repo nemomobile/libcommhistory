@@ -62,9 +62,7 @@ class LIBCOMMHISTORY_EXPORT GroupObject : public QObject
 
     Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged);
     Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged);
-    Q_PROPERTY(int totalMessages READ totalMessages NOTIFY totalMessagesChanged);
     Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged);
-    Q_PROPERTY(int sentMessages READ sentMessages NOTIFY sentMessagesChanged);
 
     Q_PROPERTY(int contactId READ contactId NOTIFY contactsChanged);
     Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged);
@@ -154,22 +152,10 @@ public:
     void setEndTime(const QDateTime &endTime);
 
     /*!
-     * Number of messages in this conversation.
-     */
-    int totalMessages() const;
-    void setTotalMessages(int total);
-
-    /*!
      * Number of unread messages in this conversation.
      */
     int unreadMessages() const;
     void setUnreadMessages(int unread);
-
-    /*!
-     * Number of sent messages in this conversation.
-     */
-    int sentMessages() const;
-    void setSentMessages(int sent);
 
     /*!
      * Database id of the last message. -1 if the group has no messages.
@@ -304,9 +290,7 @@ signals:
     void chatNameChanged();
     void startTimeChanged();
     void endTimeChanged();
-    void totalMessagesChanged();
     void unreadMessagesChanged();
-    void sentMessagesChanged();
     void lastEventIdChanged();
     void contactsChanged();
     void lastMessageTextChanged();

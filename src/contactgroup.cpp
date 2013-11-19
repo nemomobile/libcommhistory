@@ -42,7 +42,7 @@ public:
     QList<int> contactIds;
     QList<QString> contactNames;
     QDateTime startTime, endTime, lastModified;
-    int totalMessages, unreadMessages, sentMessages;
+    int unreadMessages;
     int lastEventId;
     GroupObject *lastEventGroup;
     QString lastMessageText, lastVCardFileName, lastVCardLabel;
@@ -55,9 +55,7 @@ using namespace CommHistory;
 
 ContactGroupPrivate::ContactGroupPrivate(ContactGroup *parent)
     : q_ptr(parent)
-    , totalMessages(0)
     , unreadMessages(0)
-    , sentMessages(0)
     , lastEventId(-1)
     , lastEventGroup(0)
     , lastEventType(Event::UnknownType)
@@ -110,7 +108,7 @@ void ContactGroupPrivate::update()
     QMap<int,QString> contacts;
  
     QDateTime uStartTime, uEndTime, uLastModified;
-    int uTotalMessages = 0, uUnreadMessages = 0, uSentMessages = 0;
+    int uUnreadMessages = 0;
     GroupObject *uLastEventGroup = 0;
 
     foreach (GroupObject *group, groups) {
@@ -129,9 +127,7 @@ void ContactGroupPrivate::update()
         if (!uLastModified.isValid() || group->lastModified() > uLastModified)
             uLastModified = group->lastModified();
 
-        uTotalMessages += group->totalMessages();
         uUnreadMessages += group->unreadMessages();
-        uSentMessages += group->sentMessages();
     }
 
     QList<int> uContactIds = contacts.keys();
@@ -158,19 +154,9 @@ void ContactGroupPrivate::update()
         emit q->lastModifiedChanged();
     }
 
-    if (uTotalMessages != totalMessages) {
-        totalMessages = uTotalMessages;
-        emit q->totalMessagesChanged();
-    }
-
     if (uUnreadMessages != unreadMessages) {
         unreadMessages = uUnreadMessages;
         emit q->unreadMessagesChanged();
-    }
-
-    if (uSentMessages != sentMessages) {
-        sentMessages = uSentMessages;
-        emit q->sentMessagesChanged();
     }
 
     if (uLastEventGroup) {
@@ -232,22 +218,10 @@ QDateTime ContactGroup::endTime() const
     return d->endTime;
 }
 
-int ContactGroup::totalMessages() const
-{
-    Q_D(const ContactGroup);
-    return d->totalMessages;
-}
-
 int ContactGroup::unreadMessages() const
 {
     Q_D(const ContactGroup);
     return d->unreadMessages;
-}
-
-int ContactGroup::sentMessages() const
-{
-    Q_D(const ContactGroup);
-    return d->sentMessages;
 }
 
 int ContactGroup::lastEventId() const

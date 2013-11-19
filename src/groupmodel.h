@@ -60,9 +60,7 @@ public:
         RemoteUids,
         ChatName,       // not implemented
         EndTime,
-        TotalMessages,
         UnreadMessages,
-        SentMessages,
         LastEventId,
         Contacts,
         LastMessageText,

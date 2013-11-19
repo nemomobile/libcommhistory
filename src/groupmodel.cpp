@@ -172,9 +172,7 @@ QHash<int, QByteArray> GroupModel::roleNames() const
     roles[BaseRole + RemoteUids] = "remoteUids";
     roles[BaseRole + ChatName] = "chatName";
     roles[BaseRole + EndTime] = "endTime";
-    roles[BaseRole + TotalMessages] = "totalMessages";
     roles[BaseRole + UnreadMessages] = "unreadMessages";
-    roles[BaseRole + SentMessages] = "sentMessages";
     roles[BaseRole + LastEventId] = "lastEventId";
     roles[BaseRole + Contacts] = "contacts";
     roles[BaseRole + LastMessageText] = "lastMessageText";
@@ -310,14 +308,8 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
         case EndTime:
             var = QVariant::fromValue(group->endTime());
             break;
-        case TotalMessages:
-            var = QVariant::fromValue(group->totalMessages());
-            break;
         case UnreadMessages:
             var = QVariant::fromValue(group->unreadMessages());
-            break;
-        case SentMessages:
-            var = QVariant::fromValue(group->sentMessages());
             break;
         case LastEventId:
             var = QVariant::fromValue(group->lastEventId());
@@ -391,14 +383,8 @@ QVariant GroupModel::headerData(int section,
             case EndTime:
                 name = QLatin1String("end_time");
                 break;
-            case TotalMessages:
-                name = QLatin1String("total_messages");
-                break;
             case UnreadMessages:
                 name = QLatin1String("unread_messages");
-                break;
-            case SentMessages:
-                name = QLatin1String("sent_messages");
                 break;
             case LastEventId:
                 name = QLatin1String("last_event_id");

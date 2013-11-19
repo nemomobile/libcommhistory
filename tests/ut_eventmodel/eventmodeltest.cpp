@@ -681,8 +681,6 @@ void EventModelTest::testDeleteEventGroupUpdated()
     addTestGroup(group, LOCAL_ID, REMOTE_ID);
 
     QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
-    int total = group.totalMessages();
-    QCOMPARE(total, 0);
 
     groupUpdated = -1;
     groupDeleted = -1;
@@ -701,19 +699,19 @@ void EventModelTest::testDeleteEventGroupUpdated()
     QVERIFY(event1.id() != -1);
 
     QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
-    total = group.totalMessages();
-    QCOMPARE(total, 1);
+    QCOMPARE(group.lastEventId(), event1.id());
 
     Event event2(event1);
     event2.setId(-1);
     event2.setFreeText("deletetest2");
+    event2.setStartTime(event1.startTime().addSecs(10));
+    event2.setEndTime(event1.endTime().addSecs(10));
     QVERIFY(model.addEvent(event2));
     QVERIFY(watcher.waitForAdded());
     QVERIFY(event2.id() != -1);
 
     QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
-    total = group.totalMessages();
-    QCOMPARE(total, 2);
+    QCOMPARE(group.lastEventId(), event2.id());
 
     QVERIFY(model.deleteEvent(event1.id()));
     QVERIFY(watcher.waitForDeleted());
@@ -730,8 +728,6 @@ void EventModelTest::testDeleteEventGroupUpdated()
     addTestGroup(group, LOCAL_ID, REMOTE_ID);
 
     QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
-    total = group.totalMessages();
-    QCOMPARE(total, 0);
 
     event1.setId(-1);
     event1.setGroupId(group.id());
@@ -740,8 +736,7 @@ void EventModelTest::testDeleteEventGroupUpdated()
     QVERIFY(event1.id() != -1);
 
     QVERIFY(groupModel.databaseIO().getGroup(group.id(), group));
-    total = group.totalMessages();
-    QCOMPARE(total, 1);
+    QCOMPARE(group.lastEventId(), event1.id());
 
     QVERIFY(model.deleteEvent(event1));
     QVERIFY(watcher.waitForDeleted());
@@ -1514,7 +1509,8 @@ void EventModelTest::testStreaming()
     QThread modelThread;
 
     QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
-    int total = group.totalMessages();
+    int total;
+    QVERIFY(groupModel.databaseIO().totalEventsInGroup(group1.id(), total));
 
     qDebug() << "total msgs: " << total;
 

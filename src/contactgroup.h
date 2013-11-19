@@ -52,14 +52,8 @@ public:
     Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged);
     QDateTime endTime() const;
 
-    Q_PROPERTY(int totalMessages READ totalMessages NOTIFY totalMessagesChanged);
-    int totalMessages() const;
-
     Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged);
     int unreadMessages() const;
-
-    Q_PROPERTY(int sentMessages READ sentMessages NOTIFY sentMessagesChanged);
-    int sentMessages() const;
 
     Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventChanged);
     int lastEventId() const;
@@ -104,9 +98,7 @@ signals:
     void contactsChanged();
     void startTimeChanged();
     void endTimeChanged();
-    void totalMessagesChanged();
     void unreadMessagesChanged();
-    void sentMessagesChanged();
     void lastEventChanged();
     void lastModifiedChanged();
     void groupsChanged();

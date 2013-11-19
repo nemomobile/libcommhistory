@@ -211,14 +211,8 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setRemoteUids(uids);
         }
 
-        go->setTotalMessages(go->totalMessages() + 1);
-        if (!event.isRead()) {
+        if (!event.isRead())
             go->setUnreadMessages(go->unreadMessages() + 1);
-        }
-        if (event.direction() == Event::Outbound) {
-            go->setSentMessages(go->sentMessages() + 1);
-        }
-
         emit q->groupUpdated(go);
     }
 }

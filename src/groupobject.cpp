@@ -50,9 +50,7 @@ public:
     QString chatName;
     QDateTime startTime;
     QDateTime endTime;
-    int totalMessages;
     int unreadMessages;
-    int sentMessages;
     int lastEventId;
     QList<Event::Contact> contacts;
     QString lastMessageText;
@@ -71,9 +69,7 @@ GroupObjectPrivate::GroupObjectPrivate(GroupManager *m, GroupObject *parent)
         , manager(m)
         , id(-1)
         , chatType(Group::ChatTypeP2P)
-        , totalMessages(0)
         , unreadMessages(0)
-        , sentMessages(0)
         , lastEventId(-1)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
@@ -100,9 +96,7 @@ void GroupObjectPrivate::propertyChanged(Group::Property property)
         case Group::ChatName: emit q->chatNameChanged(); break;
         case Group::StartTime: emit q->startTimeChanged(); break;
         case Group::EndTime: emit q->endTimeChanged(); break;
-        case Group::TotalMessages: emit q->totalMessagesChanged(); break;
         case Group::UnreadMessages: emit q->unreadMessagesChanged(); break;
-        case Group::SentMessages: emit q->sentMessagesChanged(); break;
         case Group::LastEventId: emit q->lastEventIdChanged(); break;
         case Group::Contacts: emit q->contactsChanged(); break;
         case Group::LastMessageText: emit q->lastMessageTextChanged(); break;
@@ -201,19 +195,9 @@ QDateTime GroupObject::endTime() const
     return d->endTime;
 }
 
-int GroupObject::totalMessages() const
-{
-    return d->totalMessages;
-}
-
 int GroupObject::unreadMessages() const
 {
     return d->unreadMessages;
-}
-
-int GroupObject::sentMessages() const
-{
-    return d->sentMessages;
 }
 
 int GroupObject::lastEventId() const
@@ -340,22 +324,10 @@ void GroupObject::setEndTime(const QDateTime &endTime)
     d->propertyChanged(Group::EndTime);
 }
 
-void GroupObject::setTotalMessages(int total)
-{
-    d->totalMessages = total;
-    d->propertyChanged(Group::TotalMessages);
-}
-
 void GroupObject::setUnreadMessages(int unread)
 {
     d->unreadMessages = unread;
     d->propertyChanged(Group::UnreadMessages);
-}
-
-void GroupObject::setSentMessages(int sent)
-{
-    d->sentMessages = sent;
-    d->propertyChanged(Group::SentMessages);
 }
 
 void GroupObject::setLastEventId(int id)
@@ -460,11 +432,9 @@ QString GroupObject::toString() const
         contacts = contactList.join(QChar(';'));
     }
 
-    return QString("Group %1 (%2 messages, %3 unread, %4 sent) name:\"%5\" remoteUids:\"%6\" contacts:\"%7\" startTime:%8 endTime:%9")
+    return QString("Group %1 (%2 unread) name:\"%3\" remoteUids:\"%4\" contacts:\"%5\" startTime:%6 endTime:%7")
                    .arg(d->id)
-                   .arg(d->totalMessages)
                    .arg(d->unreadMessages)
-                   .arg(d->sentMessages)
                    .arg(d->chatName)
                    .arg(d->remoteUids.join("|"))
                    .arg(contacts)
@@ -481,9 +451,7 @@ void GroupObject::set(const Group &other)
     d->chatName = other.chatName();
     d->startTime = other.startTime();
     d->endTime = other.endTime();
-    d->totalMessages = other.totalMessages();
     d->unreadMessages = other.unreadMessages();
-    d->sentMessages = other.sentMessages();
     d->lastEventId = other.lastEventId();
     d->contacts = other.contacts();
     d->lastMessageText = other.lastMessageText();
@@ -518,14 +486,8 @@ template<typename T1, typename T2> void copyValidProperties(const T1 &from, T2 &
         case Group::EndTime:
             to.setEndTime(from.endTime());
             break;
-        case Group::TotalMessages:
-            to.setTotalMessages(from.totalMessages());
-            break;
         case Group::UnreadMessages:
             to.setUnreadMessages(from.unreadMessages());
-            break;
-        case Group::SentMessages:
-            to.setSentMessages(from.sentMessages());
             break;
         case Group::LastEventId:
             to.setLastEventId(from.lastEventId());

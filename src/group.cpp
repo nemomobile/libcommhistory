@@ -46,9 +46,7 @@ public:
     QString chatName;
     QDateTime startTime;
     QDateTime endTime;
-    int totalMessages;
     int unreadMessages;
-    int sentMessages;
     int lastEventId;
     QList<Event::Contact> contacts;
     QString lastMessageText;
@@ -65,9 +63,7 @@ public:
 GroupPrivate::GroupPrivate()
         : id(-1)
         , chatType(Group::ChatTypeP2P)
-        , totalMessages(0)
         , unreadMessages(0)
-        , sentMessages(0)
         , lastEventId(-1)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
@@ -84,9 +80,7 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , chatName(other.chatName)
         , startTime(other.startTime)
         , endTime(other.endTime)
-        , totalMessages(other.totalMessages)
         , unreadMessages(other.unreadMessages)
-        , sentMessages(other.sentMessages)
         , lastEventId(other.lastEventId)
         , contacts(other.contacts)
         , lastMessageText(other.lastMessageText)
@@ -221,24 +215,10 @@ QDateTime Group::endTime() const
     return d->endTime;
 }
 
-
-int Group::totalMessages() const
-{
-    return d->totalMessages;
-}
-
-
 int Group::unreadMessages() const
 {
     return d->unreadMessages;
 }
-
-
-int Group::sentMessages() const
-{
-    return d->sentMessages;
-}
-
 
 int Group::lastEventId() const
 {
@@ -342,22 +322,10 @@ void Group::setEndTime(const QDateTime &endTime)
     d->propertyChanged(Group::EndTime);
 }
 
-void Group::setTotalMessages(int total)
-{
-    d->totalMessages = total;
-    d->propertyChanged(Group::TotalMessages);
-}
-
 void Group::setUnreadMessages(int unread)
 {
     d->unreadMessages = unread;
     d->propertyChanged(Group::UnreadMessages);
-}
-
-void Group::setSentMessages(int sent)
-{
-    d->sentMessages = sent;
-    d->propertyChanged(Group::SentMessages);
 }
 
 void Group::setLastEventId(int id)
@@ -433,8 +401,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
     argument.beginStructure();
     argument << group.id() << group.localUid() << group.remoteUids()
              << group.chatType() << group.chatName()
-             << group.endTime() << group.totalMessages()
-             << group.unreadMessages() << group.sentMessages()
+             << group.endTime() << group.unreadMessages()
              << group.lastEventId() << group.contacts()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
@@ -461,8 +428,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     argument.beginStructure();
     argument >> p.id >> p.localUid >> p.remoteUids >> chatType
              >> p.chatName >> p.endTime
-             >> p.totalMessages >> p.unreadMessages >> p.sentMessages
-             >> p.lastEventId >> p.contacts
+             >> p.unreadMessages >> p.lastEventId >> p.contacts
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
              >> type >> status >> p.lastModified
              >> p.startTime;
@@ -490,12 +456,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setChatName(p.chatName);
     if (p.validProperties.contains(Group::EndTime))
         group.setEndTime(p.endTime);
-    if (p.validProperties.contains(Group::TotalMessages))
-        group.setTotalMessages(p.totalMessages);
     if (p.validProperties.contains(Group::UnreadMessages))
         group.setUnreadMessages(p.unreadMessages);
-    if (p.validProperties.contains(Group::SentMessages))
-        group.setSentMessages(p.sentMessages);
     if (p.validProperties.contains(Group::LastEventId))
         group.setLastEventId(p.lastEventId);
     if (p.validProperties.contains(Group::Contacts))
@@ -575,11 +537,9 @@ QString Group::toString() const
         contacts = contactList.join(QChar(';'));
     }
 
-    return QString("Group %1 (%2 messages, %3 unread, %4 sent) name:\"%5\" remoteUids:\"%6\" contacts:\"%7\" startTime:%8 endTime:%9")
+    return QString("Group %1 (%2 unread) name:\"%3\" remoteUids:\"%4\" contacts:\"%5\" startTime:%6 endTime:%7")
                    .arg(d->id)
-                   .arg(d->totalMessages)
                    .arg(d->unreadMessages)
-                   .arg(d->sentMessages)
                    .arg(d->chatName)
                    .arg(d->remoteUids.join("|"))
                    .arg(contacts)
@@ -609,14 +569,8 @@ void Group::copyValidProperties(const Group &other)
         case EndTime:
             setEndTime(other.endTime());
             break;
-        case TotalMessages:
-            setTotalMessages(other.totalMessages());
-            break;
         case UnreadMessages:
             setUnreadMessages(other.unreadMessages());
-            break;
-        case SentMessages:
-            setSentMessages(other.sentMessages());
             break;
         case LastEventId:
             setLastEventId(other.lastEventId());
