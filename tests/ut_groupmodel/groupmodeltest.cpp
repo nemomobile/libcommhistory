@@ -180,9 +180,7 @@ void GroupModelTest::addGroups()
     QCOMPARE(group.chatName(), group1.chatName());
     QVERIFY(group.startTime().isValid() == false);
     QVERIFY(group.endTime().isValid() == false);
-    QCOMPARE(group.totalMessages(), 0);
     QCOMPARE(group.unreadMessages(), 0);
-    QCOMPARE(group.sentMessages(), 0);
     QCOMPARE(group.lastEventId(), -1);
 
     // add an event to each group to get them to show up in getGroups()

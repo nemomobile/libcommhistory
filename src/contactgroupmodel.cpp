@@ -286,9 +286,7 @@ QHash<int,QByteArray> ContactGroupModel::roleNames() const
     roles[BaseRole + ContactIds] = "contactIds";
     roles[BaseRole + ContactNames] = "contactNames";
     roles[BaseRole + EndTime] = "endTime";
-    roles[BaseRole + TotalMessages] = "totalMessages";
     roles[BaseRole + UnreadMessages] = "unreadMessages";
-    roles[BaseRole + SentMessages] = "sentMessages";
     roles[BaseRole + LastEventGroup] = "lastEventGroup";
     roles[BaseRole + LastEventId] = "lastEventId";
     roles[BaseRole + LastMessageText] = "lastMessageText";
@@ -381,14 +379,8 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
         case EndTime:
             var = g->endTime();
             break;
-        case TotalMessages:
-            var = g->totalMessages();
-            break;
         case UnreadMessages:
             var = g->unreadMessages();
-            break;
-        case SentMessages:
-            var = g->sentMessages();
             break;
         case LastEventGroup:
             var = QVariant::fromValue<QObject*>(g->lastEventGroup());

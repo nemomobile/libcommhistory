@@ -231,9 +231,7 @@ public:
                 case Group::Id:
                 case Group::StartTime:
                 case Group::EndTime:
-                case Group::TotalMessages:
                 case Group::UnreadMessages:
-                case Group::SentMessages:
                 case Group::LastEventId:
                 case Group::ContactId:
                 case Group::ContactName:
@@ -640,9 +638,7 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setChatName(query.value(4).toString());
     group.setLastModified(QDateTime::fromTime_t(query.value(5).toUInt()));
     // startTime and endTime are below
-    group.setTotalMessages(query.value(8).toInt());
-    group.setUnreadMessages(query.value(9).toInt());
-    group.setSentMessages(query.value(10).toInt());
+    group.setUnreadMessages(query.value(8).toInt());
 
     if (query.value(6).isNull())
         group.setStartTime(QDateTime());
@@ -654,16 +650,16 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     else
         group.setEndTime(QDateTime::fromTime_t(query.value(7).toUInt()));
 
-    if (query.value(11).isNull())
+    if (query.value(9).isNull())
         group.setLastEventId(-1);
     else
-        group.setLastEventId(query.value(11).toInt());
+        group.setLastEventId(query.value(9).toInt());
 
-    group.setLastMessageText(query.value(12).toString());
-    group.setLastVCardFileName(query.value(13).toString());
-    group.setLastVCardLabel(query.value(14).toString());
-    group.setLastEventType(static_cast<Event::EventType>(query.value(15).toInt()));
-    group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(16).toInt()));
+    group.setLastMessageText(query.value(10).toString());
+    group.setLastVCardFileName(query.value(11).toString());
+    group.setLastVCardLabel(query.value(12).toString());
+    group.setLastEventType(static_cast<Event::EventType>(query.value(13).toInt()));
+    group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(14).toInt()));
     
     // contacts
     foreach (const QString &remoteUid, group.remoteUids())
@@ -680,9 +676,7 @@ static const char *baseGroupQuery =
     "\n Groups.lastModified, "
     "\n LastEvent.startTime, "
     "\n LastEvent.endTime, "
-    "\n EventCount.total, "
     "\n EventCount.unread, "
-    "\n EventCount.sent, "
     "\n LastEvent.id, "
     "\n LastEvent.freeText, "
     "\n LastEvent.vCardFileName, "
@@ -691,31 +685,19 @@ static const char *baseGroupQuery =
     "\n LastEvent.status "
     "\n FROM Groups "
     "\n LEFT JOIN ("
-    "\n  SELECT "
-    "\n   groupId, "
-    "\n   COUNT(id) AS total, "
-    "\n   COUNT(NULLIF(isRead = 0, 0)) AS unread, "
-    "\n   COUNT(NULLIF(direction = 2, 0)) AS sent "
-    "\n  FROM Events GROUP BY groupId "
-    "\n ) AS EventCount ON (EventCount.groupId = Groups.id) "
-    "\n LEFT JOIN ("
-    "\n  SELECT "
-    "\n   id, "
-    "\n   groupId, "
-    "\n   startTime, "
-    "\n   endTime, "
-    "\n   freeText, "
-    "\n   vCardFileName, "
-    "\n   vCardLabel, "
-    "\n   type, "
-    "\n   status "
+    "\n  SELECT groupId, COUNT(*) as unread "
     "\n  FROM Events "
-    "\n ) AS LastEvent ON (LastEvent.id = ( "
-    "\n  SELECT id FROM Events "
-    "\n  WHERE groupId = Groups.id "
-    "\n  ORDER BY startTime DESC, id DESC "
-    "\n  LIMIT 1 "
-    "\n ) ) ";
+    "\n  WHERE isRead = 0 "
+    "\n  GROUP BY groupId "
+    "\n ) AS EventCount ON (EventCount.groupId = Groups.id) "
+    "\n LEFT JOIN Events AS LastEvent ON ("
+    "\n  LastEvent.id = ("
+    "\n   SELECT id FROM Events "
+    "\n   WHERE groupId = Groups.id "
+    "\n   ORDER BY startTime DESC, id DESC "
+    "\n   LIMIT 1 "
+    "\n  )"
+    "\n ) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)
 {

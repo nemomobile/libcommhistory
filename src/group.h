@@ -63,9 +63,7 @@ public:
         Type,
         ChatName,
         EndTime,
-        TotalMessages,
         UnreadMessages,
-        SentMessages,
         LastEventId,
         ContactId, // TODO: remove
         ContactName, // TODO: remove
@@ -177,19 +175,9 @@ public:
     QDateTime endTime() const;
 
     /*!
-     * Number of messages in this conversation.
-     */
-    int totalMessages() const;
-
-    /*!
      * Number of unread messages in this conversation.
      */
     int unreadMessages() const;
-
-    /*!
-     * Number of sent messages in this conversation.
-     */
-    int sentMessages() const;
 
     /*!
      * Database id of the last message. -1 if the group has no messages.
@@ -260,9 +248,7 @@ public:
     void setChatName(const QString &name);
     void setStartTime(const QDateTime &startTime);
     void setEndTime(const QDateTime &endTime);
-    void setTotalMessages(int total);
     void setUnreadMessages(int unread);
-    void setSentMessages(int sent);
     void setLastEventId(int id);
     /* DEPRECATED - use setContacts() */
     void setContactId(int id);
