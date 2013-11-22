@@ -179,7 +179,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
 
             int row;
             for (row = 0; row < eventRootItem->childCount(); row++) {
-                if (eventRootItem->child(row)->event().startTime() <= event.startTime())
+                if (eventRootItem->child(row)->event().endTime() <= event.endTime())
                     break;
             }
 
@@ -899,7 +899,7 @@ bool CallModel::getEvents()
         q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime.toTime_t());
     }
 
-    q += "ORDER BY startTime DESC, id DESC";
+    q += "ORDER BY endTime DESC, id DESC";
 
     QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
     if (!d->filterLocalUid.isEmpty())

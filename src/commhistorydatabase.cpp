@@ -95,10 +95,10 @@ static const char *db_schema[] = {
     "CREATE INDEX events_remoteUid ON Events (remoteUid)",
     "CREATE INDEX events_type ON Events (type)",
     "CREATE INDEX events_messageToken ON Events (messageToken)",
-    "CREATE INDEX events_sorting ON Events (groupId, startTime DESC, id DESC)",
+    "CREATE INDEX events_sorting ON Events (groupId, endTime DESC, id DESC)",
     "CREATE INDEX events_unread ON Events (isRead)",
 
-    "PRAGMA user_version=1"
+    "PRAGMA user_version=2"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 
@@ -111,9 +111,17 @@ static const char *db_upgrade_0[] = {
     0
 };
 
+static const char *db_upgrade_1[] = {
+    "DROP INDEX events_sorting",
+    "CREATE INDEX events_sorting ON Events (groupId, endTime DESC, id DESC)",
+    "PRAGMA user_version=2",
+    0
+};
+
 // REMEMBER TO UPDATE THE SCHEMA AND USER_VERSION!
 static const char **db_upgrade[] = {
-    db_upgrade_0
+    db_upgrade_0,
+    db_upgrade_1
 };
 static int db_upgrade_count = sizeof(db_upgrade) / sizeof(*db_upgrade);
 
