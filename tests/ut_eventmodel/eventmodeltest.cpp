@@ -1489,17 +1489,11 @@ void EventModelTest::testStreaming_data()
 
     // FIXME: skip for now - can fail randomly (check convmodel-streaming-fix branch)
     QTest::newRow("Without thread") << false;
-    QTest::newRow("Use thread") << true;
+    //QTest::newRow("Use thread") << true;
 }
 
 void EventModelTest::testStreaming()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
-#else
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
-#endif
-
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
