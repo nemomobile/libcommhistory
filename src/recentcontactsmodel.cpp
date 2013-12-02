@@ -436,19 +436,19 @@ bool RecentContactsModel::getEvents()
     QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(
 " WHERE Events.id IN ("
   " SELECT lastId FROM ("
-    " SELECT max(id) AS lastId, max(startTime) FROM Events"
+    " SELECT max(id) AS lastId, max(endTime) FROM Events"
     " JOIN ("
-      " SELECT remoteUid, localUid, max(startTime) AS lastEventTime FROM Events"
+      " SELECT remoteUid, localUid, max(endTime) AS lastEventTime FROM Events"
       " GROUP BY remoteUid, localUid"
       " ORDER BY lastEventTime DESC %1"
-    " ) AS LastEvent ON Events.startTime = LastEvent.lastEventTime"
+    " ) AS LastEvent ON Events.endTime = LastEvent.lastEventTime"
                    " AND Events.remoteUid = LastEvent.remoteUid"
                    " AND Events.localUid = LastEvent.localUid"
     " GROUP BY Events.remoteUid, Events.localUid"
-    " ORDER BY max(startTime) DESC"
+    " ORDER BY max(endTime) DESC"
   " )"
 " )"
-" ORDER BY Events.startTime DESC").arg(limitClause);
+" ORDER BY Events.endTime DESC").arg(limitClause);
 
     QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
     if (!query.prepare(q)) {

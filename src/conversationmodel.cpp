@@ -177,7 +177,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     int firstId = -1;
     if (eventRootItem->childCount() > 0) {
         Event firstEvent = eventRootItem->eventAt(eventRootItem->childCount() - 1);
-        firstTimestamp = firstEvent.startTime().toTime_t();
+        firstTimestamp = firstEvent.endTime().toTime_t();
         firstId = firstEvent.id();
     }
 
@@ -189,7 +189,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     if (filterDirection != Event::UnknownDirection)
         filters += "AND Events.direction = :filterDirection ";
     if (firstId >= 0) {
-        filters += "AND (Events.startTime < :firstTimestamp OR (Events.startTime = :firstTimestamp "
+        filters += "AND (Events.endTime < :firstTimestamp OR (Events.endTime = :firstTimestamp "
                     "AND Events.id < :firstId)) ";
     }
 
@@ -219,7 +219,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
         unionCount++;
     } while (unionCount < groups.size());
 
-    q += "ORDER BY Events.startTime DESC, Events.id DESC ";
+    q += "ORDER BY Events.endTime DESC, Events.id DESC ";
 
     if (queryLimit > 0)
         q += "LIMIT " + QString::number(queryLimit);
