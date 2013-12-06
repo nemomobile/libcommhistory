@@ -145,7 +145,7 @@ void printUsage()
                         << std::endl;
     std::cout << "                 import filename"
                         << std::endl;
-    std::cout << "                 import-json filename"
+    std::cout << "                 import-json [-relativeDate yyMMdd] filename"
                         << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
@@ -1120,6 +1120,17 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         return -1;
     }
 
+    int dateOffset = 0;
+    if (options.contains("-relativeDate")) {
+        QDateTime endTime = QDateTime::fromString(options.value("-relativeDate").toString(), "yyyyMMdd");
+        if (!endTime.isValid()) {
+            qCritical() << "Invalid end time";
+            return -1;
+        }
+
+        dateOffset = endTime.secsTo(QDateTime(QDate::currentDate()));
+    }
+
     bool ok = true;
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
@@ -1225,6 +1236,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
                 ok = false;
                 continue;
             }
+            date = date.addSecs(dateOffset);
             event.setStartTime(date);
             event.setEndTime(date);
 
@@ -1263,7 +1275,7 @@ int main(int argc, char **argv)
 #endif
         QCoreApplication app(argc, argv);
 
-        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text";
+        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text" << "-relativeDate";
 
         QStringList args = app.arguments();
         QVariantMap options = parseOptions(args);
