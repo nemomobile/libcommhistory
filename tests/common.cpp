@@ -66,15 +66,16 @@ static int contactNumber = 0;
 
 QContactManager *createManager()
 {
+    QMap<QString, QString> parameters;
 #ifdef USING_QTPIM
-    // Temporary override until qtpim supports QTCONTACTS_MANAGER_OVERRIDE
     QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
+    parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
 #else
     QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
 #endif
     if (!envspec.isEmpty()) {
         qDebug() << "Using contact manager:" << envspec;
-        return new QContactManager(envspec);
+        return new QContactManager(envspec, parameters);
     }
 
     return new QContactManager;
