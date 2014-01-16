@@ -521,50 +521,54 @@ QString DatabaseIOPrivate::eventQueryBase()
 
 void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties)
 {
-    event.setId(query.value(0).toInt());
-    event.setType(static_cast<Event::EventType>(query.value(1).toInt()));
-    event.setStartTime(QDateTime::fromTime_t(query.value(2).toUInt()));
-    event.setEndTime(QDateTime::fromTime_t(query.value(3).toUInt()));
-    event.setDirection(static_cast<Event::EventDirection>(query.value(4).toInt()));
-    event.setIsDraft(query.value(5).toBool());
-    event.setIsRead(query.value(6).toBool());
-    event.setIsMissedCall(query.value(7).toBool());
-    event.setIsEmergencyCall(query.value(8).toBool());
-    event.setStatus(static_cast<Event::EventStatus>(query.value(9).toInt()));
-    event.setBytesReceived(query.value(10).toInt());
-    event.setLocalUid(query.value(11).toString());
-    event.setRemoteUid(query.value(12).toString());
-    event.setParentId(query.value(13).toInt());
-    event.setSubject(query.value(14).toString());
-    event.setFreeText(query.value(15).toString());
-    if (query.value(16).isNull())
+    int field = 0;
+    event.setId(query.value(field).toInt());
+    event.setType(static_cast<Event::EventType>(query.value(++field).toInt()));
+    event.setStartTime(QDateTime::fromTime_t(query.value(++field).toUInt()));
+    event.setEndTime(QDateTime::fromTime_t(query.value(++field).toUInt()));
+    event.setDirection(static_cast<Event::EventDirection>(query.value(++field).toInt()));
+    event.setIsDraft(query.value(++field).toBool());
+    event.setIsRead(query.value(++field).toBool());
+    event.setIsMissedCall(query.value(++field).toBool());
+    event.setIsEmergencyCall(query.value(++field).toBool());
+    event.setStatus(static_cast<Event::EventStatus>(query.value(++field).toInt()));
+    event.setBytesReceived(query.value(++field).toInt());
+    event.setLocalUid(query.value(++field).toString());
+    event.setRemoteUid(query.value(++field).toString());
+    event.setParentId(query.value(++field).toInt());
+    event.setSubject(query.value(++field).toString());
+    event.setFreeText(query.value(++field).toString());
+    if (query.value(++field).isNull())
         event.setGroupId(-1);
     else
-        event.setGroupId(query.value(16).toInt());
-    event.setMessageToken(query.value(17).toString());
-    event.setLastModified(QDateTime::fromTime_t(query.value(18).toUInt()));
-    event.setFromVCard(query.value(19).toString(), query.value(20).toString());
-    event.setDeleted(query.value(21).toBool());
-    event.setReportDelivery(query.value(22).toBool());
-    event.setValidityPeriod(query.value(23).toInt());
-    event.setContentLocation(query.value(24).toString());
+        event.setGroupId(query.value(field).toInt());
+    event.setMessageToken(query.value(++field).toString());
+    event.setLastModified(QDateTime::fromTime_t(query.value(++field).toUInt()));
+    QString vCardFileName = query.value(++field).toString();
+    QString vCardLabel = query.value(++field).toString();
+    event.setFromVCard(vCardFileName, vCardLabel);
+    event.setDeleted(query.value(++field).toBool());
+    event.setReportDelivery(query.value(++field).toBool());
+    event.setValidityPeriod(query.value(++field).toInt());
+    event.setContentLocation(query.value(++field).toString());
     // Message parts are much more complicated
     //event.setMessageParts(query.value(25).toString());
-    event.setReadStatus(static_cast<Event::EventReadStatus>(query.value(27).toInt()));
-    event.setReportRead(query.value(28).toBool());
-    event.setReportReadRequested(query.value(29).toBool());
-    event.setMmsId(query.value(30).toString());
-    event.setIsAction(query.value(31).toBool());
-    hasExtraProperties = query.value(32).toBool();
+    ++field;
 
     QHash<QString,QString> headers;
-    QStringList hf = query.value(26).toString().split('\x1c');
+    QStringList hf = query.value(++field).toString().split('\x1c');
     foreach (QString h, hf) {
         QStringList fields = h.split('\x1d');
         if (fields.size() == 2)
             headers.insert(fields.value(0), fields.value(1));
     }
     event.setHeaders(headers);
+    event.setReadStatus(static_cast<Event::EventReadStatus>(query.value(++field).toInt()));
+    event.setReportRead(query.value(++field).toBool());
+    event.setReportReadRequested(query.value(++field).toBool());
+    event.setMmsId(query.value(++field).toString());
+    event.setIsAction(query.value(++field).toBool());
+    hasExtraProperties = query.value(++field).toBool();
 }
 
 bool DatabaseIO::getEvent(int id, Event &event)
