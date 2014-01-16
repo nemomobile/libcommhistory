@@ -91,10 +91,6 @@ public:
         EventCount,    // CallEvent related
         FromVCardFileName,
         FromVCardLabel,
-        Encoding,
-        Charset,
-        Language,
-        IsDeleted,
         NumberOfColumns
     };
 

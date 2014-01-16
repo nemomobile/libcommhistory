@@ -37,16 +37,6 @@ class QDBusArgument;
 
 namespace CommHistory {
 
-    enum ParentIds
-    {
-        ALL = -1,
-        INBOX = 0x1002,
-        OUTBOX = 0x1003,
-        DRAFT = 0x1004,
-        SENT = 0x1005,
-        MYFOLDER = 0x1008
-   };
-
 class EventPrivate;
 
 /*!
@@ -88,8 +78,6 @@ public:
 
     enum EventStatus {
         UnknownStatus = 0,
-        // TODO: Sending is not a valid state for nmo:deliveryStatus, so
-        // a missing property is interpreted as SendingStatus.
         SendingStatus,
         SentStatus,
         DeliveredStatus,
@@ -122,7 +110,6 @@ public:
         RemoteUid,
         ContactId, // TODO: remove
         ContactName, // TODO: remove
-        ParentId,
         Subject,
         FreeText,
         GroupId,
@@ -131,10 +118,6 @@ public:
         EventCount,
         FromVCardFileName,
         FromVCardLabel,
-        Encoding,
-        CharacterSet,
-        Language,
-        IsDeleted,
         ReportDelivery,
         ValidityPeriod,
         ContentLocation,
@@ -270,8 +253,6 @@ public:
 
     QList<Event::Contact> contacts() const;
 
-    int parentId() const; // SMS parent folder id
-
     QString subject() const;
 
     QString freeText() const;
@@ -300,14 +281,6 @@ public:
     QString fromVCardFileName() const;
 
     QString fromVCardLabel() const;
-
-    QString encoding() const;
-
-    QString characterSet() const;
-
-    QString language() const;
-
-    bool isDeleted() const;
 
     bool reportDelivery() const;
 
@@ -377,8 +350,6 @@ public:
 
     void setContacts(const QList<Event::Contact> &contacts);
 
-    void setParentId(int id);
-
     void setSubject(const QString &subject);
 
     void setFreeText(const QString &text);
@@ -402,14 +373,6 @@ public:
     void setEventCount( int count );
 
     void setFromVCard( const QString &fileName, const QString &label = QString() ); //fromvcard
-
-    void setEncoding(const QString& enc);
-
-    void setCharacterSet(const QString &charset);
-
-    void setLanguage(const QString &language);
-
-    void setDeleted(bool isDel);
 
     void setReportDelivery(bool reportDeliveryRequested);
 

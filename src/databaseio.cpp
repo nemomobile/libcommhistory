@@ -119,9 +119,6 @@ public:
                 case Event::RemoteUid:
                     fields.append(QueryHelper::Field("remoteUid", event.remoteUid()));
                     break;
-                case Event::ParentId:
-                    fields.append(QueryHelper::Field("parentId", event.parentId()));
-                    break;
                 case Event::Subject:
                     fields.append(QueryHelper::Field("subject", event.subject()));
                     break;
@@ -142,9 +139,6 @@ public:
                     break;
                 case Event::FromVCardLabel:
                     fields.append(QueryHelper::Field("vCardLabel", event.fromVCardLabel()));
-                    break;
-                case Event::IsDeleted:
-                    fields.append(QueryHelper::Field("isDeleted", event.isDeleted()));
                     break;
                 case Event::ReportDelivery:
                     fields.append(QueryHelper::Field("reportDelivery", event.reportDelivery()));
@@ -194,9 +188,6 @@ public:
                 case Event::Cc:
                 case Event::Bcc:
                 case Event::MessageParts:
-                case Event::Encoding:
-                case Event::CharacterSet:
-                case Event::Language:
                     break;
                 default:
                     qWarning() << Q_FUNC_INFO << "Event field ignored:" << property;
@@ -492,7 +483,6 @@ static const char *baseEventQuery =
     "\n Events.bytesReceived, "
     "\n Events.localUid, "
     "\n Events.remoteUid, "
-    "\n Events.parentId, "
     "\n Events.subject, "
     "\n Events.freeText, "
     "\n Events.groupId, "
@@ -500,7 +490,6 @@ static const char *baseEventQuery =
     "\n Events.lastModified, "
     "\n Events.vCardFileName, "
     "\n Events.vCardLabel, "
-    "\n Events.isDeleted, "
     "\n Events.reportDelivery, "
     "\n Events.validityPeriod, "
     "\n Events.contentLocation, "
@@ -535,7 +524,6 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     event.setBytesReceived(query.value(++field).toInt());
     event.setLocalUid(query.value(++field).toString());
     event.setRemoteUid(query.value(++field).toString());
-    event.setParentId(query.value(++field).toInt());
     event.setSubject(query.value(++field).toString());
     event.setFreeText(query.value(++field).toString());
     if (query.value(++field).isNull())
@@ -547,7 +535,6 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     QString vCardFileName = query.value(++field).toString();
     QString vCardLabel = query.value(++field).toString();
     event.setFromVCard(vCardFileName, vCardLabel);
-    event.setDeleted(query.value(++field).toBool());
     event.setReportDelivery(query.value(++field).toBool());
     event.setValidityPeriod(query.value(++field).toInt());
     event.setContentLocation(query.value(++field).toString());

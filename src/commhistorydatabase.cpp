@@ -65,7 +65,7 @@ static const char *db_schema[] = {
     "  bytesReceived INTEGER, "
     "  localUid TEXT, "
     "  remoteUid TEXT, "
-    "  parentId INTEGER, "
+    "  parentId INTEGER, " // XXX remove, unused
     "  subject TEXT, "
     "  freeText TEXT, "
     "  groupId INTEGER, "
@@ -73,7 +73,7 @@ static const char *db_schema[] = {
     "  lastModified INTEGER, "
     "  vCardFileName TEXT, "
     "  vCardLabel TEXT, "
-    "  isDeleted INTEGER, "
+    "  isDeleted INTEGER, " // XXX remove, unused
     "  reportDelivery INTEGER, "
     "  validityPeriod INTEGER, "
     "  contentLocation TEXT, "
