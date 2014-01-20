@@ -72,6 +72,8 @@ private:
 
     bool skipIrrelevantContact(const Event &event);
 
+    bool contactHasAddress(int types, quint32 localId) const;
+
     int requiredProperty;
     mutable QList<Event> pendingEvents;
 };
@@ -387,6 +389,17 @@ bool RecentContactsModelPrivate::skipIrrelevantContact(const Event &event)
         }
     }
 
+    return false;
+}
+
+bool RecentContactsModelPrivate::contactHasAddress(int types, quint32 localId) const
+{
+    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
+        return true;
     return false;
 }
 

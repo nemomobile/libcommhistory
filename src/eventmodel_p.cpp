@@ -35,7 +35,6 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "debug.h"
-#include "recentcontactsmodel.h"
 
 using namespace CommHistory;
 
@@ -605,17 +604,6 @@ void EventModelPrivate::startContactListening()
                 SLOT(slotContactUnknown(const QPair<QString, QString>&)),
                 Qt::UniqueConnection);
     }
-}
-
-bool EventModelPrivate::contactHasAddress(int types, quint32 localId) const
-{
-    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
-        return true;
-    return false;
 }
 
 void EventModelPrivate::emitDataChanged(int row, void *data)
