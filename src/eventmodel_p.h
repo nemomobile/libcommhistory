@@ -85,16 +85,6 @@ public:
     virtual QModelIndex findEvent(int id) const;
 
     /*!
-     * Tries to find a suitable parent for the given new event.
-     * Reimplement for tree models.
-     *
-     * \param event Event to be added.
-     * \return model parent index for the event. If invalid, event will
-     * not be added.
-     */
-    virtual QModelIndex findParent(const Event &event);
-
-    /*!
      * Executes a database query. fillModel() is called when new events
      * are received, and modelReady() is emitted when the query is
      * finished.

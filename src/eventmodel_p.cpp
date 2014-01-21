@@ -122,12 +122,6 @@ QModelIndex EventModelPrivate::findEvent(int id) const
     return findEventRecursive(id, eventRootItem);
 }
 
-QModelIndex EventModelPrivate::findParent(const Event &event)
-{
-    Q_UNUSED(event);
-    return QModelIndex();
-}
-
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     DEBUG() << __PRETTY_FUNCTION__;
@@ -191,15 +185,8 @@ void EventModelPrivate::addToModel(Event &event)
         setContactFromCache(event);
     }
 
-    QModelIndex index = findParent(event);
-    if (index.isValid()) {
-        q->beginInsertRows(index, index.row(), index.row());
-    } else {
-        q->beginInsertRows(QModelIndex(), 0, 0);
-    }
-    EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-    if (!item) item = eventRootItem;
-    item->prependChild(new EventTreeItem(event, item));
+    q->beginInsertRows(QModelIndex(), 0, 0);
+    eventRootItem->prependChild(new EventTreeItem(event, eventRootItem));
     q->endInsertRows();
 }
 
