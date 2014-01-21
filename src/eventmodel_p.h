@@ -34,6 +34,7 @@
 #include "databaseio.h"
 #include "libcommhistoryexport.h"
 #include "contactlistener.h"
+#include "contactresolver.h"
 
 class QSqlQuery;
 
@@ -147,6 +148,8 @@ public:
     // a nonstandard model.
     EventTreeItem *eventRootItem;
 
+    ContactResolver *receiveResolver;
+
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
     uint chunkSize;
@@ -170,6 +173,8 @@ public:
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
+    virtual bool fillModel(QList<Event> events);
+
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
     virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);

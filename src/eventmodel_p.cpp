@@ -43,7 +43,8 @@ namespace {
 }
 
 EventModelPrivate::EventModelPrivate(EventModel *model)
-        : isInTreeMode(false)
+        : receiveResolver(0)
+        , isInTreeMode(false)
         , queryMode(EventModel::AsyncQuery)
         , chunkSize(defaultChunkSize)
         , firstChunkSize(0)
@@ -156,6 +157,9 @@ bool EventModelPrivate::fillModel(int start,
     Q_UNUSED(start);
     Q_UNUSED(end);
 
+    if (events.isEmpty())
+        return false;
+
     Q_Q(EventModel);
     DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
 
@@ -166,6 +170,23 @@ bool EventModelPrivate::fillModel(int start,
     q->endInsertRows();
 
     return true;
+}
+
+bool EventModelPrivate::fillModel(QList<CommHistory::Event> events)
+{
+    Q_Q(EventModel);
+
+    QMutableListIterator<Event> i(events);
+    while (i.hasNext()) {
+        const Event &event = i.next();
+
+        if (findEvent(event.id()).isValid()) {
+            i.remove();
+            continue;
+        }
+    }
+
+    return fillModel(q->rowCount(), q->rowCount() + events.count() - 1, events);
 }
 
 void EventModelPrivate::clearEvents()
@@ -241,27 +262,17 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 {
     DEBUG() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
 
-    QMutableListIterator<Event> i(events);
-    while (i.hasNext()) {
-        Event event = i.next();
+    if (events.isEmpty())
+        return;
 
-        if (findEvent(event.id()).isValid()) {
-            end--;
-            i.remove();
-            continue;
+    if (resolveContacts) {
+        if (!receiveResolver) {
+            receiveResolver = new ContactResolver(this);
+            connect(receiveResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(fillModel(QList<Event>)));
         }
 
-        if (!event.contacts().isEmpty()) {
-            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-        }  else {
-            setContactFromCache(event);
-        }
-    }
-
-    if (!events.isEmpty()) {
-        // now we have some content -> start tracking contacts if enabled
-        startContactListening();
-
+        receiveResolver->appendEvents(events);
+    } else {
         fillModel(start, end, events);
     }
 }
