@@ -165,12 +165,12 @@ bool EventModelPrivate::fillModel(int start,
     DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
 
     q->beginInsertRows(QModelIndex(), q->rowCount(), q->rowCount() + events.count() - 1);
-    foreach (Event event, events) {
+    foreach (const Event &event, events) {
         eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
     }
     q->endInsertRows();
 
-    return false;
+    return true;
 }
 
 void EventModelPrivate::clearEvents()

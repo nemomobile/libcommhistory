@@ -44,7 +44,6 @@ public:
                       const QList<Event::Contact> &contacts,
                       const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
-    bool fillModel(int start, int end, QList<CommHistory::Event> events);
     QSqlQuery buildQuery() const;
     bool isModelReady() const;
 

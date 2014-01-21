@@ -148,25 +148,6 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     return true;
 }
 
-bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::Event> events)
-{
-    Q_UNUSED(start);
-    Q_UNUSED(end);
-
-    DEBUG() << __FUNCTION__ << ": read" << events.count() << "messages";
-
-    Q_Q(ConversationModel);
-
-    q->beginInsertRows(QModelIndex(), q->rowCount(),
-                       q->rowCount() + events.count() - 1);
-    foreach (Event event, events) {
-        eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
-    }
-    q->endInsertRows();
-
-    return true;
-}
-
 QSqlQuery ConversationModelPrivate::buildQuery() const
 {
     QList<int> groups = filterGroupIds.toList();
