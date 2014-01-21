@@ -72,7 +72,7 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
         , referenceTime( QDateTime() )
         , hasBeenFetched( false )
 {
-    contactChangesEnabled = true;
+    resolveContacts = true;
     propertyMask -= unusedProperties;
 }
 

@@ -156,7 +156,7 @@ public:
     bool isReady;
     bool messagePartsReady;
     bool threadCanFetchMore;
-    bool contactChangesEnabled;
+    bool resolveContacts;
 
     Event::PropertySet propertyMask;
 

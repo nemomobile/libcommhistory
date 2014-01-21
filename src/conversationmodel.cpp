@@ -50,7 +50,7 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
 {
-    contactChangesEnabled = true;
+    resolveContacts = true;
     QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));

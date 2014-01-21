@@ -47,7 +47,7 @@ public:
         : EventModelPrivate(model),
           requiredProperty(RecentContactsModel::NoPropertyRequired)
     {
-        contactChangesEnabled = true;
+        resolveContacts = true;
     }
 
     bool fillModel(int start, int end, QList<Event> events);

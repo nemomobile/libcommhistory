@@ -52,7 +52,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , isReady(true)
         , messagePartsReady(true)
         , threadCanFetchMore(false)
-        , contactChangesEnabled(false)
+        , resolveContacts(false)
         , propertyMask(Event::allProperties())
         , bgThread(0)
 {
@@ -555,7 +555,7 @@ bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
 
 void EventModelPrivate::startContactListening()
 {
-    if (contactChangesEnabled && !contactListener) {
+    if (resolveContacts && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<ContactAddress>&)),

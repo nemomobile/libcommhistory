@@ -462,10 +462,16 @@ void EventModel::setOffset(int offset)
     d->queryOffset = offset;
 }
 
-void EventModel::enableContactChanges(bool enabled)
+bool EventModel::resolveContacts() const
+{
+    Q_D(const EventModel);
+    return d->resolveContacts;
+}
+
+void EventModel::setResolveContacts(bool enabled)
 {
     Q_D(EventModel);
-    d->contactChangesEnabled = enabled;
+    d->resolveContacts = enabled;
 }
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)
