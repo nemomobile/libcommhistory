@@ -52,31 +52,10 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
 {
     contactChangesEnabled = true;
     QDBusConnection::sessionBus().connect(
-        QString(), QString(), "com.nokia.commhistory", "groupsUpdatedFull",
-        this, SLOT(groupsUpdatedFullSlot(const QList<CommHistory::Group> &)));
-    QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;
-}
-
-void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
-{
-    DEBUG() << Q_FUNC_INFO;
-    if (filterDirection == Event::Outbound
-        || filterGroupIds.isEmpty()
-        || !propertyMask.contains(Event::Contacts))
-        return;
-
-    foreach (Group g, groups) {
-        if (filterGroupIds.contains(g.id()) && !g.remoteUids().isEmpty()) {
-            // update in memory events for contact info
-            updateEvents(g, g.contacts(),
-                         g.remoteUids().first());
-            break;
-        }
-    }
 }
 
 void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
@@ -93,35 +72,6 @@ void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
     // refreshing others
     if (changed)
         q->getEvents(filterGroupIds.toList());
-}
-
-// update contacts for all inbound events,
-// should be called only for p2p chats
-void ConversationModelPrivate::updateEvents(const Group &group,
-                                            const QList<Event::Contact> &contacts,
-                                            const QString &remoteUid)
-{
-    Q_Q(ConversationModel);
-
-    for (int row = 0; row < eventRootItem->childCount(); row++) {
-        Event &event = eventRootItem->eventAt(row);
-
-        if (event.groupId() == group.id()
-            && event.contacts() != contacts
-            && event.direction() == Event::Inbound
-            && remoteAddressMatch(event.remoteUid(), remoteUid)) {
-            //update and continue
-            event.setContacts(contacts);
-
-            // XXX This would be more efficient by merging ranges..
-            emit q->dataChanged(q->createIndex(row,
-                                               EventModel::Contacts,
-                                               eventRootItem->child(row)),
-                                q->createIndex(row,
-                                               EventModel::Contacts,
-                                               eventRootItem->child(row)));
-        }
-    }
 }
 
 bool ConversationModelPrivate::acceptsEvent(const Event &event) const
