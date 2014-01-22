@@ -135,10 +135,10 @@ public:
                                  const QString &contactName,
                                  const QList< QPair<QString,QString> > &contactAddresses,
                                  EventTreeItem *parent);
+    void setResolveContacts(bool enabled);
 
     DatabaseIO *database();
     bool setContactFromCache(CommHistory::Event &event);
-    void startContactListening();
 
     void emitDataChanged(int row, void *data);
 
@@ -159,6 +159,7 @@ public:
     bool isReady;
     bool messagePartsReady;
     bool threadCanFetchMore;
+    // Do not set directly, use setResolveContacts to enable listener
     bool resolveContacts;
 
     Event::PropertySet propertyMask;

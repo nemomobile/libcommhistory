@@ -127,8 +127,6 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     DEBUG() << __PRETTY_FUNCTION__;
 
-    startContactListening();
-
     isReady = false;
 
     if (!query.exec()) {
@@ -564,8 +562,12 @@ bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
     return false;
 }
 
-void EventModelPrivate::startContactListening()
+void EventModelPrivate::setResolveContacts(bool enabled)
 {
+    if (resolveContacts == enabled)
+        return;
+    resolveContacts = enabled;
+
     if (resolveContacts && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
@@ -583,6 +585,12 @@ void EventModelPrivate::startContactListening()
                 this,
                 SLOT(slotContactUnknown(const QPair<QString, QString>&)),
                 Qt::UniqueConnection);
+    } else if (!resolveContacts && contactListener) {
+        disconnect(contactListener.data(), 0, this, 0);
+        contactListener.clear();
+
+        delete receiveResolver;
+        receiveResolver = 0;
     }
 }
 

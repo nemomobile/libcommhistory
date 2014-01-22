@@ -471,7 +471,7 @@ bool EventModel::resolveContacts() const
 void EventModel::setResolveContacts(bool enabled)
 {
     Q_D(EventModel);
-    d->resolveContacts = enabled;
+    d->setResolveContacts(enabled);
 }
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)
