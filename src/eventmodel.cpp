@@ -512,8 +512,11 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
     }
 
     foreach (Event event, events) {
-        if (d->acceptsEvent(event))
-            d->addToModel(event);
+        if (d->acceptsEvent(event)) {
+            // Add synchronously to preserve current API guarantees
+            // Contacts will be via dataChanged. Fix when models are async.
+            d->addToModel(event, true);
+        }
     }
 
     emit d->eventsAdded(events);

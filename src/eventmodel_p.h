@@ -112,7 +112,7 @@ public:
      */
     virtual void clearEvents();
 
-    virtual void addToModel(Event &event);
+    virtual void addToModel(const Event &event, bool synchronous = false);
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
 
@@ -147,7 +147,7 @@ public:
     // a nonstandard model.
     EventTreeItem *eventRootItem;
 
-    ContactResolver *receiveResolver;
+    ContactResolver *addResolver, *receiveResolver;
 
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
@@ -170,6 +170,7 @@ public:
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
+    virtual void prependEvents(QList<Event> events);
     virtual bool fillModel(QList<Event> events);
 
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);

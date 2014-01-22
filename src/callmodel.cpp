@@ -467,15 +467,21 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
     return true;
 }
 
-void CallModelPrivate::addToModel( Event &event )
+void CallModelPrivate::prependEvents(QList<Event> events)
+{
+    if (!isInTreeMode) {
+        EventModelPrivate::prependEvents(events);
+        return;
+    }
+
+    foreach (const Event &event, events)
+        insertEvent(event);
+}
+
+void CallModelPrivate::insertEvent(Event event)
 {
     Q_Q(CallModel);
     DEBUG() << __PRETTY_FUNCTION__ << event.toString();
-
-    if(!isInTreeMode)
-    {
-            return EventModelPrivate::addToModel(event);
-    }
 
     switch ( sortBy )
     {

@@ -43,7 +43,8 @@ namespace {
 }
 
 EventModelPrivate::EventModelPrivate(EventModel *model)
-        : receiveResolver(0)
+        : addResolver(0)
+        , receiveResolver(0)
         , isInTreeMode(false)
         , queryMode(EventModel::AsyncQuery)
         , chunkSize(defaultChunkSize)
@@ -193,13 +194,52 @@ void EventModelPrivate::clearEvents()
     eventRootItem = new EventTreeItem(Event());
 }
 
-void EventModelPrivate::addToModel(Event &event)
+void EventModelPrivate::addToModel(const Event &event, bool sync)
 {
-    Q_Q(EventModel);
     DEBUG() << Q_FUNC_INFO << event.toString();
 
-    q->beginInsertRows(QModelIndex(), 0, 0);
-    eventRootItem->prependChild(new EventTreeItem(event, eventRootItem));
+    // Insert immediately if synchronous (and resolve contact later if necessary),
+    // or if not resolving contacts
+    if (sync || !resolveContacts) {
+        prependEvents(QList<Event>() << event);
+    }
+
+    // Resolve contacts. If inserted above, the duplicate will be ignored
+    if (resolveContacts) {
+        if (!addResolver) {
+            addResolver = new ContactResolver(this);
+            connect(addResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(prependEvents(QList<Event>)));
+        }
+
+        addResolver->prependEvents(QList<Event>() << event);
+    }
+}
+
+void EventModelPrivate::prependEvents(QList<Event> events)
+{
+    Q_Q(EventModel);
+
+    // Replace exact duplicates instead of inserting. This is a workaround
+    // for the sync mode in addToModel.
+    for (int i = 0; i < events.size(); i++) {
+        for (int j = 0; j < eventRootItem->childCount(); j++) {
+            if (eventRootItem->eventAt(j) == events[i]) {
+                eventRootItem->child(j)->setEvent(events[i]);
+                emitDataChanged(j, eventRootItem->child(j));
+                events.removeAt(i);
+                i--;
+                break;
+            }
+        }
+    }
+
+    if (events.isEmpty())
+        return;
+
+    q->beginInsertRows(QModelIndex(), 0, events.size() - 1);
+    for (int i = events.size() - 1; i >= 0; i--) {
+        eventRootItem->prependChild(new EventTreeItem(events[i], eventRootItem));
+    }
     q->endInsertRows();
 }
 
