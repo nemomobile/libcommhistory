@@ -175,10 +175,6 @@ public:
     // (local id, remote id) -> (contact id, name)
     QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
 
-    QSet<quint32> phoneContacts;
-    QSet<quint32> imContacts;
-    QSet<quint32> emailContacts;
-
     QThread *bgThread;
 
     QSharedPointer<UpdatesEmitter> emitter;

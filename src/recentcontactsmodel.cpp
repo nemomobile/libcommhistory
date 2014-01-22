@@ -76,6 +76,10 @@ private:
 
     int requiredProperty;
     mutable QList<Event> pendingEvents;
+
+    QSet<quint32> phoneContacts;
+    QSet<quint32> imContacts;
+    QSet<quint32> emailContacts;
 };
 
 bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> events)
@@ -134,6 +138,21 @@ void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
 {
     EventModelPrivate::slotContactUpdated(localId, contactName, contactAddresses);
 
+    bool hasAddressType[3] = { false, false, false };
+    foreach (const ContactAddress &address, contactAddresses) {
+        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
+        hasAddressType[address.type - 1] = true;
+    }
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        if (hasAddressType[i]) {
+            typeSet[i]->insert(localId);
+        } else {
+            typeSet[i]->remove(localId);
+        }
+    }
+
     if (!pendingEvents.isEmpty()) {
         // See if we have resolved our pending events
         bool unresolved = false;
@@ -167,6 +186,11 @@ void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
 void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
 {
     EventModelPrivate::slotContactRemoved(localId);
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        typeSet[i]->remove(localId);
+    }
 
     // Remove any event for this contact (there can only be one)
     const int rowCount = eventRootItem->childCount();
