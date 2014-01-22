@@ -172,11 +172,6 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         }
 
         if (!replaced) {
-            // didn't find an old row to overwrite -> insert new row in the appropriate spot
-            if (!event.contacts().isEmpty()) {
-                contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-            }
-
             int row;
             for (row = 0; row < eventRootItem->childCount(); row++) {
                 if (eventRootItem->child(row)->event().endTime() <= event.endTime())
@@ -350,13 +345,9 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 EventTreeItem *parent = new EventTreeItem(event);
                 topLevelItems.append(parent);
                 parent->appendChild(new EventTreeItem(event, parent));
-                if (!event.contacts().isEmpty())
-                    contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
                 for (int i = 1; i < events.count(); i++) {
                     Event event = events.at(i);
-                    if (!event.contacts().isEmpty())
-                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
 
                     bool found = false;
                     for (int i = 0; i < topLevelItems.count() && !found; ++i) {
@@ -411,9 +402,6 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 QList<EventTreeItem *> newItems;
 
                 foreach (Event event, events) {
-                    if (!event.contacts().isEmpty())
-                        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-
                     if (last && last->event().eventCount() == -1
                         && belongToSameGroup(event, last->event())) {
                         // still filling last row with matching events
@@ -487,12 +475,6 @@ void CallModelPrivate::addToModel( Event &event )
     if(!isInTreeMode)
     {
             return EventModelPrivate::addToModel(event);
-    }
-
-    if (!event.contacts().isEmpty()) {
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-    } else {
-        setContactFromCache(event);
     }
 
     switch ( sortBy )

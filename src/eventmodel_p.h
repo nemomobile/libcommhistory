@@ -138,7 +138,6 @@ public:
     void setResolveContacts(bool enabled);
 
     DatabaseIO *database();
-    bool setContactFromCache(CommHistory::Event &event);
 
     void emitDataChanged(int row, void *data);
 
@@ -165,9 +164,6 @@ public:
     Event::PropertySet propertyMask;
 
     QSharedPointer<ContactListener> contactListener;
-
-    // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
 
     QThread *bgThread;
 
