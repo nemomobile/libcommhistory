@@ -68,18 +68,6 @@ public:
 
     void deleteCallGroup( const Event &event, bool typed );
 
-    /*!
-     * Find real contact based on phone number or IM id.
-     *
-     * \param remoteId Phone number or IM id (for example, "user@host.com").
-     * \param id UID for returned contact.
-     * \param name Contact name or IM nickname, if any.
-     * \return true if contact was found.
-     */
-    static bool resolveContact(const QString &remoteId,
-                               int &contactId,
-                               QString &contactName);
-
 public Q_SLOTS:
     void slotAllCallsDeleted(int unused);
 
