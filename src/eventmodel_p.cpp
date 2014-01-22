@@ -134,6 +134,7 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     QList<Event> events;
