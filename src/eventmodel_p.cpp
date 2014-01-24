@@ -292,7 +292,8 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
     if (events.isEmpty())
         return;
 
-    if (resolveContacts) {
+    // Contact resolution is not allowed in synchronous query mode
+    if (resolveContacts && queryMode != EventModel::SyncQuery) {
         if (!receiveResolver) {
             receiveResolver = new ContactResolver(this);
             connect(receiveResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(fillModel(QList<Event>)));

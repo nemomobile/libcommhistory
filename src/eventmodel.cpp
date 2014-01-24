@@ -435,7 +435,12 @@ void EventModel::setTreeMode(bool isTree)
 void EventModel::setQueryMode(QueryMode mode)
 {
     Q_D(EventModel);
+    if (d->queryMode == mode)
+        return;
+
     d->queryMode = mode;
+    if (d->queryMode == SyncQuery && d->resolveContacts)
+        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
 }
 
 void EventModel::setChunkSize(uint size)
@@ -471,6 +476,12 @@ bool EventModel::resolveContacts() const
 void EventModel::setResolveContacts(bool enabled)
 {
     Q_D(EventModel);
+    if (enabled == d->resolveContacts)
+        return;
+
+    if (d->queryMode == SyncQuery && d->resolveContacts)
+        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+
     d->setResolveContacts(enabled);
 }
 
