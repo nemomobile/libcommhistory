@@ -105,7 +105,6 @@ void CallModelTest::initTestCase()
 void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QList<TestCallItem> calls )
 {
     CallModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
 
     qDebug() << __PRETTY_FUNCTION__ << "*** Sorting by " << (int)sorting;
@@ -179,7 +178,6 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
 void CallModelTest::testAddEvent()
 {
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     model.setQueryMode( EventModel::SyncQuery );
 
@@ -353,7 +351,6 @@ void CallModelTest::testAddEvent()
 void CallModelTest::testDeleteEvent()
 {
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     // force change of sorting to SortByContact
@@ -538,7 +535,6 @@ void CallModelTest::testGetEventsTimeTypeFilter()
 
     //initTestCase ==> 3 dialled calls, 2 Received calls, 3 Missed Calls already added
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     if (useThread) {
         modelThread.start();
@@ -632,7 +628,6 @@ void CallModelTest::testSortByContactUpdate()
     deleteAll();
 
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     /*
@@ -724,7 +719,6 @@ void CallModelTest::testSortByTimeUpdate()
     deleteAll();
 
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     /*
@@ -761,7 +755,6 @@ void CallModelTest::testSortByTimeUpdate()
     QCOMPARE(e1.eventCount(), 1);
 
     CallModel model2;
-    model2.enableContactChanges(false);
     model2.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
     QCOMPARE(model2.rowCount(), 2);
@@ -809,7 +802,6 @@ void CallModelTest::testSIPAddress()
 
     CallModel model;
     model.setQueryMode(EventModel::SyncQuery);
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     QString account("/org/freedesktop/Telepathy/Account/ring/tel/ring");
@@ -943,7 +935,6 @@ void CallModelTest::testLimit()
     QSKIP("Query limit not yet supported with SQLite", SkipAll);
 #endif
     CallModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setFilter(CallModel::SortByTime);
 
@@ -974,7 +965,6 @@ void CallModelTest::testModifyEvent()
     deleteAll();
 
     CallModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     /*

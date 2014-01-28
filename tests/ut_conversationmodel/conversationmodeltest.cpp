@@ -93,7 +93,6 @@ void ConversationModelTest::getEvents()
     QThread modelThread;
 
     ConversationModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     if (useThread) {
@@ -180,7 +179,6 @@ void ConversationModelTest::getEvents()
 void ConversationModelTest::addEvent()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
@@ -256,7 +254,6 @@ void ConversationModelTest::addEvent()
 void ConversationModelTest::modifyEvent()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
@@ -286,7 +283,6 @@ void ConversationModelTest::modifyEvent()
 void ConversationModelTest::deleteEvent()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
@@ -310,7 +306,6 @@ void ConversationModelTest::deleteEvent()
 void ConversationModelTest::asyncMode()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     watcher.setModel(&model);
     QVERIFY(model.getEvents(group1.id()));
     QVERIFY(watcher.waitForModelReady());
@@ -321,7 +316,6 @@ void ConversationModelTest::sorting()
     EventModel model;
     model.setQueryMode(EventModel::StreamedAsyncQuery);
     model.setFirstChunkSize(5);
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     //add events with the same timestamp
@@ -344,7 +338,6 @@ void ConversationModelTest::sorting()
     ConversationModel conv;
     conv.setQueryMode(EventModel::StreamedAsyncQuery);
     conv.setFirstChunkSize(5);
-    conv.enableContactChanges(false);
     QSignalSpy rowsInserted(&conv, SIGNAL(rowsInserted(const QModelIndex &, int, int)));
 
     QVERIFY(conv.getEvents(group1.id()));
@@ -394,7 +387,6 @@ void ConversationModelTest::contacts()
     p.insert(Event::ContactName);
     model.setPropertyMask(p);
 
-    model.enableContactChanges(false);
     watcher.setModel(&model);
 
     addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId,
@@ -438,7 +430,6 @@ void ConversationModelTest::contacts()
 
 void ConversationModelTest::reset() {
     ConversationModel conv;
-    conv.enableContactChanges(false);
     watcher.setModel(&conv);
 
     QVERIFY(conv.getEvents(group1.id()));

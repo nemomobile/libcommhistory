@@ -523,7 +523,6 @@ int doList(const QStringList &arguments, const QVariantMap &options)
     }
 
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setTreeMode(tree);
     if (!model.getEvents(groupId)) {
@@ -603,7 +602,6 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
     Q_UNUSED( options );
 
     CallModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     CallModel::Sorting sorting = CallModel::SortByContact;
 
@@ -886,7 +884,6 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
 
     if (!hasAnyOption || options.contains("-calls")) {
         CallModel callModel;
-        callModel.enableContactChanges(false);
         callModel.setTreeMode(false);
         callModel.setFilter(CallModel::SortByTime);
         callModel.setQueryMode(EventModel::SyncQuery);
@@ -930,7 +927,6 @@ int doMarkAllCallsRead(const QStringList &arguments, const QVariantMap &options)
 bool exportGroup(QDataStream &out, const Group &group)
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getEvents(group.id())) {
         qWarning() << "Error reading events from group" << group.id();
@@ -1003,7 +999,6 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
 
     if (options.contains("-calls")) {
         CallModel callModel;
-        callModel.enableContactChanges(false);
         callModel.setTreeMode(false);
         callModel.setFilter(CallModel::SortByTime);
         callModel.setQueryMode(EventModel::SyncQuery);
@@ -1085,7 +1080,6 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
     in >> numCalls;
     if (numCalls) {
         EventModel model;
-        model.enableContactChanges(false);
         model.setQueryMode(EventModel::SyncQuery);
         Catcher catcher(&model);
 
