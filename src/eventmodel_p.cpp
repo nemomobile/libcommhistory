@@ -145,7 +145,6 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
     }
 
     eventsReceivedSlot(0, events.size(), events);
-    modelUpdatedSlot(true);
     return true;
 }
 
@@ -168,6 +167,7 @@ bool EventModelPrivate::fillModel(int start,
     }
     q->endInsertRows();
 
+    modelUpdatedSlot(true);
     return true;
 }
 
@@ -289,8 +289,11 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 {
     DEBUG() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
 
-    if (events.isEmpty())
+    if (events.isEmpty()) {
+        // Empty results are still "ready"
+        modelUpdatedSlot(true);
         return;
+    }
 
     // Contact resolution is not allowed in synchronous query mode
     if (resolveContacts && queryMode != EventModel::SyncQuery) {

@@ -90,6 +90,7 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
     prependEvents(events);
 
     emit q->resolvingChanged();
+    modelUpdatedSlot(true);
     return true;
 }
 

@@ -464,6 +464,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
         }
     }
 
+    modelUpdatedSlot(true);
     return true;
 }
 
