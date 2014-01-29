@@ -57,6 +57,10 @@ public:
     int groupId() const { return m_groupId; }
     void setGroupId(int groupId);
 
+    Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
+    // Shadows function from EventModel to emit the signal
+    void setResolveContacts(bool enabled);
+
 public slots:
     void reload();
 
@@ -64,6 +68,7 @@ signals:
     void contactGroupChanged();
     void groupIdChanged();
     void backgroundThreadChanged();
+    void resolveContactsChanged();
 
 private:
     CommHistory::ContactGroup *m_contactGroup;
