@@ -85,16 +85,6 @@ public:
     virtual QModelIndex findEvent(int id) const;
 
     /*!
-     * Tries to find a suitable parent for the given new event.
-     * Reimplement for tree models.
-     *
-     * \param event Event to be added.
-     * \return model parent index for the event. If invalid, event will
-     * not be added.
-     */
-    virtual QModelIndex findParent(const Event &event);
-
-    /*!
      * Executes a database query. fillModel() is called when new events
      * are received, and modelReady() is emitted when the query is
      * finished.
@@ -149,8 +139,6 @@ public:
     bool setContactFromCache(CommHistory::Event &event);
     void startContactListening();
 
-    bool contactHasAddress(int types, quint32 contactId) const;
-
     void emitDataChanged(int row, void *data);
 
     // This is the root node for the internal event tree. In a standard
@@ -176,10 +164,6 @@ public:
 
     // (local id, remote id) -> (contact id, name)
     QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
-
-    QSet<quint32> phoneContacts;
-    QSet<quint32> imContacts;
-    QSet<quint32> emailContacts;
 
     QThread *bgThread;
 

@@ -40,16 +40,11 @@ public:
 
     ConversationModelPrivate(EventModel *model);
 
-    void updateEvents(const Group &group,
-                      const QList<Event::Contact> &contacts,
-                      const QString &remoteUid);
     bool acceptsEvent(const Event &event) const;
-    bool fillModel(int start, int end, QList<CommHistory::Event> events);
     QSqlQuery buildQuery() const;
     bool isModelReady() const;
 
 public Q_SLOTS:
-    void groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups);
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
     virtual void modelUpdatedSlot(bool successful);
     void groupsDeletedSlot(const QList<int> &groupIds);

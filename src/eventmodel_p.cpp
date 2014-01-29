@@ -35,7 +35,6 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "debug.h"
-#include "recentcontactsmodel.h"
 
 using namespace CommHistory;
 
@@ -123,12 +122,6 @@ QModelIndex EventModelPrivate::findEvent(int id) const
     return findEventRecursive(id, eventRootItem);
 }
 
-QModelIndex EventModelPrivate::findParent(const Event &event)
-{
-    Q_UNUSED(event);
-    return QModelIndex();
-}
-
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     DEBUG() << __PRETTY_FUNCTION__;
@@ -141,6 +134,7 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     QList<Event> events;
@@ -166,12 +160,12 @@ bool EventModelPrivate::fillModel(int start,
     DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
 
     q->beginInsertRows(QModelIndex(), q->rowCount(), q->rowCount() + events.count() - 1);
-    foreach (Event event, events) {
+    foreach (const Event &event, events) {
         eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
     }
     q->endInsertRows();
 
-    return false;
+    return true;
 }
 
 void EventModelPrivate::clearEvents()
@@ -192,15 +186,8 @@ void EventModelPrivate::addToModel(Event &event)
         setContactFromCache(event);
     }
 
-    QModelIndex index = findParent(event);
-    if (index.isValid()) {
-        q->beginInsertRows(index, index.row(), index.row());
-    } else {
-        q->beginInsertRows(QModelIndex(), 0, 0);
-    }
-    EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-    if (!item) item = eventRootItem;
-    item->prependChild(new EventTreeItem(event, item));
+    q->beginInsertRows(QModelIndex(), 0, 0);
+    eventRootItem->prependChild(new EventTreeItem(event, eventRootItem));
     q->endInsertRows();
 }
 
@@ -497,22 +484,8 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
     }
 
     QList<QPair<QString, QString> > uidPairs;
-
-    bool hasAddressType[3] = { false, false, false };
     foreach (const ContactAddress &address, contactAddresses) {
-        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
-
-        hasAddressType[address.type - 1] = true;
         uidPairs.append(address.uidPair());
-    }
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        if (hasAddressType[i]) {
-            typeSet[i]->insert(localId);
-        } else {
-            typeSet[i]->remove(localId);
-        }
     }
 
     changeContactsRecursive(ContactUpdated, localId, contactName, uidPairs, eventRootItem);
@@ -541,11 +514,6 @@ void EventModelPrivate::slotContactRemoved(quint32 localId)
         } else {
             ++cacheIt;
         }
-    }
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        typeSet[i]->remove(localId);
     }
 
     changeContactsRecursive(ContactRemoved,
@@ -605,17 +573,6 @@ void EventModelPrivate::startContactListening()
                 SLOT(slotContactUnknown(const QPair<QString, QString>&)),
                 Qt::UniqueConnection);
     }
-}
-
-bool EventModelPrivate::contactHasAddress(int types, quint32 localId) const
-{
-    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
-        return true;
-    return false;
 }
 
 void EventModelPrivate::emitDataChanged(int row, void *data)
