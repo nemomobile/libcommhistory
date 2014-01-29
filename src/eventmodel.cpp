@@ -77,7 +77,6 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + BytesReceived] = "bytesReceived";
     roles[BaseRole + LocalUid] = "localUid";
     roles[BaseRole + RemoteUid] = "remoteUid";
-    roles[BaseRole + Contacts] = "contacts";
     roles[BaseRole + FreeText] = "freeText";
     roles[BaseRole + GroupId] = "groupId";
     roles[BaseRole + MessageToken] = "messageToken";
@@ -89,6 +88,8 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + Charset] = "charset";
     roles[BaseRole + Language] = "language";
     roles[BaseRole + IsDeleted] = "isDeleted";
+    roles[ContactIdsRole] = "contactIds";
+    roles[ContactNamesRole] = "contactNames";
     return roles;
 }
 
@@ -216,10 +217,26 @@ int EventModel::columnCount(const QModelIndex &parent) const
     return NumberOfColumns;
 }
 
+static QList<int> contactIds(const QList<Event::Contact> &contacts)
+{
+    QList<int> re;
+    re.reserve(contacts.size());
+    foreach (const Event::Contact &c, contacts)
+        re.append(c.first);
+    return re;
+}
+
+static QList<QString> contactNames(const QList<Event::Contact> &contacts)
+{
+    QList<QString> re;
+    re.reserve(contacts.size());
+    foreach (const Event::Contact &c, contacts)
+        re.append(c.second);
+    return re;
+}
+
 QVariant EventModel::data(const QModelIndex &index, int role) const
 {
-    Q_UNUSED(role);
-
     if (!index.isValid()) {
         return QVariant();
     }
@@ -227,8 +244,15 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
     EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
     Event &event = item->event();
 
-    if (role == Qt::UserRole) {
-        return QVariant::fromValue(event);
+    switch (role) {
+        case EventRole:
+            return QVariant::fromValue(event);
+        case ContactIdsRole:
+            return QVariant::fromValue(contactIds(event.contacts()));
+        case ContactNamesRole:
+            return QVariant::fromValue(contactNames(event.contacts()));
+        default:
+            break;
     }
 
     int column = index.column();
