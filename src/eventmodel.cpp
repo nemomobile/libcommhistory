@@ -435,7 +435,12 @@ void EventModel::setTreeMode(bool isTree)
 void EventModel::setQueryMode(QueryMode mode)
 {
     Q_D(EventModel);
+    if (d->queryMode == mode)
+        return;
+
     d->queryMode = mode;
+    if (d->queryMode == SyncQuery && d->resolveContacts)
+        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
 }
 
 void EventModel::setChunkSize(uint size)
@@ -462,10 +467,22 @@ void EventModel::setOffset(int offset)
     d->queryOffset = offset;
 }
 
-void EventModel::enableContactChanges(bool enabled)
+bool EventModel::resolveContacts() const
+{
+    Q_D(const EventModel);
+    return d->resolveContacts;
+}
+
+void EventModel::setResolveContacts(bool enabled)
 {
     Q_D(EventModel);
-    d->contactChangesEnabled = enabled;
+    if (enabled == d->resolveContacts)
+        return;
+
+    if (d->queryMode == SyncQuery && d->resolveContacts)
+        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+
+    d->setResolveContacts(enabled);
 }
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)
@@ -506,8 +523,11 @@ bool EventModel::addEvents(QList<Event> &events, bool toModelOnly)
     }
 
     foreach (Event event, events) {
-        if (d->acceptsEvent(event))
-            d->addToModel(event);
+        if (d->acceptsEvent(event)) {
+            // Add synchronously to preserve current API guarantees
+            // Contacts will be via dataChanged. Fix when models are async.
+            d->addToModel(event, true);
+        }
     }
 
     emit d->eventsAdded(events);

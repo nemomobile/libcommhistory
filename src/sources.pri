@@ -31,7 +31,8 @@ HEADERS += commonutils.h \
            databaseio.h \
            databaseio_p.h \
            commhistorydatabase.h \
-           debug.h
+           debug.h \
+           contactresolver.h
 
 SOURCES += commonutils.cpp \
            eventmodel.cpp \
@@ -55,4 +56,5 @@ SOURCES += commonutils.cpp \
            contactgroupmodel.cpp \
            contactgroup.cpp \
            databaseio.cpp \
-           commhistorydatabase.cpp
+           commhistorydatabase.cpp \
+           contactresolver.cpp

@@ -34,6 +34,7 @@
 #include "databaseio.h"
 #include "libcommhistoryexport.h"
 #include "contactlistener.h"
+#include "contactresolver.h"
 
 class QSqlQuery;
 
@@ -111,7 +112,7 @@ public:
      */
     virtual void clearEvents();
 
-    virtual void addToModel(Event &event);
+    virtual void addToModel(const Event &event, bool synchronous = false);
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
 
@@ -134,10 +135,9 @@ public:
                                  const QString &contactName,
                                  const QList< QPair<QString,QString> > &contactAddresses,
                                  EventTreeItem *parent);
+    void setResolveContacts(bool enabled);
 
     DatabaseIO *database();
-    bool setContactFromCache(CommHistory::Event &event);
-    void startContactListening();
 
     void emitDataChanged(int row, void *data);
 
@@ -146,6 +146,8 @@ public:
     // Use this in fillModel() and other methods if you're implementing
     // a nonstandard model.
     EventTreeItem *eventRootItem;
+
+    ContactResolver *addResolver, *receiveResolver;
 
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
@@ -156,20 +158,21 @@ public:
     bool isReady;
     bool messagePartsReady;
     bool threadCanFetchMore;
-    bool contactChangesEnabled;
+    // Do not set directly, use setResolveContacts to enable listener
+    bool resolveContacts;
 
     Event::PropertySet propertyMask;
 
     QSharedPointer<ContactListener> contactListener;
-
-    // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
 
     QThread *bgThread;
 
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
+    virtual void prependEvents(QList<Event> events);
+    virtual bool fillModel(QList<Event> events);
+
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
     virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);

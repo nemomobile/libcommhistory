@@ -1387,14 +1387,14 @@ void GroupModelTest::endTimeUpdate()
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), oldDate.toTime_t());
     QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.toTime_t());
 
-    // add overlapping event with send time older than oldDate but the newest received time
-    // the event should not be picked up as the last event because of the old send time
+    // add overlapping event with receive time older than oldDate but the newest sent time
+    // the event should not be picked up as the last event because of the old receive time
     Event olEvent;
     olEvent.setType(Event::IMEvent);
     olEvent.setDirection(Event::Outbound);
     olEvent.setGroupId(group1.id());
-    olEvent.setStartTime(oldDate.addDays(-10));
-    olEvent.setEndTime(QDateTime::currentDateTime());
+    olEvent.setStartTime(QDateTime::currentDateTime());
+    olEvent.setEndTime(oldDate.addDays(-10));
     olEvent.setLocalUid("endTimeUpdate");
     olEvent.setRemoteUid("td@localhost");
     olEvent.setFreeText("long in delivery message");

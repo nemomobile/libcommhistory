@@ -56,7 +56,9 @@ public:
 
     bool belongToSameGroup( const Event &e1, const Event &e2 );
 
-    void addToModel( Event &event );
+    void prependEvents(QList<Event> events);
+
+    void insertEvent(Event event);
 
     void eventsAddedSlot( const QList<Event> &events );
 

@@ -45,11 +45,11 @@ public:
         return false;
     }
 
-    virtual void addToModel(Event &event)
+    virtual void addToModel(const Event &event, bool sync)
     {
         Q_Q(ClassZeroSMSModel);
 
-        EventModelPrivate::addToModel(event);
+        EventModelPrivate::addToModel(event, sync);
         if (acceptsEvent(event)) {
             emit q->newMessage(event.messageToken(), event.freeText());
         }

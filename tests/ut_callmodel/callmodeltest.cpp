@@ -761,6 +761,7 @@ void CallModelTest::testSortByTimeUpdate()
     QCOMPARE(e1.eventCount(), 1);
 
     CallModel model2;
+    model2.enableContactChanges(false);
     model2.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
     QCOMPARE(model2.rowCount(), 2);
