@@ -35,11 +35,7 @@
 
 #include "catcher.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QJsonDocument>
-#else
-#include "qjson/parser.h"
-#endif
 
 using namespace CommHistory;
 
@@ -1133,7 +1129,6 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
 
     bool ok = true;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QByteArray data = file.readAll();
     QJsonParseError error;
     QJsonDocument json = QJsonDocument::fromJson(data, &error);
@@ -1142,14 +1137,6 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         return -1;
     }
     QVariantList result = json.array().toVariantList();
-#else
-    QJson::Parser parser;
-    QVariantList result = parser.parse(&file, &ok).toList();
-    if (!ok) {
-        qCritical() << "Unable to import file" << fileName << ":" << parser.errorString() << "on line" << parser.errorLine();
-        return -1;
-    }
-#endif
 
     GroupModel groupModel;
     groupModel.enableContactChanges(false);

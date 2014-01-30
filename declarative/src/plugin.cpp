@@ -29,18 +29,9 @@
  */
 
 #include <QtGlobal>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QtQml>
-# include <QQmlEngine>
-# include <QQmlExtensionPlugin>
-# define QDeclarativeEngine QQmlEngine
-# define QDeclarativeExtensionPlugin QQmlExtensionPlugin
-#else
-# include <QtDeclarative>
-# include <QDeclarativeEngine>
-# include <QDeclarativeExtensionPlugin>
-#endif
-
+#include <QtQml>
+#include <QQmlEngine>
+#include <QQmlExtensionPlugin>
 #include "constants.h"
 #include "groupobject.h"
 #include "eventmodel.h"
@@ -53,17 +44,15 @@
 #include "contactaddresslookup.h"
 #include "classzerosmsmodel.h"
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QDeclarativeExtensionPlugin
+class Q_DECL_EXPORT CommHistoryPlugin : public QQmlExtensionPlugin
 {
     Q_OBJECT
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     Q_PLUGIN_METADATA(IID "org.nemomobile.commhistory")
-#endif
 
 public:
     virtual ~CommHistoryPlugin() { }
 
-    void initializeEngine(QDeclarativeEngine *engine, const char *uri)
+    void initializeEngine(QQmlEngine *engine, const char *uri)
     {
         Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
         Q_UNUSED(uri);
@@ -89,9 +78,5 @@ public:
         qmlRegisterType<CommHistory::ContactGroup>();
     }
 };
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-Q_EXPORT_PLUGIN2(commhistoryplugin, CommHistoryPlugin);
-#endif
 
 #include "plugin.moc"

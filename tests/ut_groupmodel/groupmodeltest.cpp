@@ -575,11 +575,7 @@ void GroupModelTest::streamingQuery_data()
 
 void GroupModelTest::streamingQuery()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
-#else
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
-#endif
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
@@ -943,11 +939,7 @@ void GroupModelTest::markGroupAsRead()
 
 void GroupModelTest::resolveContact()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     GroupModel groupModel;
 
     QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
@@ -1029,11 +1021,7 @@ void GroupModelTest::resolveContact()
 
 void GroupModelTest::queryContacts()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     GroupModel model;
     model.enableContactChanges(false);
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
@@ -1168,11 +1156,7 @@ void GroupModelTest::queryContacts()
 
 void GroupModelTest::changeRemoteUid()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     const QString oldRemoteUid = "+1117654321";
     const QString newRemoteUid = "+2227654321";
     bool oldContactFound = false;

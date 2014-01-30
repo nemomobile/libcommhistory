@@ -26,12 +26,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QDebug>
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#include <QDesktopServices>
-#else
 #include <QStandardPaths>
-#endif
 
 // Appended to GenericDataLocation (or a hardcoded equivalent on Qt4)
 #define COMMHISTORY_DATABASE_DIR "/commhistory/"
@@ -201,13 +196,7 @@ static bool upgradeDatabase(QSqlDatabase &database)
 
 QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
 {
-    // horrible hack: Qt4 didn't have GenericDataLocation so we hardcode database location.
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QDir databaseDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String(COMMHISTORY_DATABASE_DIR));
-#else
-    QDir databaseDir(QDesktopServices::storageLocation(QDesktopServices::HomeLocation) + QLatin1String("/.local/share") + QLatin1String(COMMHISTORY_DATABASE_DIR));
-#endif
-
     if (!databaseDir.exists())
         databaseDir.mkpath(QLatin1String("."));
 
