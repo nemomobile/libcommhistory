@@ -55,7 +55,7 @@ equals(QT_MAJOR_VERSION, 5) {
 }
 
 DEFINES += LIBCOMMHISTORY_SHARED
-QMAKE_CXXFLAGS += -fvisibility=hidden
+CONFIG += hide_symbols
 
 # -----------------------------------------------------------------------------
 # input
