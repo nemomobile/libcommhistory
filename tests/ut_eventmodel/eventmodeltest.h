@@ -53,6 +53,7 @@ private slots:
     void testStreaming_data();
     void testStreaming();
     void testModifyInGroup();
+    void testExtraProperties();
     void testMessagePartsQuery_data();
     void testMessagePartsQuery();
     void testContactMatching_data();

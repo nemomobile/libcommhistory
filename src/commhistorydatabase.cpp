@@ -84,16 +84,34 @@ static const char *db_schema[] = {
     "  reportedReadRequested INTEGER, "
     "  mmsId INTEGER, "
     "  isAction INTEGER, "
+    "  hasExtraProperties BOOL DEFAULT 0, "
     "  FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE "
     ")",
-
     "CREATE INDEX events_remoteUid ON Events (remoteUid)",
     "CREATE INDEX events_type ON Events (type)",
     "CREATE INDEX events_messageToken ON Events (messageToken)",
     "CREATE INDEX events_sorting ON Events (groupId, endTime DESC, id DESC)",
     "CREATE INDEX events_unread ON Events (isRead)",
 
-    "PRAGMA user_version=2"
+    "CREATE TABLE EventProperties ( "
+    "  eventId INTEGER, "
+    "  key TEXT, "
+    "  value BLOB, "
+    "  FOREIGN KEY (eventId) REFERENCES Events(id) ON DELETE CASCADE, "
+    "  PRIMARY KEY (eventId, key) ON CONFLICT REPLACE "
+    ")",
+
+    "CREATE TRIGGER eventproperties_flag_insert AFTER INSERT ON EventProperties "
+    "  BEGIN "
+    "    UPDATE Events SET hasExtraProperties=1 WHERE id=NEW.eventId; "
+    "  END",
+    "CREATE TRIGGER eventproperties_flag_delete AFTER DELETE ON EventProperties "
+    "  WHEN (SELECT COUNT(*) FROM EventProperties WHERE eventId=OLD.eventId) = 0 "
+    "  BEGIN "
+    "    UPDATE Events SET hasExtraProperties=0 WHERE id=OLD.eventId; "
+    "  END",
+
+    "PRAGMA user_version=3"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 
@@ -113,10 +131,33 @@ static const char *db_upgrade_1[] = {
     0
 };
 
+static const char *db_upgrade_2[] = {
+    "ALTER TABLE Events ADD COLUMN hasExtraProperties BOOL DEFAULT 0",
+    "CREATE TABLE EventProperties ( "
+    "  eventId INTEGER, "
+    "  key TEXT, "
+    "  value BLOB, "
+    "  FOREIGN KEY (eventId) REFERENCES Events(id) ON DELETE CASCADE, "
+    "  PRIMARY KEY (eventId, key) ON CONFLICT REPLACE "
+    ")",
+    "CREATE TRIGGER eventproperties_flag_insert AFTER INSERT ON EventProperties "
+    "  BEGIN "
+    "    UPDATE Events SET hasExtraProperties=1 WHERE id=NEW.eventId; "
+    "  END",
+    "CREATE TRIGGER eventproperties_flag_delete AFTER DELETE ON EventProperties "
+    "  WHEN (SELECT COUNT(*) FROM EventProperties WHERE eventId=OLD.eventId) = 0 "
+    "  BEGIN "
+    "    UPDATE Events SET hasExtraProperties=0 WHERE id=OLD.eventId; "
+    "  END",
+    "PRAGMA user_version=3",
+    0
+};
+
 // REMEMBER TO UPDATE THE SCHEMA AND USER_VERSION!
 static const char **db_upgrade[] = {
     db_upgrade_0,
-    db_upgrade_1
+    db_upgrade_1,
+    db_upgrade_2
 };
 static int db_upgrade_count = sizeof(db_upgrade) / sizeof(*db_upgrade);
 

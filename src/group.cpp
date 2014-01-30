@@ -396,6 +396,8 @@ void Group::setLastModified(const QDateTime &modified)
     d->propertyChanged(Group::LastModified);
 }
 
+// DO NOT change this format; it is not in any way backwards compatible and will break backups
+// To be replaced.
 QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
 {
     argument.beginStructure();

@@ -186,6 +186,7 @@ public:
                 case Event::ContactId:
                 case Event::ContactName:
                 case Event::Contacts:
+                case Event::ExtraProperties:
                     break;
                 /* XXX Disabled properties (remove?) */
                 case Event::EventCount:
@@ -384,6 +385,10 @@ bool DatabaseIO::addEvent(Event &event)
     if (event.id() != -1)
         qWarning() << Q_FUNC_INFO << "Adding event with an ID set. ID will be ignored.";
 
+    AutoSavepoint savepoint(d->connection());
+    if (!savepoint.begin())
+        return false;
+
     QueryHelper::FieldList fields = QueryHelper::eventFields(event, event.allProperties());
     QSqlQuery query = QueryHelper::insertQuery("INSERT INTO Events (:fields) VALUES (:values)", fields);
 
@@ -395,6 +400,33 @@ bool DatabaseIO::addEvent(Event &event)
     }
 
     event.setId(query.lastInsertId().toInt());
+    query.finish();
+
+    QVariantMap extraProperties = event.extraProperties();
+    if (!extraProperties.isEmpty() && !d->insertEventProperties(event.id(), extraProperties))
+        return false;
+
+    return savepoint.release();
+}
+
+bool DatabaseIOPrivate::insertEventProperties(int eventId, const QVariantMap &properties)
+{
+    QSqlQuery query = CommHistoryDatabase::prepare(
+        "INSERT INTO EventProperties (eventId, key, value) VALUES (:eventId, :key, :value)",
+        connection());
+    query.bindValue(":eventId", eventId);
+
+    for (QVariantMap::const_iterator it = properties.begin(); it != properties.end(); it++) {
+        query.bindValue(":key", it.key());
+        query.bindValue(":value", it.value().toString());
+        if (!query.exec()) {
+            qWarning() << "Failed to execute query";
+            qWarning() << query.lastError();
+            qWarning() << query.lastQuery();
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -478,7 +510,8 @@ static const char *baseEventQuery =
     "\n Events.reportRead, "
     "\n Events.reportedReadRequested, "
     "\n Events.mmsId, "
-    "\n Events.isAction "
+    "\n Events.isAction, "
+    "\n Events.hasExtraProperties "
     "\n FROM Events ";
 
 QString DatabaseIOPrivate::eventQueryBase() 
@@ -486,7 +519,7 @@ QString DatabaseIOPrivate::eventQueryBase()
     return QLatin1String(baseEventQuery);
 }
 
-void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
+void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties)
 {
     event.setId(query.value(0).toInt());
     event.setType(static_cast<Event::EventType>(query.value(1).toInt()));
@@ -522,6 +555,7 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event)
     event.setReportReadRequested(query.value(29).toBool());
     event.setMmsId(query.value(30).toString());
     event.setIsAction(query.value(31).toBool());
+    hasExtraProperties = query.value(32).toBool();
 
     QHash<QString,QString> headers;
     QStringList hf = query.value(26).toString().split('\x1c');
@@ -550,13 +584,39 @@ bool DatabaseIO::getEvent(int id, Event &event)
 
     Event e;
     bool re = true;
+    bool extra = false;
     if (query.next())
-        d->readEventResult(query, e);
+        d->readEventResult(query, e, extra);
     else
         re = false;
+    query.finish();
+
+    if (extra)
+        re = getEventExtraProperties(e);
 
     event = e;
     return re;
+}
+
+bool DatabaseIO::getEventExtraProperties(Event &event)
+{
+    const char *q = "SELECT key, value FROM EventProperties WHERE eventId=:eventId";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":eventId", event.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    QVariantMap data;
+    while (query.next())
+        data.insert(query.value(0).toString(), query.value(1).toString());
+    event.setExtraProperties(data);
+    event.resetModifiedProperty(Event::ExtraProperties);
+    return true;
 }
 
 bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
@@ -576,10 +636,15 @@ bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
 
     Event e;
     bool re = true;
+    bool extra = false;
     if (query.next())
-        d->readEventResult(query, e);
+        d->readEventResult(query, e, extra);
     else
         re = false;
+    query.finish();
+
+    if (extra)
+        re = getEventExtraProperties(e);
 
     event = e;
     return re;
@@ -603,10 +668,15 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
 
     Event e;
     bool re = true;
+    bool extra = false;
     if (query.next())
-        d->readEventResult(query, e);
+        d->readEventResult(query, e, extra);
     else
         re = false;
+    query.finish();
+
+    if (extra)
+        re = getEventExtraProperties(e);
 
     event = e;
     return re;
@@ -614,6 +684,10 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
 
 bool DatabaseIO::modifyEvent(Event &event)
 {
+    AutoSavepoint savepoint(d->connection());
+    if (!savepoint.begin())
+        return false;
+
     QueryHelper::FieldList fields = QueryHelper::eventFields(event, event.modifiedProperties());
     QSqlQuery query = QueryHelper::updateQuery("UPDATE Events SET :fields WHERE id=:eventId", fields);
     query.bindValue(":eventId", event.id());
@@ -624,8 +698,26 @@ bool DatabaseIO::modifyEvent(Event &event)
         qWarning() << query.lastQuery();
         return false;
     }
+    query.finish();
 
-    return true;
+    if (event.modifiedProperties().contains(Event::ExtraProperties)) {
+        const char *q = "DELETE FROM EventProperties WHERE eventId=:eventId";
+        query = CommHistoryDatabase::prepare(q, d->connection());
+        query.bindValue(":eventId", event.id());
+        if (!query.exec()) {
+            qWarning() << "Failed to execute query";
+            qWarning() << query.lastError();
+            qWarning() << query.lastQuery();
+            return false;
+        }
+        query.finish();
+
+        QVariantMap properties = event.extraProperties();
+        if (!properties.isEmpty() && !d->insertEventProperties(event.id(), properties))
+            return false;
+    }
+
+    return savepoint.release();
 }
 
 bool DatabaseIO::moveEvent(Event &event, int groupId)
