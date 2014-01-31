@@ -250,7 +250,72 @@ public:
 
         return fields;
     }
- };
+};
+
+class AutoSavepoint
+{
+public:
+    AutoSavepoint(const QSqlDatabase &db, const char *n = 0)
+        : db(db), active(false)
+    {
+        if (n)
+            name = n;
+        else
+            name = QString::fromLatin1("auto_%1").arg(reinterpret_cast<quintptr>(this));
+    }
+
+    ~AutoSavepoint()
+    {
+        if (active)
+            rollback();
+    }
+
+    bool isActive() const { return active; }
+
+    bool begin()
+    {
+        if (active)
+            return false;
+        QSqlQuery query(db);
+        bool re = query.exec("SAVEPOINT " + name);
+        if (!re)
+            qWarning() << "Database savepoint failed:" << query.lastError();
+        else
+            active = true;
+        return re;
+    }
+
+    bool release()
+    {
+        if (!active)
+            return false;
+        QSqlQuery query(db);
+        bool re = query.exec("RELEASE " + name);
+        if (!re)
+            qWarning() << "Database savepoint release failed:" << query.lastError();
+        else
+            active = false;
+        return re;
+    }
+
+    bool rollback()
+    {
+        if (!active)
+            return false;
+        QSqlQuery query(db);
+        bool re = query.exec("ROLLBACK TO " + name);
+        if (!re)
+            qWarning() << "Database savepoint rollback failed:" << query.lastError();
+        else
+            active = false;
+        return re;
+    }
+
+private:
+    QSqlDatabase db;
+    QString name;
+    bool active;
+};
 
 DatabaseIO *DatabaseIO::instance()
 {
