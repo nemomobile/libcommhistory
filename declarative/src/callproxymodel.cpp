@@ -51,6 +51,23 @@ int CallProxyModel::count() const
     return rowCount();
 }
 
+bool CallProxyModel::resolveContacts() const
+{
+    return m_source->resolveContacts();
+}
+
+void CallProxyModel::setResolveContacts(bool enabled)
+{
+    if (enabled == m_source->resolveContacts())
+        return;
+
+    m_source->setResolveContacts(enabled);
+    // Model must be reloaded to resolve contacts if getEvents was already called
+    if (enabled && m_componentComplete)
+        m_source->getEvents();
+    emit resolveContactsChanged();
+}
+
 void CallProxyModel::setSortRole(int role)
 {
     QSortFilterProxyModel::setSortRole(role);

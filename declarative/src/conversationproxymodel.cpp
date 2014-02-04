@@ -98,6 +98,17 @@ void ConversationProxyModel::setGroupId(int g)
         QTimer::singleShot(0, this, SLOT(reload()));
 }
 
+void ConversationProxyModel::setResolveContacts(bool enabled)
+{
+    if (resolveContacts() == enabled)
+        return;
+
+    ConversationModel::setResolveContacts(enabled);
+    if (enabled)
+        QTimer::singleShot(0, this, SLOT(reload()));
+    emit resolveContactsChanged();
+}
+
 void ConversationProxyModel::reload()
 {
     if (m_groupId >= 0) {

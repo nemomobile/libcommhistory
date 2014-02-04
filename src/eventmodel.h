@@ -99,7 +99,10 @@ public:
     };
 
     enum {
-        BaseRole = Qt::UserRole + 1000
+        EventRole = Qt::UserRole,
+        ContactIdsRole,
+        ContactNamesRole,
+        BaseRole = Qt::UserRole + 1000,
     };
 
     /*!

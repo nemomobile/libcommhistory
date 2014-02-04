@@ -1201,7 +1201,6 @@ void EventModelTest::testMessagePartsQuery()
 
     ModelWatcher convWatcher;
     ConversationModel convModel;
-    convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
 
     QSignalSpy modelReady(&convModel, SIGNAL(modelReady(bool)));
@@ -1343,7 +1342,6 @@ void EventModelTest::testCcBcc()
 void EventModelTest::testFindEvent()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     Event event;
 
     model.setQueryMode(EventModel::SyncQuery);
@@ -1509,12 +1507,10 @@ void EventModelTest::testStreaming()
     qDebug() << "total msgs: " << total;
 
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
 
     ConversationModel streamModel;
-    streamModel.enableContactChanges(false);
 
     if (useThread) {
         modelThread.start();

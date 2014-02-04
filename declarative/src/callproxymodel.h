@@ -53,6 +53,7 @@ class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserSt
 
     Q_PROPERTY(GroupBy groupBy READ groupBy WRITE setGroupBy NOTIFY groupByChanged)
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
 
 public:
     enum EventRole {
@@ -133,6 +134,9 @@ public:
 
     int count() const;
 
+    bool resolveContacts() const;
+    void setResolveContacts(bool enabled);
+
 public Q_SLOTS:
     void getEvents();
     void setSortRole(int role);
@@ -145,6 +149,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     void groupByChanged();
     void countChanged();
+    void resolveContactsChanged();
 
 private:
     CommHistory::CallModel *m_source;

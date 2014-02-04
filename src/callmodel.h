@@ -47,9 +47,8 @@ class CallModelPrivate;
  * in the constructor, and can be modified later in the getEvents() method as
  * parameter. If no sorting is specified, by contact is used as default.
  *
- * Tracking contact changes is enabled by default; call
- * enableContactChanges(false) after creating the model to disable.
- *
+ * To resolve contacts for events, call setResolveContacts(true) before getEvents.
+ * Contact changes will also be tracked and updated in the model. 
  */
 class LIBCOMMHISTORY_EXPORT CallModel: public EventModel
 {
