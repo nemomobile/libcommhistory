@@ -39,10 +39,6 @@ EventModel::EventModel(QObject *parent)
     connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
             this, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)));
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    setRoleNames(roleNames());
-#endif
 }
 
 EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
@@ -51,10 +47,6 @@ EventModel::EventModel(EventModelPrivate &dd, QObject *parent)
     connect(d_ptr, SIGNAL(modelReady(bool)), this, SIGNAL(modelReady(bool)));
     connect(d_ptr, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)),
             this, SIGNAL(eventsCommitted(QList<CommHistory::Event>,bool)));
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    setRoleNames(roleNames());
-#endif
 }
 
 EventModel::~EventModel()

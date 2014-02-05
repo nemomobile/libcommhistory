@@ -793,11 +793,7 @@ void CallModelTest::testSortByTimeUpdate()
 
 void CallModelTest::testSIPAddress()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     deleteAll();
 
     CallModel model;
@@ -929,11 +925,7 @@ void CallModelTest::testMarkAllRead()
 
 void CallModelTest::testLimit()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Query limit not yet supported with SQLite");
-#else
-    QSKIP("Query limit not yet supported with SQLite", SkipAll);
-#endif
     CallModel model;
     model.setQueryMode(EventModel::SyncQuery);
     model.setFilter(CallModel::SortByTime);

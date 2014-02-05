@@ -38,21 +38,10 @@ CONFIG  += shared \
            no_install_prl \
            debug
 
-QT += dbus sql
+QT += dbus sql contacts
 
-equals(QT_MAJOR_VERSION, 4) {
-    TARGET = commhistory
-    CONFIG += mobility
-    MOBILITY += contacts
-    PKGCONFIG += qtcontacts-sqlite-extensions contactcache
-}
-
-equals(QT_MAJOR_VERSION, 5) {
-    TARGET = commhistory-qt5
-    QT += contacts
-    DEFINES += USING_QTPIM
-    PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
-}
+TARGET = commhistory-qt5
+PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
 
 DEFINES += LIBCOMMHISTORY_SHARED
 CONFIG += hide_symbols

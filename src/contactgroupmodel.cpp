@@ -31,10 +31,6 @@
 #include "commonutils.h"
 #include "debug.h"
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-Q_DECLARE_METATYPE(QList<QObject*>)
-#endif
-
 using namespace CommHistory;
 
 inline static bool contactGroupSort(ContactGroup *a, ContactGroup *b)
@@ -272,10 +268,6 @@ ContactGroupModel::ContactGroupModel(QObject *parent)
     qRegisterMetaType<QList<CommHistory::GroupObject*> >();
     qRegisterMetaType<CommHistory::GroupObject*>();
     qRegisterMetaType<CommHistory::ContactGroup*>();
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    setRoleNames(roleNames());
-#endif
 }
 
 QHash<int,QByteArray> ContactGroupModel::roleNames() const

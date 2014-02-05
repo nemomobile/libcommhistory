@@ -31,16 +31,11 @@
 #define CALLPROXYMODEL_H
 
 #include <QSortFilterProxyModel>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QQmlParserStatus>
-# define QDeclarativeParserStatus QQmlParserStatus
-#else
-# include <QDeclarativeParserStatus>
-#endif
+#include <QQmlParserStatus>
 
 #include "callmodel.h"
 
-class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserStatus
+class CallProxyModel : public QSortFilterProxyModel, public QQmlParserStatus
 {
     Q_OBJECT
 

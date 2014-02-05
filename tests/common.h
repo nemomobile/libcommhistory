@@ -29,23 +29,6 @@
 
 #include <QSignalSpy>
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#define QTRY_COMPARE_WITH_TIMEOUT(__expr, __expected, __timeout) \
-    do { \
-        const int __step = 50; \
-        const int __timeoutValue = __timeout; \
-        if ((__expr) != (__expected)) { \
-            QTest::qWait(0); \
-        } \
-        for (int __i = 0; __i < __timeoutValue && ((__expr) != (__expected)); __i+=__step) { \
-            QTest::qWait(__step); \
-        } \
-        QCOMPARE(__expr, __expected); \
-    } while (0)
-
-#define QTRY_COMPARE(__expr, __expected) QTRY_COMPARE_WITH_TIMEOUT(__expr, __expected, 5000)
-#endif
-
 using namespace CommHistory;
 
 const QString ACCOUNT1 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0";

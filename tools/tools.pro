@@ -31,12 +31,7 @@ QT += dbus
 CONFIG += debug \
     pkgconfig
 
-equals(QT_MAJOR_VERSION, 4) {
-    PKGCONFIG += QJson
-    LIBS += -L../src ../src/libcommhistory.so
-}
-
-equals(QT_MAJOR_VERSION, 5): LIBS += -L../src ../src/libcommhistory-qt5.so
+LIBS += -L../src ../src/libcommhistory-qt5.so
 
 INCLUDEPATH += ../src 
 HEADERS += catcher.h
