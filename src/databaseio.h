@@ -115,6 +115,14 @@ public:
     bool getEventExtraProperties(Event &event);
 
     /*!
+     * Get message parts related to an event.
+     *
+     * \param event Event instance to query and update
+     * \return true if successful, otherwise false
+     */
+    bool getMessageParts(Event &event);
+
+    /*!
      * Modifye an event.
      *
      * \param event Existing event.

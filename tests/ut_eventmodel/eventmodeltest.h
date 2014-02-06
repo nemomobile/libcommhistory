@@ -48,14 +48,11 @@ private slots:
     void testMoveEvent();
     void testReportDelivery();
     void testMessageParts();
-    void testDeleteMessageParts();
     void testCcBcc();
     void testStreaming_data();
     void testStreaming();
     void testModifyInGroup();
     void testExtraProperties();
-    void testMessagePartsQuery_data();
-    void testMessagePartsQuery();
     void testContactMatching_data();
     void testContactMatching();
     void testAddNonDigitRemoteId_data();

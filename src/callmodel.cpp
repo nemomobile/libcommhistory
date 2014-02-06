@@ -798,7 +798,6 @@ CallModel::~CallModel()
 {
 }
 
-
 void CallModel::setQueryMode( EventModel::QueryMode mode )
 {
     EventModel::setQueryMode(mode);

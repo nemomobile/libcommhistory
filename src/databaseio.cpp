@@ -397,6 +397,9 @@ bool DatabaseIO::addEvent(Event &event)
     if (!extraProperties.isEmpty() && !d->insertEventProperties(event.id(), extraProperties))
         return false;
 
+    if (!event.messageParts().isEmpty() && !d->insertMessageParts(event))
+        return false;
+
     return savepoint.release();
 }
 
@@ -417,6 +420,43 @@ bool DatabaseIOPrivate::insertEventProperties(int eventId, const QVariantMap &pr
             return false;
         }
     }
+
+    return true;
+}
+
+bool DatabaseIOPrivate::insertMessageParts(Event &event)
+{
+    QSqlQuery insertQuery = CommHistoryDatabase::prepare(
+        "INSERT INTO MessageParts (eventId, contentId, contentType, path) VALUES (:eventId, :contentId, :contentType, :path)",
+        connection());
+
+    QSqlQuery updateQuery = CommHistoryDatabase::prepare(
+        "UPDATE MessageParts SET eventId=:eventId, contentId=:contentId, contentType=:contentType, path=:path WHERE id=:id",
+        connection());
+
+    QList<MessagePart> parts = event.messageParts();
+    for (int i = 0; i < parts.size(); i++) {
+        MessagePart &part = parts[i];
+        QSqlQuery &query = (part.id() >= 0) ? updateQuery : insertQuery;
+
+        if (part.id() >= 0)
+            query.bindValue(":id", part.id());
+        query.bindValue(":eventId", event.id());
+        query.bindValue(":contentId", part.contentId());
+        query.bindValue(":contentType", part.contentType());
+        query.bindValue(":path", part.path());
+        if (!query.exec()) {
+            qWarning() << "Failed to execute query";
+            qWarning() << query.lastError();
+            qWarning() << query.lastQuery();
+            return false;
+        }
+        if (part.id() < 0)
+            part.setId(query.lastInsertId().toInt());
+        query.finish();
+    }
+    event.setMessageParts(parts);
+    event.resetModifiedProperty(Event::MessageParts);
 
     return true;
 }
@@ -493,14 +533,14 @@ static const char *baseEventQuery =
     "\n Events.reportDelivery, "
     "\n Events.validityPeriod, "
     "\n Events.contentLocation, "
-    "\n Events.messageParts, "
     "\n Events.headers, "
     "\n Events.readStatus, "
     "\n Events.reportRead, "
     "\n Events.reportedReadRequested, "
     "\n Events.mmsId, "
     "\n Events.isAction, "
-    "\n Events.hasExtraProperties "
+    "\n Events.hasExtraProperties, "
+    "\n Events.hasMessageParts "
     "\n FROM Events ";
 
 QString DatabaseIOPrivate::eventQueryBase() 
@@ -508,7 +548,8 @@ QString DatabaseIOPrivate::eventQueryBase()
     return QLatin1String(baseEventQuery);
 }
 
-void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties)
+void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties,
+        bool &hasMessageParts)
 {
     int field = 0;
     event.setId(query.value(field).toInt());
@@ -538,9 +579,6 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     event.setReportDelivery(query.value(++field).toBool());
     event.setValidityPeriod(query.value(++field).toInt());
     event.setContentLocation(query.value(++field).toString());
-    // Message parts are much more complicated
-    //event.setMessageParts(query.value(25).toString());
-    ++field;
 
     QHash<QString,QString> headers;
     QStringList hf = query.value(++field).toString().split('\x1c');
@@ -556,6 +594,7 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     event.setMmsId(query.value(++field).toString());
     event.setIsAction(query.value(++field).toBool());
     hasExtraProperties = query.value(++field).toBool();
+    hasMessageParts = query.value(++field).toBool();
 }
 
 bool DatabaseIO::getEvent(int id, Event &event)
@@ -575,15 +614,17 @@ bool DatabaseIO::getEvent(int id, Event &event)
 
     Event e;
     bool re = true;
-    bool extra = false;
+    bool extra = false, parts = false;
     if (query.next())
-        d->readEventResult(query, e, extra);
+        d->readEventResult(query, e, extra, parts);
     else
         re = false;
     query.finish();
 
     if (extra)
-        re = getEventExtraProperties(e);
+        re &= getEventExtraProperties(e);
+    if (parts)
+        re &= getMessageParts(e);
 
     event = e;
     return re;
@@ -610,6 +651,32 @@ bool DatabaseIO::getEventExtraProperties(Event &event)
     return true;
 }
 
+bool DatabaseIO::getMessageParts(Event &event)
+{
+    const char *q = "SELECT id, contentId, contentType, path FROM MessageParts WHERE eventId=:eventId";
+    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    query.bindValue(":eventId", event.id());
+
+    if (!query.exec()) {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+
+    event.setMessageParts(QList<MessagePart>());
+    while (query.next()) {
+        MessagePart part;
+        part.setId(query.value(0).toInt());
+        part.setContentId(query.value(1).toString());
+        part.setContentType(query.value(2).toString());
+        part.setPath(query.value(3).toString());
+        event.addMessagePart(part);
+    }
+    event.resetModifiedProperty(Event::MessageParts);
+    return true;
+}
+
 bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
 {
     QByteArray q = baseEventQuery;
@@ -627,15 +694,17 @@ bool DatabaseIO::getEventByMessageToken(const QString &token, Event &event)
 
     Event e;
     bool re = true;
-    bool extra = false;
+    bool extra = false, parts = false;
     if (query.next())
-        d->readEventResult(query, e, extra);
+        d->readEventResult(query, e, extra, parts);
     else
         re = false;
     query.finish();
 
     if (extra)
-        re = getEventExtraProperties(e);
+        re &= getEventExtraProperties(e);
+    if (parts)
+        re &= getMessageParts(e);
 
     event = e;
     return re;
@@ -659,15 +728,17 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
 
     Event e;
     bool re = true;
-    bool extra = false;
+    bool extra = false, parts = false;
     if (query.next())
-        d->readEventResult(query, e, extra);
+        d->readEventResult(query, e, extra, parts);
     else
         re = false;
     query.finish();
 
     if (extra)
-        re = getEventExtraProperties(e);
+        re &= getEventExtraProperties(e);
+    if (parts)
+        re &= getMessageParts(e);
 
     event = e;
     return re;
@@ -705,6 +776,33 @@ bool DatabaseIO::modifyEvent(Event &event)
 
         QVariantMap properties = event.extraProperties();
         if (!properties.isEmpty() && !d->insertEventProperties(event.id(), properties))
+            return false;
+    }
+
+    if (event.modifiedProperties().contains(Event::MessageParts)) {
+        QList<MessagePart> parts = event.messageParts();
+        QByteArray idList;
+        foreach (const MessagePart &part, parts) {
+            if (part.id() >= 0) {
+                if (!idList.isEmpty())
+                    idList.append(',');
+                idList.append(QString::number(part.id()));
+            }
+        }
+
+        // Parts with no associated event are cleaned up asynchronously
+        QByteArray q = "UPDATE MessageParts SET eventId=NULL WHERE eventId=:eventId AND id NOT IN (" + idList + ")";
+        query = CommHistoryDatabase::prepare(q, d->connection());
+        query.bindValue(":eventId", event.id());
+        if (!query.exec()) {
+            qWarning() << "Failed to execute query";
+            qWarning() << query.lastError();
+            qWarning() << query.lastQuery();
+            return false;
+        }
+        query.finish();
+
+        if (!event.messageParts().isEmpty() && !d->insertMessageParts(event))
             return false;
     }
 
