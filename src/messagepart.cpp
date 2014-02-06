@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -24,6 +25,9 @@
 #include <QSharedDataPointer>
 #include <QDBusArgument>
 #include <QStringBuilder>
+#include <QFile>
+#include <QFileInfo>
+#include <QTextCodec>
 #include "messagepart.h"
 
 namespace CommHistory {
@@ -35,13 +39,10 @@ public:
     MessagePartPrivate(const MessagePartPrivate &other);
     ~MessagePartPrivate();
 
-    QString uri;
+    int id;
     QString contentId;
-    QString textContent;
     QString contentType;
-    QString characterSet;
-    int contentSize;
-    QString contentLocation;
+    QString path;
 };
 
 }
@@ -51,76 +52,42 @@ using namespace CommHistory;
 QDBusArgument &operator<<(QDBusArgument &argument, const MessagePart &part)
 {
     argument.beginStructure();
-    argument << part.uri() << part.contentId() << part.plainTextContent()
-             << part.contentType() << part.characterSet()
-             << part.contentSize() << part.contentLocation();
+    argument << part.id() << part.contentId() << part.contentType() << part.path();
     argument.endStructure();
     return argument;
 }
 
 const QDBusArgument &operator>>(const QDBusArgument &argument, MessagePart &part)
 {
-    MessagePartPrivate p;
     argument.beginStructure();
-    argument >> p.uri >> p.contentId >> p.textContent
-             >> p.contentType >> p.characterSet
-             >> p.contentSize >> p.contentLocation;
+    argument >> part.d->id >> part.d->contentId >> part.d->contentType >> part.d->path;
     argument.endStructure();
-
-    part.setUri(p.uri);
-    part.setContentId(p.contentId);
-    part.setPlainTextContent(p.textContent);
-    part.setContentType(p.contentType);
-    part.setCharacterSet(p.characterSet);
-    part.setContentSize(p.contentSize);
-    part.setContentLocation(p.contentLocation);
-
     return argument;
 }
 
 QDataStream &operator<<(QDataStream &stream, const CommHistory::MessagePart &part)
 {
-    stream << part.uri() << part.contentId() << part.plainTextContent()
-           << part.contentType() << part.characterSet()
-           << part.contentSize() << part.contentLocation();
-
+    stream << part.id() << part.contentId() << part.contentType() << part.path();
     return stream;
 }
 
 QDataStream &operator>>(QDataStream &stream, CommHistory::MessagePart &part)
 {
-    MessagePartPrivate p;
-    stream >> p.uri >> p.contentId >> p.textContent
-           >> p.contentType >> p.characterSet
-           >> p.contentSize >> p.contentLocation;
-
-    part.setUri(p.uri);
-    part.setContentId(p.contentId);
-    part.setPlainTextContent(p.textContent);
-    part.setContentType(p.contentType);
-    part.setCharacterSet(p.characterSet);
-    part.setContentSize(p.contentSize);
-    part.setContentLocation(p.contentLocation);
-
+    stream >> part.d->id >> part.d->contentId >> part.d->contentType >> part.d->path;
     return stream;
 }
 
-MessagePartPrivate::MessagePartPrivate() :
-    uri(QString()),
-    contentId(QString()),
-    textContent(QString()),
-    contentType(QString()),
-    characterSet(QString()),
-    contentSize(0),
-    contentLocation(QString())
+MessagePartPrivate::MessagePartPrivate()
+    : id(-1)
 {
 }
 
 MessagePartPrivate::MessagePartPrivate(const MessagePartPrivate &other)
-    : QSharedData(other), uri(other.uri), contentId(other.contentId),
-      textContent(other.textContent), contentType(other.contentType),
-      characterSet(other.characterSet), contentSize(other.contentSize),
-      contentLocation(other.contentLocation)
+    : QSharedData(other)
+    , id(other.id)
+    , contentId(other.contentId)
+    , contentType(other.contentType)
+    , path(other.path)
 {
 }
 
@@ -146,21 +113,19 @@ MessagePart &MessagePart::operator=(const MessagePart &other)
 
 bool MessagePart::operator==(const MessagePart &other) const
 {
-    return (this->d->contentId == other.contentId()
-            && this->d->textContent == other.plainTextContent()
-            && this->d->contentType == other.contentType()
-            && this->d->characterSet == other.characterSet()
-            && this->d->contentSize == other.contentSize()
-            && this->d->contentLocation == other.contentLocation());
+    return (d->id == other.id()
+            && d->contentId == other.contentId()
+            && d->contentType == other.contentType()
+            && d->path == other.path());
 }
 
 MessagePart::~MessagePart()
 {
 }
 
-QString MessagePart::uri() const
+int MessagePart::id() const
 {
-    return d->uri;
+    return d->id;
 }
 
 QString MessagePart::contentId() const
@@ -168,45 +133,24 @@ QString MessagePart::contentId() const
     return d->contentId;
 }
 
-QString MessagePart::plainTextContent() const
-{
-    return d->textContent;
-}
-
 QString MessagePart::contentType() const
 {
     return d->contentType;
 }
 
-QString MessagePart::characterSet() const
+QString MessagePart::path() const
 {
-    return d->characterSet;
+    return d->path;
 }
 
-int MessagePart::contentSize() const
+void MessagePart::setId(int id)
 {
-    return d->contentSize;
+    d->id = id;
 }
 
-QString MessagePart::contentLocation() const
+void MessagePart::setContentId(const QString &contentId)
 {
-    return d->contentLocation;
-}
-
-
-void MessagePart::setUri(const QString &uri)
-{
-    d->uri = uri;
-}
-
-void MessagePart::setContentId(const QString &id)
-{
-    d->contentId = id;
-}
-
-void MessagePart::setPlainTextContent(const QString &text)
-{
-    d->textContent = text;
+    d->contentId = contentId;
 }
 
 void MessagePart::setContentType(const QString &type)
@@ -214,27 +158,50 @@ void MessagePart::setContentType(const QString &type)
     d->contentType = type;
 }
 
-void MessagePart::setCharacterSet(const QString &characterSet)
+void MessagePart::setPath(const QString &path)
 {
-    d->characterSet = characterSet;
+    d->path = path;
 }
 
-void MessagePart::setContentSize(int size)
+int MessagePart::size() const
 {
-    d->contentSize = size;
+    return QFileInfo(d->path).size();
 }
 
-void MessagePart::setContentLocation(const QString &location)
+QString MessagePart::plainTextContent() const
 {
-    d->contentLocation = location;
+    if (!d->contentType.startsWith("text/"))
+        return QString();
+
+    QFile file(d->path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "Message part" << id() << "at" << path() << "can't be read";
+        return QString();
+    }
+
+    QByteArray content = file.readAll();
+
+    QTextCodec *codec = 0;
+    int pos = d->contentType.indexOf(";charset=");
+    if (pos > 0) {
+        pos += strlen(";charset=");
+        QStringRef charset = d->contentType.midRef(pos, d->contentType.indexOf(';', pos) - pos).trimmed();
+
+        codec = QTextCodec::codecForName(charset.toLatin1());
+        if (!codec)
+            qWarning() << "Missing text codec for" << charset << "when parsing content of type" << d->contentType;
+    }
+
+    if (codec)
+        return codec->toUnicode(content);
+    else
+        return QString::fromUtf8(content);
 }
 
-QString MessagePart::toString() const
+QString MessagePart::debugString() const
 {
-    return QString(contentId()                    % QChar('|') %
-                   contentType()                  % QChar('|') %
-                   characterSet()                 % QChar('|') %
-                   QString::number(contentSize()) % QChar('|') %
-                   contentLocation()              % QChar('|') %
-                   plainTextContent());
+    return QString(QString::number(id())   % QChar('|') %
+                   contentId()             % QChar('|') %
+                   contentType()           % QChar('|') %
+                   path());
 }

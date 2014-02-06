@@ -525,13 +525,11 @@ void EventModelTest::testDeleteEventMmsParts()
     MessagePart part1;
     part1.setContentId("blahSmil");
     part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
 
     MessagePart part2;
     part2.setContentId("catphoto");
     part2.setContentType("image/jpeg");
-    part2.setContentSize(101000);
-    part2.setContentLocation("/home/user/.mms/msgid001/catphoto.jpg");
+    part2.setPath("/home/user/.mms/msgid001/catphoto.jpg");
 
     event.setMessageParts(QList<MessagePart>() << part1 << part2);
 
@@ -548,12 +546,10 @@ void EventModelTest::testDeleteEventMmsParts()
     MessagePart part3;
     part3.setContentId("text_slide2");
     part3.setContentType("text/plain");
-    part3.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
     MessagePart part4;
     part4.setContentId("dogphoto");
     part4.setContentType("image/jpeg");
-    part4.setContentSize(202000);
-    part4.setContentLocation("/home/user/.mms/msgid001/dogphoto.jpg");
+    part4.setPath("/home/user/.mms/msgid001/dogphoto.jpg");
     event.setId(-1);
 
     event.setMessageParts(QList<MessagePart>() << part3 << part4);
@@ -901,6 +897,8 @@ void EventModelTest::testReportDelivery()
 void EventModelTest::testMessageParts()
 {
     QSKIP("Message parts are not yet supported with SQLite");
+
+#if 0
     EventModel model;
     watcher.setModel(&model);
 
@@ -978,6 +976,7 @@ void EventModelTest::testMessageParts()
     QCOMPARE(e.messageParts().size(), parts.size());
     foreach (MessagePart part, e.messageParts())
         QVERIFY(parts.indexOf(part) >= 0);
+#endif
 
 #if 0
     // delete leftovers
@@ -1011,7 +1010,6 @@ void EventModelTest::testDeleteMessageParts()
 
     MessagePart part1;
     part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
 
     event1.setMessageParts(QList<MessagePart>() << part1);
 
@@ -1039,7 +1037,6 @@ void EventModelTest::testDeleteMessageParts()
     MessagePart part2;
     part2.setContentId("text_slide1");
     part2.setContentType("text/plain");
-    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
 
     event2.setMessageParts(QList<MessagePart>() << part2);
 
@@ -1109,17 +1106,14 @@ void EventModelTest::testMessagePartsQuery()
     MessagePart part1;
     part1.setContentId("blah_42");
     part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
     MessagePart part2;
     part2.setContentId("text_slide1");
     part2.setContentType("text/plain");
-    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
     MessagePart part3;
     part3.setContentId("catphoto");
     part3.setContentType("image/jpeg");
-    part3.setContentSize(101000);
     QString fileName = threadPrefix + "catphoto2.jpg";
-    part3.setContentLocation(ATT_PATH + fileName);
+    part3.setPath(ATT_PATH + fileName);
 
 #define CREATE_FILE(messageToken, filename) {\
         QString mmsPath = QString("%1/.mms/msg/%2").arg(QDir::homePath()).arg(messageToken); \
@@ -1147,13 +1141,11 @@ void EventModelTest::testMessagePartsQuery()
     MessagePart part4;
     part4.setContentId("text_slide2");
     part4.setContentType("text/plain");
-    part4.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
     MessagePart part5;
     part5.setContentId("dogphoto2");
     part5.setContentType("image/jpeg");
-    part5.setContentSize(202000);
     fileName = threadPrefix + "dogphoto2.jpg";
-    part5.setContentLocation(ATT_PATH + fileName);
+    part5.setPath(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN2", fileName);
 
@@ -1171,9 +1163,8 @@ void EventModelTest::testMessagePartsQuery()
     MessagePart part6;
     part6.setContentId("dogphoto3");
     part6.setContentType("image/jpeg");
-    part6.setContentSize(203000);
     fileName = threadPrefix + "dogphoto3.jpg";
-    part6.setContentLocation(ATT_PATH + fileName);
+    part6.setPath(ATT_PATH + fileName);
 
     CREATE_FILE("MSGTOKEN3", fileName)
 

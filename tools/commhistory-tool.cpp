@@ -114,7 +114,7 @@ void printEvent(const Event &event, bool showParts = false)
     std::cout << qPrintable(event.toString()) << std::endl;
     if (showParts) {
         foreach (MessagePart part, event.messageParts()) {
-            std::cout << "  " << qPrintable(part.toString()) << std::endl;
+            std::cout << "  " << qPrintable(part.debugString()) << std::endl;
         }
     }
 }
@@ -262,9 +262,6 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
 
             if(e.direction() == Event::Outbound || qrand() % 2 == 0)
             {
-                //create full MMS
-                e.setContentLocation(QString());
-
                 if(qrand() % 2 == 0)
                     e.setCcList(QStringList() << "111111" << "222222" << "iam@cc.list.com");
                 if(qrand() % 2 == 0)
@@ -277,30 +274,22 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
                 {
                     MessagePart part1;
                     part1.setContentType("application/smil");
-                    part1.setPlainTextContent(mmsSmil);
                     parts << part1;
                     smilAdded = true;
                 }
                 MessagePart part2;
                 part2.setContentId("text_slide1");
                 part2.setContentType("text/plain");
-                part2.setPlainTextContent(textContent[qrand() % numTextContents]);
                 parts << part2;
                 if (smilAdded || qrand() % 3 == 0)
                 {
                     MessagePart part3;
                     part3.setContentId("catphoto");
                     part3.setContentType("image/jpeg");
-                    part3.setContentSize(101000);
-                    part3.setContentLocation("/home/user/.mms/msgid001/catphoto.jpg");
+                    part3.setPath("/home/user/.mms/msgid001/catphoto.jpg");
                     parts << part3;
                 }
                 e.setMessageParts(parts);
-            }
-            else
-            {
-                //create MMS notification
-                e.setContentLocation("http://dummy.mmsc.com/mms");
             }
         }
         else if (isSms)
