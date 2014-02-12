@@ -29,7 +29,6 @@
 
 #include "eventmodel.h"
 #include "event.h"
-#include "messagepart.h"
 #include "eventtreeitem.h"
 #include "databaseio.h"
 #include "libcommhistoryexport.h"
@@ -156,7 +155,6 @@ public:
     int queryLimit;
     int queryOffset;
     bool isReady;
-    bool messagePartsReady;
     bool threadCanFetchMore;
     // Do not set directly, use setResolveContacts to enable listener
     bool resolveContacts;
@@ -175,11 +173,7 @@ public Q_SLOTS:
 
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
-    virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);
-
     virtual void modelUpdatedSlot(bool successful);
-
-    virtual void partsUpdatedSlot(bool successful);
 
     virtual void eventsAddedSlot(const QList<CommHistory::Event> &events);
 

@@ -184,12 +184,7 @@ void ConversationModelPrivate::modelUpdatedSlot(bool successful)
 {
     if (queryMode == EventModel::StreamedAsyncQuery) {
         if (isReady) {
-            if (successful) {
-                if (messagePartsReady)
-                    emit modelReady(true);
-            } else {
-                emit modelReady(false);
-            }
+            emit modelReady(successful);
         }
     } else{
         EventModelPrivate::modelUpdatedSlot(successful);
