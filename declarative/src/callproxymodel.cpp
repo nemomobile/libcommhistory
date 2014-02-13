@@ -5,7 +5,8 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
     m_source(new CommHistory::CallModel(CommHistory::CallModel::SortByTime, this)),
     m_grouping(GroupByNone),
-    m_componentComplete(false)
+    m_componentComplete(false),
+    m_populated(false)
 {
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
 
@@ -15,6 +16,7 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     connect(this, SIGNAL(rowsInserted(const QModelIndex&,int,int)), this, SIGNAL(countChanged()));
     connect(this, SIGNAL(rowsRemoved(const QModelIndex&,int,int)), this, SIGNAL(countChanged()));
     connect(this, SIGNAL(modelReset()), this, SIGNAL(countChanged()));
+    connect(m_source, SIGNAL(modelReady(bool)), this, SLOT(modelReady(bool)));
 }
 
 void CallProxyModel::classBegin()
@@ -92,3 +94,17 @@ bool CallProxyModel::markAllRead()
 {
     return m_source->markAllRead();
 }
+
+bool CallProxyModel::populated() const
+{
+    return m_populated;
+}
+
+void CallProxyModel::modelReady(bool ready)
+{
+    if (ready) {
+        m_populated = true;
+        emit populatedChanged();
+    }
+}
+
