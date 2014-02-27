@@ -98,6 +98,8 @@ public:
         EventRole = Qt::UserRole,
         ContactIdsRole,
         ContactNamesRole,
+        MessagePartsRole,
+        SubjectRole,
         BaseRole = Qt::UserRole + 1000,
     };
 

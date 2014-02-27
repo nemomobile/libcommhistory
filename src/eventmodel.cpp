@@ -78,6 +78,8 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + FromVCardLabel] = "fromVCardLabel";
     roles[ContactIdsRole] = "contactIds";
     roles[ContactNamesRole] = "contactNames";
+    roles[MessagePartsRole] = "messageParts";
+    roles[SubjectRole] = "subject";
     return roles;
 }
 
@@ -223,6 +225,21 @@ static QList<QString> contactNames(const QList<Event::Contact> &contacts)
     return re;
 }
 
+static QVariantList messagePartData(const Event &event)
+{
+    QList<MessagePart> parts = event.messageParts();
+    QVariantList re;
+    foreach (const MessagePart &part, parts) {
+        QVariantMap data;
+        data.insert("id", part.id());
+        data.insert("contentId", part.contentId());
+        data.insert("contentType", part.contentType());
+        data.insert("path", part.path());
+        re.append(data);
+    }
+    return re;
+}
+
 QVariant EventModel::data(const QModelIndex &index, int role) const
 {
     if (!index.isValid()) {
@@ -239,6 +256,10 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             return QVariant::fromValue(contactIds(event.contacts()));
         case ContactNamesRole:
             return QVariant::fromValue(contactNames(event.contacts()));
+        case MessagePartsRole:
+            return QVariant::fromValue(messagePartData(event));
+        case SubjectRole:
+            return QVariant::fromValue(event.subject());
         default:
             break;
     }
