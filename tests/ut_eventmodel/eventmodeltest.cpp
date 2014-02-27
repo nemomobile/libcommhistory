@@ -26,6 +26,7 @@
 #include "eventmodeltest.h"
 #include "eventmodel.h"
 #include "conversationmodel.h"
+#include "singleeventmodel.h"
 #include "groupmodel.h"
 #include "adaptor.h"
 #include "event.h"
@@ -1676,6 +1677,46 @@ void EventModelTest::testModifyInGroup()
     QVERIFY(groupModel.databaseIO().getGroup(group1.id(), group));
     QCOMPARE(group.lastEventId(), newEvent.id());
     QCOMPARE(group.unreadMessages(), unread);
+}
+
+void EventModelTest::testExtraProperties()
+{
+    EventModel model;
+    watcher.setModel(&model);
+
+    Event newEvent;
+    newEvent.setGroupId(group1.id());
+    newEvent.setType(Event::IMEvent);
+    newEvent.setDirection(Event::Inbound);
+    newEvent.setStartTime(QDateTime::currentDateTime().addSecs(6));
+    newEvent.setEndTime(newEvent.startTime());
+    newEvent.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
+    newEvent.setRemoteUid("td@localhost");
+    newEvent.setExtraProperty("testing", 42);
+
+    QVERIFY(model.addEvent(newEvent));
+    QVERIFY(watcher.waitForAdded());
+
+    // Read property
+    SingleEventModel model2;
+    QVERIFY(model2.getEventById(newEvent.id()));
+    Event returnedEvent = model2.event(model2.index(0, 0));
+    QVERIFY(returnedEvent.isValid());
+    QCOMPARE(returnedEvent.extraProperties().size(), 1);
+    QCOMPARE(returnedEvent.extraProperty("testing").toInt(), 42);
+
+    // Remove property
+    newEvent.setExtraProperty("testing", QVariant());
+    QVERIFY(newEvent.extraProperties().isEmpty());
+    QVERIFY(newEvent.modifiedProperties().contains(Event::ExtraProperties));
+    QVERIFY(model.modifyEvent(newEvent));
+    QVERIFY(watcher.waitForUpdated());
+
+    // Re-read property
+    QVERIFY(model2.getEventById(newEvent.id()));
+    returnedEvent = model2.event(model2.index(0, 0));
+    QVERIFY(returnedEvent.isValid());
+    QVERIFY(returnedEvent.extraProperties().isEmpty());
 }
 
 void EventModelTest::testContactMatching_data()

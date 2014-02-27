@@ -91,6 +91,7 @@ public:
     bool isAction;
 
     QHash<QString, QString> headers;
+    QVariantMap extraProperties;
 
     Event::PropertySet validProperties;
     Event::PropertySet modifiedProperties;
@@ -120,7 +121,8 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.contentLocation() << event.subject()
              << event.messageParts()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
-             << event.validityPeriod() << event.isAction() << event.headers();
+             << event.validityPeriod() << event.isAction() << event.headers()
+             << event.extraProperties();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -146,7 +148,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
              >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts
              >> rstatus >> p.reportRead >> p.reportReadRequested
-             >> p.validityPeriod >> p.isAction >> p.headers;
+             >> p.validityPeriod >> p.isAction >> p.headers >> p.extraProperties;
 
     //read valid properties
     argument.beginArray();
@@ -194,6 +196,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setReportReadRequested(p.reportReadRequested);
     event.setIsAction(p.isAction);
     event.setHeaders(p.headers);
+    event.setExtraProperties(p.extraProperties);
 
     event.setValidProperties(p.validProperties);
     event.resetModifiedProperties();
@@ -219,6 +222,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument,
     return argument;
 }
 
+// DO NOT change this format; it is not in any way backwards compatible and will break backups
+// To be replaced.
 QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
 {
     stream << event.id() << event.type() << event.startTime()
@@ -357,6 +362,7 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , readStatus(other.readStatus)
         , isAction(other.isAction)
         , headers(other.headers)
+        , extraProperties(other.extraProperties)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
 {
@@ -973,6 +979,37 @@ void Event::setHeaders(const QHash<QString, QString> &headers)
     d->propertyChanged(Event::Headers);
 }
 
+QVariantMap Event::extraProperties() const
+{
+    return d->extraProperties;
+}
+
+void Event::setExtraProperties(const QVariantMap &properties)
+{
+    d->extraProperties = properties;
+    d->propertyChanged(Event::ExtraProperties);
+}
+
+QVariant Event::extraProperty(const QString &key) const
+{
+    return d->extraProperties.value(key);
+}
+
+void Event::setExtraProperty(const QString &key, const QVariant &value)
+{
+    if (value.isNull()) {
+        if (d->extraProperties.remove(key))
+            d->propertyChanged(Event::ExtraProperties);
+        return;
+    }
+
+    if (!value.canConvert<QString>())
+        qWarning() << "Event extra property" << key << "type cannot be converted to string:" << value;
+
+    d->extraProperties.insert(key, value);
+    d->propertyChanged(Event::ExtraProperties);
+}
+
 QString Event::toString() const
 {
     QString contacts;
@@ -1144,6 +1181,9 @@ void Event::copyValidProperties(const Event &other)
         case Bcc:
         case Headers:
             setHeaders(other.headers());
+            break;
+        case ExtraProperties:
+            setExtraProperties(other.extraProperties());
             break;
         default:
             qCritical() << "Unknown event property";

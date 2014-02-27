@@ -107,6 +107,14 @@ public:
     bool getEventByMmsId(const QString &mmsId, int groupId, Event &event);
 
     /*!
+     * Get extra property fields for an event.
+     *
+     * \param event Event instance to query and update with extra properties
+     * \return true if successful, otherwise false
+     */
+    bool getEventExtraProperties(Event &event);
+
+    /*!
      * Modifye an event.
      *
      * \param event Existing event.

@@ -138,11 +138,19 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
     }
 
     QList<Event> events;
+    QList<int> extraPropertyIndicies;
     while (query.next()) {
         Event e;
-        DatabaseIOPrivate::readEventResult(query, e);
+        bool extra = false;
+        DatabaseIOPrivate::readEventResult(query, e, extra);
+        if (extra)
+            extraPropertyIndicies.append(events.size());
         events.append(e);
     }
+    query.finish();
+
+    foreach (int i, extraPropertyIndicies)
+        DatabaseIO::instance()->getEventExtraProperties(events[i]);
 
     eventsReceivedSlot(0, events.size(), events);
     return true;
