@@ -694,7 +694,7 @@ static const char *baseGroupQuery =
     "\n  LastEvent.id = ("
     "\n   SELECT id FROM Events "
     "\n   WHERE groupId = Groups.id "
-    "\n   ORDER BY startTime DESC, id DESC "
+    "\n   ORDER BY endTime DESC, id DESC "
     "\n   LIMIT 1 "
     "\n  )"
     "\n ) ";

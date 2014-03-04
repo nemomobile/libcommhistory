@@ -23,25 +23,13 @@ HEADERS += src/constants.h \
     src/debug.h
 
 TEMPLATE = lib
-CONFIG += qt plugin hide_symbols
+CONFIG += qt plugin hide_symbols 
+QT += qml contacts
 
-equals(QT_MAJOR_VERSION, 4) {
-    LIBS += -L../src ../src/libcommhistory.so
-    QT += declarative
-    CONFIG += mobility
-    MOBILITY += contacts
-    PKGCONFIG += qtcontacts-sqlite-extensions contactcache
-    target.path = $$[QT_INSTALL_IMPORTS]/$$PLUGIN_IMPORT_PATH
-}
+LIBS += -L../src ../src/libcommhistory-qt5.so
+PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
 
-equals(QT_MAJOR_VERSION, 5) {
-    LIBS += -L../src ../src/libcommhistory-qt5.so
-    QT += qml contacts
-    PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
-    DEFINES += USING_QTPIM
-    target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
-}
-
+target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 INSTALLS += target
 
 qmldir.files += $$PWD/qmldir

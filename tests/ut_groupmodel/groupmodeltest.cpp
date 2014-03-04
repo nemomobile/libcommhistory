@@ -575,11 +575,7 @@ void GroupModelTest::streamingQuery_data()
 
 void GroupModelTest::streamingQuery()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
-#else
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
-#endif
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
@@ -943,11 +939,7 @@ void GroupModelTest::markGroupAsRead()
 
 void GroupModelTest::resolveContact()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     GroupModel groupModel;
 
     QSignalSpy groupDataChanged(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)));
@@ -1029,11 +1021,7 @@ void GroupModelTest::resolveContact()
 
 void GroupModelTest::queryContacts()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     GroupModel model;
     model.enableContactChanges(false);
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
@@ -1168,11 +1156,7 @@ void GroupModelTest::queryContacts()
 
 void GroupModelTest::changeRemoteUid()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     const QString oldRemoteUid = "+1117654321";
     const QString newRemoteUid = "+2227654321";
     bool oldContactFound = false;
@@ -1387,14 +1371,14 @@ void GroupModelTest::endTimeUpdate()
     QCOMPARE(model.group(model.index(0, 0)).startTime().toTime_t(), oldDate.toTime_t());
     QCOMPARE(model.group(model.index(0, 0)).endTime().toTime_t(), oldDate.toTime_t());
 
-    // add overlapping event with send time older than oldDate but the newest received time
-    // the event should not be picked up as the last event because of the old send time
+    // add overlapping event with receive time older than oldDate but the newest sent time
+    // the event should not be picked up as the last event because of the old receive time
     Event olEvent;
     olEvent.setType(Event::IMEvent);
     olEvent.setDirection(Event::Outbound);
     olEvent.setGroupId(group1.id());
-    olEvent.setStartTime(oldDate.addDays(-10));
-    olEvent.setEndTime(QDateTime::currentDateTime());
+    olEvent.setStartTime(QDateTime::currentDateTime());
+    olEvent.setEndTime(oldDate.addDays(-10));
     olEvent.setLocalUid("endTimeUpdate");
     olEvent.setRemoteUid("td@localhost");
     olEvent.setFreeText("long in delivery message");

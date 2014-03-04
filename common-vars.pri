@@ -28,14 +28,13 @@
 # Project name (used e.g. in include file and doc install path).
 # remember to update debian/* files if you changes this
 #------------------------------------------------------------------------------
-equals(QT_MAJOR_VERSION, 4): PROJECT_NAME = libcommhistory
-equals(QT_MAJOR_VERSION, 5): PROJECT_NAME = libcommhistory-qt5
+PROJECT_NAME = libcommhistory-qt5
 
 #------------------------------------------------------------------------------
 # Project version
 # remember to update debian/* files if you changes this
 #-----------------------------------------------------------------------------
-PROJECT_VERSION = 1.6.0
+PROJECT_VERSION = 1.7.0
 
 #------------------------------------------------------------------------------
 # Library version

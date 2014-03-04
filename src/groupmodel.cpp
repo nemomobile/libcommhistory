@@ -159,9 +159,6 @@ GroupModel::GroupModel(QObject *parent)
     : QAbstractTableModel(parent),
       d(new GroupModelPrivate(this))
 {
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-    setRoleNames(roleNames());
-#endif
 }
 
 QHash<int, QByteArray> GroupModel::roleNames() const

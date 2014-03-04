@@ -899,11 +899,7 @@ void EventModelTest::testReportDelivery()
 
 void EventModelTest::testMessageParts()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Message parts are not yet supported with SQLite");
-#else
-    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
-#endif
     EventModel model;
     watcher.setModel(&model);
 
@@ -998,11 +994,7 @@ void EventModelTest::testMessageParts()
 
 void EventModelTest::testDeleteMessageParts()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Message parts are not yet supported with SQLite");
-#else
-    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
-#endif
     EventModel model;
     watcher.setModel(&model);
 
@@ -1084,11 +1076,7 @@ void EventModelTest::testMessagePartsQuery_data()
 
 void EventModelTest::testMessagePartsQuery()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Message parts are not yet supported with SQLite");
-#else
-    QSKIP("Message parts are not yet supported with SQLite", SkipAll);
-#endif
     QFETCH(bool, useThread);
     QString threadPrefix;
     if (useThread) threadPrefix = "thread_";
@@ -1201,7 +1189,6 @@ void EventModelTest::testMessagePartsQuery()
 
     ModelWatcher convWatcher;
     ConversationModel convModel;
-    convModel.enableContactChanges(false);
     convWatcher.setModel(&convModel);
 
     QSignalSpy modelReady(&convModel, SIGNAL(modelReady(bool)));
@@ -1343,7 +1330,6 @@ void EventModelTest::testCcBcc()
 void EventModelTest::testFindEvent()
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     Event event;
 
     model.setQueryMode(EventModel::SyncQuery);
@@ -1489,17 +1475,11 @@ void EventModelTest::testStreaming_data()
 
     // FIXME: skip for now - can fail randomly (check convmodel-streaming-fix branch)
     QTest::newRow("Without thread") << false;
-    QTest::newRow("Use thread") << true;
+    //QTest::newRow("Use thread") << true;
 }
 
 void EventModelTest::testStreaming()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite");
-#else
-    QSKIP("StreamedAsyncQuery is not yet supported with SQLite", SkipAll);
-#endif
-
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
@@ -1515,12 +1495,10 @@ void EventModelTest::testStreaming()
     qDebug() << "total msgs: " << total;
 
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model.getEvents(group1.id()));
 
     ConversationModel streamModel;
-    streamModel.enableContactChanges(false);
 
     if (useThread) {
         modelThread.start();
@@ -1716,11 +1694,7 @@ void EventModelTest::testContactMatching_data()
 
 void EventModelTest::testContactMatching()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);

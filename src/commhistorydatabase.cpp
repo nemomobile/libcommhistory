@@ -26,12 +26,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QDebug>
-
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#include <QDesktopServices>
-#else
 #include <QStandardPaths>
-#endif
 
 // Appended to GenericDataLocation (or a hardcoded equivalent on Qt4)
 #define COMMHISTORY_DATABASE_DIR "/commhistory/"
@@ -95,10 +90,10 @@ static const char *db_schema[] = {
     "CREATE INDEX events_remoteUid ON Events (remoteUid)",
     "CREATE INDEX events_type ON Events (type)",
     "CREATE INDEX events_messageToken ON Events (messageToken)",
-    "CREATE INDEX events_sorting ON Events (groupId, startTime DESC, id DESC)",
+    "CREATE INDEX events_sorting ON Events (groupId, endTime DESC, id DESC)",
     "CREATE INDEX events_unread ON Events (isRead)",
 
-    "PRAGMA user_version=1"
+    "PRAGMA user_version=2"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 
@@ -111,9 +106,17 @@ static const char *db_upgrade_0[] = {
     0
 };
 
+static const char *db_upgrade_1[] = {
+    "DROP INDEX events_sorting",
+    "CREATE INDEX events_sorting ON Events (groupId, endTime DESC, id DESC)",
+    "PRAGMA user_version=2",
+    0
+};
+
 // REMEMBER TO UPDATE THE SCHEMA AND USER_VERSION!
 static const char **db_upgrade[] = {
-    db_upgrade_0
+    db_upgrade_0,
+    db_upgrade_1
 };
 static int db_upgrade_count = sizeof(db_upgrade) / sizeof(*db_upgrade);
 
@@ -193,13 +196,7 @@ static bool upgradeDatabase(QSqlDatabase &database)
 
 QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
 {
-    // horrible hack: Qt4 didn't have GenericDataLocation so we hardcode database location.
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QDir databaseDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String(COMMHISTORY_DATABASE_DIR));
-#else
-    QDir databaseDir(QDesktopServices::storageLocation(QDesktopServices::HomeLocation) + QLatin1String("/.local/share") + QLatin1String(COMMHISTORY_DATABASE_DIR));
-#endif
-
     if (!databaseDir.exists())
         databaseDir.mkpath(QLatin1String("."));
 

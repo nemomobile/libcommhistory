@@ -99,7 +99,10 @@ public:
     };
 
     enum {
-        BaseRole = Qt::UserRole + 1000
+        EventRole = Qt::UserRole,
+        ContactIdsRole,
+        ContactNamesRole,
+        BaseRole = Qt::UserRole + 1000,
     };
 
     /*!
@@ -208,15 +211,19 @@ public:
     virtual void setOffset(int offset);
 
     /*!
-     * If enabled, Event::contactId and Event::contactName in model
-     * contents will be updated live (emitting dataChanged()) when
-     * contacts are added, changed or deleted.
-     * NOTE: This method must be called before getEvents() or it will
-     * not have any effect.
+     * If enabled, contacts will be resolved for all events, and changes
+     * to contacts will be updated live (emitting dataChanged()). Contacts
+     * will be resolved before events are inserted into the model, and the
+     * modelReady() signal indicates that all events are inserted and all
+     * contacts are resolved.
      *
-     * \param enabled If true, track contact changes.
+     * \param enabled If true, resolve and update contacts for events
      */
-    void enableContactChanges(bool enabled);
+    void setResolveContacts(bool enabled);
+    bool resolveContacts() const;
+
+    // Deprecated name for setResolveContacts
+    void enableContactChanges(bool enabled) { setResolveContacts(enabled); }
 
     /*!
      * Add a new event.

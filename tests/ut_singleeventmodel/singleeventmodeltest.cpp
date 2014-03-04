@@ -182,11 +182,7 @@ void SingleEventModelTest::contactMatching_data()
 
 void SingleEventModelTest::contactMatching()
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QSKIP("Contact matching is not yet supported with SQLite");
-#else
-    QSKIP("Contact matching is not yet supported with SQLite", SkipAll);
-#endif
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);

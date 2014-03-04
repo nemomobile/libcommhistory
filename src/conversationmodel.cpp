@@ -49,41 +49,12 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
-#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
-            , firstFetch(true)
-            , eventsFilled(0)
-            , lastEventTrackerId(0)
-            , activeQueries(0)
-#endif
-
 {
-    contactChangesEnabled = true;
-    QDBusConnection::sessionBus().connect(
-        QString(), QString(), "com.nokia.commhistory", "groupsUpdatedFull",
-        this, SLOT(groupsUpdatedFullSlot(const QList<CommHistory::Group> &)));
     QDBusConnection::sessionBus().connect(
         QString(), QString(), "com.nokia.commhistory", GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;
-}
-
-void ConversationModelPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
-{
-    DEBUG() << Q_FUNC_INFO;
-    if (filterDirection == Event::Outbound
-        || filterGroupIds.isEmpty()
-        || !propertyMask.contains(Event::Contacts))
-        return;
-
-    foreach (Group g, groups) {
-        if (filterGroupIds.contains(g.id()) && !g.remoteUids().isEmpty()) {
-            // update in memory events for contact info
-            updateEvents(g, g.contacts(),
-                         g.remoteUids().first());
-            break;
-        }
-    }
 }
 
 void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
@@ -100,35 +71,6 @@ void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
     // refreshing others
     if (changed)
         q->getEvents(filterGroupIds.toList());
-}
-
-// update contacts for all inbound events,
-// should be called only for p2p chats
-void ConversationModelPrivate::updateEvents(const Group &group,
-                                            const QList<Event::Contact> &contacts,
-                                            const QString &remoteUid)
-{
-    Q_Q(ConversationModel);
-
-    for (int row = 0; row < eventRootItem->childCount(); row++) {
-        Event &event = eventRootItem->eventAt(row);
-
-        if (event.groupId() == group.id()
-            && event.contacts() != contacts
-            && event.direction() == Event::Inbound
-            && remoteAddressMatch(event.remoteUid(), remoteUid)) {
-            //update and continue
-            event.setContacts(contacts);
-
-            // XXX This would be more efficient by merging ranges..
-            emit q->dataChanged(q->createIndex(row,
-                                               EventModel::Contacts,
-                                               eventRootItem->child(row)),
-                                q->createIndex(row,
-                                               EventModel::Contacts,
-                                               eventRootItem->child(row)));
-        }
-    }
 }
 
 bool ConversationModelPrivate::acceptsEvent(const Event &event) const
@@ -155,55 +97,64 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     return true;
 }
 
-#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
-bool ConversationModelPrivate::fillModel(int start, int end, QList<CommHistory::Event> events)
-{
-    Q_UNUSED(start);
-    Q_UNUSED(end);
-
-    DEBUG() << __FUNCTION__ << ": read" << events.count() << "messages";
-
-    Q_Q(ConversationModel);
-
-    q->beginInsertRows(QModelIndex(), q->rowCount(),
-                       q->rowCount() + events.count() - 1);
-    foreach (Event event, events) {
-        eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
-    }
-    q->endInsertRows();
-
-    eventsFilled += events.size();
-
-    return true;
-}
-#endif
-
 QSqlQuery ConversationModelPrivate::buildQuery() const
 {
-    QString q = DatabaseIOPrivate::eventQueryBase();
+    QList<int> groups = filterGroupIds.toList();
+    QString q;
+    int unionCount = 0;
 
-    q += "WHERE Events.isDraft = 0 AND Events.isDeleted = 0 ";
-
-    if (!filterAccount.isEmpty()) {
-        q += "AND Events.localUid = :filterAccount ";
+    qint64 firstTimestamp = 0;
+    int firstId = -1;
+    if (eventRootItem->childCount() > 0) {
+        Event firstEvent = eventRootItem->eventAt(eventRootItem->childCount() - 1);
+        firstTimestamp = firstEvent.endTime().toTime_t();
+        firstId = firstEvent.id();
     }
 
-    if (filterType != Event::UnknownType) {
-        q += "AND Events.type = :filterType ";
+    QString filters;
+    if (!filterAccount.isEmpty())
+        filters += "AND Events.localUid = :filterAccount ";
+    if (filterType != Event::UnknownType)
+        filters += "AND Events.type = :filterType ";
+    if (filterDirection != Event::UnknownDirection)
+        filters += "AND Events.direction = :filterDirection ";
+    if (firstId >= 0) {
+        filters += "AND (Events.endTime < :firstTimestamp OR (Events.endTime = :firstTimestamp "
+                    "AND Events.id < :firstId)) ";
     }
 
-    if (filterDirection != Event::UnknownDirection) {
-        q += "AND Events.direction = :filterDirection ";
-    }
+    /* Rather than the intuitive solution of groupId IN (1,2),
+     * this query is built as:
+     *
+     * SELECT .. FROM Events WHERE groupId=1
+     * UNION ALL
+     * SELECT .. FROM Events WHERE groupId=2
+     *
+     * Because SQLite is unable to use indexes for ORDER BY after a IN
+     * or OR expression in the query, yet somehow is able to use that indexes
+     * on the UNION ALL of these queries. This is true at least up to SQLite
+     * 3.8.1. */
+    do {
+        if (unionCount)
+            q += "UNION ALL ";
+        q += DatabaseIOPrivate::eventQueryBase();
 
-    if (!filterGroupIds.isEmpty()) {
-        QStringList ids;
-        foreach (int id, filterGroupIds)
-            ids.append(QString::number(id));
-        q += "AND Events.groupId IN (" + ids.join(QLatin1String(",")) + ")";
-    }
+        if (unionCount < groups.size())
+            q += "WHERE Events.groupId = " + QString::number(groups[unionCount]) + " ";
+        else
+            q += "WHERE 1 ";
 
-    q += "ORDER BY Events.endTime DESC, Events.id DESC";
+        q += filters;
+
+        unionCount++;
+    } while (unionCount < groups.size());
+
+    q += "ORDER BY Events.endTime DESC, Events.id DESC ";
+
+    if (queryLimit > 0)
+        q += "LIMIT " + QString::number(queryLimit);
+    else if (queryMode == EventModel::StreamedAsyncQuery && chunkSize > 0)
+        q += "LIMIT " + QString::number((firstId < 0 && firstChunkSize > 0) ? firstChunkSize : chunkSize);
 
     QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
     if (!filterAccount.isEmpty())
@@ -212,17 +163,26 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
         query.bindValue(":filterType", filterType);
     if (filterDirection != Event::UnknownDirection)
         query.bindValue(":filterDirection", filterDirection);
+    if (firstId >= 0) {
+        query.bindValue(":firstTimestamp", firstTimestamp);
+        query.bindValue(":firstId", firstId);
+    }
 
     return query;
 }
 
-#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
+void ConversationModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events)
+{
+    // There is no more data when a query returns no rows
+    if (queryMode == EventModel::StreamedAsyncQuery && events.size() == 0)
+        isReady = true;
+
+    EventModelPrivate::eventsReceivedSlot(start, end, events);
+}
+
 void ConversationModelPrivate::modelUpdatedSlot(bool successful)
 {
     if (queryMode == EventModel::StreamedAsyncQuery) {
-        activeQueries--;
-        isReady = isModelReady();
-
         if (isReady) {
             if (successful) {
                 if (messagePartsReady)
@@ -236,24 +196,10 @@ void ConversationModelPrivate::modelUpdatedSlot(bool successful)
     }
 }
 
-void ConversationModelPrivate::extraReceivedSlot(QList<CommHistory::Event> events,
-                                                 QVariantList extra)
-{
-    Q_UNUSED(events);
-
-    if (!extra.isEmpty()) {
-        QVariant trackerId = extra.last();
-        if (trackerId.isValid())
-            lastEventTrackerId = trackerId.toInt();
-    }
-}
-
 bool ConversationModelPrivate::isModelReady() const
 {
-    return activeQueries == 0
-           && eventsFilled < (firstFetch ? firstChunkSize : chunkSize);
+    return isReady;
 }
-#endif
 
 ConversationModel::ConversationModel(QObject *parent)
         : EventModel(*new ConversationModelPrivate(this), parent)
@@ -306,45 +252,22 @@ bool ConversationModel::getEvents(QList<int> groupIds)
 bool ConversationModel::canFetchMore(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     Q_D(const ConversationModel);
 
     return !d->isModelReady();
-#else
-    return false;
-#endif
 }
 
 void ConversationModel::fetchMore(const QModelIndex &parent)
 {
     Q_UNUSED(parent);
+    Q_D(ConversationModel);
 
-    qWarning() << Q_FUNC_INFO << "NOT IMPLEMENTED";
-
-#ifdef CONNVERSATION_MODEL_ENABLE_STREAMED_ASYNC
     // isModelReady() is true when there are no more events to request
     if (d->isModelReady() || d->eventRootItem->childCount() < 1)
         return;
 
-    EventsQuery query = d->buildQuery();
-
-    Event &event = d->eventRootItem->eventAt(d->eventRootItem->childCount() - 1);
-
-    query.addProjection(QLatin1String("tracker:id(%1)")).variable(Event::Id);
-    query.addPattern(QString(QLatin1String("FILTER (%3 < \"%1\"^^xsd:dateTime || (%3 = \"%1\"^^xsd:dateTime && tracker:id(%4) < %2))"))
-                     .arg(event.endTime().toUTC().toString(Qt::ISODate)).arg(d->lastEventTrackerId))
-        .variable(Event::EndTime)
-        .variable(Event::Id);
-    query.addModifier(QLatin1String("LIMIT ") + QString::number(d->chunkSize));
-
-    QString sparqlQuery = query.query();
-    d->queryRunner->runEventsQuery(sparqlQuery, query.eventProperties());
-    d->eventsFilled = 0;
-    d->firstFetch = false;
-    d->activeQueries++;
-
-    d->queryRunner->startQueue();
-#endif
+    QSqlQuery query = d->buildQuery();
+    d->executeQuery(query);
 }
 
 }

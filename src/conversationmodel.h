@@ -37,8 +37,8 @@ class ConversationModelPrivate;
  * Model for accessing conversations. Initialize with
  * getEvents(). Use setFilter() to filter the visible messages.
  *
- * Tracking contact changes is enabled by default; call
- * enableContactChanges(false) after creating the model to disable.
+ * To resolve contacts for events, call setResolveContacts(true) before getEvents.
+ * Contact changes will also be tracked and updated in the model. 
  *
  * Tree mode groups messages by date. Parent indexes have invalid
  * events with the texts "Today", "Yesterday" "Last week", "Last month"

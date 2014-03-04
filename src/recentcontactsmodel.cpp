@@ -36,7 +36,7 @@ using namespace CommHistory;
 
 static int eventContact(const Event &event)
 {
-    return event.contacts().first().first;
+    return event.contacts().isEmpty() ? 0 : event.contacts().first().first;
 }
 
 class RecentContactsModelPrivate : public EventModelPrivate {
@@ -47,83 +47,51 @@ public:
         : EventModelPrivate(model),
           requiredProperty(RecentContactsModel::NoPropertyRequired)
     {
-        contactChangesEnabled = true;
+        setResolveContacts(true);
     }
 
-    bool fillModel(int start, int end, QList<Event> events);
-
-    void eventsAddedSlot(const QList<Event> &events);
-    void eventsUpdatedSlot(const QList<Event> &events);
+    virtual bool acceptsEvent(const Event &event) const;
+    virtual bool fillModel(int start, int end, QList<Event> events);
+    virtual void prependEvents(QList<Event> events);
 
     void slotContactUpdated(quint32 localId,
                             const QString &contactName,
                             const QList<ContactAddress> &contactAddresses);
     void slotContactRemoved(quint32 localId);
-    void slotContactUnknown(const QPair<QString, QString> &address);
 
 private:
-    void updatePendingEvents(const QList<Event> &events);
-    void updatePendingEvent(Event *event);
-
-    void prependEvent(const Event &event);
-    void prependEvents(const QList<Event> &events);
-
-    void pendingEventsResolved();
 
     bool skipIrrelevantContact(const Event &event);
 
+    bool contactHasAddress(int types, quint32 localId) const;
+
     int requiredProperty;
-    mutable QList<Event> pendingEvents;
+
+    QSet<quint32> phoneContacts;
+    QSet<quint32> imContacts;
+    QSet<quint32> emailContacts;
 };
+
+bool RecentContactsModelPrivate::acceptsEvent(const Event &event) const
+{
+    // Contact must be resolved before we can do anything, so just accept
+    Q_UNUSED(event);
+    return true;
+}
 
 bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> events)
 {
     Q_Q(RecentContactsModel);
-    Q_UNUSED(end)
+    Q_UNUSED(start);
+    Q_UNUSED(end);
 
-    bool unresolved = false;
-    if (!events.isEmpty()) {
-        for (QList<Event>::iterator it = events.begin(); it != events.end(); ) {
-            const Event &event(*it);
-            if (event.contacts().isEmpty()) {
-                unresolved = true;
-            } else if (skipIrrelevantContact(event)) {
-                it = events.erase(it);
-                continue;
-            }
-            ++it;
-        }
+    // This model doesn't fetchMore, so fill is only called once. We can use the prepend logic to get
+    // the right contact behaviors.
+    prependEvents(events);
 
-        if (unresolved) {
-            // We need to resolve all contacts before filling the model
-            bool wasResolving = !pendingEvents.isEmpty();
-            pendingEvents.append(events);
-            if (!wasResolving) {
-                emit q->resolvingChanged();
-            }
-            return false;
-        }
-
-        // Nothing to resolve
-        int count = queryLimit ? qMin(events.count(), queryLimit) : events.count();
-        return EventModelPrivate::fillModel(start, start + count - 1, events.mid(0, count));
-    }
-
-    return false;
-}
-
-void RecentContactsModelPrivate::eventsAddedSlot(const QList<Event> &events)
-{
-    EventModelPrivate::eventsAddedSlot(events);
-
-    updatePendingEvents(events);
-}
-
-void RecentContactsModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
-{
-    EventModelPrivate::eventsUpdatedSlot(events);
-
-    updatePendingEvents(events);
+    emit q->resolvingChanged();
+    modelUpdatedSlot(true);
+    return true;
 }
 
 void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
@@ -132,39 +100,33 @@ void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
 {
     EventModelPrivate::slotContactUpdated(localId, contactName, contactAddresses);
 
-    if (!pendingEvents.isEmpty()) {
-        // See if we have resolved our pending events
-        bool unresolved = false;
-        for (QList<Event>::iterator it = pendingEvents.begin(); it != pendingEvents.end(); ) {
-            Event &event(*it);
+    bool hasAddressType[3] = { false, false, false };
+    foreach (const ContactAddress &address, contactAddresses) {
+        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
+        hasAddressType[address.type - 1] = true;
+    }
 
-            if (event.contacts().isEmpty()) {
-                if (ContactListener::addressMatchesList(event.localUid(),
-                                                        event.remoteUid(),
-                                                        contactAddresses)) {
-                    setContactFromCache(event);
-
-                    if (skipIrrelevantContact(event)) {
-                        it = pendingEvents.erase(it);
-                        continue;
-                    }
-                } else {
-                    unresolved = true;
-                }
-            }
-
-            ++it;
-        }
-
-        if (!unresolved) {
-            pendingEventsResolved();
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        if (hasAddressType[i]) {
+            typeSet[i]->insert(localId);
+        } else {
+            typeSet[i]->remove(localId);
         }
     }
+
+    // FIXME: Contact updates can result in the model being wrong. But, because
+    // unwanted events are discarded, that's difficult to solve without re-querying.
 }
 
 void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
 {
     EventModelPrivate::slotContactRemoved(localId);
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        typeSet[i]->remove(localId);
+    }
 
     // Remove any event for this contact (there can only be one)
     const int rowCount = eventRootItem->childCount();
@@ -177,124 +139,7 @@ void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
     }
 }
 
-void RecentContactsModelPrivate::slotContactUnknown(const QPair<QString, QString> &address)
-{
-    if (!pendingEvents.isEmpty()) {
-        // Remove any events with this address
-        bool unresolved = false;
-        for (QList<Event>::iterator it = pendingEvents.begin(); it != pendingEvents.end(); ) {
-            Event &event(*it);
-
-            QPair<QString, QString> eventAddress = qMakePair(event.localUid(), event.remoteUid());
-            if (eventAddress == address) {
-                DEBUG() << "Could not resolve contact address:" << address;
-                it = pendingEvents.erase(it);
-            } else {
-                if (event.contacts().isEmpty()) {
-                    unresolved = true;
-                }
-                ++it;
-            }
-        }
-
-        if (!unresolved) {
-            pendingEventsResolved();
-        }
-    }
-}
-
-void RecentContactsModelPrivate::updatePendingEvents(const QList<Event> &events)
-{
-    QList<Event> newEvents(events);
-    QList<Event>::iterator it = newEvents.begin(), end = newEvents.end();
-    for ( ; it != end; ++it) {
-        updatePendingEvent(&*it);
-    }
-}
-
-void RecentContactsModelPrivate::updatePendingEvent(Event *event)
-{
-    Q_Q(RecentContactsModel);
-
-    if (event->contacts().isEmpty()) {
-        // Fetch or request contact information for this event
-        setContactFromCache(*event);
-    }
-
-    bool addEvent = true;
-    if (!event->contacts().isEmpty() && skipIrrelevantContact(*event)) {
-        // Ignore this contact/event
-        addEvent = false;
-    }
-
-    if (!pendingEvents.isEmpty()) {
-        bool unresolved = false;
-        for (QList<Event>::iterator it = pendingEvents.begin(); it != pendingEvents.end(); ) {
-            Event &pending(*it);
-            if (pending.id() == event->id()) {
-                // This event is already pending - this is an update
-                pending = *event;
-                addEvent = false;
-            }
-
-            if (pending.contacts().isEmpty()) {
-                unresolved = true;
-            } else if (skipIrrelevantContact(pending)) {
-                it = pendingEvents.erase(it);
-                continue;
-            }
-            ++it;
-        }
-
-        if (addEvent) {
-            // With previous events not yet added, we can't insert this one out of order
-            bool wasResolving = !pendingEvents.isEmpty();
-            pendingEvents.prepend(*event);
-            if (!wasResolving) {
-                emit q->resolvingChanged();
-            }
-
-            if (!unresolved && event->contacts().isEmpty()) {
-                unresolved = true;
-            }
-        }
-
-        if (!unresolved) {
-            // All events are now resolved
-            const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
-        }
-    } else if (addEvent) {
-        bool wasResolving = !pendingEvents.isEmpty();
-        pendingEvents.prepend(*event);
-        if (!wasResolving) {
-            emit q->resolvingChanged();
-        }
-
-        if (!event->contacts().isEmpty()) {
-            const_cast<RecentContactsModelPrivate *>(this)->pendingEventsResolved();
-        }
-    }
-}
-
-void RecentContactsModelPrivate::pendingEventsResolved()
-{
-    Q_Q(RecentContactsModel);
-
-    if (!pendingEvents.isEmpty()) {
-        // We have resolved all contacts
-        prependEvents(pendingEvents);
-        pendingEvents.clear();
-    }
-
-    emit q->resolvingChanged();
-}
-
-void RecentContactsModelPrivate::prependEvent(const Event &event)
-{
-    prependEvents(QList<Event>() << event);
-}
-
-void RecentContactsModelPrivate::prependEvents(const QList<Event> &events)
+void RecentContactsModelPrivate::prependEvents(QList<Event> events)
 {
     Q_Q(RecentContactsModel);
 
@@ -303,7 +148,7 @@ void RecentContactsModelPrivate::prependEvents(const QList<Event> &events)
     QSet<int> newContactIds;
     foreach (const Event &event, events) {
         const int eventContactId = eventContact(event);
-        if (!newContactIds.contains(eventContactId)) {
+        if (eventContactId && !newContactIds.contains(eventContactId)) {
             newContactIds.insert(eventContactId);
             newEvents.append(event);
 
@@ -313,6 +158,9 @@ void RecentContactsModelPrivate::prependEvents(const QList<Event> &events)
             }
         }
     }
+
+    if (newEvents.isEmpty())
+        return;
 
     QSet<int> removeSet;
 
@@ -390,6 +238,17 @@ bool RecentContactsModelPrivate::skipIrrelevantContact(const Event &event)
     return false;
 }
 
+bool RecentContactsModelPrivate::contactHasAddress(int types, quint32 localId) const
+{
+    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
+        return true;
+    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
+        return true;
+    return false;
+}
+
 RecentContactsModel::RecentContactsModel(QObject *parent)
     : EventModel(*new RecentContactsModelPrivate(this), parent)
 {
@@ -415,7 +274,8 @@ bool RecentContactsModel::resolving() const
 {
     Q_D(const RecentContactsModel);
 
-    return !d->pendingEvents.isEmpty();
+    return !d->isReady || (d->addResolver && d->addResolver->isResolving()) ||
+           (d->receiveResolver && d->receiveResolver->isResolving());
 }
 
 bool RecentContactsModel::getEvents()
@@ -433,22 +293,23 @@ bool RecentContactsModel::getEvents()
         limitClause = QString::fromLatin1(" LIMIT %1").arg(2 * d->queryLimit);
     }
 
-    QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(
-" WHERE Events.id IN ("
-  " SELECT lastId FROM ("
-    " SELECT max(id) AS lastId, max(startTime) FROM Events"
-    " JOIN ("
-      " SELECT remoteUid, localUid, max(startTime) AS lastEventTime FROM Events"
-      " GROUP BY remoteUid, localUid"
-      " ORDER BY lastEventTime DESC %1"
-    " ) AS LastEvent ON Events.startTime = LastEvent.lastEventTime"
-                   " AND Events.remoteUid = LastEvent.remoteUid"
-                   " AND Events.localUid = LastEvent.localUid"
-    " GROUP BY Events.remoteUid, Events.localUid"
-    " ORDER BY max(startTime) DESC"
-  " )"
-" )"
-" ORDER BY Events.startTime DESC").arg(limitClause);
+    /* Grouping by string indexes is expensive, so we avoid just querying for the
+     * remoteUids of all events. This query finds all events with groups (messages),
+     * then all events without groups, and returns the sorted union of them. */
+    QString q = DatabaseIOPrivate::eventQueryBase();
+    q += " JOIN Groups ON ("
+          " Events.id = ("
+           " SELECT id FROM Events WHERE groupId=Groups.id"
+           " ORDER BY endTime DESC, id DESC LIMIT 1"
+         " ))"
+         " UNION ALL ";
+    q += DatabaseIOPrivate::eventQueryBase();
+    q += " JOIN ("
+          " SELECT id, max(endTime) FROM Events"
+          " WHERE groupId IS NULL GROUP BY remoteUid, endTime"
+         " ) USING (id)";
+
+    q += " ORDER BY endTime DESC, id DESC " + limitClause;
 
     QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
     if (!query.prepare(q)) {
@@ -458,7 +319,11 @@ bool RecentContactsModel::getEvents()
         return false;
     }
 
-    return d->executeQuery(query);
+    bool re = d->executeQuery(query);
+    if (re)
+        emit resolvingChanged();
+    return re;
+
 }
 
 } // namespace CommHistory

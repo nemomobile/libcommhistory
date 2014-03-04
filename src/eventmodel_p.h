@@ -34,6 +34,7 @@
 #include "databaseio.h"
 #include "libcommhistoryexport.h"
 #include "contactlistener.h"
+#include "contactresolver.h"
 
 class QSqlQuery;
 
@@ -85,16 +86,6 @@ public:
     virtual QModelIndex findEvent(int id) const;
 
     /*!
-     * Tries to find a suitable parent for the given new event.
-     * Reimplement for tree models.
-     *
-     * \param event Event to be added.
-     * \return model parent index for the event. If invalid, event will
-     * not be added.
-     */
-    virtual QModelIndex findParent(const Event &event);
-
-    /*!
      * Executes a database query. fillModel() is called when new events
      * are received, and modelReady() is emitted when the query is
      * finished.
@@ -121,7 +112,7 @@ public:
      */
     virtual void clearEvents();
 
-    virtual void addToModel(Event &event);
+    virtual void addToModel(const Event &event, bool synchronous = false);
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
 
@@ -144,12 +135,9 @@ public:
                                  const QString &contactName,
                                  const QList< QPair<QString,QString> > &contactAddresses,
                                  EventTreeItem *parent);
+    void setResolveContacts(bool enabled);
 
     DatabaseIO *database();
-    bool setContactFromCache(CommHistory::Event &event);
-    void startContactListening();
-
-    bool contactHasAddress(int types, quint32 contactId) const;
 
     void emitDataChanged(int row, void *data);
 
@@ -158,6 +146,8 @@ public:
     // Use this in fillModel() and other methods if you're implementing
     // a nonstandard model.
     EventTreeItem *eventRootItem;
+
+    ContactResolver *addResolver, *receiveResolver;
 
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
@@ -168,24 +158,21 @@ public:
     bool isReady;
     bool messagePartsReady;
     bool threadCanFetchMore;
-    bool contactChangesEnabled;
+    // Do not set directly, use setResolveContacts to enable listener
+    bool resolveContacts;
 
     Event::PropertySet propertyMask;
 
     QSharedPointer<ContactListener> contactListener;
-
-    // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QList<Event::Contact> > contactCache;
-
-    QSet<quint32> phoneContacts;
-    QSet<quint32> imContacts;
-    QSet<quint32> emailContacts;
 
     QThread *bgThread;
 
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
+    virtual void prependEvents(QList<Event> events);
+    virtual bool fillModel(QList<Event> events);
+
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
     virtual void messagePartsReceivedSlot(int eventId, QList<CommHistory::MessagePart> parts);

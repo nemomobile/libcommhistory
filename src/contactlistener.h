@@ -71,7 +71,7 @@ public:
                                    const QList<ContactAddress> &contactAddresses);
 
     /**
-     * Find a contact for (localUid, remoteUid), result provided via conactUpdate() signal.
+     * Find a contact for (localUid, remoteUid), result provided via contactUpdate() signal.
      */
     void resolveContact(const QString &localUid,
                         const QString &remoteUid);

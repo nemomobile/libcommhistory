@@ -56,7 +56,9 @@ public:
 
     bool belongToSameGroup( const Event &e1, const Event &e2 );
 
-    void addToModel( Event &event );
+    void prependEvents(QList<Event> events);
+
+    void insertEvent(Event event);
 
     void eventsAddedSlot( const QList<Event> &events );
 
@@ -67,18 +69,6 @@ public:
     void deleteFromModel( int id );
 
     void deleteCallGroup( const Event &event, bool typed );
-
-    /*!
-     * Find real contact based on phone number or IM id.
-     *
-     * \param remoteId Phone number or IM id (for example, "user@host.com").
-     * \param id UID for returned contact.
-     * \param name Contact name or IM nickname, if any.
-     * \return true if contact was found.
-     */
-    static bool resolveContact(const QString &remoteId,
-                               int &contactId,
-                               QString &contactName);
 
 public Q_SLOTS:
     void slotAllCallsDeleted(int unused);

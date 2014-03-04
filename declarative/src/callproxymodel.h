@@ -31,16 +31,11 @@
 #define CALLPROXYMODEL_H
 
 #include <QSortFilterProxyModel>
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
-# include <QQmlParserStatus>
-# define QDeclarativeParserStatus QQmlParserStatus
-#else
-# include <QDeclarativeParserStatus>
-#endif
+#include <QQmlParserStatus>
 
 #include "callmodel.h"
 
-class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserStatus
+class CallProxyModel : public QSortFilterProxyModel, public QQmlParserStatus
 {
     Q_OBJECT
 
@@ -53,6 +48,7 @@ class CallProxyModel : public QSortFilterProxyModel, public QDeclarativeParserSt
 
     Q_PROPERTY(GroupBy groupBy READ groupBy WRITE setGroupBy NOTIFY groupByChanged)
     Q_PROPERTY(int count READ count NOTIFY countChanged)
+    Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
 
 public:
     enum EventRole {
@@ -133,6 +129,9 @@ public:
 
     int count() const;
 
+    bool resolveContacts() const;
+    void setResolveContacts(bool enabled);
+
 public Q_SLOTS:
     void getEvents();
     void setSortRole(int role);
@@ -145,6 +144,7 @@ public Q_SLOTS:
 Q_SIGNALS:
     void groupByChanged();
     void countChanged();
+    void resolveContactsChanged();
 
 private:
     CommHistory::CallModel *m_source;

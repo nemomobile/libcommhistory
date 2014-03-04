@@ -35,11 +35,7 @@
 
 #include "catcher.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
 #include <QJsonDocument>
-#else
-#include "qjson/parser.h"
-#endif
 
 using namespace CommHistory;
 
@@ -145,7 +141,7 @@ void printUsage()
                         << std::endl;
     std::cout << "                 import filename"
                         << std::endl;
-    std::cout << "                 import-json filename"
+    std::cout << "                 import-json [-relativeDate yyMMdd] filename"
                         << std::endl;
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
@@ -523,7 +519,6 @@ int doList(const QStringList &arguments, const QVariantMap &options)
     }
 
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     model.setTreeMode(tree);
     if (!model.getEvents(groupId)) {
@@ -603,7 +598,6 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
     Q_UNUSED( options );
 
     CallModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     CallModel::Sorting sorting = CallModel::SortByContact;
 
@@ -886,7 +880,6 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
 
     if (!hasAnyOption || options.contains("-calls")) {
         CallModel callModel;
-        callModel.enableContactChanges(false);
         callModel.setTreeMode(false);
         callModel.setFilter(CallModel::SortByTime);
         callModel.setQueryMode(EventModel::SyncQuery);
@@ -901,7 +894,7 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
             c.waitCommit(0);
         }
     }
- 
+
     if (!hasAnyOption || options.contains("-reset")) {
         DatabaseIO::instance()->deleteAllEvents(Event::UnknownType);
         qWarning() << "Other clients must be restarted to refresh their view of the events database";
@@ -930,7 +923,6 @@ int doMarkAllCallsRead(const QStringList &arguments, const QVariantMap &options)
 bool exportGroup(QDataStream &out, const Group &group)
 {
     ConversationModel model;
-    model.enableContactChanges(false);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getEvents(group.id())) {
         qWarning() << "Error reading events from group" << group.id();
@@ -1003,7 +995,6 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
 
     if (options.contains("-calls")) {
         CallModel callModel;
-        callModel.enableContactChanges(false);
         callModel.setTreeMode(false);
         callModel.setFilter(CallModel::SortByTime);
         callModel.setQueryMode(EventModel::SyncQuery);
@@ -1085,7 +1076,6 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
     in >> numCalls;
     if (numCalls) {
         EventModel model;
-        model.enableContactChanges(false);
         model.setQueryMode(EventModel::SyncQuery);
         Catcher catcher(&model);
 
@@ -1120,9 +1110,19 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         return -1;
     }
 
+    int dateOffset = 0;
+    if (options.contains("-relativeDate")) {
+        QDateTime endTime = QDateTime::fromString(options.value("-relativeDate").toString(), "yyyyMMdd");
+        if (!endTime.isValid()) {
+            qCritical() << "Invalid end time";
+            return -1;
+        }
+
+        dateOffset = endTime.secsTo(QDateTime(QDate::currentDate()));
+    }
+
     bool ok = true;
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
     QByteArray data = file.readAll();
     QJsonParseError error;
     QJsonDocument json = QJsonDocument::fromJson(data, &error);
@@ -1131,14 +1131,6 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         return -1;
     }
     QVariantList result = json.array().toVariantList();
-#else
-    QJson::Parser parser;
-    QVariantList result = parser.parse(&file, &ok).toList();
-    if (!ok) {
-        qCritical() << "Unable to import file" << fileName << ":" << parser.errorString() << "on line" << parser.errorLine();
-        return -1;
-    }
-#endif
 
     GroupModel groupModel;
     groupModel.enableContactChanges(false);
@@ -1168,6 +1160,9 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             }
 
             group.setLocalUid(TELEPATHY_ACCOUNT_PREFIX + from);
+        } else if (conversation["type"] == QLatin1String("call")) {
+            type = Event::CallEvent;
+            group.setLocalUid(RING_ACCOUNT);
         } else {
             qWarning() << "No valid type for conversation" << groupCount;
             ok = false;
@@ -1184,54 +1179,71 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         group.setRemoteUids(QStringList() << to);
         group.setChatType(Group::ChatTypeP2P);
 
-        groupCatcher.reset();
-        if (!groupModel.addGroup(group)) {
-            qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
-            ok = false;
-            continue;
+        // Calls don't actually belong to groups
+        if (type != Event::CallEvent) {
+            groupCatcher.reset();
+            if (!groupModel.addGroup(group)) {
+                qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
+                ok = false;
+                continue;
+            }
+            groupCatcher.waitCommit(0);
         }
-        groupCatcher.waitCommit(0);
 
-        // messages
+        // events (and "messages" for compatibility)
+        QVariantList eventData;
+        eventData << conversation.value("events").toList() << conversation.value("messages").toList();
         QList<Event> events;
-        QVariantList messages = conversation.value("messages").toList();
-        events.reserve(messages.size());
+        events.reserve(eventData.size());
 
         int eventCount = 0;
-        foreach (const QVariant &m, messages) {
-            QVariantMap message = m.toMap();
+        foreach (const QVariant &e, eventData) {
+            QVariantMap data = e.toMap();
             Event event;
             event.setType(type);
-            event.setGroupId(group.id());
+            if (group.id() >= 0)
+                event.setGroupId(group.id());
             event.setLocalUid(group.localUid());
             event.setRemoteUid(group.remoteUids().first());
 
             eventCount++;
 
-            if (message["direction"] == "in") {
+            if (data["direction"] == "in") {
                 event.setDirection(Event::Inbound);
-            } else if (message["direction"] == "out") {
+            } else if (data["direction"] == "out") {
                 event.setDirection(Event::Outbound);
                 event.setStatus(Event::DeliveredStatus);
             } else {
-                qWarning() << "No valid direction for message" << eventCount << "in conversation" << groupCount;
+                qWarning() << "No valid direction for event" << eventCount << "in conversation" << groupCount;
                 ok = false;
                 continue;
             }
 
-            QDateTime date = QDateTime::fromString(message.value("date").toString(), Qt::ISODate);
+            QDateTime date = QDateTime::fromString(data.value("date").toString(), Qt::ISODate);
             if (!date.isValid()) {
-                qWarning() << "No valid date for message" << eventCount << "in conversation" << groupCount;
+                qWarning() << "No valid date for event" << eventCount << "in conversation" << groupCount;
                 ok = false;
                 continue;
             }
+
+            QDateTime endDate = QDateTime::fromString(data.value("endDate").toString(), Qt::ISODate);
+            if (!endDate.isValid())
+                endDate = date;
+
+            date = date.addSecs(dateOffset);
+            endDate = endDate.addSecs(dateOffset);
             event.setStartTime(date);
-            event.setEndTime(date);
+            event.setEndTime(endDate);
 
-            if (!message.value("unread").toBool())
-                event.setIsRead(true);
+            if (type == Event::CallEvent) {
+                if (data.value("missed").toBool())
+                    event.setIsMissedCall(true);
+            } else {
+                if (!data.value("unread").toBool())
+                    event.setIsRead(true);
 
-            event.setFreeText(message.value("text").toString());
+                event.setFreeText(data.value("text").toString());
+            }
 
             events.append(event);
         }
@@ -1263,7 +1275,7 @@ int main(int argc, char **argv)
 #endif
         QCoreApplication app(argc, argv);
 
-        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text";
+        optionsWithArguments << "-group" << "-startTime" << "-endTime" << "-n" << "-text" << "-relativeDate";
 
         QStringList args = app.arguments();
         QVariantMap options = parseOptions(args);

@@ -35,7 +35,6 @@
 #include "constants.h"
 #include "commonutils.h"
 #include "debug.h"
-#include "recentcontactsmodel.h"
 
 using namespace CommHistory;
 
@@ -44,7 +43,9 @@ namespace {
 }
 
 EventModelPrivate::EventModelPrivate(EventModel *model)
-        : isInTreeMode(false)
+        : addResolver(0)
+        , receiveResolver(0)
+        , isInTreeMode(false)
         , queryMode(EventModel::AsyncQuery)
         , chunkSize(defaultChunkSize)
         , firstChunkSize(0)
@@ -53,7 +54,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , isReady(true)
         , messagePartsReady(true)
         , threadCanFetchMore(false)
-        , contactChangesEnabled(false)
+        , resolveContacts(false)
         , propertyMask(Event::allProperties())
         , bgThread(0)
 {
@@ -123,17 +124,9 @@ QModelIndex EventModelPrivate::findEvent(int id) const
     return findEventRecursive(id, eventRootItem);
 }
 
-QModelIndex EventModelPrivate::findParent(const Event &event)
-{
-    Q_UNUSED(event);
-    return QModelIndex();
-}
-
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     DEBUG() << __PRETTY_FUNCTION__;
-
-    startContactListening();
 
     isReady = false;
 
@@ -141,6 +134,7 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
         qWarning() << "Failed to execute query";
         qWarning() << query.lastError();
         qWarning() << query.lastQuery();
+        return false;
     }
 
     QList<Event> events;
@@ -151,7 +145,6 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
     }
 
     eventsReceivedSlot(0, events.size(), events);
-    modelUpdatedSlot(true);
     return true;
 }
 
@@ -162,16 +155,36 @@ bool EventModelPrivate::fillModel(int start,
     Q_UNUSED(start);
     Q_UNUSED(end);
 
+    if (events.isEmpty())
+        return false;
+
     Q_Q(EventModel);
     DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
 
     q->beginInsertRows(QModelIndex(), q->rowCount(), q->rowCount() + events.count() - 1);
-    foreach (Event event, events) {
+    foreach (const Event &event, events) {
         eventRootItem->appendChild(new EventTreeItem(event, eventRootItem));
     }
     q->endInsertRows();
 
-    return false;
+    modelUpdatedSlot(true);
+    return true;
+}
+
+bool EventModelPrivate::fillModel(QList<CommHistory::Event> events)
+{
+    Q_Q(EventModel);
+
+    QMutableListIterator<Event> i(events);
+    while (i.hasNext()) {
+        const Event &event = i.next();
+        if (findEvent(event.id()).isValid()) {
+            i.remove();
+            continue;
+        }
+    }
+
+    return fillModel(q->rowCount(), q->rowCount() + events.count() - 1, events);
 }
 
 void EventModelPrivate::clearEvents()
@@ -181,26 +194,52 @@ void EventModelPrivate::clearEvents()
     eventRootItem = new EventTreeItem(Event());
 }
 
-void EventModelPrivate::addToModel(Event &event)
+void EventModelPrivate::addToModel(const Event &event, bool sync)
 {
-    Q_Q(EventModel);
     DEBUG() << Q_FUNC_INFO << event.toString();
 
-    if (!event.contacts().isEmpty()) {
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-    } else {
-        setContactFromCache(event);
+    // Insert immediately if synchronous (and resolve contact later if necessary),
+    // or if not resolving contacts
+    if (sync || !resolveContacts) {
+        prependEvents(QList<Event>() << event);
     }
 
-    QModelIndex index = findParent(event);
-    if (index.isValid()) {
-        q->beginInsertRows(index, index.row(), index.row());
-    } else {
-        q->beginInsertRows(QModelIndex(), 0, 0);
+    // Resolve contacts. If inserted above, the duplicate will be ignored
+    if (resolveContacts) {
+        if (!addResolver) {
+            addResolver = new ContactResolver(this);
+            connect(addResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(prependEvents(QList<Event>)));
+        }
+
+        addResolver->prependEvents(QList<Event>() << event);
     }
-    EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-    if (!item) item = eventRootItem;
-    item->prependChild(new EventTreeItem(event, item));
+}
+
+void EventModelPrivate::prependEvents(QList<Event> events)
+{
+    Q_Q(EventModel);
+
+    // Replace exact duplicates instead of inserting. This is a workaround
+    // for the sync mode in addToModel.
+    for (int i = 0; i < events.size(); i++) {
+        for (int j = 0; j < eventRootItem->childCount(); j++) {
+            if (eventRootItem->eventAt(j) == events[i]) {
+                eventRootItem->child(j)->setEvent(events[i]);
+                emitDataChanged(j, eventRootItem->child(j));
+                events.removeAt(i);
+                i--;
+                break;
+            }
+        }
+    }
+
+    if (events.isEmpty())
+        return;
+
+    q->beginInsertRows(QModelIndex(), 0, events.size() - 1);
+    for (int i = events.size() - 1; i >= 0; i--) {
+        eventRootItem->prependChild(new EventTreeItem(events[i], eventRootItem));
+    }
     q->endInsertRows();
 }
 
@@ -208,10 +247,6 @@ void EventModelPrivate::modifyInModel(Event &event)
 {
     Q_Q(EventModel);
     DEBUG() << __PRETTY_FUNCTION__ << event.id();
-
-    if (!event.validProperties().contains(Event::Contacts)) {
-        setContactFromCache(event);
-    }
 
     QModelIndex index = findEvent(event.id());
     if (index.isValid()) {
@@ -254,27 +289,21 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 {
     DEBUG() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
 
-    QMutableListIterator<Event> i(events);
-    while (i.hasNext()) {
-        Event event = i.next();
-
-        if (findEvent(event.id()).isValid()) {
-            end--;
-            i.remove();
-            continue;
-        }
-
-        if (!event.contacts().isEmpty()) {
-            contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), event.contacts());
-        }  else {
-            setContactFromCache(event);
-        }
+    if (events.isEmpty()) {
+        // Empty results are still "ready"
+        modelUpdatedSlot(true);
+        return;
     }
 
-    if (!events.isEmpty()) {
-        // now we have some content -> start tracking contacts if enabled
-        startContactListening();
+    // Contact resolution is not allowed in synchronous query mode
+    if (resolveContacts && queryMode != EventModel::SyncQuery) {
+        if (!receiveResolver) {
+            receiveResolver = new ContactResolver(this);
+            connect(receiveResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(fillModel(QList<Event>)));
+        }
 
+        receiveResolver->appendEvents(events);
+    } else {
         fillModel(start, end, events);
     }
 }
@@ -368,8 +397,7 @@ void EventModelPrivate::canFetchMoreChangedSlot(bool canFetch)
 
 bool EventModelPrivate::canFetchMore() const
 {
-    //return threadCanFetchMore;
-    return false;
+    return threadCanFetchMore;
 }
 
 void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
@@ -410,9 +438,6 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
 
             // create new contact, i.e. <id, name> pair
             Event::Contact newContact((int)contactId, contactName);
-            // create cache key
-            QPair<QString, QString> cacheKey = qMakePair(event->localUid(), event->remoteUid());
-            contactCache.insert(cacheKey, QList<Event::Contact>() << newContact);
 
             for (int i = 0; i < contacts.count(); i++) {
                 // if contact is already resolved, change name to new one
@@ -463,57 +488,9 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
 {
     Event::Contact contact(localId, contactName);
 
-    // (local id, remote id) -> (contact id, name)
-    QMap<QPair<QString,QString>, QList<Event::Contact> >::iterator cacheIt = contactCache.begin();
-    for ( ; cacheIt != contactCache.end(); ++cacheIt) {
-        const QPair<QString, QString> &uidPair(cacheIt.key());
-        QList<Event::Contact> &contacts(cacheIt.value());
-
-        if (ContactListener::addressMatchesList(uidPair.first,  // local id
-                                                uidPair.second, // remote id
-                                                contactAddresses)) {
-            QList<Event::Contact>::iterator it = contacts.begin(), end = contacts.end();
-            for ( ; it != end; ++it) {
-                if ((*it).first == contact.first) {
-                    // change name for existing contact
-                    (*it).second = contact.second;
-                    break;
-                }
-            }
-            if (it == end) {
-                // add new contact to key
-                contacts.append(contact);
-            }
-        }
-        // address not found, but we've got the contact in the cache
-        // -> contact was updated -> address removed
-        else if (contacts.contains(contact)) {
-            // delete our record since the address doesn't match anymore
-            contacts.removeOne(contact);
-            if (contacts.isEmpty()) {
-                contactCache.erase(cacheIt);
-            }
-            break;
-        }
-    }
-
     QList<QPair<QString, QString> > uidPairs;
-
-    bool hasAddressType[3] = { false, false, false };
     foreach (const ContactAddress &address, contactAddresses) {
-        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
-
-        hasAddressType[address.type - 1] = true;
         uidPairs.append(address.uidPair());
-    }
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        if (hasAddressType[i]) {
-            typeSet[i]->insert(localId);
-        } else {
-            typeSet[i]->remove(localId);
-        }
     }
 
     changeContactsRecursive(ContactUpdated, localId, contactName, uidPairs, eventRootItem);
@@ -521,38 +498,10 @@ void EventModelPrivate::slotContactUpdated(quint32 localId,
 
 void EventModelPrivate::slotContactRemoved(quint32 localId)
 {
-    QList<QPair<QString,QString> > contactAddresses;
-
-    QMap<QPair<QString,QString>, QList<Event::Contact> >::iterator cacheIt = contactCache.begin();
-    while (cacheIt != contactCache.end()) {
-        QList<Event::Contact> &contacts(cacheIt.value());
-
-        QList<Event::Contact>::iterator it = contacts.begin();
-        while (it != contacts.end()) {
-            if (static_cast<quint32>((*it).first) == localId) {
-                contactAddresses.append(cacheIt.key());
-                it = contacts.erase(it);
-            } else {
-                ++it;
-            }
-        }
-
-        if (contacts.isEmpty()) {
-            cacheIt = contactCache.erase(cacheIt);
-        } else {
-            ++cacheIt;
-        }
-    }
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        typeSet[i]->remove(localId);
-    }
-
     changeContactsRecursive(ContactRemoved,
                             localId,
                             QString(), // contactName
-                            contactAddresses,
+                            QList<QPair<QString,QString> >(), // contactAddresses
                             eventRootItem);
 }
 
@@ -566,29 +515,13 @@ DatabaseIO* EventModelPrivate::database()
     return DatabaseIO::instance();
 }
 
-bool EventModelPrivate::setContactFromCache(CommHistory::Event &event)
+void EventModelPrivate::setResolveContacts(bool enabled)
 {
-    QMap<QPair<QString,QString>, QList<Event::Contact> >::Iterator it = contactCache.find(qMakePair(event.localUid(), event.remoteUid()));
-    if (it != contactCache.end()) {
-        if (!it.value().isEmpty()) {
-            event.setContacts(it.value());
-            return true;
-        }
-    } else {
-        // Insert an empty item into the cache to prevent duplicate requests
-        contactCache.insert(qMakePair(event.localUid(), event.remoteUid()), QList<Event::Contact>());
+    if (resolveContacts == enabled)
+        return;
+    resolveContacts = enabled;
 
-        startContactListening();
-        if (contactListener)
-            contactListener->resolveContact(event.localUid(), event.remoteUid());
-    }
-
-    return false;
-}
-
-void EventModelPrivate::startContactListening()
-{
-    if (contactChangesEnabled && !contactListener) {
+    if (resolveContacts && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
                 SIGNAL(contactUpdated(quint32, const QString&, const QList<ContactAddress>&)),
@@ -605,18 +538,13 @@ void EventModelPrivate::startContactListening()
                 this,
                 SLOT(slotContactUnknown(const QPair<QString, QString>&)),
                 Qt::UniqueConnection);
-    }
-}
+    } else if (!resolveContacts && contactListener) {
+        disconnect(contactListener.data(), 0, this, 0);
+        contactListener.clear();
 
-bool EventModelPrivate::contactHasAddress(int types, quint32 localId) const
-{
-    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
-        return true;
-    return false;
+        delete receiveResolver;
+        receiveResolver = 0;
+    }
 }
 
 void EventModelPrivate::emitDataChanged(int row, void *data)

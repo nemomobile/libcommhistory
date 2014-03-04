@@ -53,11 +53,7 @@
 #include "commonutils.h"
 #include "contactlistener.h"
 
-#ifdef USING_QTPIM
 QTCONTACTS_USE_NAMESPACE
-#else
-QTM_USE_NAMESPACE
-#endif
 
 using namespace QtContactsSqliteExtensions;
 
@@ -67,12 +63,8 @@ static int contactNumber = 0;
 QContactManager *createManager()
 {
     QMap<QString, QString> parameters;
-#ifdef USING_QTPIM
     QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
     parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
-#else
-    QString envspec(QLatin1String(qgetenv("NEMO_CONTACT_MANAGER")));
-#endif
     if (!envspec.isEmpty()) {
         qDebug() << "Using contact manager:" << envspec;
         return new QContactManager(envspec, parameters);
@@ -97,7 +89,7 @@ const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
 int ticks = 0;
 int idleTicks = 0;
 
-QSet<ApiContactIdType> addedContactIds;
+QSet<QContactId> addedContactIds;
 QSet<int> addedEventIds;
 
 int addTestEvent(EventModel &model,
@@ -223,15 +215,10 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
     QContactRelationshipFilter filter;
     filter.setRelatedContactRole(QContactRelationship::Second);
 
-#ifdef USING_QTPIM
     filter.setRelatedContact(contact);
     filter.setRelationshipType(QContactRelationship::Aggregates());
-#else
-    filter.setRelatedContactId(contact.id());
-    filter.setRelationshipType(QContactRelationship::Aggregates);
-#endif
 
-    foreach (const ApiContactIdType &id, manager()->contactIds(filter)) {
+    foreach (const QContactId &id, manager()->contactIds(filter)) {
         qDebug() << "********** contact id" << id;
         addedContactIds.insert(id);
         return internalContactId(id);
@@ -323,20 +310,11 @@ void deleteTestContact(int id)
 void cleanUpTestContacts()
 {
     if (!addedContactIds.isEmpty()) {
-#ifdef USING_QTPIM
         QString aggregatesType = QContactRelationship::Aggregates();
-#else
-        QString aggregatesType = QContactRelationship::Aggregates;
-#endif
 
         foreach (const QContactRelationship &rel, manager()->relationships(aggregatesType)) {
-#ifdef USING_QTPIM
-            ApiContactIdType firstId = rel.first().id();
-            ApiContactIdType secondId = rel.second().id();
-#else
-            ApiContactIdType firstId = rel.first().localId();
-            ApiContactIdType secondId = rel.second().localId();
-#endif
+            QContactId firstId = rel.first().id();
+            QContactId secondId = rel.second().id();
             if (addedContactIds.contains(firstId)) {
                 addedContactIds.insert(secondId);
             }
