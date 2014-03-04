@@ -149,6 +149,7 @@ public:
         Contacts,
         IsAction,
         Headers,
+        ExtraProperties,
         //
         NumProperties
     };
@@ -214,6 +215,11 @@ public:
      * \param properties New set of properties.
      */
     void resetModifiedProperties();
+
+    QVariantMap extraProperties() const;
+    void setExtraProperties(const QVariantMap &extraProperties);
+    QVariant extraProperty(const QString &key) const;
+    void setExtraProperty(const QString &key, const QVariant &value);
 
     //\\//\\// G E T - A C C E S S O R S //\\//\\//
     int id() const;
