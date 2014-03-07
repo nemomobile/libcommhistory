@@ -61,7 +61,8 @@ public:
 
     static QString makeCallGroupURI(const CommHistory::Event &event);
 
-    static void readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties);
+    static void readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties,
+            bool &hasMessageParts);
     static void readGroupResult(QSqlQuery &query, Group &group);
 
     static QString eventQueryBase();
@@ -74,6 +75,7 @@ public:
     bool deleteEmptyGroups();
 
     bool insertEventProperties(int eventId, const QVariantMap &properties);
+    bool insertMessageParts(Event &event);
 
     QSqlQuery createQuery();
     QSqlDatabase& connection();

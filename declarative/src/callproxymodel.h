@@ -72,11 +72,7 @@ public:
         LastModifiedRole,
         EventCountRole,
         FromVCardFileNameRole,
-        FromVCardLabelRole,
-        EncodingRole,
-        CharsetRole,
-        LanguageRole,
-        IsDeletedRole
+        FromVCardLabelRole
     };
 
     enum EventType {

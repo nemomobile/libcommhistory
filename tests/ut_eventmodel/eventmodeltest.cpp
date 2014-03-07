@@ -525,13 +525,11 @@ void EventModelTest::testDeleteEventMmsParts()
     MessagePart part1;
     part1.setContentId("blahSmil");
     part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
 
     MessagePart part2;
     part2.setContentId("catphoto");
     part2.setContentType("image/jpeg");
-    part2.setContentSize(101000);
-    part2.setContentLocation("/home/user/.mms/msgid001/catphoto.jpg");
+    part2.setPath("/home/user/.mms/msgid001/catphoto.jpg");
 
     event.setMessageParts(QList<MessagePart>() << part1 << part2);
 
@@ -548,12 +546,10 @@ void EventModelTest::testDeleteEventMmsParts()
     MessagePart part3;
     part3.setContentId("text_slide2");
     part3.setContentType("text/plain");
-    part3.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
     MessagePart part4;
     part4.setContentId("dogphoto");
     part4.setContentType("image/jpeg");
-    part4.setContentSize(202000);
-    part4.setContentLocation("/home/user/.mms/msgid001/dogphoto.jpg");
+    part4.setPath("/home/user/.mms/msgid001/dogphoto.jpg");
     event.setId(-1);
 
     event.setMessageParts(QList<MessagePart>() << part3 << part4);
@@ -900,7 +896,6 @@ void EventModelTest::testReportDelivery()
 
 void EventModelTest::testMessageParts()
 {
-    QSKIP("Message parts are not yet supported with SQLite");
     EventModel model;
     watcher.setModel(&model);
 
@@ -917,50 +912,26 @@ void EventModelTest::testMessageParts()
     QList<MessagePart> parts;
 
     MessagePart part1;
-    part1.setContentId("smil");
-    part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
+    part1.setContentId("catphoto");
+    part1.setContentType("image/jpeg");
+    part1.setPath("/home/user/.mms/msgid001/catphoto.jpg");
     MessagePart part2;
-    part2.setContentId("text_slide1");
-    part2.setContentType("text/plain");
-    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
-    MessagePart part3;
-    part3.setContentId("catphoto");
-    part3.setContentType("image/jpeg");
-    part3.setContentSize(101000);
-    part3.setContentLocation("/home/user/.mms/msgid001/catphoto.jpg");
-    MessagePart part4;
-    part4.setContentId("text_slide2");
-    part4.setContentType("text/plain");
-    part4.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
-    MessagePart part5;
-    part5.setContentId("dogphoto");
-    part5.setContentType("image/jpeg");
-    part5.setContentSize(202000);
-    part5.setContentLocation("/home/user/.mms/msgid001/dogphoto.jpg");
+    part2.setContentId("dogphoto");
+    part2.setContentType("image/jpeg");
+    part2.setPath("/home/user/.mms/msgid001/dogphoto.jpg");
 
-    parts << part1 << part2 << part3 << part4 << part5;
+    parts << part1 << part2;
     event.setMessageParts(parts);
 
     QVERIFY(model.addEvent(event));
     QVERIFY(watcher.waitForAdded());
     QVERIFY(event.id() != -1);
 
+    parts = event.messageParts();
+    QVERIFY(parts[0].id() >= 0);
+    QVERIFY(parts[1].id() >= 0);
+
     Event e;
-    QVERIFY(model.databaseIO().getEvent(event.id(), e));
-    QVERIFY(compareEvents(event, e));
-    QCOMPARE(e.messageParts().size(), parts.size());
-    foreach (MessagePart part, e.messageParts())
-        QVERIFY(parts.indexOf(part) >= 0);
-
-    // remove message parts
-    parts.clear();
-    parts << part1 << part5;
-    event.setMessageParts(parts);
-
-    QVERIFY(model.modifyEvent(event));
-    QVERIFY(watcher.waitForUpdated());
-
     QVERIFY(model.databaseIO().getEvent(event.id(), e));
     QVERIFY(compareEvents(event, e));
     QCOMPARE(e.messageParts().size(), parts.size());
@@ -968,8 +939,9 @@ void EventModelTest::testMessageParts()
         QVERIFY(parts.indexOf(part) >= 0);
 
     // modify message parts
-    parts.clear();
-    parts << part1 << part5;
+    parts[0].setContentId("newcatphoto");
+    parts[0].setPath("/home/user/.mms/msgid001/catphoto.jpg");
+    event.setMessageParts(parts);
     QVERIFY(model.modifyEvent(event));
     QVERIFY(watcher.waitForUpdated());
 
@@ -979,275 +951,18 @@ void EventModelTest::testMessageParts()
     foreach (MessagePart part, e.messageParts())
         QVERIFY(parts.indexOf(part) >= 0);
 
-#if 0
-    // delete leftovers
-    QScopedPointer<QSparqlConnection> conn(new QSparqlConnection(QLatin1String("QTRACKER_DIRECT")));
-    QSparqlQuery deletePartsQuery(QLatin1String("DELETE {?a a rdfs:Resource} WHERE {"
-                                                "{?a nmo:contentId \"smil\"} UNION "
-                                                "{?a nmo:contentId \"dogphoto\"} UNION "
-                                                "{?a nmo:contentId \"text_slide1\"} }"),
-                                  QSparqlQuery::InsertStatement);
-    QSparqlResult* result = conn->exec(deletePartsQuery);
-    result->waitForFinished();
-    QVERIFY(!result->hasError());
-#endif
-}
+    // remove message part
+    parts.takeFirst();
+    event.setMessageParts(parts);
 
-void EventModelTest::testDeleteMessageParts()
-{
-    QSKIP("Message parts are not yet supported with SQLite");
-    EventModel model;
-    watcher.setModel(&model);
-
-    Event event1;
-    event1.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
-    event1.setRemoteUid("0506661234");
-    event1.setType(Event::MMSEvent);
-    event1.setDirection(Event::Outbound);
-    event1.setStartTime(QDateTime::currentDateTime());
-    event1.setEndTime(QDateTime::currentDateTime());
-    event1.setFreeText("mms1");
-    event1.setGroupId(group1.id());
-
-    MessagePart part1;
-    part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
-
-    event1.setMessageParts(QList<MessagePart>() << part1);
-
-    QVERIFY(model.addEvent(event1));
-    QVERIFY(watcher.waitForAdded());
-    QVERIFY(event1.id() != -1);
-
-    Event e;
-    QVERIFY(model.databaseIO().getEvent(event1.id(), e));
-    QVERIFY(compareEvents(event1, e));
-    QCOMPARE(e.messageParts().size(), 1);
-    QCOMPARE(e.messageParts()[0].plainTextContent(), part1.plainTextContent());
-    QCOMPARE(e.messageParts()[0].contentType(), part1.contentType());
-
-    Event event2;
-    event2.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
-    event2.setRemoteUid("0506661234");
-    event2.setType(Event::MMSEvent);
-    event2.setDirection(Event::Outbound);
-    event2.setStartTime(QDateTime::currentDateTime());
-    event2.setEndTime(QDateTime::currentDateTime());
-    event2.setFreeText("mms2");
-    event2.setGroupId(group1.id());
-
-    MessagePart part2;
-    part2.setContentId("text_slide1");
-    part2.setContentType("text/plain");
-    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
-
-    event2.setMessageParts(QList<MessagePart>() << part2);
-
-    QVERIFY(model.addEvent(event2));
-    QVERIFY(watcher.waitForAdded());
-    QVERIFY(event2.id() != -1);
-
-    QVERIFY(model.databaseIO().getEvent(event2.id(), e));
-    QVERIFY(compareEvents(event2, e));
-    QCOMPARE(e.messageParts().size(), 1);
-    QCOMPARE(e.messageParts()[0].plainTextContent(), part2.plainTextContent());
-    QCOMPARE(e.messageParts()[0].contentType(), part2.contentType());
-
-    event1.setMessageParts(QList<MessagePart>());
-
-    QVERIFY(model.modifyEvent(event1));
+    QVERIFY(model.modifyEvent(event));
     QVERIFY(watcher.waitForUpdated());
 
-    QVERIFY(model.databaseIO().getEvent(event1.id(), e));
-    QVERIFY(compareEvents(event1, e));
-    QCOMPARE(e.messageParts().size(), 0);
-
-    QVERIFY(model.databaseIO().getEvent(event2.id(), e));
-    QVERIFY(compareEvents(event2, e));
-    QCOMPARE(e.messageParts().size(), 1);
-}
-
-void EventModelTest::testMessagePartsQuery_data()
-{
-    QTest::addColumn<bool>("useThread");
-
-    QTest::newRow("Without thread") << false;
-    QTest::newRow("Use thread") << true;
-}
-
-void EventModelTest::testMessagePartsQuery()
-{
-    QSKIP("Message parts are not yet supported with SQLite");
-    QFETCH(bool, useThread);
-    QString threadPrefix;
-    if (useThread) threadPrefix = "thread_";
-
-    EventModel model;
-    watcher.setModel(&model);
-
-    Group group;
-    const QString LOCAL_ID("/org/freedesktop/Telepathy/Account/ring/tel/ring");
-    const QString REMOTE_ID("12345789");
-    const QString ATT_PATH("/tmp/.mms/msgid001/");
-    addTestGroup(group, LOCAL_ID, REMOTE_ID);
-
-    QString prevDir = QDir::currentPath();
-    QDir currentDir = QDir::current();
-
-    QVERIFY(currentDir.mkpath(ATT_PATH));
-
-    Event event;
-    event.setLocalUid(LOCAL_ID);
-    event.setRemoteUid(REMOTE_ID);
-    event.setType(Event::MMSEvent);
-    event.setDirection(Event::Outbound);
-    event.setStartTime(QDateTime::currentDateTime());
-    event.setEndTime(QDateTime::currentDateTime());
-    event.setFreeText("mms1");
-    event.setGroupId(group.id());
-
-    MessagePart part1;
-    part1.setContentId("blah_42");
-    part1.setContentType("application/smil");
-    part1.setPlainTextContent("<smil>blah</smil>");
-    MessagePart part2;
-    part2.setContentId("text_slide1");
-    part2.setContentType("text/plain");
-    part2.setPlainTextContent("Here is a photo of my cat. Isn't it cute?");
-    MessagePart part3;
-    part3.setContentId("catphoto");
-    part3.setContentType("image/jpeg");
-    part3.setContentSize(101000);
-    QString fileName = threadPrefix + "catphoto2.jpg";
-    part3.setContentLocation(ATT_PATH + fileName);
-
-#define CREATE_FILE(messageToken, filename) {\
-        QString mmsPath = QString("%1/.mms/msg/%2").arg(QDir::homePath()).arg(messageToken); \
-        QDir mmsDir(mmsPath); \
-        QVERIFY(mmsDir.mkpath(mmsPath)); \
-        QDir::setCurrent(mmsDir.path()); \
-        qDebug() << "create file" << filename << "in" << mmsDir.path(); \
-        QFile photo((filename)); \
-        photo.open(QIODevice::WriteOnly); \
-        photo.close(); \
-        QVERIFY(QFile::exists(photo.fileName()));}
-
-    CREATE_FILE("MSGTOKEN1", fileName)
-
-    QList<MessagePart> parts1;
-    parts1 << part1 << part2 << part3;
-    event.setMessageParts(parts1);
-    event.setMessageToken("MSGTOKEN1");
-    QVERIFY(model.addEvent(event));
-    QVERIFY(watcher.waitForAdded());
-    QVERIFY(event.id() != -1);
-
-    event.setId(-1);
-    event.setFreeText("mms2");
-    MessagePart part4;
-    part4.setContentId("text_slide2");
-    part4.setContentType("text/plain");
-    part4.setPlainTextContent("And here is a photo of my dog. Isn't it ugly?");
-    MessagePart part5;
-    part5.setContentId("dogphoto2");
-    part5.setContentType("image/jpeg");
-    part5.setContentSize(202000);
-    fileName = threadPrefix + "dogphoto2.jpg";
-    part5.setContentLocation(ATT_PATH + fileName);
-
-    CREATE_FILE("MSGTOKEN2", fileName);
-
-    QList<MessagePart> parts2;
-    parts2 << part4 << part5;
-    event.setMessageParts(parts2);
-    event.setMessageToken("MSGTOKEN2");
-
-    QVERIFY(model.addEvent(event));
-    QVERIFY(watcher.waitForAdded());
-    QVERIFY(event.id() != -1);
-
-    event.setId(-1);
-    event.setFreeText("mms3");
-    MessagePart part6;
-    part6.setContentId("dogphoto3");
-    part6.setContentType("image/jpeg");
-    part6.setContentSize(203000);
-    fileName = threadPrefix + "dogphoto3.jpg";
-    part6.setContentLocation(ATT_PATH + fileName);
-
-    CREATE_FILE("MSGTOKEN3", fileName)
-
-    QList<MessagePart> parts3;
-    parts3 << part6;
-    event.setMessageParts(parts3);
-    event.setMessageToken("MSGTOKEN3");
-
-    QVERIFY(model.addEvent(event));
-    QVERIFY(watcher.waitForAdded());
-    QVERIFY(event.id() != -1);
-
-    QDir::setCurrent(prevDir);
-
-    ModelWatcher convWatcher;
-    ConversationModel convModel;
-    convWatcher.setModel(&convModel);
-
-    QSignalSpy modelReady(&convModel, SIGNAL(modelReady(bool)));
-    QThread modelThread;
-
-    if (useThread) {
-        modelThread.start();
-        convModel.setBackgroundThread(&modelThread);
-    }
-
-    QVERIFY(convModel.getEvents(group.id()));
-
-    QVERIFY(waitSignal(modelReady));
-
-    QList<int> eventIds;
-    for (int i = 0; i < convModel.rowCount(); i++) {
-        Event e = convModel.event(convModel.index(i, 0));
-
-        QVERIFY(e.id() != -1);
-        eventIds << e.id();
-        qDebug() << e.id() << e.freeText();
-        if (e.freeText() == "mms1") {
-            QCOMPARE(e.messageParts().size(), parts1.size());
-            foreach (MessagePart part, e.messageParts())
-                QVERIFY(parts1.indexOf(part) >= 0);
-        } else if (e.freeText() == "mms2") {
-            QCOMPARE(e.messageParts().size(), parts2.size());
-            foreach (MessagePart part, e.messageParts())
-                QVERIFY(parts2.indexOf(part) >= 0);
-        } else if (e.freeText() == "mms3") {
-            QCOMPARE(e.messageParts().size(), parts3.size());
-            foreach (MessagePart part, e.messageParts())
-                QVERIFY(parts3.indexOf(part) >= 0);
-        } else {
-            QFAIL("Unexpected message");
-        }
-    }
-
-    // check mms deleter
-    foreach (int eventId, eventIds) {
-        qDebug() << "DELETE" << eventId;
-        QVERIFY(convModel.deleteEvent(eventId));
-        QVERIFY(convWatcher.waitForDeleted());
-    }
-
-    qDebug() << "wait thread";
-    modelThread.quit();
-    modelThread.wait(3000);
-    qDebug() << "done";
-
-    QTest::qWait(1000);
-
-    QString mmsPath = QString("%1/.mms/msg/").arg(QDir::homePath());
-    QVERIFY(!QDir(mmsPath + "MSGTOKEN1").exists());
-    QVERIFY(!QDir(mmsPath + "MSGTOKEN2").exists());
-    QVERIFY(!QDir(mmsPath + "MSGTOKEN3").exists());
-
-    #undef CREATE_FILE
+    QVERIFY(model.databaseIO().getEvent(event.id(), e));
+    QVERIFY(compareEvents(event, e));
+    QCOMPARE(e.messageParts().size(), parts.size());
+    foreach (MessagePart part, e.messageParts())
+        QVERIFY(parts.indexOf(part) >= 0);
 }
 
 void EventModelTest::testCcBcc()

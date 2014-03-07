@@ -62,7 +62,6 @@ public:
     QString localUid;  /* telepathy account */
     QString remoteUid;
     QList<Event::Contact> contacts;
-    int parentId;
 
     QString freeText;
     int groupId;
@@ -74,10 +73,6 @@ public:
     int eventCount;
     QString fromVCardFileName;
     QString fromVCardLabel;
-    QString encoding;
-    QString charset;
-    QString language;
-    bool deleted;
     bool reportDelivery;
     bool reportRead;
     bool reportReadRequested;
@@ -106,18 +101,19 @@ static Event::PropertySet setOfAllProperties;
 QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
 {
     argument.beginStructure();
+    bool isDeleted = false;
     argument << event.id() << event.type() << event.startTime()
              << event.endTime() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
              << event.bytesReceived() << event.localUid()
              << event.remoteUid() << event.contacts()
-             << event.parentId() << event.freeText() << event.groupId()
+             << -1 /* parentId */ << event.freeText() << event.groupId()
              << event.messageToken() << event.mmsId() << event.lastModified()
              << event.eventCount()
              << event.fromVCardFileName() << event.fromVCardLabel()
-             << event.encoding() << event.characterSet() << event.language()
-             << event.isDeleted() << event.reportDelivery()
+             << QString() /* encoding */ << QString() /* charset */ << QString() /* language */
+             << isDeleted << event.reportDelivery()
              << event.contentLocation() << event.subject()
              << event.messageParts()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
@@ -137,15 +133,17 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
 const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
 {
     EventPrivate p;
-    int type, direction, status, rstatus ;
+    int type, direction, status, rstatus, parentId;
+    bool isDeleted;
+    QString encoding, charset, language;
     argument.beginStructure();
     argument >> p.id >> type >> p.startTime >> p.endTime
              >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
              >> status >> p.bytesReceived >> p.localUid >> p.remoteUid >> p.contacts
-             >> p.parentId >> p.freeText >> p.groupId
+             >> parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
-             >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
-             >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
+             >> p.fromVCardFileName >> p.fromVCardLabel >> encoding  >> charset >> language
+             >> isDeleted >> p.reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts
              >> rstatus >> p.reportRead >> p.reportReadRequested
              >> p.validityPeriod >> p.isAction >> p.headers >> p.extraProperties;
@@ -174,7 +172,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setLocalUid(p.localUid);
     event.setRemoteUid(p.remoteUid);
     event.setContacts(p.contacts);
-    event.setParentId(p.parentId);
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
     event.setGroupId(p.groupId);
@@ -183,10 +180,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setLastModified(p.lastModified);
     event.setEventCount(p.eventCount);
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
-    event.setEncoding(p.encoding);
-    event.setCharacterSet(p.charset);
-    event.setLanguage(p.language);
-    event.setDeleted(p.deleted);
     event.setReportDelivery(p.reportDelivery);
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
@@ -226,16 +219,17 @@ const QDBusArgument &operator>>(const QDBusArgument &argument,
 // To be replaced.
 QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
 {
+    bool isDeleted = false;
     stream << event.id() << event.type() << event.startTime()
            << event.endTime() << event.direction()  << event.isDraft()
            << event.isRead() << event.isMissedCall()
            << event.isEmergencyCall() << event.status()
            << event.bytesReceived() << event.localUid() << event.remoteUid()
-           << event.parentId() << event.freeText() << event.groupId()
+           << -1 /* parentId */ << event.freeText() << event.groupId()
            << event.messageToken() << event.mmsId() << event.lastModified()
            << event.fromVCardFileName() << event.fromVCardLabel()
-           << event.encoding() << event.characterSet() << event.language()
-           << event.isDeleted() << event.reportDelivery()
+           << QString() /* encoding */ << QString() /* charset */ << QString() /* language */
+           << isDeleted << event.reportDelivery()
            << event.contentLocation() << event.subject()
            << event.messageParts()
            << event.readStatus() << event.reportRead() << event.reportReadRequested()
@@ -247,14 +241,16 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
 QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
 {
     EventPrivate p;
-    int type, direction, status, rstatus;
+    int type, direction, status, rstatus, parentId;
+    bool isDeleted;
+    QString encoding, charset, language;
     stream >> p.id >> type >> p.startTime >> p.endTime
            >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
            >> status >> p.bytesReceived >> p.localUid >> p.remoteUid
-           >> p.parentId >> p.freeText >> p.groupId
+           >> parentId >> p.freeText >> p.groupId
            >> p.messageToken >> p.mmsId >>p.lastModified
-           >> p.fromVCardFileName >> p.fromVCardLabel  >> p.encoding   >> p.charset >> p.language
-           >> p.deleted >> p.reportDelivery >> p.contentLocation >> p.subject
+           >> p.fromVCardFileName >> p.fromVCardLabel >> encoding >> charset >> language
+           >> isDeleted >> p.reportDelivery >> p.contentLocation >> p.subject
            >> p.messageParts
            >> rstatus >> p.reportRead >> p.reportReadRequested
            >> p.validityPeriod >> p.isAction >> p.headers;
@@ -272,7 +268,6 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
     event.setRemoteUid(p.remoteUid);
-    event.setParentId(p.parentId);
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
     event.setGroupId(p.groupId);
@@ -280,10 +275,6 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setMmsId(p.mmsId);
     event.setLastModified(p.lastModified);
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
-    event.setEncoding(p.encoding);
-    event.setCharacterSet(p.charset);
-    event.setLanguage(p.language);
-    event.setDeleted(p.deleted);
     event.setReportDelivery(p.reportDelivery);
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
@@ -309,10 +300,8 @@ EventPrivate::EventPrivate()
         , isEmergencyCall( false )
         , status(Event::UnknownStatus)
         , bytesReceived(0)
-        , parentId(-1)
         , groupId(-1)
         , eventCount(0)
-        , deleted(false)
         , reportDelivery(false)
         , reportRead(false)
         , reportReadRequested(false)
@@ -339,7 +328,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , localUid(other.localUid)
         , remoteUid(other.remoteUid)
         , contacts(other.contacts)
-        , parentId(other.parentId)
         , freeText(other.freeText)
         , groupId(other.groupId)
         , messageToken(other.messageToken)
@@ -348,10 +336,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , eventCount( other.eventCount )
         , fromVCardFileName( other.fromVCardFileName )
         , fromVCardLabel( other.fromVCardLabel )
-        , encoding(other.encoding)
-        , charset(other.charset)
-        , language(other.language)
-        , deleted(other.deleted)
         , reportDelivery(other.reportDelivery)
         , reportRead(other.reportRead)
         , reportReadRequested(other.reportReadRequested)
@@ -439,12 +423,7 @@ bool Event::operator==(const Event &other) const
             this->d->isEmergencyCall   == other.isEmergencyCall()   &&
             this->d->direction         == other.direction()         &&
             this->d->id                == other.id()                &&
-            this->d->parentId          == other.parentId()          &&
-            this->d->deleted           == other.isDeleted()         &&
             this->d->fromVCardFileName == other.fromVCardFileName() &&
-            this->d->encoding          == other.encoding()          &&
-            this->d->charset           == other.characterSet()      &&
-            this->d->language          == other.language()          &&
             this->d->reportDelivery    == other.reportDelivery()    &&
             this->d->messageParts      == other.messageParts());
 }
@@ -457,11 +436,6 @@ bool Event::operator!=(const Event &other) const
 int Event::id() const
 {
     return d->id;
-}
-
-int Event::parentId() const
-{
-    return d->parentId;
 }
 
 QUrl Event::url() const
@@ -625,26 +599,6 @@ QString Event::fromVCardLabel() const
     return d->fromVCardLabel;
 }
 
-QString Event::characterSet() const
-{
-    return d->charset;
-}
-
-QString Event::language() const
-{
-    return d->language;
-}
-
-QString Event::encoding() const
-{
-    return d->encoding;
-}
-
-bool Event::isDeleted() const
-{
-    return d->deleted;
-}
-
 bool Event::reportDelivery() const
 {
     return d->reportDelivery;
@@ -699,12 +653,6 @@ void Event::setId(int id)
 {
     d->id = id;
     d->propertyChanged(Event::Id);
-}
-
-void Event::setParentId(int id)
-{
-    d->parentId = id;
-    d->propertyChanged(Event::ParentId);
 }
 
 void Event::setType(Event::EventType type)
@@ -863,30 +811,6 @@ void Event::setFromVCard( const QString &filename, const QString &label )
     d->fromVCardLabel = label.isEmpty() ? filename : label;
     d->propertyChanged(Event::FromVCardFileName);
     d->propertyChanged(Event::FromVCardLabel);
-}
-
-void Event::setEncoding(const QString& enc)
-{
-    d->encoding = enc;
-    d->propertyChanged(Event::Encoding);
-}
-
-void Event::setCharacterSet(const QString& charset)
-{
-    d->charset = charset;
-    d->propertyChanged(Event::CharacterSet);
-}
-
-void Event::setLanguage(const QString &lang)
-{
-    d->language = lang;
-    d->propertyChanged(Event::Language);
-}
-
-void Event::setDeleted(bool isDel)
-{
-    d->deleted = isDel;
-    d->propertyChanged(Event::IsDeleted);
 }
 
 void Event::setReportDelivery(bool reportDelivery)
@@ -1112,9 +1036,6 @@ void Event::copyValidProperties(const Event &other)
         case Contacts:
             setContacts(other.contacts());
             break;
-        case ParentId:
-            setParentId(other.parentId());
-            break;
         case Subject:
             setSubject(other.subject());
             break;
@@ -1136,18 +1057,6 @@ void Event::copyValidProperties(const Event &other)
         case FromVCardFileName:
         case FromVCardLabel:
             setFromVCard(other.fromVCardFileName(), other.fromVCardLabel());
-            break;
-        case Encoding:
-            setEncoding(other.encoding());
-            break;
-        case CharacterSet:
-            setCharacterSet(other.characterSet());
-            break;
-        case Language:
-            setLanguage(other.language());
-            break;
-        case IsDeleted:
-            // ignore, not in use
             break;
         case ReportDelivery:
             setReportDelivery(other.reportDelivery());

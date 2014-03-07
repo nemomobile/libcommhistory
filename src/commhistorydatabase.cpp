@@ -65,7 +65,7 @@ static const char *db_schema[] = {
     "  bytesReceived INTEGER, "
     "  localUid TEXT, "
     "  remoteUid TEXT, "
-    "  parentId INTEGER, "
+    "  parentId INTEGER, " // XXX remove, unused
     "  subject TEXT, "
     "  freeText TEXT, "
     "  groupId INTEGER, "
@@ -73,11 +73,11 @@ static const char *db_schema[] = {
     "  lastModified INTEGER, "
     "  vCardFileName TEXT, "
     "  vCardLabel TEXT, "
-    "  isDeleted INTEGER, "
+    "  isDeleted INTEGER, " // XXX remove, unused
     "  reportDelivery INTEGER, "
     "  validityPeriod INTEGER, "
     "  contentLocation TEXT, "
-    "  messageParts TEXT, "
+    "  messageParts TEXT, " // XXX remove, unused
     "  headers TEXT, "
     "  readStatus INTEGER, "
     "  reportRead INTEGER, "
@@ -85,6 +85,7 @@ static const char *db_schema[] = {
     "  mmsId INTEGER, "
     "  isAction INTEGER, "
     "  hasExtraProperties BOOL DEFAULT 0, "
+    "  hasMessageParts BOOL DEFAULT 0, "
     "  FOREIGN KEY(groupId) REFERENCES Groups(id) ON DELETE CASCADE "
     ")",
     "CREATE INDEX events_remoteUid ON Events (remoteUid)",
@@ -111,7 +112,27 @@ static const char *db_schema[] = {
     "    UPDATE Events SET hasExtraProperties=0 WHERE id=OLD.eventId; "
     "  END",
 
-    "PRAGMA user_version=3"
+    "CREATE TABLE MessageParts ( "
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    "  eventId INTEGER, "
+    "  contentId TEXT, "
+    "  contentType TEXT, "
+    "  path TEXT, "
+    "  FOREIGN KEY (eventId) REFERENCES Events(id) ON DELETE SET NULL "
+    ")",
+    "CREATE INDEX messageparts_eventId ON MessageParts (eventId)",
+
+    "CREATE TRIGGER messageparts_flag_insert AFTER INSERT ON MessageParts "
+    "  BEGIN "
+    "    UPDATE Events SET hasMessageParts=1 WHERE id=NEW.eventId; "
+    "  END",
+    "CREATE TRIGGER messageparts_flag_delete AFTER DELETE ON MessageParts "
+    "  WHEN (SELECT COUNT(*) FROM MessageParts WHERE eventId=OLD.eventId) = 0 "
+    "  BEGIN "
+    "    UPDATE Events SET hasMessageParts=0 WHERE id=OLD.eventId; "
+    "  END",
+
+    "PRAGMA user_version=4"
 };
 static int db_schema_count = sizeof(db_schema) / sizeof(*db_schema);
 
@@ -153,11 +174,36 @@ static const char *db_upgrade_2[] = {
     0
 };
 
+static const char *db_upgrade_3[] = {
+    "ALTER TABLE Events ADD COLUMN hasMessageParts BOOL DEFAULT 0",
+    "CREATE TABLE MessageParts ( "
+    "  id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    "  eventId INTEGER, "
+    "  contentId TEXT, "
+    "  contentType TEXT, "
+    "  path TEXT, "
+    "  FOREIGN KEY (eventId) REFERENCES Events(id) ON DELETE SET NULL "
+    ")",
+    "CREATE INDEX messageparts_eventId ON MessageParts (eventId)",
+    "CREATE TRIGGER messageparts_flag_insert AFTER INSERT ON MessageParts "
+    "  BEGIN "
+    "    UPDATE Events SET hasMessageParts=1 WHERE id=NEW.eventId; "
+    "  END",
+    "CREATE TRIGGER messageparts_flag_delete AFTER DELETE ON MessageParts "
+    "  WHEN (SELECT COUNT(*) FROM MessageParts WHERE eventId=OLD.eventId) = 0 "
+    "  BEGIN "
+    "    UPDATE Events SET hasMessageParts=0 WHERE id=OLD.eventId; "
+    "  END",
+    "PRAGMA user_version=4",
+    0
+};
+
 // REMEMBER TO UPDATE THE SCHEMA AND USER_VERSION!
 static const char **db_upgrade[] = {
     db_upgrade_0,
     db_upgrade_1,
-    db_upgrade_2
+    db_upgrade_2,
+    db_upgrade_3
 };
 static int db_upgrade_count = sizeof(db_upgrade) / sizeof(*db_upgrade);
 

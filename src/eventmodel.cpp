@@ -76,10 +76,6 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + EventCount] = "eventCount";
     roles[BaseRole + FromVCardFileName] = "fromVCardFileName";
     roles[BaseRole + FromVCardLabel] = "fromVCardLabel";
-    roles[BaseRole + Encoding] = "encoding";
-    roles[BaseRole + Charset] = "charset";
-    roles[BaseRole + Language] = "language";
-    roles[BaseRole + IsDeleted] = "isDeleted";
     roles[ContactIdsRole] = "contactIds";
     roles[ContactNamesRole] = "contactNames";
     return roles;
@@ -315,18 +311,6 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case FromVCardLabel:
             var = QVariant::fromValue(event.fromVCardLabel());
             break;
-        case Encoding:
-            var = QVariant::fromValue(event.encoding());
-            break;
-        case Charset:
-            var = QVariant::fromValue(event.characterSet());
-            break;
-        case Language:
-            var = QVariant::fromValue(event.language());
-            break;
-        case IsDeleted:
-            var = QVariant::fromValue(event.isDeleted());
-            break;
         default:
             DEBUG() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
             var = QVariant();
@@ -420,18 +404,6 @@ QVariant EventModel::headerData(int section,
                 break;
             case FromVCardLabel:
                 name = QLatin1String("vcard_label");
-                break;
-            case Encoding:
-                name = QLatin1String("encoding");
-                break;
-            case Charset:
-                name = QLatin1String("charset");
-                break;
-            case Language:
-                name = QLatin1String("language");
-                break;
-            case IsDeleted:
-                name = QLatin1String("is_deleted");
                 break;
             default:
                 break;

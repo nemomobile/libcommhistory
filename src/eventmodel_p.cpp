@@ -52,7 +52,6 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , queryLimit(0)
         , queryOffset(0)
         , isReady(true)
-        , messagePartsReady(true)
         , threadCanFetchMore(false)
         , resolveContacts(false)
         , propertyMask(Event::allProperties())
@@ -139,18 +138,23 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
 
     QList<Event> events;
     QList<int> extraPropertyIndicies;
+    QList<int> hasPartsIndicies;
     while (query.next()) {
         Event e;
-        bool extra = false;
-        DatabaseIOPrivate::readEventResult(query, e, extra);
+        bool extra = false, parts = false;
+        DatabaseIOPrivate::readEventResult(query, e, extra, parts);
         if (extra)
             extraPropertyIndicies.append(events.size());
+        if (parts)
+            hasPartsIndicies.append(events.size());
         events.append(e);
     }
     query.finish();
 
     foreach (int i, extraPropertyIndicies)
         DatabaseIO::instance()->getEventExtraProperties(events[i]);
+    foreach (int i, hasPartsIndicies)
+        DatabaseIO::instance()->getMessageParts(events[i]);
 
     eventsReceivedSlot(0, events.size(), events);
     return true;
@@ -316,46 +320,12 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
     }
 }
 
-void EventModelPrivate::messagePartsReceivedSlot(int eventId,
-                                                 QList<CommHistory::MessagePart> parts)
-{
-    DEBUG() << __PRETTY_FUNCTION__ << ":" << eventId << parts.count();
-
-    QModelIndex index = findEvent(eventId);
-    if (index.isValid()) {
-        EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
-        QList<CommHistory::MessagePart> newParts = item->event().messageParts() + parts;
-        item->event().setMessageParts(newParts);
-        item->event().resetModifiedProperty(Event::MessageParts);
-
-        emitDataChanged(index.row(), index.internalPointer());
-    }
-}
-
 void EventModelPrivate::modelUpdatedSlot(bool successful)
 {
     DEBUG() << __PRETTY_FUNCTION__;
 
     isReady = true;
-    if (successful) {
-        if (messagePartsReady)
-            emit modelReady(true);
-    } else {
-        emit modelReady(false);
-    }
-}
-
-void EventModelPrivate::partsUpdatedSlot(bool successful)
-{
-    DEBUG() << __PRETTY_FUNCTION__;
-
-    messagePartsReady = true;
-    if (successful) {
-        if (isReady)
-            emit modelReady(true);
-    } else {
-        emit modelReady(false);
-    }
+    emit modelReady(successful);
 }
 
 void EventModelPrivate::eventsAddedSlot(const QList<Event> &events)
