@@ -77,6 +77,10 @@ public:
     };
 
     enum EventStatus {
+        ManualNotificationStatus = -4,
+        WaitingStatus = -3,
+        DownloadingStatus = -2,
+        ReceivedStatus = -1,
         UnknownStatus = 0,
         SendingStatus,
         SentStatus,
