@@ -12,7 +12,8 @@ SOURCES += src/plugin.cpp \
     src/conversationproxymodel.cpp \
     src/declarativegroupmanager.cpp \
     src/sharedbackgroundthread.cpp \
-    src/contactaddresslookup.cpp
+    src/contactaddresslookup.cpp \
+    src/mmshelper.cpp
 
 HEADERS += src/constants.h \
     src/callproxymodel.h \
@@ -20,11 +21,12 @@ HEADERS += src/constants.h \
     src/declarativegroupmanager.h \
     src/sharedbackgroundthread.h \
     src/contactaddresslookup.h \
-    src/debug.h
+    src/debug.h \
+    src/mmshelper.h
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols 
-QT += qml contacts
+QT += qml contacts dbus
 
 LIBS += -L../src ../src/libcommhistory-qt5.so
 PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
