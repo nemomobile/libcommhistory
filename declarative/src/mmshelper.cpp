@@ -170,17 +170,8 @@ bool MmsHelper::sendReadReport(int id)
 
 static QString createTemporaryTextFile(const QString &text, QString &contentType)
 {
-    QByteArray data;
-    QString codec;
-
-    QTextCodec *ascii = QTextCodec::codecForName("us-ascii");
-    if (ascii->canEncode(text)) {
-        codec = QStringLiteral("us-ascii");
-        data = ascii->fromUnicode(text);
-    } else {
-        codec = QStringLiteral("utf-8");
-        data = text.toUtf8();
-    }
+    QString codec(QStringLiteral("utf-8"));
+    QByteArray data = text.toUtf8();
 
     if (contentType.isEmpty())
         contentType = QStringLiteral("text/plain");
