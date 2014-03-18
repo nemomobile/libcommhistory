@@ -38,6 +38,7 @@
 #include <QDBusPendingReply>
 #include <QTextCodec>
 #include <QTemporaryFile>
+#include <QMimeDatabase>
 #include <QDebug>
 
 // MmsEngine, implemented by the backend mms-engine
@@ -204,7 +205,7 @@ bool MmsHelper::sendMessage(const QStringList &to, const QStringList &cc, const 
         MmsPart part;
         part.contentId = p["contentId"].toString();
         part.contentType = p["contentType"].toString();
-        if (part.contentId.isEmpty() || part.contentType.isEmpty())
+        if (part.contentId.isEmpty())
             return false;
 
         part.fileName = p["path"].toString();
@@ -216,6 +217,15 @@ bool MmsHelper::sendMessage(const QStringList &to, const QStringList &cc, const 
                 return false;
         } else if (part.fileName.startsWith("file://"))
             part.fileName = QUrl(part.fileName).toLocalFile();
+
+        if (part.contentType.isEmpty()) {
+            QMimeType type = QMimeDatabase().mimeTypeForFile(part.fileName);
+            if (!type.isValid()) {
+                qWarning() << "MmsHelper::sendMessage: Can't determine MIME type for file" << part.fileName;
+                return false;
+            }
+            part.contentType = type.name();
+        }
 
         outParts.append(part);
     }
