@@ -109,6 +109,9 @@ bool MmsHelper::receiveMessage(int id)
         return false;
     }
 
+    event.setStatus(Event::WaitingStatus);
+    model.modifyEvent(event);
+
     QVariantList args;
     args << id << imsi << true << pushData;
     QDBusMessage method = QDBusMessage::createMethodCall(MMS_ENGINE_SERVICE, MMS_ENGINE_PATH, MMS_ENGINE_INTERFACE, "receiveMessage");
@@ -125,11 +128,11 @@ bool MmsHelper::cancel(int id)
         event = model.event(model.index(0, 0));
 
     if (!event.isValid()) {
-        qWarning() << "MmsHelper::receiveMessage called for unknown event id" << id;
+        qWarning() << "MmsHelper::cancel called for unknown event id" << id;
         return false;
     }
 
-    if (event.status() != Event::DownloadingStatus && event.status() != Event::WaitingStatus)
+    if (event.status() != Event::DownloadingStatus && event.status() != Event::WaitingStatus && event.status() != Event::SendingStatus)
         return false;
 
     QVariantList args;
@@ -138,7 +141,10 @@ bool MmsHelper::cancel(int id)
     method.setArguments(args);
     QDBusConnection::systemBus().asyncCall(method);
 
-    event.setStatus(Event::ManualNotificationStatus);
+    if (event.direction() == Event::Inbound)
+        event.setStatus(Event::ManualNotificationStatus);
+    else
+        event.setStatus(Event::TemporarilyFailedStatus);
     return model.modifyEvent(event);
 }
 
