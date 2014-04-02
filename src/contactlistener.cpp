@@ -90,8 +90,9 @@ bool ContactListener::addressMatchesList(const QString &localUid,
     QListIterator<StringPair> i(contactAddresses);
     while (i.hasNext()) {
         StringPair address = i.next();
-        if ((address.first.isEmpty() || address.first == localUid)
-            && CommHistory::remoteAddressMatch(remoteUid, address.second, true)) {
+        // Empty address.first is allowed to match phone number type localUids
+        if ((address.first == localUid || (address.first.isEmpty() && localUidComparesPhoneNumbers(localUid)))
+            && CommHistory::remoteAddressMatch(localUid, remoteUid, address.second, true)) {
             return true;
         }
     }
@@ -106,8 +107,8 @@ bool ContactListener::addressMatchesList(const QString &localUid,
     QListIterator<ContactAddress> i(contactAddresses);
     while (i.hasNext()) {
         ContactAddress address = i.next();
-        if ((address.localUid.isEmpty() || address.localUid == localUid)
-            && CommHistory::remoteAddressMatch(remoteUid, address.remoteUid, true)) {
+        if ((address.localUid == localUid || (address.localUid.isEmpty() && localUidComparesPhoneNumbers(localUid)))
+            && CommHistory::remoteAddressMatch(localUid, remoteUid, address.remoteUid, true)) {
             return true;
         }
     }
@@ -125,9 +126,7 @@ void ContactListener::resolveContact(const QString &localUid,
 
     SeasideCache::CacheItem *item = 0;
 
-    // TODO: maybe better to switch on localUid value rather than numeric quality?
-    QString number = CommHistory::normalizePhoneNumber(remoteUid);
-    if (!number.isEmpty()) {
+    if (CommHistory::localUidComparesPhoneNumbers(localUid)) {
         d->m_pending.insert(qMakePair(QString(), remoteUid), input);
         item = SeasideCache::resolvePhoneNumber(d, remoteUid, true);
     } else {

@@ -169,7 +169,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
         return -1;
     }
 
-    if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
+    if (!localUidComparesPhoneNumbers(localUid)) {
         // Create a metadata detail to link the contact with the account
         QContactOriginMetadata metadata;
         metadata.setGroupId(localUid);
@@ -179,10 +179,7 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
             qWarning() << "Unable to add metadata to contact:" << contactUri;
             return false;
         }
-    }
 
-    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
-    if (normal.isEmpty()) {
         QContactOnlineAccount qcoa;
         qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
         qcoa.setAccountUri(remoteUid);
@@ -236,7 +233,7 @@ bool addTestContactAddress(int contactId, const QString &remoteUid, const QStrin
         return false;
     }
 
-    if (!localUid.isEmpty() && localUid.indexOf("/ring/tel/") == -1) {
+    if (!localUidComparesPhoneNumbers(localUid)) {
         QContactOriginMetadata metadata = existing.detail<QContactOriginMetadata>();
         if (metadata.groupId().isEmpty()) {
             // Create a metadata detail to link the contact with the account
@@ -248,10 +245,7 @@ bool addTestContactAddress(int contactId, const QString &remoteUid, const QStrin
                 return false;
             }
         }
-    }
 
-    QString normal = CommHistory::normalizePhoneNumber(remoteUid);
-    if (normal.isEmpty()) {
         QContactOnlineAccount qcoa;
         qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
         qcoa.setAccountUri(remoteUid);

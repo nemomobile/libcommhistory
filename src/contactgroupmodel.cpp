@@ -114,23 +114,17 @@ int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
             if (groups[0]->remoteUids().size() == 1 && items[i]->contactIds().value(0) == contactId)
                 return i;
         }
-    } else if (group->remoteUids().size() == 1) {
+    } else if (group->remoteUids().size() == 1 && localUidComparesPhoneNumbers(group->localUid())) {
         // Use the minimized form of phone numbers to combine groups for unresolved contacts
         // This is important because responses to a SMS may come from a number formatted slightly
         // differently.
-        QString phone = CommHistory::normalizePhoneNumber(group->remoteUids()[0]);
-        if (phone.isEmpty())
-            return -1;
-        phone = minimizePhoneNumber(phone);
-
         for (int i = 0; i < items.size(); i++) {
             QList<GroupObject*> groups = items[i]->groups();
             // Ignore any group with contact matches
-            if (!groups[0]->contactIds().isEmpty() || groups[0]->remoteUids().size() > 1)
+            if (!groups[0]->contactIds().isEmpty() || groups[0]->remoteUids().size() > 1 || groups[0]->localUid() != group->localUid())
                 continue;
 
-            QString match = CommHistory::minimizePhoneNumber(groups[0]->remoteUids()[0]);
-            if (phone == match)
+            if (remoteAddressMatch(group->localUid(), group->remoteUids()[0], groups[0]->remoteUids()[0], true))
                 return i;
         }
     }

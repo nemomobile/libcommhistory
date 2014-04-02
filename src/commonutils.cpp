@@ -42,11 +42,12 @@ int phoneNumberMatchLength()
 
 namespace CommHistory {
 
-LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number)
+LIBCOMMHISTORY_EXPORT QString normalizePhoneNumber(const QString &number, bool validate)
 {
     // Validate the number, and retain the dial string
-    QtContactsSqliteExtensions::NormalizePhoneNumberFlags flags(QtContactsSqliteExtensions::ValidatePhoneNumber |
-                                                                QtContactsSqliteExtensions::KeepPhoneNumberDialString);
+    QtContactsSqliteExtensions::NormalizePhoneNumberFlags flags(QtContactsSqliteExtensions::KeepPhoneNumberDialString);
+    if (validate)
+        flags |= QtContactsSqliteExtensions::ValidatePhoneNumber;
 
     return QtContactsSqliteExtensions::normalizePhoneNumber(number, flags);
 }
@@ -56,15 +57,21 @@ LIBCOMMHISTORY_EXPORT QString minimizePhoneNumber(const QString &number)
     return QtContactsSqliteExtensions::minimizePhoneNumber(number, phoneNumberMatchLength());
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString &match, bool minimizedComparison)
+LIBCOMMHISTORY_EXPORT bool localUidComparesPhoneNumbers(const QString &localUid)
 {
-    QString phone = normalizePhoneNumber(uid);
-    QString phoneMatch = normalizePhoneNumber(match);
+    return localUid.startsWith("/org/freedesktop/Telepathy/Account/ring/");
+}
 
-    if (!phone.isEmpty() && !phoneMatch.isEmpty()) {
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &localUid, const QString &uid, const QString &match, bool minimizedComparison)
+{
+    if (localUidComparesPhoneNumbers(localUid)) {
+        QString phone, phoneMatch;
         if (minimizedComparison) {
-            phone = minimizePhoneNumber(phone);
-            phoneMatch = minimizePhoneNumber(phoneMatch);
+            phone = minimizePhoneNumber(uid);
+            phoneMatch = minimizePhoneNumber(match);
+        } else {
+            phone = normalizePhoneNumber(uid, false);
+            phoneMatch = normalizePhoneNumber(match, false);
         }
         return phoneMatch.compare(phone, Qt::CaseInsensitive) == 0;
     } else {
@@ -72,28 +79,26 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &uid, const QString 
     }
 }
 
-LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, const QStringList &originalMatches, bool minimizedComparison)
+LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &localUid, const QStringList &originalUids, const QStringList &originalMatches, bool minimizedComparison)
 {
     if (originalUids.size() != originalMatches.size())
         return false;
 
     QStringList uids;
     foreach (const QString &uid, originalUids) {
-        QString phone = normalizePhoneNumber(uid);
-        if (phone.isEmpty()) {
-            uids.append(uid);
+        if (localUidComparesPhoneNumbers(localUid)) {
+            uids.append(minimizedComparison ? minimizePhoneNumber(uid) : normalizePhoneNumber(uid, false));
         } else {
-            uids.append(phone);
+            uids.append(uid);
         }
     }
 
     QStringList matches;
     foreach (const QString &match, originalMatches) {
-        QString phone = normalizePhoneNumber(match);
-        if (phone.isEmpty()) {
-            matches.append(match);
+        if (localUidComparesPhoneNumbers(localUid)) {
+            matches.append(minimizedComparison ? minimizePhoneNumber(match) : normalizePhoneNumber(match, false));
         } else {
-            matches.append(phone);
+            matches.append(match);
         }
     }
 
@@ -101,7 +106,7 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QStringList &originalUids, c
     matches.sort(Qt::CaseInsensitive);
 
     for (int i = 0; i < uids.size(); i++) {
-        if (!remoteAddressMatch(uids[i], matches[i], minimizedComparison))
+        if (uids[i].compare(matches[i], Qt::CaseInsensitive) != 0)
             return false;
     }
 

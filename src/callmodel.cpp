@@ -212,15 +212,15 @@ void CallModelPrivate::modelUpdatedSlot( bool successful )
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
 {
     if (sortBy == CallModel::SortByContact
-        && remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
         && e1.localUid() == e2.localUid()
+        && remoteAddressMatch(e1.localUid(), e1.remoteUid(), e2.remoteUid())
         && e1.isVideoCall() == e2.isVideoCall())
     {
         return true;
     }
     else if ((sortBy == CallModel::SortByTime || sortBy == CallModel::SortByContactAndType)
-             && (remoteAddressMatch(e1.remoteUid(), e2.remoteUid())
-                 && e1.localUid() == e2.localUid()
+             && (e1.localUid() == e2.localUid()
+                 && remoteAddressMatch(e1.localUid(), e1.remoteUid(), e2.remoteUid())
                  && e1.direction() == e2.direction()
                  && e1.isMissedCall() == e2.isMissedCall()
                  && e1.isVideoCall() == e2.isVideoCall()))
@@ -539,8 +539,8 @@ void CallModelPrivate::insertEvent(Event event)
             // reset event count if type doesn't match top event
             if (!eventMatchesFilter(event) && eventRootItem->childCount()) {
                 EventTreeItem *topItem = eventRootItem->child(0);
-                if (remoteAddressMatch(topItem->event().remoteUid(), event.remoteUid())
-                    && topItem->event().localUid() == event.localUid()) {
+                if (topItem->event().localUid() == event.localUid()
+                    && remoteAddressMatch(event.localUid(), topItem->event().remoteUid(), event.remoteUid())) {
                     EventTreeItem *newTopItem = new EventTreeItem(topItem->event());
                     newTopItem->event().setEventCount(1);
 
