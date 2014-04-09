@@ -175,12 +175,12 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
 
             if ((event.type() == Event::SMSEvent || event.type() == Event::MMSEvent) &&
                 !event.remoteUid().isEmpty() &&
-                !CommHistory::remoteAddressMatch(go->remoteUids().first(), event.remoteUid())) {
+                !CommHistory::remoteAddressMatch(event.localUid(), go->remoteUids().first(), event.remoteUid())) {
 
                 DEBUG() << __PRETTY_FUNCTION__ << "Update group remote UIDs";
                 QStringList updatedUids;
                 foreach (const QString& uid, go->remoteUids()) {
-                    if (CommHistory::remoteAddressMatch(uid, event.remoteUid())) {
+                    if (CommHistory::remoteAddressMatch(event.localUid(), uid, event.remoteUid())) {
                         updatedUids << event.remoteUid();
                     } else {
                         updatedUids << uid;
@@ -191,16 +191,11 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
         }
 
         bool found = false;
-        QString phoneNumber = normalizePhoneNumber(event.remoteUid());
-        if (!phoneNumber.isEmpty()) {
-            foreach (const QString &uid, go->remoteUids()) {
-                if (CommHistory::remoteAddressMatch(uid, event.remoteUid())) {
-                    found = true;
-                    break;
-                }
+        foreach (const QString &uid, go->remoteUids()) {
+            if (CommHistory::remoteAddressMatch(event.localUid(), uid, event.remoteUid())) {
+                found = true;
+                break;
             }
-        } else {
-            found = go->remoteUids().contains(event.remoteUid());
         }
 
         if (!found) {
@@ -230,7 +225,7 @@ void GroupManagerPrivate::groupsAddedSlot(const QList<CommHistory::Group> &added
             && (filterLocalUid.isEmpty() || group.localUid() == filterLocalUid)
             && !group.remoteUids().isEmpty()
             && (filterRemoteUid.isEmpty()
-                || CommHistory::remoteAddressMatch(filterRemoteUid, group.remoteUids().first()))) {
+                || CommHistory::remoteAddressMatch(group.localUid(), filterRemoteUid, group.remoteUids().first()))) {
             go = new GroupObject(group, q);
             groups.insert(group.id(), go);
             emit q->groupAdded(go);
@@ -453,7 +448,7 @@ GroupObject *GroupManager::findGroup(const QString &localUid, const QStringList 
 {
     foreach (GroupObject *g, d->groups) {
         if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
-                && CommHistory::remoteAddressMatch(g->remoteUids(), remoteUids))
+                && CommHistory::remoteAddressMatch(localUid, g->remoteUids(), remoteUids))
             return g;
     }
 
@@ -486,7 +481,7 @@ bool GroupManager::addGroup(Group &group)
 
     if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
         && (d->filterRemoteUid.isEmpty()
-            || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
+            || CommHistory::remoteAddressMatch(group.localUid(), d->filterRemoteUid, group.remoteUids().first()))) {
         d->add(group);
     }
 
@@ -514,7 +509,7 @@ bool GroupManager::addGroups(QList<Group> &groups)
 
         if ((d->filterLocalUid.isEmpty() || group.localUid() == d->filterLocalUid)
             && (d->filterRemoteUid.isEmpty()
-                || CommHistory::remoteAddressMatch(d->filterRemoteUid, group.remoteUids().first()))) {
+                || CommHistory::remoteAddressMatch(group.localUid(), d->filterRemoteUid, group.remoteUids().first()))) {
             d->add(group);
         }
 

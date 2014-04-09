@@ -28,13 +28,25 @@
 namespace CommHistory {
 
 /*!
+ * Whether the given localUid needs phone number comparsions
+ *
+ * \param localUid Local UID
+ * \return true if remote UIDs will be compared as phone numbers
+ */
+bool localUidComparesPhoneNumbers(const QString &localUid);
+
+/*!
  * Validates and normalizes a phone number by removing extra characters:
  * "+358 012 (34) 567#3333" -> "+35801234567#3333"
  *
+ * Do not use this function to determine whether an input is a phone
+ * number; that decision should be made based on localUid.
+ *
  * \param number Phone number.
- * \return normalized number, or empty string if invalid.
+ * \param validate Validate phone number (returns empty if invalid)
+ * \return normalized number, or empty string if validating and invalid.
  */
-QString normalizePhoneNumber(const QString &number);
+QString normalizePhoneNumber(const QString &number, bool validate);
 
 /*!
  * Get the last digits of a phone number for comparison purposes.
@@ -48,13 +60,14 @@ QString minimizePhoneNumber(const QString &number);
  * Compares the two remote ids. In case of phone numbers, last digits
  * are compared.
  *
+ * \param localUid Local UID to determine comparison type
  * \param uid First remote id.
  * \param match Second remote id.
  * \param minimizedComparison Compare numbers in minimized form.
  * \return true if addresses match.
  */
-bool remoteAddressMatch(const QString &uid, const QString &match, bool minimizedComparison = false);
-bool remoteAddressMatch(const QStringList &uids, const QStringList &match, bool minimizedComparison = false);
+bool remoteAddressMatch(const QString &localUid, const QString &uid, const QString &match, bool minimizedComparison = false);
+bool remoteAddressMatch(const QString &localUid, const QStringList &uids, const QStringList &match, bool minimizedComparison = false);
 
 }
 

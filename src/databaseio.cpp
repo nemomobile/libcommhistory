@@ -1200,12 +1200,11 @@ bool DatabaseIO::rollback()
 QString DatabaseIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
 {
     QString callGroupRemoteId;
-    QString number = normalizePhoneNumber(event.remoteUid());
-    if (number.isEmpty()) {
-        callGroupRemoteId = event.remoteUid();
-    } else {
+    if (localUidComparesPhoneNumbers(event.localUid())) {
         // keep dial string in group uris for separate history entries
         callGroupRemoteId = minimizePhoneNumber(event.remoteUid());
+    } else {
+        callGroupRemoteId = event.remoteUid();
     }
 
     QString videoSuffix;

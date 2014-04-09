@@ -361,7 +361,7 @@ GroupObject *ContactGroup::findGroup(const QString &localUid, const QStringList 
 
     foreach (GroupObject *g, d->groups) {
         if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
-                && CommHistory::remoteAddressMatch(g->remoteUids(), remoteUids))
+                && CommHistory::remoteAddressMatch(localUid, g->remoteUids(), remoteUids))
             return g;
     }
 
