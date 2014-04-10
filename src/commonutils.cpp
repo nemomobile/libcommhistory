@@ -73,6 +73,13 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &localUid, const QSt
             phone = normalizePhoneNumber(uid, false);
             phoneMatch = normalizePhoneNumber(match, false);
         }
+
+        // If normalization returned an empty number (no digits), compare the input instead
+        if (phone.isEmpty())
+            phone = uid;
+        if (phoneMatch.isEmpty())
+            phoneMatch = match;
+
         return phoneMatch.compare(phone, Qt::CaseInsensitive) == 0;
     } else {
         return match.compare(uid, Qt::CaseInsensitive) == 0;
@@ -85,21 +92,25 @@ LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &localUid, const QSt
         return false;
 
     QStringList uids;
-    foreach (const QString &uid, originalUids) {
+    foreach (QString uid, originalUids) {
         if (localUidComparesPhoneNumbers(localUid)) {
-            uids.append(minimizedComparison ? minimizePhoneNumber(uid) : normalizePhoneNumber(uid, false));
-        } else {
-            uids.append(uid);
+            QString number = minimizedComparison ? minimizePhoneNumber(uid) : normalizePhoneNumber(uid, false);
+            if (!number.isEmpty())
+                uid = number;
         }
+
+        uids.append(uid);
     }
 
     QStringList matches;
-    foreach (const QString &match, originalMatches) {
+    foreach (QString match, originalMatches) {
         if (localUidComparesPhoneNumbers(localUid)) {
-            matches.append(minimizedComparison ? minimizePhoneNumber(match) : normalizePhoneNumber(match, false));
-        } else {
-            matches.append(match);
+            QString number = minimizedComparison ? minimizePhoneNumber(match) : normalizePhoneNumber(match, false);
+            if (!number.isEmpty())
+                match = number;
         }
+
+        matches.append(match);
     }
 
     uids.sort(Qt::CaseInsensitive);

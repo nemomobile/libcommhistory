@@ -123,6 +123,12 @@ void ContactResolver::prependEvents(const QList<Event> &events)
 // Returns true if resolved immediately
 bool ContactResolverPrivate::resolveEvent(PendingEvent &e)
 {
+    if (e.event.localUid().isEmpty() || e.event.remoteUid().isEmpty()) {
+        e.event.setContacts(QList<Event::Contact>());
+        e.resolved = true;
+        return true;
+    }
+
     QPair<QString,QString> uidPair(e.event.localUid(), e.event.remoteUid());
     QHash<QPair<QString,QString>, Event::Contact>::iterator it = contactCache.find(uidPair);
     if (it != contactCache.end()) {
