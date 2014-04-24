@@ -62,6 +62,7 @@ Q_SIGNALS:
     void contactAlreadyInCache(quint32 localId,
                                const QString &contactName,
                                const QList<ContactAddress> &contactAddresses);
+    void contactAlreadyUnknown(const QPair<QString,QString> &address);
 
 protected:
     void addressResolved(const QString &first, const QString &second, SeasideCache::CacheItem *item);

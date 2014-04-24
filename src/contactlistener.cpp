@@ -50,9 +50,13 @@ ContactListener::ContactListener(QObject *parent)
       d_ptr(new ContactListenerPrivate(this))
 {
     qRegisterMetaType<QList<ContactListener::ContactAddress> >("QList<ContactAddress>");
+    qRegisterMetaType<StringPair>("QPair<QString,QString>");
 
     connect(d_ptr, SIGNAL(contactAlreadyInCache(quint32,QString,QList<ContactAddress>)),
             this, SIGNAL(contactUpdated(quint32,QString,QList<ContactAddress>)),
+            Qt::QueuedConnection);
+    connect(d_ptr, SIGNAL(contactAlreadyUnknown(QPair<QString,QString>)),
+            this, SIGNAL(contactUnknown(QPair<QString,QString>)),
             Qt::QueuedConnection);
 }
 
@@ -126,6 +130,12 @@ void ContactListener::resolveContact(const QString &localUid,
 
     SeasideCache::CacheItem *item = 0;
 
+    if (localUid.isEmpty()) {
+        qWarning() << "Cannot resolve contact with empty localUid (remoteUid is " << remoteUid << ")";
+        emit d->contactAlreadyUnknown(input);
+        return;
+    }
+
     if (CommHistory::localUidComparesPhoneNumbers(localUid)) {
         d->m_pending.insert(qMakePair(QString(), remoteUid), input);
         item = SeasideCache::resolvePhoneNumber(d, remoteUid, true);
@@ -150,6 +160,8 @@ QList<ContactListener::ContactAddress> ContactListenerPrivate::contactAddresses(
 
     foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
         QString localUid = account.value<QString>(QContactOnlineAccount__FieldAccountPath);
+        if (localUid.isEmpty())
+            continue;
         addresses += makeContactAddress(localUid, account.accountUri(), ContactListener::IMAccountType);
     }
     foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
