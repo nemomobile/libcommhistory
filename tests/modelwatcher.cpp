@@ -106,6 +106,8 @@ bool ModelWatcher::isFinished() const
         for (int i = 0; i < 5000 && value < expected; i += 50) \
             QTest::qWait(50); \
     } \
+    if (value != expected) \
+        qWarning() << Q_FUNC_INFO << "Incorrect signal count. Expected:" << expected << "Actual:" << value; \
     re &= value == expected
 
 bool ModelWatcher::waitForCommitted(int count)
