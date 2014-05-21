@@ -105,7 +105,7 @@ bool CallModelPrivate::eventMatchesFilter( const Event &event ) const
 bool CallModelPrivate::acceptsEvent( const Event &event ) const
 {
     DEBUG() << __PRETTY_FUNCTION__ << event.id();
-    if ( event.type() != Event::CallEvent || (!isInTreeMode && !eventMatchesFilter(event) ))
+    if ( event.type() != Event::CallEvent || !eventMatchesFilter(event) )
     {
         return false;
     }
@@ -869,17 +869,16 @@ bool CallModel::getEvents()
     QString q = DatabaseIOPrivate::eventQueryBase();
     q += QString::fromLatin1("WHERE type=%1 ").arg(Event::CallEvent);
 
-    if (!d->isInTreeMode) {
-        if (d->eventType == CallEvent::ReceivedCallType) {
-            q += QString::fromLatin1("AND direction=%1 AND isMissedCall=0 ").arg(Event::Inbound);
-        } else if (d->eventType == CallEvent::MissedCallType) {
-            q += QString::fromLatin1("AND direction=%1 AND isMissedCall=1 ").arg(Event::Inbound);
-        } else if (d->eventType == CallEvent::DialedCallType) {
-            q += QString::fromLatin1("AND direction=%1 ").arg(Event::Outbound);
-        }
+    if (d->eventType == CallEvent::ReceivedCallType) {
+        q += QString::fromLatin1("AND direction=%1 AND isMissedCall=0 ").arg(Event::Inbound);
+    } else if (d->eventType == CallEvent::MissedCallType) {
+        q += QString::fromLatin1("AND direction=%1 AND isMissedCall=1 ").arg(Event::Inbound);
+    } else if (d->eventType == CallEvent::DialedCallType) {
+        q += QString::fromLatin1("AND direction=%1 ").arg(Event::Outbound);
+    }
 
-        if (!d->filterLocalUid.isEmpty())
-            q += QString::fromLatin1("AND localUid=:filterLocalUid ");
+    if (!d->filterLocalUid.isEmpty()) {
+        q += QString::fromLatin1("AND localUid=:filterLocalUid ");
     }
 
     if (!d->referenceTime.isNull()) {

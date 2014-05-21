@@ -727,7 +727,7 @@ void CallModelTest::testSortByTimeUpdate()
      * user1, missed   (1)
      */
     QDateTime when = QDateTime::currentDateTime();
-    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when, REMOTEUID1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when, REMOTEUID2);
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(1), REMOTEUID1);
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(2), REMOTEUID1);
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(3), REMOTEUID1);
@@ -744,49 +744,37 @@ void CallModelTest::testSortByTimeUpdate()
     QCOMPARE(e1.eventCount(), 2);
 
     Event e2 = model.event(model.index(1, 0));
-    QCOMPARE(e2.remoteUid(), REMOTEUID1);
+    QCOMPARE(e2.remoteUid(), REMOTEUID2);
     QVERIFY(e2.isMissedCall());
     QVERIFY(e2.eventCount() <= 1);
 
-    // add received call, count for top item should reset
+    // add received call, should be filtered out
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(4), REMOTEUID1);
     QVERIFY(watcher.waitForAdded());
     e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.eventCount(), 1);
+    QVERIFY(e1.isMissedCall());
+    QCOMPARE(e1.eventCount(), 2);
 
     CallModel model2;
     model2.setQueryMode(EventModel::SyncQuery);
     QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
-    QCOMPARE(model2.rowCount(), 2);
-    QVERIFY(model2.event(model2.index(0, 0)).eventCount() <= 1);
 
-    // add missed call, count should remain 1
+    // add missed call, count should increase to 3
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(5), REMOTEUID1);
     QVERIFY(watcher.waitForAdded());
     e1 = model.event(model.index(0, 0));
     int firstMissedId = e1.id();
-    QCOMPARE(e1.eventCount(), 1);
-    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 1);
+    QCOMPARE(e1.eventCount(), 3);
 
     QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
-    QCOMPARE(model2.rowCount(), 3);
-    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 1);
-
-    // add another missed call, count should increase
-    addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(6), REMOTEUID1);
-    QVERIFY(watcher.waitForAdded());
-    e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.eventCount(), 2);
-    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 2);
-    QVERIFY(model2.getEvents(CallModel::SortByTime, CallEvent::MissedCallType));
-    QCOMPARE(model2.rowCount(), 3);
-    QCOMPARE(model2.event(model.index(0, 0)).eventCount(), 2);
+    QCOMPARE(model2.rowCount(), 2);
+    QCOMPARE(model2.event(model2.index(0, 0)).eventCount(), 3);
 
     // mark latest missed call as read, the first should also be marked
     Event e = model.event(model.index(0, 0));
     e.setIsRead(true);
     QVERIFY(model.modifyEvent(e));
-    QVERIFY(watcher.waitForUpdated(2));
+    QVERIFY(watcher.waitForUpdated(3));
     QVERIFY(model.databaseIO().getEvent(firstMissedId, e));
     QVERIFY(e.isRead());
 }
