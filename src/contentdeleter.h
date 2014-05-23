@@ -20,26 +20,22 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_MMS_CONTENT_DELETER_H
-#define COMMHISTORY_MMS_CONTENT_DELETER_H
+#ifndef COMMHISTORY_CONTENT_DELETER_H
+#define COMMHISTORY_CONTENT_DELETER_H
 
 #include <QObject>
 #include <QString>
 
-class MmsContentDeleter: public QObject
+class ContentDeleter: public QObject
 {
     Q_OBJECT
 
 public slots:
-    void deleteMessage(const QString &messageToken);
-    void cleanMmsPlace();
+    void deleteMessage(int id);
 
 private slots:
-    void doMessageDelete(const QString &messageToken);
-    void doDeleteContent(const QString &path);
-
-private:
-    QString resolveMessagePath(const QString &messageToken);
+    void doMessageDelete(int id);
+    void doDeleteContent(QString path);
 };
 
-#endif // MESSASGE_CONTENT_DELETER_H
+#endif // COMMHISTORY_CONTENT_DELETER_H

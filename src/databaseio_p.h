@@ -23,20 +23,13 @@
 #ifndef COMMHISTORY_DATABASEIO_P_H
 #define COMMHISTORY_DATABASEIO_P_H
 
-#include <QObject>
-#include <QUrl>
-#include <QHash>
-#include <QSet>
-#include <QQueue>
 #include <QThread>
-#include <QThreadStorage>
-#include <QStringList>
 #include <QSqlDatabase>
 
 #include "event.h"
 #include "commonutils.h"
 
-class MmsContentDeleter;
+class ContentDeleter;
 
 namespace CommHistory {
 
@@ -69,8 +62,7 @@ public:
 
     bool getEvents(const QString &querySuffix, QList<Event> &events);
 
-    MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
-    bool isLastMmsEvent(const QString& messageToken);
+    ContentDeleter& getContentDeleter(QThread *backgroundThread);
 
     bool deleteEmptyGroups();
 
@@ -83,7 +75,7 @@ public:
 public:
     QSqlDatabase m_pConnection;
 
-    MmsContentDeleter *m_MmsContentDeleter;
+    ContentDeleter *m_ContentDeleter;
 
     QThread *m_bgThread;
 };

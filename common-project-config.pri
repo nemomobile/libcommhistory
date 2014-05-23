@@ -35,6 +35,10 @@ UI_SOURCES_DIR  = ui/src
 # we don't like warnings...
 QMAKE_CXXFLAGS *= -Werror
 
+# Enable logging in debug build
+CONFIG(debug, debug|release) {
+  DEFINES += DEBUG_COMMHISTORY
+}
 
 # End of File
 

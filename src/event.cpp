@@ -27,6 +27,7 @@
 #include "messagepart.h"
 
 #include <QStringBuilder>
+#include <QStandardPaths>
 
 #define MMS_TO_HEADER QLatin1String("x-mms-to")
 #define MMS_CC_HEADER QLatin1String("x-mms-cc")
@@ -932,6 +933,24 @@ void Event::setExtraProperty(const QString &key, const QVariant &value)
 
     d->extraProperties.insert(key, value);
     d->propertyChanged(Event::ExtraProperties);
+}
+
+// Place to store the data files associated with the event.
+// If the parameter is true, creates one if it doesn't exist.
+// Returns empty string if the directory doesn't exist.
+QDir Event::dataDir(bool create) const
+{
+    return dataDir(id(), create);
+}
+
+QDir Event::dataDir(int id, bool create)
+{
+    QDir dir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+             QStringLiteral("/commhistory/data/%1/").arg(id));
+    if (!dir.exists() && create && !dir.mkpath(".")) {
+        qCritical() << "Cannot create event data directory:" << dir.path();
+    }
+    return dir;
 }
 
 QString Event::toString() const
