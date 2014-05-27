@@ -38,6 +38,7 @@
 class CallProxyModel : public QSortFilterProxyModel, public QQmlParserStatus
 {
     Q_OBJECT
+    Q_INTERFACES(QQmlParserStatus)
 
     Q_ENUMS(EventRole)
     Q_ENUMS(EventType)
