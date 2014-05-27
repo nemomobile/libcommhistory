@@ -29,6 +29,7 @@
 #include <QDateTime>
 #include <QVariant>
 #include <QSet>
+#include <QDir>
 
 #include "messagepart.h"
 #include "libcommhistoryexport.h"
@@ -207,6 +208,11 @@ public:
     void setExtraProperties(const QVariantMap &extraProperties);
     QVariant extraProperty(const QString &key) const;
     void setExtraProperty(const QString &key, const QVariant &value);
+
+    // Place to store the data files associated with the event.
+    // Attemps to create one if necesssary.
+    QDir dataDir(bool create) const;
+    static QDir dataDir(int id, bool create);
 
     //\\//\\// G E T - A C C E S S O R S //\\//\\//
     int id() const;
