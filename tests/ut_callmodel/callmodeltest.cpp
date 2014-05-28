@@ -353,28 +353,16 @@ void CallModelTest::testDeleteEvent()
     CallModel model;
     watcher.setModel(&model);
 
-    // force change of sorting to SortByContact
-    QVERIFY( model.setFilter( CallModel::SortByContact ) );
-    QVERIFY( model.getEvents() );
+    model.setTreeMode(false);
+    QVERIFY(model.getEvents());
     QVERIFY(watcher.waitForModelReady());
 
-    /* by contact:
-     * -----------
-     * "", received (0)
-     * user2, received (0)
-     * user1, received (0)
-     */
     // delete first event from hidden number
-    Event e = model.event( model.index( 0, 0 ) );
-    QVERIFY( e.isValid() );
-    QCOMPARE( e.type(), Event::CallEvent );
-    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
-    QCOMPARE( e.direction(), Event::Inbound );
-    QCOMPARE( e.isMissedCall(), false );
-    QCOMPARE( e.remoteUid(), QLatin1String("<hidden>") );
-    // delete it
-    QVERIFY( model.deleteEvent( e.id() ) );
-    QVERIFY( watcher.waitForDeleted() );
+    Event e = model.event(model.index(0, 0));
+    QVERIFY(e.isValid());
+    QCOMPARE(e.remoteUid(), QLatin1String("<hidden>"));
+    QVERIFY(model.deleteEvent(e.id()));
+    QVERIFY(watcher.waitForDeleted());
     // correct test helper lists to match current situation
     QMutableListIterator<TestCallItem> i(testCalls);
     while (i.hasNext()) {
@@ -382,8 +370,12 @@ void CallModelTest::testDeleteEvent()
         if (i.value().remoteUid == QLatin1String("<hidden>"))
             i.remove();
     }
-    // test if model contains what we want it does
-    testGetEvents( CallModel::SortByContact, 2, testCalls );
+
+    // force change of sorting to SortByContact
+    model.setTreeMode(true);
+    QVERIFY( model.setFilter( CallModel::SortByContact ) );
+    QVERIFY( model.getEvents() );
+    QVERIFY(watcher.waitForModelReady());
 
     /* by contact:
      * -----------

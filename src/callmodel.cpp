@@ -1046,7 +1046,10 @@ bool CallModel::deleteEvent( int id )
 
 bool CallModel::deleteEvent( Event &event )
 {
-    return deleteEvent( event.id() );
+    Q_D(CallModel);
+    if (!d->isInTreeMode)
+        return EventModel::deleteEvent(event);
+    return deleteEvent(event.id());
 }
 
 }
