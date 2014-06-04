@@ -785,6 +785,8 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
                 group.setLastVCardFileName(event.fromVCardFileName());
                 group.setLastVCardLabel(event.fromVCardLabel());
             }
+            if (modified.contains(Event::IsDraft))
+                group.setLastEventIsDraft(event.isDraft());
             if (modified.contains(Event::StartTime))
                 group.setStartTime(event.startTime());
             if (modified.contains(Event::EndTime))

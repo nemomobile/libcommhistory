@@ -280,6 +280,7 @@ QHash<int,QByteArray> ContactGroupModel::roleNames() const
     roles[BaseRole + LastVCardLabel] = "lastVCardLabel";
     roles[BaseRole + LastEventType] = "lastEventType";
     roles[BaseRole + LastEventStatus] = "lastEventStatus";
+    roles[BaseRole + LastEventIsDraft] = "lastEventIsDraft";
     roles[BaseRole + LastModified] = "lastModified";
     roles[BaseRole + StartTime] = "startTime";
     roles[BaseRole + Groups] = "groups";
@@ -388,6 +389,9 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
             break;
         case LastEventStatus:
             var = g->lastEventStatus();
+            break;
+        case LastEventIsDraft:
+            var = g->lastEventIsDraft();
             break;
         case LastModified:
             var = g->lastModified();

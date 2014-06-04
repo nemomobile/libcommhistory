@@ -169,6 +169,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setLastVCardLabel(event.fromVCardLabel());
             go->setLastEventStatus(event.status());
             go->setLastEventType(event.type());
+            go->setLastEventIsDraft(event.isDraft());
             go->setStartTime(event.startTime());
             go->setEndTime(event.endTime());
 

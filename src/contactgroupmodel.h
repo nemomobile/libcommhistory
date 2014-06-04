@@ -62,6 +62,7 @@ public:
         LastVCardLabel,
         LastEventType,
         LastEventStatus,
+        LastEventIsDraft,
         LastModified,
         StartTime,
         Groups,

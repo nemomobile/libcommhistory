@@ -58,6 +58,7 @@ public:
     QString lastVCardLabel;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
+    bool lastEventIsDraft;
     QDateTime lastModified;
 
     Group::PropertySet validProperties;
@@ -73,6 +74,7 @@ GroupObjectPrivate::GroupObjectPrivate(GroupManager *m, GroupObject *parent)
         , lastEventId(-1)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
+        , lastEventIsDraft(false)
 {
     Q_UNUSED(parent);
     lastModified = QDateTime::fromTime_t(0);
@@ -103,6 +105,7 @@ void GroupObjectPrivate::propertyChanged(Group::Property property)
         case Group::LastVCardFileName: emit q->lastVCardFileNameChanged(); break;
         case Group::LastEventType: emit q->lastEventTypeChanged(); break;
         case Group::LastEventStatus: emit q->lastEventStatusChanged(); break;
+        case Group::LastEventIsDraft: emit q->lastEventIsDraftChanged(); break;
         case Group::LastModified: emit q->lastModifiedChanged(); break;
         default: break;
     }
@@ -267,6 +270,11 @@ Event::EventStatus GroupObject::lastEventStatus() const
     return d->lastEventStatus;
 }
 
+bool GroupObject::lastEventIsDraft() const
+{
+    return d->lastEventIsDraft;
+}
+
 QDateTime GroupObject::lastModified() const
 {
     return d->lastModified;
@@ -392,6 +400,12 @@ void GroupObject::setLastEventStatus(Event::EventStatus eventStatus)
     d->propertyChanged(Group::LastEventStatus);
 }
 
+void GroupObject::setLastEventIsDraft(bool isDraft)
+{
+    d->lastEventIsDraft = isDraft;
+    d->propertyChanged(Group::LastEventIsDraft);
+}
+
 void GroupObject::setLastModified(const QDateTime &modified)
 {
     d->lastModified = modified.toUTC();
@@ -459,6 +473,7 @@ void GroupObject::set(const Group &other)
     d->lastVCardLabel = other.lastVCardLabel();
     d->lastEventType = other.lastEventType();
     d->lastEventStatus = other.lastEventStatus();
+    d->lastEventIsDraft = other.lastEventIsDraft();
     d->lastModified = other.lastModified();
     d->validProperties = other.validProperties();
     d->modifiedProperties = other.modifiedProperties();
@@ -512,6 +527,9 @@ template<typename T1, typename T2> void copyValidProperties(const T1 &from, T2 &
             break;
         case Group::LastEventStatus:
             to.setLastEventStatus(from.lastEventStatus());
+            break;
+        case Group::LastEventIsDraft:
+            to.setLastEventIsDraft(from.lastEventIsDraft());
             break;
         case Group::LastModified:
             to.setLastModified(from.lastModified());
