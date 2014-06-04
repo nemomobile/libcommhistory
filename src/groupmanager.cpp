@@ -147,9 +147,8 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
     DEBUG() << __PRETTY_FUNCTION__ << events.count();
 
     foreach (const Event &event, events) {
-        // drafts and statusmessages are not shown in group model
-        if (event.isDraft()
-            || event.type() == Event::StatusMessageEvent
+        // statusmessages are not shown in group model
+        if (event.type() == Event::StatusMessageEvent
             || event.type() == Event::ClassZeroSMSEvent) {
             continue;
         }

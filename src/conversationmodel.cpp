@@ -82,6 +82,9 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
          && event.type() != Event::StatusMessageEvent))
         return false;
 
+    if (event.isDraft())
+        return false;
+
     if (filterType != Event::UnknownType &&
         event.type() != filterType) return false;
 
@@ -138,11 +141,10 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
         if (unionCount)
             q += "UNION ALL ";
         q += DatabaseIOPrivate::eventQueryBase();
+        q += "WHERE Events.isDraft = 0 ";
 
         if (unionCount < groups.size())
-            q += "WHERE Events.groupId = " + QString::number(groups[unionCount]) + " ";
-        else
-            q += "WHERE 1 ";
+            q += "AND Events.groupId = " + QString::number(groups[unionCount]) + " ";
 
         q += filters;
 
