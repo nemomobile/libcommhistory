@@ -77,24 +77,11 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
 int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
                                                         const QStringList &remoteUids, const QString &text)
 {
-    if (groupId < 0) {
-        // Try to find an appropriate group
-        GroupObject *group = findGroup(localUid, remoteUids);
-        if (group) {
-            groupId = group->id();
-        } else {
-            Group g;
-            g.setLocalUid(localUid);
-            g.setRemoteUids(remoteUids);
-            g.setChatType(Group::ChatTypeP2P);
-            DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUids;
-            if (!addGroup(g)) {
-                qWarning() << Q_FUNC_INFO << "Failed creating group";
-                return -1;
-            }
-            groupId = g.id();
-        }
-    }
+    if (groupId < 0)
+        groupId = ensureGroupExists(localUid, remoteUids);
+
+    if (groupId < 0)
+        return -1;
 
     Event event;
     if (localUid.indexOf("/ring/tel/") >= 0)
@@ -136,5 +123,25 @@ bool DeclarativeGroupManager::setEventStatus(int eventId, int status)
 
     ev.setStatus(static_cast<Event::EventStatus>(status));
     return model.modifyEvent(ev);
+}
+
+int DeclarativeGroupManager::ensureGroupExists(const QString &localUid, const QStringList &remoteUids)
+{
+    // Try to find an appropriate group
+    GroupObject *group = findGroup(localUid, remoteUids);
+    if (group) {
+        return group->id();
+    } else {
+        Group g;
+        g.setLocalUid(localUid);
+        g.setRemoteUids(remoteUids);
+        g.setChatType(Group::ChatTypeP2P);
+        DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUids;
+        if (!addGroup(g)) {
+            qWarning() << Q_FUNC_INFO << "Failed creating group";
+            return -1;
+        }
+        return g.id();
+    }
 }
 
