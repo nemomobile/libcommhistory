@@ -47,6 +47,7 @@ public:
     GroupObject *lastEventGroup;
     QString lastMessageText, lastVCardFileName, lastVCardLabel;
     int lastEventType, lastEventStatus;
+    bool lastEventIsDraft;
 };
 
 }
@@ -60,6 +61,7 @@ ContactGroupPrivate::ContactGroupPrivate(ContactGroup *parent)
     , lastEventGroup(0)
     , lastEventType(Event::UnknownType)
     , lastEventStatus(Event::UnknownStatus)
+    , lastEventIsDraft(false)
 {
 }
 
@@ -171,7 +173,8 @@ void ContactGroupPrivate::update()
                 lastVCardFileName != lastEventGroup->lastVCardFileName() ||
                 lastVCardLabel != lastEventGroup->lastVCardLabel() ||
                 lastEventType != lastEventGroup->lastEventType() ||
-                lastEventStatus != lastEventGroup->lastEventStatus())
+                lastEventStatus != lastEventGroup->lastEventStatus() ||
+                lastEventIsDraft != lastEventGroup->lastEventIsDraft())
             changed = true;
 
         lastEventId = lastEventGroup->lastEventId();
@@ -180,6 +183,7 @@ void ContactGroupPrivate::update()
         lastVCardLabel = lastEventGroup->lastVCardLabel();
         lastEventType = static_cast<int>(lastEventGroup->lastEventType());
         lastEventStatus = static_cast<int>(lastEventGroup->lastEventStatus());
+        lastEventIsDraft = lastEventGroup->lastEventIsDraft();
 
         if (changed)
             emit q->lastEventChanged();
@@ -190,6 +194,7 @@ void ContactGroupPrivate::update()
         lastVCardLabel.clear();
         lastEventType = static_cast<int>(Event::UnknownType);
         lastEventStatus = static_cast<int>(Event::UnknownStatus);
+        lastEventIsDraft = false;
         emit q->lastEventChanged();
     }
 }
@@ -264,6 +269,12 @@ int ContactGroup::lastEventStatus() const
 {
     Q_D(const ContactGroup);
     return d->lastEventStatus;
+}
+
+bool ContactGroup::lastEventIsDraft() const
+{
+    Q_D(const ContactGroup);
+    return d->lastEventIsDraft;
 }
 
 QDateTime ContactGroup::lastModified() const

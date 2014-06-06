@@ -13,7 +13,8 @@ SOURCES += src/plugin.cpp \
     src/declarativegroupmanager.cpp \
     src/sharedbackgroundthread.cpp \
     src/contactaddresslookup.cpp \
-    src/mmshelper.cpp
+    src/mmshelper.cpp \
+    src/draftevent.cpp
 
 HEADERS += src/constants.h \
     src/callproxymodel.h \
@@ -22,7 +23,8 @@ HEADERS += src/constants.h \
     src/sharedbackgroundthread.h \
     src/contactaddresslookup.h \
     src/debug.h \
-    src/mmshelper.h
+    src/mmshelper.h \
+    src/draftevent.h
 
 TEMPLATE = lib
 CONFIG += qt plugin hide_symbols 

@@ -75,6 +75,7 @@ class LIBCOMMHISTORY_EXPORT GroupObject : public QObject
     Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastVCardLabelChanged);
     Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventTypeChanged);
     Q_PROPERTY(int lastEventStatus READ lastEventStatus NOTIFY lastEventStatusChanged);
+    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventIsDraftChanged);
     Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
 
 public:
@@ -239,6 +240,12 @@ public:
     Event::EventStatus lastEventStatus() const;
     void setLastEventStatus(Event::EventStatus eventStatus);
 
+    /*!
+     * True if the last event is a draft message
+     */
+    bool lastEventIsDraft() const;
+    void setLastEventIsDraft(bool isDraft);
+
     QDateTime lastModified() const;
     void setLastModified(const QDateTime &modified);
 
@@ -298,6 +305,7 @@ signals:
     void lastVCardLabelChanged();
     void lastEventTypeChanged();
     void lastEventStatusChanged();
+    void lastEventIsDraftChanged();
     void lastModifiedChanged();
 
     void groupDeleted();

@@ -135,6 +135,7 @@ public:
      * \return event
      */
     Event event(const QModelIndex &index) const;
+    Q_INVOKABLE CommHistory::Event event(int row) const { return event(index(row, 0)); }
 
     /*!
      * Find an existing event from the model. No database queries are

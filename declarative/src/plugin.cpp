@@ -43,6 +43,8 @@
 #include "declarativegroupmanager.h"
 #include "contactaddresslookup.h"
 #include "classzerosmsmodel.h"
+#include "draftsmodel.h"
+#include "draftevent.h"
 #include "mmshelper.h"
 
 class Q_DECL_EXPORT CommHistoryPlugin : public QQmlExtensionPlugin
@@ -74,6 +76,8 @@ public:
         qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
         qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
         qmlRegisterType<CommHistory::ClassZeroSMSModel>(uri, 1, 0, "ClassZeroSMSModel");
+        qmlRegisterType<CommHistory::DraftsModel>(uri, 1, 0, "DraftsModel");
+        qmlRegisterType<DraftEvent>(uri, 1, 0, "DraftEvent");
         qmlRegisterType<MmsHelper>(uri, 1, 0, "MmsHelper");
 
         qmlRegisterType<CommHistory::GroupObject>();

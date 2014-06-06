@@ -59,6 +59,8 @@ public:
 
     Q_INVOKABLE bool setEventStatus(int eventId, int status);
 
+    Q_INVOKABLE int ensureGroupExists(const QString &localUid, const QStringList &remoteUids);
+
 public slots:
     void reload();
 

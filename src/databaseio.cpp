@@ -232,6 +232,7 @@ public:
                 case Group::LastVCardLabel:
                 case Group::LastEventType:
                 case Group::LastEventStatus:
+                case Group::LastEventIsDraft:
                 case Group::Contacts:
                     break;
                 default:
@@ -906,6 +907,7 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setLastVCardLabel(query.value(12).toString());
     group.setLastEventType(static_cast<Event::EventType>(query.value(13).toInt()));
     group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(14).toInt()));
+    group.setLastEventIsDraft(query.value(15).toBool());
     
     // contacts
     foreach (const QString &remoteUid, group.remoteUids())
@@ -928,7 +930,8 @@ static const char *baseGroupQuery =
     "\n LastEvent.vCardFileName, "
     "\n LastEvent.vCardLabel, "
     "\n LastEvent.type, "
-    "\n LastEvent.status "
+    "\n LastEvent.status, "
+    "\n LastEvent.isDraft "
     "\n FROM Groups "
     "\n LEFT JOIN ("
     "\n  SELECT groupId, COUNT(*) as unread "

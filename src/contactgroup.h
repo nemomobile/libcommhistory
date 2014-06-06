@@ -76,6 +76,9 @@ public:
     Q_PROPERTY(int lastEventStatus READ lastEventType NOTIFY lastEventChanged);
     int lastEventStatus() const;
 
+    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventChanged);
+    bool lastEventIsDraft() const;
+
     Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
     QDateTime lastModified() const;
  

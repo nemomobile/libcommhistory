@@ -75,6 +75,7 @@ public:
         LastModified,
         StartTime,
         Contacts,
+        LastEventIsDraft,
         NumProperties
     };
 
@@ -239,6 +240,11 @@ public:
      */
     Event::EventStatus lastEventStatus() const;
 
+    /*!
+     * True if the last event is a draft message
+     */
+    bool lastEventIsDraft() const;
+
     QDateTime lastModified() const;
 
     void setId(int id);
@@ -260,6 +266,7 @@ public:
     void setLastVCardLabel(const QString &label);
     void setLastEventType(Event::EventType eventType);
     void setLastEventStatus(Event::EventStatus eventStatus);
+    void setLastEventIsDraft(bool isDraft);
     void setLastModified(const QDateTime &modified);
 
     QString toString() const;

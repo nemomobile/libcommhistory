@@ -54,6 +54,7 @@ public:
     QString lastVCardLabel;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
+    bool lastEventIsDraft;
     QDateTime lastModified;
 
     Group::PropertySet validProperties;
@@ -67,6 +68,7 @@ GroupPrivate::GroupPrivate()
         , lastEventId(-1)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
+        , lastEventIsDraft(false)
 {
     lastModified = QDateTime::fromTime_t(0);
 }
@@ -88,6 +90,7 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , lastVCardLabel(other.lastVCardLabel)
         , lastEventType(other.lastEventType)
         , lastEventStatus(other.lastEventStatus)
+        , lastEventIsDraft(other.lastEventIsDraft)
         , lastModified(other.lastModified)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
@@ -265,6 +268,11 @@ Event::EventStatus Group::lastEventStatus() const
     return d->lastEventStatus;
 }
 
+bool Group::lastEventIsDraft() const
+{
+    return d->lastEventIsDraft;
+}
+
 QDateTime Group::lastModified() const
 {
     return d->lastModified;
@@ -390,14 +398,18 @@ void Group::setLastEventStatus(Event::EventStatus eventStatus)
     d->propertyChanged(Group::LastEventStatus);
 }
 
+void Group::setLastEventIsDraft(bool isDraft)
+{
+    d->lastEventIsDraft = isDraft;
+    d->propertyChanged(Group::LastEventIsDraft);
+}
+
 void Group::setLastModified(const QDateTime &modified)
 {
     d->lastModified = modified.toUTC();
     d->propertyChanged(Group::LastModified);
 }
 
-// DO NOT change this format; it is not in any way backwards compatible and will break backups
-// To be replaced.
 QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
 {
     argument.beginStructure();
@@ -407,8 +419,8 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.lastEventId() << group.contacts()
              << group.lastMessageText() << group.lastVCardFileName()
              << group.lastVCardLabel() << group.lastEventType()
-             << group.lastEventStatus() << group.lastModified()
-             << group.startTime();
+             << group.lastEventStatus() << group.lastEventIsDraft()
+             << group.lastModified() << group.startTime();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -425,6 +437,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
 {
     GroupPrivate p;
     int type, status;
+    bool isDraft;
     uint chatType;
 
     argument.beginStructure();
@@ -432,7 +445,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
              >> p.chatName >> p.endTime
              >> p.unreadMessages >> p.lastEventId >> p.contacts
              >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
-             >> type >> status >> p.lastModified
+             >> type >> status >> isDraft >> p.lastModified
              >> p.startTime;
 
     //read valid properties
@@ -474,6 +487,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setLastEventType((Event::EventType)type);
     if (p.validProperties.contains(Group::LastEventStatus))
         group.setLastEventStatus((Event::EventStatus)status);
+    if (p.validProperties.contains(Group::LastEventIsDraft))
+        group.setLastEventIsDraft(isDraft);
     if (p.validProperties.contains(Group::LastModified))
         group.setLastModified(p.lastModified);
     if (p.validProperties.contains(Group::StartTime))
@@ -484,6 +499,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     return argument;
 }
 
+// DO NOT change this format; it is not in any way backwards compatible and will break backups
+// To be replaced.
 QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group)
 {
     stream << group.id() << group.localUid() << group.remoteUids()
@@ -597,6 +614,9 @@ void Group::copyValidProperties(const Group &other)
             break;
         case LastEventStatus:
             setLastEventStatus(other.lastEventStatus());
+            break;
+        case LastEventIsDraft:
+            setLastEventIsDraft(other.lastEventIsDraft());
             break;
         case LastModified:
             setLastModified(other.lastModified());

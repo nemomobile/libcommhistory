@@ -582,7 +582,6 @@ bool EventModel::modifyEvents(QList<Event> &events)
 
         if (event.isValid()
             && event.groupId() != -1
-            && !event.isDraft()
             && !modifiedGroups.contains(event.groupId())) {
             modifiedGroups.append(event.groupId());
         }
@@ -634,7 +633,7 @@ bool EventModel::deleteEvent(Event &event)
     }
 
     bool groupUpdated = false, groupDeleted = false;
-    if (event.groupId() != -1 && !event.isDraft()) {
+    if (event.groupId() != -1) {
         int total;
         if (!d->database()->totalEventsInGroup(event.groupId(), total)) {
             d->database()->rollback();
@@ -693,7 +692,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
 
     int groupDeleted = -1;
     // update or delete old group
-    if (oldGroupId != -1 && !event.isDraft()) {
+    if (oldGroupId != -1) {
         int total;
         if (!d->database()->totalEventsInGroup(oldGroupId, total)) {
             d->database()->rollback();
@@ -786,6 +785,8 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
                 group.setLastVCardFileName(event.fromVCardFileName());
                 group.setLastVCardLabel(event.fromVCardLabel());
             }
+            if (modified.contains(Event::IsDraft))
+                group.setLastEventIsDraft(event.isDraft());
             if (modified.contains(Event::StartTime))
                 group.setStartTime(event.startTime());
             if (modified.contains(Event::EndTime))
