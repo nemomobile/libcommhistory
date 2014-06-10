@@ -121,13 +121,13 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
     for ( int i = 0; i < row_count; i++ )
     {
         Event e = model.event( model.index( i, 0 ) );
-        qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+        qDebug() << "EVENT:" << e.id() << "|" << e.recipients() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
         QCOMPARE( e.type(), Event::CallEvent );
-        QCOMPARE( e.remoteUid(), calls.at( i ).remoteUid );
+        QCOMPARE( e.recipients().value(0).remoteUid(), calls.at( i ).remoteUid );
 
         bool addressFound = false;
         foreach (QString address, countedUids) {
-            if (address == e.remoteUid()) {
+            if (address == e.recipients().value(0).remoteUid()) {
                 addressFound = true;
                 break;
             }
@@ -174,7 +174,7 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
             }
         }
 
-        countedUids.insert(e.remoteUid());
+        countedUids.insert(e.recipients().value(0).remoteUid());
     }
 }
 
@@ -363,7 +363,7 @@ void CallModelTest::testDeleteEvent()
     // delete first event from hidden number
     Event e = model.event(model.index(0, 0));
     QVERIFY(e.isValid());
-    QCOMPARE(e.remoteUid(), QLatin1String("<hidden>"));
+    QCOMPARE(e.recipients().value(0).remoteUid(), QLatin1String("<hidden>"));
     QVERIFY(model.deleteEvent(e.id()));
     QVERIFY(watcher.waitForDeleted());
     // correct test helper lists to match current situation
@@ -389,10 +389,10 @@ void CallModelTest::testDeleteEvent()
     e = model.event( model.index( 0, 0 ) );
     QVERIFY( e.isValid() );
     QCOMPARE( e.type(), Event::CallEvent );
-    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+    qDebug() << "EVENT:" << e.id() << "|" << e.recipients() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Inbound );
     QCOMPARE( e.isMissedCall(), false );
-    QCOMPARE( e.remoteUid(), REMOTEUID2 );
+    QCOMPARE( e.recipients().value(0).remoteUid(), REMOTEUID2 );
     // delete it
     QVERIFY( model.deleteEvent( e.id() ) );
     QVERIFY( watcher.waitForDeleted(2) );
@@ -434,7 +434,7 @@ void CallModelTest::testDeleteEvent()
     e = model.event( model.index( 0, 0 ) );
     QVERIFY( e.isValid() );
     QCOMPARE( e.type(), Event::CallEvent );
-    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+    qDebug() << "EVENT:" << e.id() << "|" << e.recipients() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Inbound );
     QCOMPARE( e.isMissedCall(), false );
     // delete it
@@ -472,7 +472,7 @@ void CallModelTest::testDeleteEvent()
     e = model.event( model.index( 1, 0 ) );
     QVERIFY( e.isValid() );
     QCOMPARE( e.type(), Event::CallEvent );
-    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+    qDebug() << "EVENT:" << e.id() << "|" << e.recipients() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Inbound );
     QCOMPARE( e.isMissedCall(), true );
     // delete it
@@ -500,7 +500,7 @@ void CallModelTest::testDeleteEvent()
     e = model.event( model.index( 0, 0 ) );
     QVERIFY( e.isValid() );
     QCOMPARE( e.type(), Event::CallEvent );
-    qDebug() << "EVENT:" << e.id() << "|" << e.remoteUid() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
+    qDebug() << "EVENT:" << e.id() << "|" << e.recipients() << "|" << e.direction() << "|" << e.isMissedCall() << "|" << e.eventCount();
     QCOMPARE( e.direction(), Event::Outbound );
     QCOMPARE( e.isMissedCall(), false );
     // delete it
@@ -643,7 +643,7 @@ void CallModelTest::testSortByContactUpdate()
     QCOMPARE(model.rowCount(), 1);
 
     Event e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QVERIFY(e1.isMissedCall());
     QCOMPARE(e1.eventCount(), 2);
 
@@ -661,7 +661,7 @@ void CallModelTest::testSortByContactUpdate()
     e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.eventCount(), 1);
     QCOMPARE(e1.direction(), Event::Outbound);
-    QCOMPARE(e1.remoteUid(), REMOTEUID2);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID2);
 
     // missed call to first contact, should reorder
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(6), REMOTEUID1);
@@ -670,7 +670,7 @@ void CallModelTest::testSortByContactUpdate()
     e1 = model.event(model.index(0, 0));
     int firstMissedId = e1.id();
     QVERIFY(e1.isMissedCall());
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 1);
 
     // another missed call, increase event count
@@ -679,7 +679,7 @@ void CallModelTest::testSortByContactUpdate()
     QCOMPARE(model.rowCount(), 2);
     e1 = model.event(model.index(0, 0));
     QVERIFY(e1.isMissedCall());
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 2);
 
     // mark latest missed call as read, the first should also be marked
@@ -697,7 +697,7 @@ void CallModelTest::testSortByContactUpdate()
     e1 = model.event(model.index(0, 0));
     QCOMPARE(e1.eventCount(), 2);
     QCOMPARE(e1.direction(), Event::Outbound);
-    QCOMPARE(e1.remoteUid(), REMOTEUID2);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID2);
 
     // ...and a missed call to the first -> move to top and increase event count
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(15), REMOTEUID1);
@@ -705,7 +705,7 @@ void CallModelTest::testSortByContactUpdate()
     QCOMPARE(model.rowCount(), 2);
     e1 = model.event(model.index(0, 0));
     QVERIFY(e1.isMissedCall());
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.eventCount(), 3);
 }
 
@@ -734,12 +734,12 @@ void CallModelTest::testSortByTimeUpdate()
     QCOMPARE(model.rowCount(), 2);
 
     Event e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QVERIFY(e1.isMissedCall());
     QCOMPARE(e1.eventCount(), 2);
 
     Event e2 = model.event(model.index(1, 0));
-    QCOMPARE(e2.remoteUid(), REMOTEUID2);
+    QCOMPARE(e2.recipients().value(0).remoteUid(), REMOTEUID2);
     QVERIFY(e2.isMissedCall());
     QVERIFY(e2.eventCount() <= 1);
 
@@ -802,34 +802,34 @@ void CallModelTest::testSIPAddress()
     QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), 1);
     Event e = model.event(model.index(0, 0));
-    QCOMPARE(e.remoteUid(), phoneNumber);
+    QCOMPARE(e.recipients().value(0).remoteUid(), phoneNumber);
 
     // SIP call to same number, should group with first event
     addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when.addSecs(5), sipAddress);
     QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), 1);
     e = model.event(model.index(0, 0));
-    QCOMPARE(e.remoteUid(), sipAddress);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress);
 
     // SIP call to non-numeric address
     addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when.addSecs(10), sipAddress2);
     QVERIFY(watcher.waitForAdded());
     QCOMPARE(model.rowCount(), 2);
     e = model.event(model.index(0, 0));
-    QCOMPARE(e.remoteUid(), sipAddress2);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress2);
 
     // check contact resolving for call groups
     QVERIFY(model.setFilter(CallModel::SortByContact));
     QVERIFY(model.getEvents());
     QCOMPARE(model.rowCount(), 2);
     e = model.event(model.index(0, 0));
-    QCOMPARE(e.remoteUid(), sipAddress2);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress2);
     QVERIFY(!e.contacts().isEmpty());
     QCOMPARE(e.contacts().first().first, contactId2);
     QCOMPARE(e.contacts().first().second, contactName2);
 
     e = model.event(model.index(1, 0));
-    QCOMPARE(e.remoteUid(), sipAddress);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress);
     QVERIFY(!e.contacts().isEmpty());
     QCOMPARE(e.contacts().first().first, contactId);
     QCOMPARE(e.contacts().first().second, contactName);
@@ -840,13 +840,13 @@ void CallModelTest::testSIPAddress()
     QCOMPARE(model.rowCount(), 2);
 
     e = model.event(model.index(0, 0));
-    QCOMPARE(e.remoteUid(), sipAddress2);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress2);
     QVERIFY(!e.contacts().isEmpty());
     QCOMPARE(e.contacts().first().first, contactId2);
     QCOMPARE(e.contacts().first().second, contactName2);
 
     e = model.event(model.index(1, 0));
-    QCOMPARE(e.remoteUid(), sipAddress);
+    QCOMPARE(e.recipients().value(0).remoteUid(), sipAddress);
     QVERIFY(!e.contacts().isEmpty());
     QCOMPARE(e.contacts().first().first, contactId);
     QCOMPARE(e.contacts().first().second, contactName);
@@ -963,10 +963,10 @@ void CallModelTest::testModifyEvent()
     QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 2);
     e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.direction(), Event::Inbound);
     e2 = model.event(model.index(1, 0));
-    QCOMPARE(e2.remoteUid(), REMOTEUID2);
+    QCOMPARE(e2.recipients().value(0).remoteUid(), REMOTEUID2);
     QCOMPARE(e2.direction(), Event::Inbound);
 
     /*
@@ -980,15 +980,15 @@ void CallModelTest::testModifyEvent()
     QVERIFY(watcher.waitForUpdated());
 
     e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.direction(), Event::Inbound);
     QCOMPARE(e1.isVideoCall(), true);
     e2 = model.event(model.index(1, 0));
-    QCOMPARE(e2.remoteUid(), REMOTEUID1);
+    QCOMPARE(e2.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e2.direction(), Event::Outbound);
     QCOMPARE(e2.isVideoCall(), false);
     e3 = model.event(model.index(2, 0));
-    QCOMPARE(e3.remoteUid(), REMOTEUID2);
+    QCOMPARE(e3.recipients().value(0).remoteUid(), REMOTEUID2);
     QCOMPARE(e3.direction(), Event::Inbound);
     QCOMPARE(e3.isVideoCall(), false);
 
@@ -1002,10 +1002,10 @@ void CallModelTest::testModifyEvent()
     QVERIFY(watcher.waitForUpdated());
 
     e1 = model.event(model.index(0, 0));
-    QCOMPARE(e1.remoteUid(), REMOTEUID1);
+    QCOMPARE(e1.recipients().value(0).remoteUid(), REMOTEUID1);
     QCOMPARE(e1.direction(), Event::Inbound);
     e2 = model.event(model.index(1, 0));
-    QCOMPARE(e2.remoteUid(), REMOTEUID2);
+    QCOMPARE(e2.recipients().value(0).remoteUid(), REMOTEUID2);
     QCOMPARE(e2.direction(), Event::Inbound);
 }
 
@@ -1043,15 +1043,15 @@ void CallModelTest::testMinimizedPhone()
     Event e;
     e = model.event(model.index(0, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
-    QCOMPARE(e.remoteUid(), phone00);
+    QCOMPARE(e.recipients().value(0).remoteUid(), phone00);
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user99id, user99));
-    QCOMPARE(e.remoteUid(), phone99);
+    QCOMPARE(e.recipients().value(0).remoteUid(), phone99);
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
-    QCOMPARE(e.remoteUid(), phone00);
+    QCOMPARE(e.recipients().value(0).remoteUid(), phone00);
 }
 
 void CallModelTest::cleanupTestCase()

@@ -114,7 +114,7 @@ void CallModelProfileTest::prepare()
         e.setStartTime(when.addSecs(ei));
         e.setEndTime(when.addSecs(ei));
         e.setLocalUid(RING_ACCOUNT);
-        e.setRemoteUid(remoteUids.at(contactIndices.at(qrand() % selected)));
+        e.setRecipients(Recipient(RING_ACCOUNT, remoteUids.at(contactIndices.at(qrand() % selected))));
         e.setFreeText("");
         e.setIsDraft(false);
         e.setIsMissedCall(isMissed);

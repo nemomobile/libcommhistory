@@ -63,7 +63,7 @@ void MemEventModelTest::addEvent()
     e1.setStartTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
     e1.setEndTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
     e1.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    e1.setRemoteUid("td@localhost");
+    e1.setRecipients(Recipient(e1.localUid(), "td@localhost"));
     e1.setFreeText("addEvents 1");
 
     QVERIFY(model->addEvent(e1));
@@ -98,7 +98,7 @@ void MemEventModelTest::addEvents()
         e1.setStartTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
         e1.setEndTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
         e1.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-        e1.setRemoteUid("td@localhost");
+        e1.setRecipients(Recipient(e1.localUid(), "td@localhost"));
         e1.setFreeText(QString("addEvents %1").arg(i));
 
         QVERIFY(model->addEvent(e1));
@@ -138,7 +138,7 @@ void MemEventModelTest::modifyEvent()
     im.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    im.setRemoteUid("td@localhost");
+    im.setRecipients(Recipient(im.localUid(), "td@localhost"));
     im.setFreeText("imtest");
 
     QSignalSpy eventsCommitted(model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
@@ -172,7 +172,7 @@ void MemEventModelTest::deleteEvent()
     event.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("td@localhost");
+    event.setRecipients(Recipient(event.localUid(), "td@localhost"));
     event.setFreeText("deletetest");
 
     QSignalSpy eventsCommitted(model, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));

@@ -232,22 +232,22 @@ void RecentContactsModelTest::repeated()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::CallEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), bobPhone);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, bobPhone));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), charlieIm1.first);
-    QCOMPARE(e.remoteUid(), charlieIm1.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm1.first, charlieIm1.second));
 }
 
 void RecentContactsModelTest::limitedDynamic()
@@ -287,15 +287,15 @@ void RecentContactsModelTest::limitedDynamic()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::CallEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), bobPhone);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, bobPhone));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 }
 
 void RecentContactsModelTest::differentTypes()
@@ -325,22 +325,22 @@ void RecentContactsModelTest::differentTypes()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), charlieIm2.first);
-    QCOMPARE(e.remoteUid(), charlieIm2.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 }
 
 void RecentContactsModelTest::requiredProperty()
@@ -392,30 +392,30 @@ void RecentContactsModelTest::requiredProperty()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = phoneModel.event(phoneModel.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
     // IM contacts
     e = imModel.event(imModel.index(0, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = imModel.event(imModel.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), charlieIm2.first);
-    QCOMPARE(e.remoteUid(), charlieIm2.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
 
     {
         // Repeat the tests to test filtering on fill
@@ -453,29 +453,29 @@ void RecentContactsModelTest::requiredProperty()
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), bobIm.first);
-        QCOMPARE(e.remoteUid(), bobIm.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
         e = phoneModel.event(phoneModel.index(1, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
         QCOMPARE(e.type(), Event::SMSEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), phoneAccount);
-        QCOMPARE(e.remoteUid(), alicePhone2);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
         e = imModel.event(imModel.index(0, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), bobIm.first);
-        QCOMPARE(e.remoteUid(), bobIm.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
         e = imModel.event(imModel.index(1, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), charlieIm2.first);
-        QCOMPARE(e.remoteUid(), charlieIm2.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
     }
 }
 

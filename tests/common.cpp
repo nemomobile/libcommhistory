@@ -179,9 +179,9 @@ int addTestEvent(EventModel &model,
         event.setEndTime(event.startTime());
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
-        event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
+        event.setRecipients(Recipient(account, type == Event::SMSEvent ? "555123456" : "td@localhost"));
     } else {
-        event.setRemoteUid(remoteUid);
+        event.setRecipients(Recipient(account, remoteUid));
     }
     event.setFreeText(text);
     event.setIsDraft( isDraft );
@@ -443,8 +443,8 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "localUid:" << e1.localUid() << e2.localUid();
         return false;
     }
-    if (e1.remoteUid() != e2.remoteUid()) {
-        qWarning() << Q_FUNC_INFO << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
+    if (e1.recipients() != e2.recipients()) {
+        qWarning() << Q_FUNC_INFO << "recipients:" << e1.recipients() << e2.recipients();
         return false;
     }
     if (e1.type() != Event::CallEvent && e1.freeText() != e2.freeText()) {

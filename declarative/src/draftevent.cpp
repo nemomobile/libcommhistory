@@ -148,24 +148,22 @@ void DraftEvent::setLocalUid(const QString &localUid)
     emit isModifiedChanged();
 }
 
-/* Events don't actually support multiple remote UIDs currently,
- * but there are cases where this happens. The event UID is mostly
- * irrelevant anyway, so it's worked around by setting some value
- * and relying on the group for the correct set of UIDs.
- *
- * Later API and database changes should resolve this. */
 QStringList DraftEvent::remoteUids() const
 {
-    if (m_event.remoteUid().isEmpty())
-        return QStringList();
-    return QStringList() << m_event.remoteUid();
+    return m_event.recipients().remoteUids();
 }
 
 void DraftEvent::setRemoteUids(const QStringList &remoteUids)
 {
-    if (remoteUids.value(0) == m_event.remoteUid())
+    if (remoteUids == m_event.recipients().remoteUids())
         return;
-    m_event.setRemoteUid(remoteUids.value(0));
+
+    if (m_event.localUid().isEmpty()) {
+        qWarning() << "DraftEvent cannot set remote UIDs without a local UID";
+        return;
+    }
+
+    m_event.setRecipients(RecipientList::fromUids(m_event.localUid(), remoteUids));
     emit remoteUidsChanged();
     emit isModifiedChanged();
 }
@@ -192,7 +190,7 @@ bool DraftEvent::isModified() const
 bool DraftEvent::isValid() const
 {
     return !m_event.localUid().isEmpty() &&
-           !m_event.remoteUid().isEmpty() &&
+           !m_event.recipients().isEmpty() &&
            !m_event.freeText().isEmpty() &&
            m_event.groupId() >= 0;
 }

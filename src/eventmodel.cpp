@@ -308,7 +308,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(event.localUid());
             break;
         case RemoteUid:
-            var = QVariant::fromValue(event.remoteUid());
+            var = QVariant::fromValue(event.recipients().value(0).remoteUid());
             break;
         case Contacts:
             var = QVariant::fromValue(event.contacts());

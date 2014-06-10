@@ -89,7 +89,7 @@ void EventModelTest::testMessageToken()
     sms.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    sms.setRemoteUid("123456");
+    sms.setRecipients(Recipient(sms.localUid(), "123456"));
     sms.setFreeText("smstest");
     sms.setMessageToken("1234567890");
     QVERIFY(model.addEvent(sms));
@@ -119,7 +119,7 @@ void EventModelTest::testAddEvent()
     im.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    im.setRemoteUid("td@localhost");
+    im.setRecipients(Recipient(im.localUid(), "td@localhost"));
     im.setFreeText("imtest");
     QVERIFY(model.addEvent(im));
     QVERIFY(watcher.waitForAdded());
@@ -142,7 +142,7 @@ void EventModelTest::testAddEvent()
     sms.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     sms.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    sms.setRemoteUid("123456");
+    sms.setRecipients(Recipient(sms.localUid(), "123456"));
     sms.setFreeText("smstest awefawef\nawefawefaw fawefawef \tawefawefawef awefawefawef awefawef");
     QVERIFY(model.addEvent(sms));
     QVERIFY(watcher.waitForAdded());
@@ -156,7 +156,7 @@ void EventModelTest::testAddEvent()
     call.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     call.setEndTime(QDateTime::fromString("2009-08-26T09:42:47Z", Qt::ISODate));
     call.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    call.setRemoteUid("td@localhost");
+    call.setRecipients(Recipient(call.localUid(), "td@localhost"));
     call.setIsRead(true);
     QVERIFY(model.addEvent(call));
     QVERIFY(watcher.waitForAdded());
@@ -188,7 +188,7 @@ void EventModelTest::testAddEvents()
     e1.setStartTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
     e1.setEndTime(QDateTime::fromString("2010-01-08T13:37:00Z", Qt::ISODate));
     e1.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    e1.setRemoteUid("td@localhost");
+    e1.setRecipients(Recipient(e1.localUid(), "td@localhost"));
     e1.setFreeText("addEvents 1");
     QHash<QString, QString> headers1;
     headers1.insert("header1_1", "value1_1");
@@ -202,7 +202,7 @@ void EventModelTest::testAddEvents()
     e2.setStartTime(QDateTime::fromString("2010-01-08T13:37:10Z", Qt::ISODate));
     e2.setEndTime(QDateTime::fromString("2010-01-08T13:37:10Z", Qt::ISODate));
     e2.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    e2.setRemoteUid("td@localhost");
+    e2.setRecipients(Recipient(e2.localUid(), "td@localhost"));
     e2.setFreeText("addEvents 2");
     QHash<QString, QString> headers2;
     headers2.insert("header2_1", "value2_1");
@@ -226,7 +226,7 @@ void EventModelTest::testAddEvents()
     e3.setStartTime(QDateTime::fromString("2010-01-08T13:37:20Z", Qt::ISODate));
     e3.setEndTime(QDateTime::fromString("2010-01-08T13:37:20Z", Qt::ISODate));
     e3.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    e3.setRemoteUid("td@localhost");
+    e3.setRecipients(Recipient(e3.localUid(), "td@localhost"));
     e3.setFreeText("addEvents 3");
 
     events.clear();
@@ -246,7 +246,7 @@ void EventModelTest::testModifyEvent()
     im.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     im.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    im.setRemoteUid("td@localhost");
+    im.setRecipients(Recipient(im.localUid(), "td@localhost"));
     im.setFreeText("imtest");
     QVERIFY(model.addEvent(im));
     QVERIFY(watcher.waitForAdded());
@@ -341,7 +341,7 @@ void EventModelTest::testDeleteEvent()
     event.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("td@localhost");
+    event.setRecipients(Recipient(event.localUid(), "td@localhost"));
     event.setFreeText("deletetest");
     QVERIFY(model.addEvent(event));
     QVERIFY(watcher.waitForAdded());
@@ -353,7 +353,7 @@ void EventModelTest::testDeleteEvent()
 
     event.setType(Event::SMSEvent);
     event.setFreeText("deletetest sms");
-    event.setRemoteUid("555123456");
+    event.setRecipients(Recipient(event.localUid(), "555123456"));
     event.setGroupId(group2.id()); //group1 is gone, cause last event in it gone
     event.setDirection(Event::Inbound);
     event.setId(-1);
@@ -406,7 +406,7 @@ void EventModelTest::testDeleteEventVCard()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setLocalUid(RING_ACCOUNT);
-    event.setRemoteUid("555123456");
+    event.setRecipients(Recipient(RING_ACCOUNT, "555123456"));
     event.setFreeText("vcard test");
     event.setFromVCard(VCARD_FILE_1, VCARD_LABEL_1);
 
@@ -514,7 +514,7 @@ void EventModelTest::testDeleteEventMmsParts()
     // test vcard resource deletion
     Event event;
     event.setLocalUid(RING_ACCOUNT);
-    event.setRemoteUid("0506661234");
+    event.setRecipients(Recipient(RING_ACCOUNT, "0506661234"));
     event.setType(Event::MMSEvent);
     event.setDirection(Event::Outbound);
     event.setStartTime(QDateTime::currentDateTime());
@@ -690,7 +690,7 @@ void EventModelTest::testDeleteEventGroupUpdated()
     event1.setStartTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event1.setEndTime(QDateTime::fromString("2009-08-26T09:37:47Z", Qt::ISODate));
     event1.setLocalUid(LOCAL_ID);
-    event1.setRemoteUid(REMOTE_ID);
+    event1.setRecipients(Recipient(LOCAL_ID, REMOTE_ID));
     event1.setFreeText("deletetest1");
     QVERIFY(model.addEvent(event1));
     QVERIFY(watcher.waitForAdded());
@@ -761,7 +761,7 @@ void EventModelTest::testVCard()
     event.setStartTime( QDateTime::currentDateTime() );
     event.setEndTime( QDateTime::currentDateTime() );
     event.setLocalUid( "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0" );
-    event.setRemoteUid( "555123456" );
+    event.setRecipients( Recipient( event.localUid(),  "555123456") );
     event.setFreeText( "vcard test" );
     event.setFromVCard( vcardFilename1, vcardLabel );
 
@@ -813,7 +813,7 @@ void EventModelTest::testDeliveryStatus()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("55590210");
+    event.setRecipients(Recipient(event.localUid(), "55590210"));
     event.setFreeText("delivery status test");
     event.setStatus(Event::SendingStatus);
     QVERIFY(model.addEvent(event));
@@ -873,7 +873,7 @@ void EventModelTest::testReportDelivery()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("555888999");
+    event.setRecipients(Recipient(event.localUid(), "555888999"));
     event.setFreeText("report delivery test");
     event.setReportDelivery(true);
 
@@ -902,7 +902,7 @@ void EventModelTest::testMessageParts()
 
     Event event;
     event.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
-    event.setRemoteUid("0506661234");
+    event.setRecipients(Recipient(event.localUid(), "0506661234"));
     event.setType(Event::MMSEvent);
     event.setDirection(Event::Outbound);
     event.setStartTime(QDateTime::currentDateTime());
@@ -973,7 +973,7 @@ void EventModelTest::testCcBcc()
 
     Event event;
     event.setLocalUid("/org/freedesktop/Telepathy/Account/ring/tel/ring");
-    event.setRemoteUid("0506661234");
+    event.setRecipients(Recipient(event.localUid(), "0506661234"));
     event.setType(Event::MMSEvent);
     event.setDirection(Event::Outbound);
     event.setStartTime(QDateTime::currentDateTime());
@@ -1105,7 +1105,7 @@ void EventModelTest::testFindEvent()
     header2 = model.headerData(EventModel::RemoteUid,Qt::Horizontal,Qt::DisplayRole);
     QCOMPARE(header2.toString(),QString("remote_uid"));
     QString remoteUid = var2.toString();
-    QCOMPARE(remoteUid,im.remoteUid());
+    QCOMPARE(remoteUid,im.recipients().value(0).remoteUid());
 
     index2 = model.index(row,EventModel::FreeText);
     var2 = model.data(index2);
@@ -1157,7 +1157,7 @@ void EventModelTest::testMoveEvent()
     event.setStartTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
     event.setEndTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("td@localhost");
+    event.setRecipients(Recipient(event.localUid(), "td@localhost"));
     event.setFreeText("moveEvent 1");
 
     QVERIFY(model.addEvent(event));
@@ -1304,7 +1304,7 @@ void EventModelTest::testModifyInGroup()
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
     event.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    event.setRemoteUid("td@localhost");
+    event.setRecipients(Recipient(event.localUid(), "td@localhost"));
     event.setFreeText("imtest");
     event.setDirection(Event::Outbound);
     QVERIFY(model.addEvent(event));
@@ -1374,7 +1374,7 @@ void EventModelTest::testModifyInGroup()
     newEvent.setStartTime(QDateTime::currentDateTime().addSecs(5));
     newEvent.setEndTime(QDateTime::currentDateTime().addSecs(5));
     newEvent.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    newEvent.setRemoteUid("td@localhost");
+    newEvent.setRecipients(Recipient(event.localUid(), "td@localhost"));
     newEvent.setFreeText("addEvents 2");
 
     QVERIFY(model.addEvent(newEvent));
@@ -1407,7 +1407,7 @@ void EventModelTest::testExtraProperties()
     newEvent.setStartTime(QDateTime::currentDateTime().addSecs(6));
     newEvent.setEndTime(newEvent.startTime());
     newEvent.setLocalUid("/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0");
-    newEvent.setRemoteUid("td@localhost");
+    newEvent.setRecipients(Recipient(newEvent.localUid(), "td@localhost"));
     newEvent.setExtraProperty("testing", 42);
 
     QVERIFY(model.addEvent(newEvent));
@@ -1521,7 +1521,7 @@ void EventModelTest::testAddNonDigitRemoteId()
     event.setStartTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
     event.setEndTime(QDateTime::fromString("2010-01-08T13:39:00Z", Qt::ISODate));
     event.setLocalUid(localId);
-    event.setRemoteUid(remoteId);
+    event.setRecipients(Recipient(localId, remoteId));
     event.setFreeText("you have a new voicemail");
 
     QVERIFY(model.addEvent(event));

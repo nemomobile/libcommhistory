@@ -312,9 +312,9 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         e.setBytesReceived(qrand() % 1024);
         e.setGroupId(groupId);
         if (randomRemote) {
-            e.setRemoteUid(remoteUids[qrand() % numRemoteUids]);
+            e.setRecipients(Recipient(e.localUid(), remoteUids[qrand() % numRemoteUids]));
         } else {
-            e.setRemoteUid(remoteUid);
+            e.setRecipients(Recipient(e.localUid(), remoteUid));
         }
 
         e.setFreeText(messageText.isNull() ? textContent[qrand() % numTextContents] : messageText);
@@ -385,9 +385,9 @@ int doAddCall( const QStringList &arguments, const QVariantMap &options )
         }
 
         if (arguments.count() > 4) {
-            e.setRemoteUid(arguments.at(3));
+            e.setRecipients(Recipient(localUid, arguments.at(3)));
         } else {
-            e.setRemoteUid(remoteUids[0]);
+            e.setRecipients(Recipient(localUid, remoteUids[0]));
         }
         e.setDirection( direction );
         e.setIsMissedCall( isMissed );
@@ -455,8 +455,9 @@ int doAddClass0(const QStringList &arguments, const QVariantMap &options)
 
     // prepare class zero sms
     Event e;
-    e.setRemoteUid(sosRemoteUids.at(qrand() % sosRemoteUids.count()));
+
     e.setLocalUid(RING_ACCOUNT);
+    e.setRecipients(Recipient(e.localUid(), sosRemoteUids.at(qrand() % sosRemoteUids.count())));
     e.setDirection(Event::Inbound);
     e.setType(Event::ClassZeroSMSEvent);
     e.setFreeText(sosMessages.at(qrand() % sosMessages.count()));
@@ -1191,7 +1192,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             if (group.id() >= 0)
                 event.setGroupId(group.id());
             event.setLocalUid(group.localUid());
-            event.setRemoteUid(group.recipients().remoteUids().first());
+            event.setRecipients(group.recipients());
 
             eventCount++;
 

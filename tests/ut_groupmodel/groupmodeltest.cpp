@@ -535,7 +535,7 @@ void GroupModelTest::deleteGroups()
     sms.setStartTime(QDateTime::currentDateTime());
     sms.setEndTime(QDateTime::currentDateTime());
     sms.setLocalUid(ACCOUNT1);
-    sms.setRemoteUid("01234567");
+    sms.setRecipients(Recipient(ACCOUNT1, "01234567"));
     sms.setFreeText("smstest");
     QVERIFY(model.addEvent(sms));
     QVERIFY(waitSignal(groupDataChanged));
@@ -548,7 +548,7 @@ void GroupModelTest::deleteGroups()
     mms.setStartTime(QDateTime::currentDateTime());
     mms.setEndTime(QDateTime::currentDateTime());
     mms.setLocalUid(ACCOUNT1);
-    mms.setRemoteUid("01234567");
+    mms.setRecipients(Recipient(ACCOUNT1, "01234567"));
     mms.setFreeText("mmstest");
     QVERIFY(model.addEvent(mms));
     QVERIFY(waitSignal(groupDataChanged));
@@ -1395,7 +1395,7 @@ void GroupModelTest::endTimeUpdate()
     olEvent.setStartTime(QDateTime::currentDateTime());
     olEvent.setEndTime(oldDate.addDays(-10));
     olEvent.setLocalUid("endTimeUpdate");
-    olEvent.setRemoteUid("td@localhost");
+    olEvent.setRecipients(Recipient("endTimeUpdate", "td@localhost"));
     olEvent.setFreeText("long in delivery message");
 
     eventsCommitted.clear();

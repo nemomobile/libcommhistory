@@ -116,7 +116,7 @@ public:
                     fields.append(QueryHelper::Field("localUid", event.localUid()));
                     break;
                 case Event::RemoteUid:
-                    fields.append(QueryHelper::Field("remoteUid", event.remoteUid()));
+                    fields.append(QueryHelper::Field("remoteUid", event.recipients().value(0).remoteUid()));
                     break;
                 case Event::Subject:
                     fields.append(QueryHelper::Field("subject", event.subject()));
@@ -180,6 +180,7 @@ public:
                 case Event::ContactName:
                 case Event::Contacts:
                 case Event::ExtraProperties:
+                case Event::Recipients:
                     break;
                 /* XXX Disabled properties (remove?) */
                 case Event::EventCount:
@@ -558,7 +559,7 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     event.setStatus(static_cast<Event::EventStatus>(query.value(++field).toInt()));
     event.setBytesReceived(query.value(++field).toInt());
     event.setLocalUid(query.value(++field).toString());
-    event.setRemoteUid(query.value(++field).toString());
+    event.setRecipients(Recipient(event.localUid(), query.value(++field).toString()));
     event.setSubject(query.value(++field).toString());
     event.setFreeText(query.value(++field).toString());
     if (query.value(++field).isNull())
@@ -1200,13 +1201,7 @@ bool DatabaseIO::rollback()
 
 QString DatabaseIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
 {
-    QString callGroupRemoteId;
-    if (localUidComparesPhoneNumbers(event.localUid())) {
-        // keep dial string in group uris for separate history entries
-        callGroupRemoteId = minimizePhoneNumber(event.remoteUid());
-    } else {
-        callGroupRemoteId = event.remoteUid();
-    }
+    const QString callGroupRemoteId = event.recipients().value(0).minimizedRemoteUid();
 
     QString videoSuffix;
     if (event.isVideoCall())

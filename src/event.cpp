@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -59,9 +60,8 @@ public:
     Event::EventStatus status;
     int bytesReceived;
 
-    QString localUid;  /* telepathy account */
-    QString remoteUid;
-    QList<Event::Contact> contacts;
+    QString localUid;
+    RecipientList recipients;
 
     QString freeText;
     int groupId;
@@ -106,8 +106,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.endTime() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
-             << event.bytesReceived() << event.localUid()
-             << event.remoteUid() << event.contacts()
+             << event.bytesReceived() << event.localUid() << event.recipients()
              << -1 /* parentId */ << event.freeText() << event.groupId()
              << event.messageToken() << event.mmsId() << event.lastModified()
              << event.eventCount()
@@ -139,7 +138,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     argument.beginStructure();
     argument >> p.id >> type >> p.startTime >> p.endTime
              >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
-             >> status >> p.bytesReceived >> p.localUid >> p.remoteUid >> p.contacts
+             >> status >> p.bytesReceived >> p.localUid >> p.recipients
              >> parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel >> encoding  >> charset >> language
@@ -170,8 +169,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setStatus((Event::EventStatus)status);
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
-    event.setRemoteUid(p.remoteUid);
-    event.setContacts(p.contacts);
+    event.setRecipients(p.recipients);
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
     event.setGroupId(p.groupId);
@@ -224,7 +222,8 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
            << event.endTime() << event.direction()  << event.isDraft()
            << event.isRead() << event.isMissedCall()
            << event.isEmergencyCall() << event.status()
-           << event.bytesReceived() << event.localUid() << event.remoteUid()
+           << event.bytesReceived() << event.localUid()
+           << event.recipients().value(0).remoteUid()
            << -1 /* parentId */ << event.freeText() << event.groupId()
            << event.messageToken() << event.mmsId() << event.lastModified()
            << event.fromVCardFileName() << event.fromVCardLabel()
@@ -244,9 +243,11 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     int type, direction, status, rstatus, parentId;
     bool isDeleted;
     QString encoding, charset, language;
+    QString localUid, remoteUid;
+
     stream >> p.id >> type >> p.startTime >> p.endTime
            >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
-           >> status >> p.bytesReceived >> p.localUid >> p.remoteUid
+           >> status >> p.bytesReceived >> localUid >> remoteUid
            >> parentId >> p.freeText >> p.groupId
            >> p.messageToken >> p.mmsId >>p.lastModified
            >> p.fromVCardFileName >> p.fromVCardLabel >> encoding >> charset >> language
@@ -266,8 +267,8 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setIsEmergencyCall( p.isEmergencyCall );
     event.setStatus((Event::EventStatus)status);
     event.setBytesReceived(p.bytesReceived);
-    event.setLocalUid(p.localUid);
-    event.setRemoteUid(p.remoteUid);
+    event.setLocalUid(localUid);
+    event.setRecipients(Recipient(localUid, remoteUid));
     event.setSubject(p.subject);
     event.setFreeText(p.freeText);
     event.setGroupId(p.groupId);
@@ -326,8 +327,7 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , status(other.status)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
-        , remoteUid(other.remoteUid)
-        , contacts(other.contacts)
+        , recipients(other.recipients)
         , freeText(other.freeText)
         , groupId(other.groupId)
         , messageToken(other.messageToken)
@@ -413,7 +413,7 @@ Event::PropertySet Event::modifiedProperties() const
 
 bool Event::operator==(const Event &other) const
 {
-    return (this->d->remoteUid         == other.remoteUid()         &&
+    return (this->d->recipients        == other.recipients()        &&
             this->d->localUid          == other.localUid()          &&
             this->d->startTime         == other.startTime()         &&
             this->d->endTime           == other.endTime()           &&
@@ -509,24 +509,40 @@ QString Event::localUid() const
     return d->localUid;
 }
 
-QString Event::remoteUid() const
+const RecipientList &Event::recipients() const
 {
-    return d->remoteUid;
+    return d->recipients;
+}
+
+RecipientList Event::contactRecipients() const
+{
+    RecipientList rv;
+
+    foreach (const Recipient &recipient, d->recipients) {
+        if (recipient.contactId() != 0) {
+            rv.append(recipient);
+        }
+    }
+
+    return rv;
 }
 
 int Event::contactId() const
 {
-    return (d->contacts.size() ? d->contacts.first().first : 0);
+    return d->recipients.value(0).contactId();
 }
 
 QString Event::contactName() const
 {
-    return (d->contacts.size() ? d->contacts.first().second : QString());
+    return d->recipients.value(0).contactName();
 }
 
 QList<Event::Contact> Event::contacts() const
 {
-    return d->contacts;
+    QList<Event::Contact> re;
+    foreach (const Recipient &r, d->recipients)
+        re << qMakePair(r.contactId(), r.contactName());
+    return re;
 }
 
 QString Event::subject() const
@@ -731,36 +747,11 @@ void Event::setLocalUid(const QString &uid)
     d->propertyChanged(Event::LocalUid);
 }
 
-void Event::setRemoteUid(const QString &uid)
+void Event::setRecipients(const RecipientList &recipients)
 {
-    d->remoteUid = uid;
+    d->recipients = recipients;
+    d->propertyChanged(Event::Recipients);
     d->propertyChanged(Event::RemoteUid);
-}
-
-void Event::setContactId(int id)
-{
-    if (d->contacts.isEmpty())
-        d->contacts << qMakePair(id, QString());
-    else
-        d->contacts.first().first = id;
-
-    d->propertyChanged(Event::Contacts);
-}
-
-void Event::setContactName(const QString &name)
-{
-    if (d->contacts.isEmpty())
-        d->contacts << qMakePair(0, name);
-    else
-        d->contacts.first().second = name;
-
-    d->propertyChanged(Event::Contacts);
-}
-
-void Event::setContacts(const QList<Event::Contact> &contacts)
-{
-    d->contacts = contacts;
-    d->propertyChanged(Event::Contacts);
 }
 
 void Event::setSubject(const QString &subject)
@@ -936,18 +927,6 @@ void Event::setExtraProperty(const QString &key, const QVariant &value)
 
 QString Event::toString() const
 {
-    QString contacts;
-    if (!d->contacts.isEmpty()) {
-        QStringList contactList;
-        foreach (Event::Contact contact, d->contacts) {
-            contactList << QString("%1,%2")
-                .arg(QString::number(contact.first))
-                .arg(contact.second);
-        }
-
-        contacts = contactList.join(QChar(';'));
-    }
-
     QString headers;
     if (!d->headers.isEmpty()) {
         QStringList headerList;
@@ -971,9 +950,7 @@ QString Event::toString() const
                    QString::number(isRead())          % QChar('|') %
                    QString::number(isMissedCall())    % QChar('|') %
                    QString::number(bytesReceived())   % QChar('|') %
-                   localUid()                         % QChar('|') %
-                   remoteUid()                        % QChar('|') %
-                   contacts                           % QChar('|') %
+                   recipients().debugString()         % QChar('|') %
                    freeText()                         % QChar('|') %
                    fromVCardFileName()                % QChar('|') %
                    fromVCardLabel()                   % QChar('|') %
@@ -1029,12 +1006,15 @@ void Event::copyValidProperties(const Event &other)
             setLocalUid(other.localUid());
             break;
         case RemoteUid:
-            setRemoteUid(other.remoteUid());
+            // XXX deprecated
+            break;
+        case Recipients:
+            setRecipients(other.recipients());
             break;
         case ContactId:
         case ContactName:
         case Contacts:
-            setContacts(other.contacts());
+            // Deprecated, not settable
             break;
         case Subject:
             setSubject(other.subject());

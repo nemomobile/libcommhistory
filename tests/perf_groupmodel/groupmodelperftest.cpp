@@ -174,7 +174,7 @@ void GroupModelPerfTest::getGroups()
             e.setStartTime(when.addSecs(i));
             e.setEndTime(when.addSecs(i));
             e.setLocalUid(RING_ACCOUNT);
-            e.setRemoteUid(grp.recipients().at(0).remoteUid());
+            e.setRecipients(grp.recipients());
             e.setFreeText(randomMessage(qrand() % 49 + 1));  // Max 50 words / message
             e.setIsDraft(false);
             e.setIsMissedCall(false);

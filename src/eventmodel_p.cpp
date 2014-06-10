@@ -39,8 +39,18 @@
 using namespace CommHistory;
 
 namespace {
-const int defaultChunkSize = 50;
+
+bool initializeTypes()
+{
+    qRegisterMetaType<QList<CommHistory::Event> >();
+    return true;
 }
+
+const int defaultChunkSize = 50;
+
+}
+
+bool eventmodel_p_initialized = initializeTypes();
 
 EventModelPrivate::EventModelPrivate(EventModel *model)
         : addResolver(0)
@@ -58,7 +68,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , bgThread(0)
 {
     q_ptr = model;
-    qRegisterMetaType<QList<CommHistory::Event> >();
+
     // emit dbus signals
     emitter = UpdatesEmitter::instance();
     connect(this, SIGNAL(eventsAdded(const QList<CommHistory::Event>&)),
@@ -224,7 +234,7 @@ void EventModelPrivate::addToModel(const Event &event, bool sync)
         }
 
         pendingAdded.prepend(event);
-        addResolver->add(Recipient(event.localUid(), event.remoteUid()));
+        addResolver->add(event);
     }
 }
 
@@ -323,8 +333,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         }
 
         pendingReceived.append(events);
-        foreach (const Event &event, events)
-            receiveResolver->add(Recipient(event.localUid(), event.remoteUid()));
+        receiveResolver->add(events);
     } else {
         fillModel(start, end, events);
     }

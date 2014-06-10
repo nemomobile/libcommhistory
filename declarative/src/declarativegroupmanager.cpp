@@ -92,8 +92,7 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
     event.setDirection(Event::Outbound);
     event.setIsRead(true);
     event.setLocalUid(localUid);
-    if (remoteUids.size() == 1)
-        event.setRemoteUid(remoteUids[0]);
+    event.setRecipients(RecipientList::fromUids(localUid, remoteUids));
     event.setFreeText(text);
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(event.startTime());

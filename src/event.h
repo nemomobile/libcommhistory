@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -31,6 +32,7 @@
 #include <QSet>
 
 #include "messagepart.h"
+#include "recipient.h"
 #include "libcommhistoryexport.h"
 
 class QDBusArgument;
@@ -107,7 +109,7 @@ public:
         Status,
         BytesReceived,
         LocalUid,
-        RemoteUid,
+        RemoteUid, // TODO: remove, deprecated
         ContactId, // TODO: remove
         ContactName, // TODO: remove
         Subject,
@@ -133,6 +135,7 @@ public:
         IsAction,
         Headers,
         ExtraProperties,
+        Recipients,
         //
         NumProperties
     };
@@ -241,9 +244,10 @@ public:
 
     int bytesReceived() const;
 
-    QString localUid() const;  /* telepathy account */
+    QString localUid() const;
 
-    QString remoteUid() const;
+    const RecipientList &recipients() const;
+    RecipientList contactRecipients() const;
 
     /* DEPRECATED - use contacts(). Returns the id of the first matching contact. */
     int contactId() const;
@@ -340,15 +344,7 @@ public:
 
     void setLocalUid(const QString &uid);
 
-    void setRemoteUid(const QString &uid);
-
-    /* DEPRECATED - use setContacts() */
-    void setContactId(int id);
-
-    /* DEPRECATED - use setContacts() */
-    void setContactName(const QString &name);
-
-    void setContacts(const QList<Event::Contact> &contacts);
+    void setRecipients(const RecipientList &recipients);
 
     void setSubject(const QString &subject);
 
