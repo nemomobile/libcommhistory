@@ -220,11 +220,19 @@ void EventModelPrivate::addToModel(const Event &event, bool sync)
     if (resolveContacts) {
         if (!addResolver) {
             addResolver = new ContactResolver(this);
-            connect(addResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(prependEvents(QList<Event>)));
+            connect(addResolver, SIGNAL(finished()), SLOT(addResolverFinished()));
         }
 
-        addResolver->prependEvents(QList<Event>() << event);
+        pendingAdded.prepend(event);
+        addResolver->add(Recipient(event.localUid(), event.remoteUid()));
     }
+}
+
+void EventModelPrivate::addResolverFinished()
+{
+    QList<Event> added = pendingAdded;
+    pendingAdded.clear();
+    prependEvents(added);
 }
 
 void EventModelPrivate::prependEvents(QList<Event> events)
@@ -311,13 +319,22 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
     if (resolveContacts && queryMode != EventModel::SyncQuery) {
         if (!receiveResolver) {
             receiveResolver = new ContactResolver(this);
-            connect(receiveResolver, SIGNAL(eventsResolved(QList<Event>)), SLOT(fillModel(QList<Event>)));
+            connect(receiveResolver, SIGNAL(finished()), SLOT(receiveResolverFinished()));
         }
 
-        receiveResolver->appendEvents(events);
+        pendingReceived.append(events);
+        foreach (const Event &event, events)
+            receiveResolver->add(Recipient(event.localUid(), event.remoteUid()));
     } else {
         fillModel(start, end, events);
     }
+}
+
+void EventModelPrivate::receiveResolverFinished()
+{
+    QList<Event> received = pendingReceived;
+    pendingReceived.clear();
+    fillModel(received);
 }
 
 void EventModelPrivate::modelUpdatedSlot(bool successful)
@@ -386,6 +403,16 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
 {
     DEBUG() << Q_FUNC_INFO;
 
+    // XXX
+    qWarning() << "changeContactsRecursive is currently disabled!";
+
+    Q_UNUSED(changeType);
+    Q_UNUSED(contactId);
+    Q_UNUSED(contactName);
+    Q_UNUSED(contactAddresses);
+    Q_UNUSED(parent);
+
+#if 0
     for (int row = 0; row < parent->childCount(); row++) {
 
         Event *event = &(parent->eventAt(row));
@@ -458,6 +485,7 @@ void EventModelPrivate::changeContactsRecursive(ContactChangeType changeType,
                                     parent->child(row));
         }
     }
+#endif
 }
 
 void EventModelPrivate::slotContactUpdated(quint32 localId,

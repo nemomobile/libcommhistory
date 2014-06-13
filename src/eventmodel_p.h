@@ -147,6 +147,7 @@ public:
     EventTreeItem *eventRootItem;
 
     ContactResolver *addResolver, *receiveResolver;
+    QList<Event> pendingAdded, pendingReceived;
 
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
@@ -170,6 +171,9 @@ public:
 public Q_SLOTS:
     virtual void prependEvents(QList<Event> events);
     virtual bool fillModel(QList<Event> events);
+
+    virtual void receiveResolverFinished();
+    virtual void addResolverFinished();
 
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 

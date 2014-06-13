@@ -33,7 +33,6 @@
 #include "callmodel_p.h"
 #include "event.h"
 #include "commonutils.h"
-#include "contactlistener.h"
 #include "debug.h"
 
 namespace {

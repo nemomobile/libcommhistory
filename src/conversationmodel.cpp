@@ -31,7 +31,6 @@
 #include "constants.h"
 #include "commhistorydatabase.h"
 #include "databaseio_p.h"
-#include "contactlistener.h"
 #include "debug.h"
 
 namespace {

@@ -23,8 +23,8 @@
 #include "databaseio_p.h"
 #include "databaseio.h"
 #include "commhistorydatabase.h"
-#include "group.h"
 #include "contactlistener.h"
+#include "group.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include "debug.h"

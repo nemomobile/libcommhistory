@@ -25,13 +25,24 @@
 
 #include <QObject>
 #include "event.h"
-#include "contactlistener.h"
+#include "recipient.h"
 #include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
 class ContactResolverPrivate;
 
+/* ContactResolver accepts a list of Recipient and asynchronously resolves
+ * matching contacts.
+ *
+ * Recipient shares its data, including the resolved contact, with all instances
+ * for the same address. ContactResolver will update that data as it resolves,
+ * and emit a signal when all recipients in the list have been resolved.
+ *
+ * To ensure that all contacts are resolved for a list of Event, you can add
+ * the recipients for each event to ContactResolver and wait for the finished
+ * signal.
+ */
 class LIBCOMMHISTORY_EXPORT ContactResolver : public QObject
 {
     Q_OBJECT
@@ -39,20 +50,36 @@ class LIBCOMMHISTORY_EXPORT ContactResolver : public QObject
 
 public:
     explicit ContactResolver(QObject *parent);
-    
-    void appendEvents(const QList<Event> &events);
-    void prependEvents(const QList<Event> &events);
 
-    QList<Event> events() const;
+    /* Force resolving contacts even if already resolved */
+    bool forceResolving() const;
+    void setForceResolving(bool enabled);
+
+    void add(const Recipient &recipient);
+    void add(const RecipientList &recipients);
+    template<typename T> void add(const T &value);
+    template<typename T> void add(const QList<T> &value);
+
     bool isResolving() const;
 
 signals:
-    void eventsResolved(const QList<Event> &events);
     void finished();
 
 private:
     ContactResolverPrivate *d_ptr;
 };
+
+template<typename T> void ContactResolver::add(const T &value)
+{
+    add(value.recipients());
+}
+
+template<typename T> void ContactResolver::add(const QList<T> &value)
+{
+    for (typename QList<T>::ConstIterator it = value.begin(); it != value.end(); it++) {
+        add(it->recipients());
+    }
+}
 
 }
 
