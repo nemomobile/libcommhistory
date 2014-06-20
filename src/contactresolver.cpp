@@ -191,6 +191,13 @@ void ContactResolverPrivate::contactUpdated(quint32 localId, const QString &name
                 contact.second = name;
             } else {
                 qWarning() << "Duplicate contact match for address" << uidPair.first << uidPair.second << "with contacts" << contact.first << localId;
+                QPair<quint32, QString> bestMatch(listener->bestCachedMatch(uidPair.first, uidPair.second));
+                if (bestMatch.first && (bestMatch.first != quint32(contact.first))) {
+                    // The resolved contact is no longer the best match for this event
+                    contact.first = static_cast<int>(bestMatch.first);
+                    contact.second = bestMatch.second;
+                    // TODO: how to update events that have previously resolved this adddress?
+                }
             }
         } else if (quint32(contact.first) == localId) {
             // delete our record since the address doesn't match anymore
