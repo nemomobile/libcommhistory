@@ -76,6 +76,12 @@ public:
     void resolveContact(const QString &localUid,
                         const QString &remoteUid);
 
+    /**
+     * Find the best matching contact for (localUid, remoteUid) already present in the cache.
+     */
+    QPair<quint32, QString> bestCachedMatch(const QString &localUid,
+                                            const QString &remoteUid);
+
 Q_SIGNALS:
     void contactUpdated(quint32 localId,
                         const QString &contactName,

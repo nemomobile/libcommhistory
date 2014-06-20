@@ -140,6 +140,7 @@ void ContactListener::resolveContact(const QString &localUid,
         d->m_pending.insert(qMakePair(QString(), remoteUid), input);
         item = SeasideCache::resolvePhoneNumber(d, remoteUid, true);
     } else {
+        // TODO: Why not added to m_pending?
         item = SeasideCache::resolveOnlineAccount(d, localUid, remoteUid, true);
     }
 
@@ -147,6 +148,22 @@ void ContactListener::resolveContact(const QString &localUid,
         // This contact must be reported asynchronously
         emit d->contactAlreadyInCache(item->iid, d->contactName(item->contact), d->contactAddresses(item->contact));
     }
+}
+
+QPair<quint32, QString> ContactListener::bestCachedMatch(const QString &localUid,
+                                                         const QString &remoteUid)
+{
+    DEBUG() << Q_FUNC_INFO << localUid << remoteUid;
+
+    SeasideCache::CacheItem *item = 0;
+
+    // Look up whichever is the best match for this contact
+    if (CommHistory::localUidComparesPhoneNumbers(localUid)) {
+        item = SeasideCache::itemByPhoneNumber(remoteUid, false);
+    } else {
+        item = SeasideCache::itemByOnlineAccount(localUid, remoteUid, false);
+    }
+    return (item ? qMakePair(item->iid, item->displayLabel) : qMakePair(0u, QString()));
 }
 
 QString ContactListenerPrivate::contactName(const QContact &contact) const
@@ -159,15 +176,21 @@ QList<ContactListener::ContactAddress> ContactListenerPrivate::contactAddresses(
     QList<ContactAddress> addresses;
 
     foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
-        QString localUid = account.value<QString>(QContactOnlineAccount__FieldAccountPath);
+        const QString localUid = account.value<QString>(QContactOnlineAccount__FieldAccountPath);
         if (localUid.isEmpty())
             continue;
         addresses += makeContactAddress(localUid, account.accountUri(), ContactListener::IMAccountType);
     }
     foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
+        const QString normalizedNumber = phoneNumber.value<QString>(QContactPhoneNumber__FieldNormalizedNumber);
+        if (normalizedNumber.isEmpty())
+            continue;
         addresses += makeContactAddress(QString(), phoneNumber.number(), ContactListener::PhoneNumberType);
     }
     foreach (const QContactEmailAddress &emailAddress, contact.details<QContactEmailAddress>()) {
+        const QString address = emailAddress.emailAddress().trimmed();
+        if (address.isEmpty())
+            continue;
         addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), ContactListener::EmailAddressType);
     }
 
