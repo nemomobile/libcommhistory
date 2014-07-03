@@ -12,7 +12,6 @@ SOURCES += src/plugin.cpp \
     src/conversationproxymodel.cpp \
     src/declarativegroupmanager.cpp \
     src/sharedbackgroundthread.cpp \
-    src/contactaddresslookup.cpp \
     src/mmshelper.cpp \
     src/draftevent.cpp
 
@@ -21,7 +20,6 @@ HEADERS += src/constants.h \
     src/conversationproxymodel.h \
     src/declarativegroupmanager.h \
     src/sharedbackgroundthread.h \
-    src/contactaddresslookup.h \
     src/debug.h \
     src/plugin.h \
     src/mmshelper.h \
