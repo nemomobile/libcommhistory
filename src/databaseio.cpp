@@ -1086,7 +1086,7 @@ bool DatabaseIO::totalEventsInGroup(int groupId, int &totalEvents)
 
 bool DatabaseIO::markAsReadGroup(int groupId)
 {
-    static const char *q = "UPDATE Events SET isRead=1 WHERE groupId=:groupId";
+    static const char *q = "UPDATE Events SET isRead=1 WHERE groupId=:groupId AND isRead=0";
     QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
     query.bindValue(":groupId", groupId);
 
@@ -1103,7 +1103,7 @@ bool DatabaseIO::markAsReadGroup(int groupId)
 bool DatabaseIO::markAsRead(const QList<int> &eventIds)
 {
     QByteArray q = "UPDATE Events SET isRead=1 WHERE id IN (";
-    q += joinNumberList(eventIds) + ")";
+    q += joinNumberList(eventIds) + ") AND isRead=0";
 
     QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
     if (!query.exec()) {
@@ -1118,7 +1118,7 @@ bool DatabaseIO::markAsRead(const QList<int> &eventIds)
 
 bool DatabaseIO::markAsReadAll(Event::EventType eventType)
 {
-    static const char *q = "UPDATE Events SET isRead=1 WHERE type=:eventType";
+    static const char *q = "UPDATE Events SET isRead=1 WHERE type=:eventType AND isRead=0";
     QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
     query.bindValue(":eventType", eventType);
 
