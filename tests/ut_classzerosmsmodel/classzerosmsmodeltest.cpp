@@ -53,7 +53,7 @@ Event createEvent()
     e.setType(Event::ClassZeroSMSEvent);
     e.setEndTime(QDateTime::currentDateTime());
     e.setStartTime(QDateTime::currentDateTime());
-    e.setLocalUid("ring/tel/ring");
+    e.setLocalUid("/org/freedesktop/Telepathy/Account/ring/");
     e.setRemoteUid("16400");
     e.setFreeText(textContent[qrand() % 3]);
     e.setDirection(Event::Inbound);
