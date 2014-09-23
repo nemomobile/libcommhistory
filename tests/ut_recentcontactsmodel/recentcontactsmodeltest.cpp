@@ -129,11 +129,11 @@ void RecentContactsModelTest::initTestCase()
 
     addTestGroups( group1, group2 );
 
-    aliceId = addTestContact(aliceName, alicePhone1);
+    aliceId = addTestContact(aliceName, alicePhone1, phoneAccount);
     QVERIFY(aliceId != -1);
-    QVERIFY(addTestContactAddress(aliceId, alicePhone2));
+    QVERIFY(addTestContactAddress(aliceId, alicePhone2, phoneAccount));
 
-    bobId = addTestContact(bobName, bobPhone);
+    bobId = addTestContact(bobName, bobPhone, phoneAccount);
     QVERIFY(bobId != -1);
     QVERIFY(addTestContactAddress(bobId, bobIm.second, bobIm.first));
 
@@ -469,7 +469,7 @@ void RecentContactsModelTest::contactRemoved()
 {
     QString dougalName("Dougal");
     QString dougalPhone("5550000");
-    int dougalId = addTestContact(dougalName, dougalPhone);
+    int dougalId = addTestContact(dougalName, dougalPhone, phoneAccount);
     QVERIFY(dougalId != -1);
 
     addEvents(2);
