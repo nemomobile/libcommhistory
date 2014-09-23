@@ -33,13 +33,18 @@ static void addEvents(int from, int to)
     EventModel eventsModel;
     watcher.setModel(&eventsModel);
 
+    // Since 1.7.0 the RecentContactsModel is sorted by end time instead
+    // of start time. Make sure the assumptions in the unit tests hold
+    // by adjusting the start times for events with duration (CallEvent)
+    // so that their end times are all in the expected order.
+
     if (to >= 1 && from <= 1) {
         QTest::qWait(1000);
-        addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), alicePhone1);
+        addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime().addSecs(-TESTCALL_SECS), alicePhone1);
     }
     if (to >= 2 && from <= 2) {
         QTest::qWait(1000);
-        addTestEvent(eventsModel, Event::CallEvent, Event::Outbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), bobPhone);
+        addTestEvent(eventsModel, Event::CallEvent, Event::Outbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime().addSecs(-TESTCALL_SECS), bobPhone);
     }
     if (to >= 3 && from <= 3) {
         QTest::qWait(1000);
@@ -51,7 +56,7 @@ static void addEvents(int from, int to)
     }
     if (to >= 5 && from <= 5) {
         QTest::qWait(1000);
-        addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), bobPhone);
+        addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime().addSecs(-TESTCALL_SECS), bobPhone);
     }
     if (to >= 6 && from <= 6) {
         QTest::qWait(1000);

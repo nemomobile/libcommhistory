@@ -43,6 +43,9 @@ const double IDLE_TRESHOLD = 0.05; // 5%
 
 const int WAIT_SIGNAL_TIMEOUT = 5000;
 
+/* Duration of phone calls added with addTestEvent */
+const int TESTCALL_SECS = 100;
+
 int addTestEvent(EventModel &model,
                  Event::EventType type,
                  Event::EventDirection direction,
