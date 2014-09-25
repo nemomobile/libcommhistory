@@ -174,7 +174,7 @@ bool ModelWatcher::waitForModelReady()
 void ModelWatcher::eventsCommittedSlot(const QList<CommHistory::Event> &events,
                                        bool successful)
 {
-    qDebug() << Q_FUNC_INFO;
+    // qDebug() << events.count() << "events, successful:" << successful;
 
     m_committedCount += successful ? events.size() : 0;
     m_success = successful;
@@ -182,7 +182,7 @@ void ModelWatcher::eventsCommittedSlot(const QList<CommHistory::Event> &events,
 
 void ModelWatcher::eventsAddedSlot(const QList<CommHistory::Event> &events)
 {
-    qDebug() << Q_FUNC_INFO;
+    // qDebug() << events.count() << "events";
     m_addedCount += events.count();
     m_lastAdded = events;
     m_dbusSignalReceived = true;
@@ -190,7 +190,7 @@ void ModelWatcher::eventsAddedSlot(const QList<CommHistory::Event> &events)
 
 void ModelWatcher::eventsUpdatedSlot(const QList<CommHistory::Event> &events)
 {
-    qDebug() << Q_FUNC_INFO;
+    // qDebug() << events.count() << "events";
     m_updatedCount += events.count();
     m_lastUpdated = events;
     m_dbusSignalReceived = true;
@@ -198,14 +198,14 @@ void ModelWatcher::eventsUpdatedSlot(const QList<CommHistory::Event> &events)
 
 void ModelWatcher::eventDeletedSlot(int id)
 {
-    qDebug() << Q_FUNC_INFO;
+    // qDebug() << "deleted event#" << id;
     m_deletedCount++;
     m_lastDeleted = id;
 }
 
 void ModelWatcher::modelReadySlot(bool success)
 {
-    qDebug() << Q_FUNC_INFO;
+    // qDebug() << "success:" << success;
     m_modelReady = true;
     m_success = success;
 }
