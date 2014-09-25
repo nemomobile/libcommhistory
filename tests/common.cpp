@@ -111,7 +111,7 @@ int addTestEvent(EventModel &model,
     event.setGroupId(groupId);
     event.setStartTime(when);
     if (type == Event::CallEvent)
-        event.setEndTime(when.addSecs(100));
+        event.setEndTime(when.addSecs(TESTCALL_SECS));
     else
         event.setEndTime(event.startTime());
     event.setLocalUid(account);

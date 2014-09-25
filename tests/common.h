@@ -33,7 +33,7 @@ using namespace CommHistory;
 
 const QString ACCOUNT1 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0";
 const QString ACCOUNT2 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut2_40localhost0";
-const QString RING_ACCOUNT = "/ring/tel/ring";
+const QString RING_ACCOUNT = "/org/freedesktop/Telepathy/Account/ring/";
 
 /* The default load polling interval when waiting system to become idle */
 const int IDLE_POLL_INTERVAL = 2000;
@@ -42,6 +42,9 @@ const int IDLE_POLL_INTERVAL = 2000;
 const double IDLE_TRESHOLD = 0.05; // 5%
 
 const int WAIT_SIGNAL_TIMEOUT = 5000;
+
+/* Duration of phone calls added with addTestEvent */
+const int TESTCALL_SECS = 100;
 
 int addTestEvent(EventModel &model,
                  Event::EventType type,

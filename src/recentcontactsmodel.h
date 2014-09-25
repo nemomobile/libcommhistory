@@ -40,9 +40,7 @@ class LIBCOMMHISTORY_EXPORT RecentContactsModel : public EventModel
 {
     Q_OBJECT
 
-    Q_PROPERTY(int requiredProperty READ requiredProperty WRITE setRequiredProperty)
     Q_PROPERTY(bool resolving READ resolving NOTIFY resolvingChanged)
-    Q_ENUMS(RequiredPropertyType)
 
 public:
     /*!
@@ -63,32 +61,6 @@ public:
      * \return true if successful, otherwise false
      */
     Q_INVOKABLE bool getEvents();
-
-    enum RequiredPropertyType {
-        NoPropertyRequired = 0,
-        AccountUriRequired = SeasideCache::FetchAccountUri,
-        PhoneNumberRequired = SeasideCache::FetchPhoneNumber,
-        EmailAddressRequired = SeasideCache::FetchEmailAddress
-    };
-
-    /*!
-     * Returns the property type(s) that contacts must possess to be included in the model.
-     *
-     * \return Property type mask
-     */
-    int requiredProperty() const;
-
-    /*!
-     * Set the property type(s) that contacts must possess to be included in the model.
-     *
-     * Valid values are a combination of: [
-     *   CommRecentContactsModel.AccountUriRequired - contacts possessing an IM account are included,
-     *   CommRecentContactsModel.PhoneNumberRequired - contacts possessing a phone number are included,
-     *   CommRecentContactsModel.EmailAddressRequired - contacts possessing an email address account are included ]
-     *
-     * \param name Property type mask
-     */
-    void setRequiredProperty(int properties);
 
     /*!
      * Returns true if the model is engaged in resolving contacts, or false if all
