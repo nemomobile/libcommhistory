@@ -819,9 +819,9 @@ void GroupModelTest::deleteMmsContent()
     int id1, id2, id3;
 
     QDir content_dir(QDir::homePath() + QDir::separator() + mms_content_path);
-    content_dir.mkdir(mms_token1);
-    content_dir.mkdir(mms_token2);
-    content_dir.mkdir(mms_token3);
+    QVERIFY(content_dir.mkpath(mms_token1));
+    QVERIFY(content_dir.mkdir(mms_token2));
+    QVERIFY(content_dir.mkdir(mms_token3));
 
     model.setQueryMode(EventModel::SyncQuery);
 
