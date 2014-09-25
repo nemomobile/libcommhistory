@@ -84,6 +84,12 @@ rm -rf %{buildroot}
 %postun
 /sbin/ldconfig
 
+%post unit-tests
+for n in ut_recentcontactsmodel; do
+    pathname=/opt/tests/libcommhistory-qt5-unit-tests/$n
+    chgrp privileged $pathname && chmod g+s $pathname
+done
+
 %files
 %defattr(-,root,root,-)
 %{_libdir}/libcommhistory-qt5.so*
