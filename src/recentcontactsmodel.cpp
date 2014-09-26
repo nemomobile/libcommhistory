@@ -54,22 +54,11 @@ public:
     virtual bool fillModel(int start, int end, QList<Event> events);
     virtual void prependEvents(QList<Event> events);
 
-    void slotContactUpdated(quint32 localId,
-                            const QString &contactName,
-                            const QList<ContactAddress> &contactAddresses);
     void slotContactRemoved(quint32 localId);
 
 private:
 
-    bool skipIrrelevantContact(const Event &event);
-
-    bool contactHasAddress(int types, quint32 localId) const;
-
     int requiredProperty;
-
-    QSet<quint32> phoneContacts;
-    QSet<quint32> imContacts;
-    QSet<quint32> emailContacts;
 };
 
 bool RecentContactsModelPrivate::acceptsEvent(const Event &event) const
@@ -94,39 +83,9 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
     return true;
 }
 
-void RecentContactsModelPrivate::slotContactUpdated(quint32 localId,
-                                                    const QString &contactName,
-                                                    const QList<ContactAddress> &contactAddresses)
-{
-    EventModelPrivate::slotContactUpdated(localId, contactName, contactAddresses);
-
-    bool hasAddressType[3] = { false, false, false };
-    foreach (const ContactAddress &address, contactAddresses) {
-        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
-        hasAddressType[address.type - 1] = true;
-    }
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        if (hasAddressType[i]) {
-            typeSet[i]->insert(localId);
-        } else {
-            typeSet[i]->remove(localId);
-        }
-    }
-
-    // FIXME: Contact updates can result in the model being wrong. But, because
-    // unwanted events are discarded, that's difficult to solve without re-querying.
-}
-
 void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
 {
     EventModelPrivate::slotContactRemoved(localId);
-
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        typeSet[i]->remove(localId);
-    }
 
     // Remove any event for this contact (there can only be one)
     const int rowCount = eventRootItem->childCount();
@@ -226,29 +185,6 @@ void RecentContactsModelPrivate::prependEvents(QList<Event> events)
     q->endInsertRows();
 }
 
-bool RecentContactsModelPrivate::skipIrrelevantContact(const Event &event)
-{
-    if (requiredProperty != RecentContactsModel::NoPropertyRequired) {
-        int contactId = eventContact(event);
-        if (!contactHasAddress(requiredProperty, contactId)) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool RecentContactsModelPrivate::contactHasAddress(int types, quint32 localId) const
-{
-    if ((types & RecentContactsModel::PhoneNumberRequired) && phoneContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::EmailAddressRequired) && emailContacts.contains(localId))
-        return true;
-    if ((types & RecentContactsModel::AccountUriRequired) && imContacts.contains(localId))
-        return true;
-    return false;
-}
-
 RecentContactsModel::RecentContactsModel(QObject *parent)
     : EventModel(*new RecentContactsModelPrivate(this), parent)
 {
@@ -268,6 +204,8 @@ void RecentContactsModel::setRequiredProperty(int requiredProperty)
 {
     Q_D(RecentContactsModel);
     d->requiredProperty = requiredProperty;
+    if (requiredProperty != RecentContactsModel::NoPropertyRequired)
+        qWarning() << "requiredProperty not supported in RecentContactsModel";
 }
 
 bool RecentContactsModel::resolving() const
