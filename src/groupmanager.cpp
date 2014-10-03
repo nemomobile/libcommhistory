@@ -157,7 +157,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
         if (!go)
             continue;
 
-        if (event.startTime() >= go->startTime()) {
+        if (event.endTime() >= go->endTime()) {
             DEBUG() << __PRETTY_FUNCTION__ << ": updating group" << go->id();
             go->setLastEventId(event.id());
             if (event.type() == Event::MMSEvent) {
