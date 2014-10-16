@@ -21,6 +21,9 @@
 ******************************************************************************/
 
 #include "contactresolver.h"
+
+#include <QElapsedTimer>
+
 #include "debug.h"
 
 using namespace CommHistory;
@@ -50,6 +53,8 @@ public:
     // Cache of localUid+remoteUid from events and the resulting contact, kept up to date with changes.
     QHash<QPair<QString,QString>, Event::Contact> contactCache;
     QSet<QPair<QString,QString> > pendingAddresses;
+
+    QElapsedTimer resolveTimer;
 
     explicit ContactResolverPrivate(ContactResolver *parent);
 
@@ -94,6 +99,9 @@ void ContactResolver::appendEvents(const QList<Event> &events)
 {
     Q_D(ContactResolver);
 
+    if (d->events.isEmpty())
+        d->resolveTimer.start();
+
     bool resolved = true;
     foreach (const Event &event, events) {
         ContactResolverPrivate::PendingEvent e(event);
@@ -108,6 +116,9 @@ void ContactResolver::appendEvents(const QList<Event> &events)
 void ContactResolver::prependEvents(const QList<Event> &events)
 {
     Q_D(ContactResolver);
+
+    if (d->events.isEmpty())
+        d->resolveTimer.start();
 
     bool resolved = true;
     foreach (const Event &event, events) {
@@ -171,6 +182,8 @@ void ContactResolverPrivate::checkIfResolved()
     foreach (const PendingEvent &e, events)
         resolved.append(e.event);
     events.clear();
+
+    qDebug() << "Resolved" << resolved.count() << "events in" << resolveTimer.elapsed() << "msec";
 
     emit q->eventsResolved(resolved);
     emit q->finished();
