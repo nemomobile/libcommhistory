@@ -132,7 +132,6 @@ public:
 
     bool populated() const;
 public Q_SLOTS:
-    void getEvents();
     void setSortRole(int role);
     void setFilterRole(int role);
 
