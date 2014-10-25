@@ -24,7 +24,6 @@
 #include "databaseio.h"
 #include "commhistorydatabase.h"
 #include "group.h"
-#include "mmscontentdeleter.h"
 #include "contactlistener.h"
 #include <QSqlQuery>
 #include <QSqlError>
@@ -330,18 +329,12 @@ DatabaseIOPrivate *DatabaseIOPrivate::instance()
 }
 
 DatabaseIOPrivate::DatabaseIOPrivate(DatabaseIO *p)
-    : q(p),
-      m_MmsContentDeleter(0),
-      m_bgThread(0)
+    : q(p)
 {
 }
 
 DatabaseIOPrivate::~DatabaseIOPrivate()
 {
-    if (m_MmsContentDeleter) {
-        m_MmsContentDeleter->deleteLater();
-        m_MmsContentDeleter = 0;
-    }
 }
 
 QSqlDatabase &DatabaseIOPrivate::connection()
@@ -828,16 +821,8 @@ bool DatabaseIO::moveEvent(Event &event, int groupId)
     return true;
 }
 
-bool DatabaseIO::deleteEvent(Event &event, QThread *backgroundThread)
+bool DatabaseIO::deleteEvent(Event &event, QThread *)
 {
-    if (event.type() == Event::MMSEvent) {
-        if (d->isLastMmsEvent(event.messageToken()))
-            d->getMmsDeleter(backgroundThread).deleteMessage(event.messageToken());
-
-        // The old tracker code would also query the number of events remaining after
-        // this delete, and clear all MMS data if none were left.
-    }
-
     static const char *q = "DELETE FROM Events WHERE id=:id";
     QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
     query.bindValue(":id", event.id());
@@ -1218,42 +1203,4 @@ QString DatabaseIOPrivate::makeCallGroupURI(const CommHistory::Event &event)
         .arg(event.localUid())
         .arg(callGroupRemoteId)
         .arg(videoSuffix);
-}
-
-bool DatabaseIOPrivate::isLastMmsEvent(const QString &messageToken)
-{
-    QByteArray q = QByteArray("SELECT COUNT(id) FROM Events WHERE type=:type AND messageToken=:messageToken");
-    QSqlQuery query = CommHistoryDatabase::prepare(q, connection());
-    query.bindValue(":type", (int)Event::MMSEvent);
-    query.bindValue(":messageToken", messageToken);
-
-    if (!query.exec()) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
-
-    if (query.next() && query.value(0).toInt() < 2)
-        return true;
-    return false;
-}
-
-MmsContentDeleter &DatabaseIOPrivate::getMmsDeleter(QThread *backgroundThread)
-{
-    if (m_MmsContentDeleter && backgroundThread) {
-        // check that we don't need to move deleter to new thread
-        if (m_MmsContentDeleter->thread() != backgroundThread) {
-            m_MmsContentDeleter->deleteLater();
-            m_MmsContentDeleter = 0;
-        }
-    }
-
-    if (!m_MmsContentDeleter) {
-        m_MmsContentDeleter = new MmsContentDeleter;
-        if (backgroundThread)
-            m_MmsContentDeleter->moveToThread(backgroundThread);
-    }
-
-    return *m_MmsContentDeleter;
 }
