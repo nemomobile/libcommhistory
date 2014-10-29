@@ -36,8 +36,6 @@
 #include "event.h"
 #include "commonutils.h"
 
-class MmsContentDeleter;
-
 namespace CommHistory {
 
 class Group;
@@ -69,9 +67,6 @@ public:
 
     bool getEvents(const QString &querySuffix, QList<Event> &events);
 
-    MmsContentDeleter& getMmsDeleter(QThread *backgroundThread);
-    bool isLastMmsEvent(const QString& messageToken);
-
     bool deleteEmptyGroups();
 
     bool insertEventProperties(int eventId, const QVariantMap &properties);
@@ -82,10 +77,6 @@ public:
 
 public:
     QSqlDatabase m_pConnection;
-
-    MmsContentDeleter *m_MmsContentDeleter;
-
-    QThread *m_bgThread;
 };
 
 } // namespace

@@ -14,7 +14,6 @@ HEADERS += commonutils.h \
            adaptor.h \
            conversationmodel_p.h \
            classzerosmsmodel.h \
-           mmscontentdeleter.h \
            contactlistener.h \
            contactlistener_p.h \
            libcommhistoryexport.h \
@@ -48,7 +47,6 @@ SOURCES += commonutils.cpp \
            event.cpp \
            messagepart.cpp \
            classzerosmsmodel.cpp \
-           mmscontentdeleter.cpp \
            contactlistener.cpp \
            singleeventmodel.cpp \
            recentcontactsmodel.cpp \
