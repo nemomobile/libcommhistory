@@ -2,7 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd.
+** Copyright (C) 2013-2014 Jolla Ltd.
 ** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
@@ -24,12 +24,14 @@
 #define COMMHISTORYDATABASE_H
 
 #include <QSqlDatabase>
+#include "libcommhistoryexport.h"
 
 class CommHistoryDatabase
 {
 public:
     static QSqlDatabase open(const QString &databaseName);
     static QSqlQuery prepare(const char *statement, const QSqlDatabase &database);
+    static LIBCOMMHISTORY_EXPORT QString dataDir(int id);
 };
 
 #endif
