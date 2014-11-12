@@ -117,7 +117,7 @@ void ContactGroupPrivate::update()
         foreach (const Event::Contact &contact, group->contacts())
             contacts[contact.first] = contact.second;
 
-        if (!uStartTime.isValid() || group->startTime() < uStartTime)
+        if (!uStartTime.isValid() || group->startTime() > uStartTime)
             uStartTime = group->startTime();
 
         if (!uEndTime.isValid() || group->endTime() > uEndTime)
