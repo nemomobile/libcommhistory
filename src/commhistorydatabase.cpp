@@ -2,7 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd.
+** Copyright (C) 2013-2014 Jolla Ltd.
 ** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@
 // Appended to GenericDataLocation (or a hardcoded equivalent on Qt4)
 #define COMMHISTORY_DATABASE_DIR "/commhistory/"
 #define COMMHISTORY_DATABASE_NAME "commhistory.db"
+#define COMMHISTORY_DATA_DIR COMMHISTORY_DATABASE_DIR "data/"
 
 static const char *db_setup[] = {
     "PRAGMA temp_store = MEMORY",
@@ -343,3 +344,7 @@ QSqlQuery CommHistoryDatabase::prepare(const char *statement, const QSqlDatabase
     return query;
 }
 
+QString CommHistoryDatabase::dataDir(int id)
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral(COMMHISTORY_DATA_DIR "%1/").arg(id);
+}
