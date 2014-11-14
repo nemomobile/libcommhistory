@@ -21,6 +21,7 @@
 ******************************************************************************/
 
 #include "commhistorydatabase.h"
+#include "commhistorydatabasepath.h"
 #include <QDir>
 #include <QFile>
 #include <QSqlError>
@@ -284,11 +285,11 @@ static bool upgradeDatabase(QSqlDatabase &database)
 
 QSqlDatabase CommHistoryDatabase::open(const QString &databaseName)
 {
-    QDir databaseDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String(COMMHISTORY_DATABASE_DIR));
+    QDir databaseDir(CommHistoryDatabasePath::databaseDir());
     if (!databaseDir.exists())
         databaseDir.mkpath(QLatin1String("."));
 
-    const QString databaseFile = databaseDir.absoluteFilePath(QLatin1String(COMMHISTORY_DATABASE_NAME));
+    const QString databaseFile = databaseDir.absoluteFilePath(CommHistoryDatabasePath::databaseFile());
     const bool exists = QFile::exists(databaseFile);
 
     QSqlDatabase database = QSqlDatabase::addDatabase(QLatin1String("QSQLITE"), databaseName);
@@ -344,7 +345,17 @@ QSqlQuery CommHistoryDatabase::prepare(const char *statement, const QSqlDatabase
     return query;
 }
 
-QString CommHistoryDatabase::dataDir(int id)
+QString CommHistoryDatabasePath::databaseDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String(COMMHISTORY_DATABASE_DIR);
+}
+
+QString CommHistoryDatabasePath::databaseFile()
+{
+    return QString(QLatin1String(COMMHISTORY_DATABASE_NAME));
+}
+
+QString CommHistoryDatabasePath::dataDir(int id)
 {
     return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral(COMMHISTORY_DATA_DIR "%1/").arg(id);
 }
