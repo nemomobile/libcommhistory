@@ -30,6 +30,7 @@ HEADERS += commonutils.h \
            databaseio.h \
            databaseio_p.h \
            commhistorydatabase.h \
+           commhistorydatabasepath.h \
            debug.h \
            contactresolver.h \
            draftsmodel.h \

@@ -3,7 +3,7 @@
 ** This file is part of libcommhistory.
 **
 ** Copyright (C) 2013-2014 Jolla Ltd.
-** Contact: John Brooks <john.brooks@jollamobile.com>
+** Contact: Slava Monich <slava.monich@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -20,16 +20,17 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORYDATABASE_H
-#define COMMHISTORYDATABASE_H
+#ifndef COMMHISTORYDATABASEPATH_H
+#define COMMHISTORYDATABASEPATH_H
 
-#include <QSqlDatabase>
+#include "libcommhistoryexport.h"
 
-class CommHistoryDatabase
+class LIBCOMMHISTORY_EXPORT CommHistoryDatabasePath
 {
 public:
-    static QSqlDatabase open(const QString &databaseName);
-    static QSqlQuery prepare(const char *statement, const QSqlDatabase &database);
+    static QString databaseDir();
+    static QString databaseFile();
+    static QString dataDir(int id);
 };
 
 #endif
