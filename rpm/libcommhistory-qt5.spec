@@ -1,6 +1,6 @@
 Name:       libcommhistory-qt5
 Summary:    Communications event history database API
-Version:    1.7.19
+Version:    1.7.20
 Release:    1
 Group:      System/Libraries
 License:    LGPL
