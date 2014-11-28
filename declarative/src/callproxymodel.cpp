@@ -53,6 +53,19 @@ int CallProxyModel::count() const
     return rowCount();
 }
 
+int CallProxyModel::limit() const
+{
+    return m_source->limit();
+}
+
+void CallProxyModel::setLimit(int count)
+{
+    if (count != m_source->limit()) {
+        m_source->setLimit(count);
+        emit limitChanged();
+    }
+}
+
 bool CallProxyModel::resolveContacts() const
 {
     return m_source->resolveContacts();
