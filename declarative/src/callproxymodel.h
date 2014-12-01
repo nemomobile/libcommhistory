@@ -51,6 +51,7 @@ class CallProxyModel : public QSortFilterProxyModel, public QQmlParserStatus
     Q_PROPERTY(int count READ count NOTIFY countChanged)
     Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
     Q_PROPERTY(bool populated READ populated NOTIFY populatedChanged)
+    Q_PROPERTY(int _limit READ limit WRITE setLimit NOTIFY limitChanged)
 
 public:
     enum EventRole {
@@ -127,6 +128,9 @@ public:
 
     int count() const;
 
+    int limit() const;
+    void setLimit(int);
+
     bool resolveContacts() const;
     void setResolveContacts(bool enabled);
 
@@ -146,6 +150,7 @@ Q_SIGNALS:
     void countChanged();
     void resolveContactsChanged();
     void populatedChanged();
+    void limitChanged();
 
 private:
     CommHistory::CallModel *m_source;
