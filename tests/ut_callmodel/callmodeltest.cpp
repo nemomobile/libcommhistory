@@ -23,6 +23,7 @@
 #include <QtTest/QtTest>
 #include <QDBusConnection>
 #include "callmodeltest.h"
+#include "commonutils.h"
 #include "common.h"
 #include "modelwatcher.h"
 #include "databaseio.h"
@@ -34,6 +35,8 @@ Event im, sms, call;
 int eventCounter;
 
 ModelWatcher watcher;
+
+typedef QPair<int, QString> ContactDetails;
 
 const QString REMOTEUID1( "user1@remotehost" );
 const QString REMOTEUID2( "user2@remotehost" );
@@ -1004,6 +1007,50 @@ void CallModelTest::testModifyEvent()
     e2 = model.event(model.index(1, 0));
     QCOMPARE(e2.remoteUid(), REMOTEUID2);
     QCOMPARE(e2.direction(), Event::Inbound);
+}
+
+// Make sure that phone numbers resolve to the right contacts even if they
+// minimize to the same number.
+void CallModelTest::testMinimizedPhone()
+{
+    deleteAll();
+
+    const QString phone00("0011112222");
+    const QString phone99("0011112222");
+    // Precondition for the test:
+    QCOMPARE(minimizePhoneNumber(phone00), minimizePhoneNumber(phone99));
+
+    const QString user00("User00");
+    const QString user99("User99");
+
+    int user00id = addTestContact(user00, phone00, RING_ACCOUNT);
+    int user99id = addTestContact(user99, phone99, RING_ACCOUNT);
+
+    CallModel model;
+    watcher.setModel(&model);
+
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when, phone00);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(10), phone99);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(20), phone00);
+    QVERIFY(watcher.waitForAdded(3));
+
+    model.setResolveContacts(true);
+    QVERIFY(model.getEvents());
+    QVERIFY(watcher.waitForModelReady());
+
+    Event e;
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
+    QCOMPARE(e.remoteUid(), phone00);
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user99id, user99));
+    QCOMPARE(e.remoteUid(), phone99);
+
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
+    QCOMPARE(e.remoteUid(), phone00);
 }
 
 void CallModelTest::cleanupTestCase()

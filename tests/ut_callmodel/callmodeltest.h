@@ -49,6 +49,7 @@ private slots:
     void deleteAllCalls();
     void testMarkAllRead();
     void testModifyEvent();
+    void testMinimizedPhone();
     void cleanupTestCase();
 
 private:
