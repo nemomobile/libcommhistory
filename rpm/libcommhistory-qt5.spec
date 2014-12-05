@@ -85,7 +85,7 @@ rm -rf %{buildroot}
 /sbin/ldconfig
 
 %post unit-tests
-for n in ut_recentcontactsmodel; do
+for n in ut_recentcontactsmodel ut_callmodel; do
     pathname=/opt/tests/libcommhistory-qt5-unit-tests/$n
     chgrp privileged $pathname && chmod g+s $pathname
 done

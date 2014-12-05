@@ -29,4 +29,3 @@ DESTDIR = ../bin
 QT -= gui
 SOURCES += callmodeltest.cpp
 HEADERS += callmodeltest.h
-

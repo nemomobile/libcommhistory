@@ -57,11 +57,6 @@ LIBCOMMHISTORY_EXPORT QString minimizePhoneNumber(const QString &number)
     return QtContactsSqliteExtensions::minimizePhoneNumber(number, phoneNumberMatchLength());
 }
 
-LIBCOMMHISTORY_EXPORT bool localUidComparesPhoneNumbers(const QString &localUid)
-{
-    return localUid.startsWith("/org/freedesktop/Telepathy/Account/ring/");
-}
-
 LIBCOMMHISTORY_EXPORT bool remoteAddressMatch(const QString &localUid, const QString &uid, const QString &match, bool minimizedComparison)
 {
     if (localUidComparesPhoneNumbers(localUid)) {

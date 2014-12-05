@@ -33,7 +33,10 @@ namespace CommHistory {
  * \param localUid Local UID
  * \return true if remote UIDs will be compared as phone numbers
  */
-bool localUidComparesPhoneNumbers(const QString &localUid);
+inline bool localUidComparesPhoneNumbers(const QString &localUid)
+{
+    return localUid.startsWith(QLatin1String("/org/freedesktop/Telepathy/Account/ring/"));
+}
 
 /*!
  * Validates and normalizes a phone number by removing extra characters:
