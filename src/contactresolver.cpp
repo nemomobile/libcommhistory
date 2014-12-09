@@ -27,11 +27,42 @@
 #include "commonutils.h"
 #include "debug.h"
 
+namespace {
+
+template<typename T>
+struct HashMemo {
+    mutable uint hash;
+    mutable uint seed;
+    T value;
+
+    HashMemo(const T &v) : hash(Invalid), seed(Invalid), value(v) {}
+
+    static const uint Invalid = 0xffffffff;
+};
+
+template<typename T>
+bool operator==(const HashMemo<T> &lhs, const HashMemo<T> &rhs)
+{
+    return lhs.value == rhs.value;
+}
+
+template<typename T>
+uint qHash(const HashMemo<T>& m, uint seed = 0)
+{
+    if (m.hash == HashMemo<T>::Invalid || m.seed == HashMemo<T>::Invalid) {
+        m.seed = seed;
+        m.hash = qHash(m.value, seed);
+    }
+    return m.hash;
+}
+
+}
+
 using namespace CommHistory;
 
 namespace CommHistory {
 
-typedef QPair<QString, QString> UidPair;
+typedef HashMemo<QPair<QString, QString> > UidPair;
 
 class ContactResolverPrivate : public QObject
 {
