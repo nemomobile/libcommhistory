@@ -30,6 +30,7 @@ class LIBCOMMHISTORY_EXPORT CommHistoryDatabasePath
 public:
     static QString databaseDir();
     static QString databaseFile();
+    static QString dataDir();
     static QString dataDir(int id);
 };
 

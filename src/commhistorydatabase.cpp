@@ -355,7 +355,12 @@ QString CommHistoryDatabasePath::databaseFile()
     return QString(QLatin1String(COMMHISTORY_DATABASE_NAME));
 }
 
+QString CommHistoryDatabasePath::dataDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral(COMMHISTORY_DATA_DIR);
+}
+
 QString CommHistoryDatabasePath::dataDir(int id)
 {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QStringLiteral(COMMHISTORY_DATA_DIR "%1/").arg(id);
+    return dataDir() + QStringLiteral("%1/").arg(id);
 }

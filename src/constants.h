@@ -27,6 +27,7 @@ namespace CommHistory {
 
 
 #define COMM_HISTORY_SERVICE_NAME  QLatin1String("com.nokia.commhistory")
+#define COMM_HISTORY_INTERFACE     QLatin1String("com.nokia.commhistory")
 #define COMM_HISTORY_OBJECT_PATH   QLatin1String("/CommHistoryModel")
 
 #define EVENTS_ADDED_SIGNAL        QLatin1String("eventsAdded")

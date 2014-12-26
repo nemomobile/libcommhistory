@@ -738,6 +738,22 @@ bool DatabaseIO::getEventByMmsId(const QString &mmsId, int groupId, Event &event
     return re;
 }
 
+bool DatabaseIO::eventExists(int id)
+{
+    QSqlQuery query = CommHistoryDatabase::prepare(
+        "SELECT Events.id FROM Events WHERE id=:id",
+        d->connection());
+    query.bindValue(":id", id);
+    if (query.exec()) {
+        return query.next();
+    } else {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
+}
+
 bool DatabaseIO::modifyEvent(Event &event)
 {
     AutoSavepoint savepoint(d->connection());
