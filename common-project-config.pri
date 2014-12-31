@@ -33,7 +33,7 @@ UI_HEADERS_DIR  = ui/include
 UI_SOURCES_DIR  = ui/src
 
 # we don't like warnings...
-QMAKE_CXXFLAGS *= -Werror
+QMAKE_CXXFLAGS *= -Werror -Wno-psabi
 
 
 # End of File

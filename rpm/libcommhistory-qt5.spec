@@ -1,6 +1,6 @@
 Name:       libcommhistory-qt5
 Summary:    Communications event history database API
-Version:    1.7.22
+Version:    1.8.1
 Release:    1
 Group:      System/Libraries
 License:    LGPL
@@ -14,6 +14,9 @@ BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Test)
 BuildRequires:  pkgconfig(qtcontacts-sqlite-qt5-extensions) >= 0.1.41
 BuildRequires:  pkgconfig(contactcache-qt5) >= 0.0.17
+
+%{!?qtc_qmake5:%define qtc_qmake5 %qmake5}
+%{!?qtc_make:%define qtc_make make}
 
 %description
 Library for accessing the communications (IM, SMS and call) history database.
@@ -71,8 +74,8 @@ Documentation for libcommhistory
 
 %build
 unset LD_AS_NEEDED
-%qmake5
-make %{?_smp_mflags}
+%qtc_qmake5
+%qtc_make %{?_smp_mflags}
 
 %install
 rm -rf %{buildroot}
