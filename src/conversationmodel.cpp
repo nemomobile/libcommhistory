@@ -51,7 +51,7 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterDirection(Event::UnknownDirection)
 {
     QDBusConnection::sessionBus().connect(
-        QString(), QString(), "com.nokia.commhistory", GROUPS_DELETED_SIGNAL,
+        QString(), QString(), COMM_HISTORY_INTERFACE, GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;

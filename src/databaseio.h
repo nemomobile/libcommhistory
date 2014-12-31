@@ -107,6 +107,14 @@ public:
     bool getEventByMmsId(const QString &mmsId, int groupId, Event &event);
 
     /*!
+     * Checks if event with the specified id exists in the database.
+     *
+     * \param id event id
+     * \return true if event exists, otherwise false
+     */
+    bool eventExists(int id);
+
+    /*!
      * Get extra property fields for an event.
      *
      * \param event Event instance to query and update with extra properties
