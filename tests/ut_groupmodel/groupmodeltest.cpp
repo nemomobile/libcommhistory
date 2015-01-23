@@ -866,8 +866,12 @@ void GroupModelTest::deleteMmsContent()
 
     QVERIFY(model.databaseIO().getEvent(id1, e));
     QVERIFY(model.databaseIO().deleteEvent(e, 0));
+    // Group deleting behavior is disabled currently, because it should be implemented in a
+    // smarter and less synchronous way.
+#if 0
     QTest::qWait(1000);
     QVERIFY(content_dir.exists(mms_token1) == false); // folder shall be removed since no more events reffers to the token
+#endif
 
     QVERIFY(model.databaseIO().getEvent(id2, e));
     QVERIFY(model.databaseIO().deleteEvent(e, 0));
@@ -876,12 +880,12 @@ void GroupModelTest::deleteMmsContent()
 
     QVERIFY(model.databaseIO().getEvent(id3, e));
     QVERIFY(model.databaseIO().deleteEvent(e, 0));
-    QTest::qWait(1000);
-    QVERIFY(content_dir.exists(mms_token2) == false);  // no more events with token2
-
     // Group deleting behvaior is disabled currently, because it should be implemented in a
     // smarter and less synchronous way.
 #if 0
+    QTest::qWait(1000);
+    QVERIFY(content_dir.exists(mms_token2) == false);  // no more events with token2
+
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>,bool)));
     model.deleteGroups(QList<int>() << group1.id());
     if (groupsCommitted.isEmpty())
