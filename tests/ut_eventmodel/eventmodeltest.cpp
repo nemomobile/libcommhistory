@@ -718,7 +718,7 @@ void EventModelTest::testDeleteEventGroupUpdated()
 
     QVERIFY(model.deleteEvent(event2.id()));
     QVERIFY(watcher.waitForDeleted());
-    QCOMPARE(groupDeleted, group.id());
+    QTRY_COMPARE(groupDeleted, group.id());
 
     QVERIFY(!groupModel.databaseIO().getGroup(group.id(), group));
 
