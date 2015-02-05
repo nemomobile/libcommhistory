@@ -40,49 +40,49 @@ public:
     ContactGroup(QObject *parent = 0);
 
     /* Properties */
-    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged);
+    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged)
     QList<int> contactIds() const;
 
-    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged);
+    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged)
     QStringList contactNames() const;
 
-    Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged);
+    Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged)
     QDateTime startTime() const;
 
-    Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged);
+    Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged)
     QDateTime endTime() const;
 
-    Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged);
+    Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged)
     int unreadMessages() const;
 
-    Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventChanged);
+    Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventChanged)
     int lastEventId() const;
 
-    Q_PROPERTY(CommHistory::GroupObject* lastEventGroup READ lastEventGroup NOTIFY lastEventChanged);
+    Q_PROPERTY(CommHistory::GroupObject* lastEventGroup READ lastEventGroup NOTIFY lastEventChanged)
     GroupObject *lastEventGroup() const;
 
-    Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastEventChanged);
+    Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastEventChanged)
     QString lastMessageText() const;
 
-    Q_PROPERTY(QString lastVCardFileName READ lastVCardFileName NOTIFY lastEventChanged);
+    Q_PROPERTY(QString lastVCardFileName READ lastVCardFileName NOTIFY lastEventChanged)
     QString lastVCardFileName() const;
 
-    Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastEventChanged);
+    Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastEventChanged)
     QString lastVCardLabel() const;
 
-    Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventChanged);
+    Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventChanged)
     int lastEventType() const;
 
-    Q_PROPERTY(int lastEventStatus READ lastEventType NOTIFY lastEventChanged);
+    Q_PROPERTY(int lastEventStatus READ lastEventType NOTIFY lastEventChanged)
     int lastEventStatus() const;
 
-    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventChanged);
+    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventChanged)
     bool lastEventIsDraft() const;
 
-    Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
+    Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged)
     QDateTime lastModified() const;
  
-    Q_PROPERTY(QList<QObject*> groups READ groupObjects NOTIFY groupsChanged);
+    Q_PROPERTY(QList<QObject*> groups READ groupObjects NOTIFY groupsChanged)
     QList<GroupObject*> groups() const;
     QList<QObject*> groupObjects() const;
 
@@ -107,7 +107,7 @@ signals:
     void groupsChanged();
 
 private:
-    Q_DECLARE_PRIVATE(ContactGroup);
+    Q_DECLARE_PRIVATE(ContactGroup)
     ContactGroupPrivate *d_ptr;
 };
 

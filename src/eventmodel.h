@@ -385,7 +385,7 @@ protected:
     EventModel(EventModelPrivate &dd, QObject *parent = 0);
 
 private:
-    Q_DECLARE_PRIVATE(EventModel);
+    Q_DECLARE_PRIVATE(EventModel)
 };
 
 }

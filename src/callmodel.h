@@ -205,7 +205,7 @@ public:
     virtual bool deleteEvent( Event &event );
 
 private:
-    Q_DECLARE_PRIVATE(CallModel);
+    Q_DECLARE_PRIVATE(CallModel)
 };
 
 }

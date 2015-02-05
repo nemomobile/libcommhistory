@@ -108,7 +108,7 @@ private:
 
 }
 
-Q_DECLARE_METATYPE(CommHistory::MessagePart);
-Q_DECLARE_METATYPE(QList<CommHistory::MessagePart>);
+Q_DECLARE_METATYPE(CommHistory::MessagePart)
+Q_DECLARE_METATYPE(QList<CommHistory::MessagePart>)
 
 #endif

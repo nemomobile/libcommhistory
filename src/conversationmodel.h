@@ -96,8 +96,7 @@ public:
     virtual void fetchMore(const QModelIndex &parent);
 
 private:
-    Q_DECLARE_PRIVATE(ConversationModel);
-
+    Q_DECLARE_PRIVATE(ConversationModel)
 };
 
 }

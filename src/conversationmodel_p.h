@@ -36,7 +36,7 @@ namespace CommHistory
 class ConversationModelPrivate : public EventModelPrivate {
 public:
     Q_OBJECT
-    Q_DECLARE_PUBLIC(ConversationModel);
+    Q_DECLARE_PUBLIC(ConversationModel)
 
     ConversationModelPrivate(EventModel *model);
 

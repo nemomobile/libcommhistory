@@ -53,30 +53,30 @@ class LIBCOMMHISTORY_EXPORT GroupObject : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool isValid READ isValid CONSTANT);
-    Q_PROPERTY(int id READ id CONSTANT);
-    Q_PROPERTY(QString localUid READ localUid NOTIFY localUidChanged);
-    Q_PROPERTY(QStringList remoteUids READ remoteUids NOTIFY remoteUidsChanged);
-    Q_PROPERTY(int chatType READ chatType NOTIFY chatTypeChanged);
-    Q_PROPERTY(QString chatName READ chatName NOTIFY chatNameChanged);
+    Q_PROPERTY(bool isValid READ isValid CONSTANT)
+    Q_PROPERTY(int id READ id CONSTANT)
+    Q_PROPERTY(QString localUid READ localUid NOTIFY localUidChanged)
+    Q_PROPERTY(QStringList remoteUids READ remoteUids NOTIFY remoteUidsChanged)
+    Q_PROPERTY(int chatType READ chatType NOTIFY chatTypeChanged)
+    Q_PROPERTY(QString chatName READ chatName NOTIFY chatNameChanged)
 
-    Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged);
-    Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged);
-    Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged);
+    Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged)
+    Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged)
+    Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged)
 
-    Q_PROPERTY(int contactId READ contactId NOTIFY contactsChanged);
-    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged);
-    Q_PROPERTY(QString contactName READ contactName NOTIFY contactsChanged);
-    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged);
+    Q_PROPERTY(int contactId READ contactId NOTIFY contactsChanged)
+    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged)
+    Q_PROPERTY(QString contactName READ contactName NOTIFY contactsChanged)
+    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged)
 
-    Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventIdChanged);
-    Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastMessageTextChanged);
-    Q_PROPERTY(QString lastVCardFileName READ lastVCardFileName NOTIFY lastVCardFileNameChanged);
-    Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastVCardLabelChanged);
-    Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventTypeChanged);
-    Q_PROPERTY(int lastEventStatus READ lastEventStatus NOTIFY lastEventStatusChanged);
-    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventIsDraftChanged);
-    Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged);
+    Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventIdChanged)
+    Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastMessageTextChanged)
+    Q_PROPERTY(QString lastVCardFileName READ lastVCardFileName NOTIFY lastVCardFileNameChanged)
+    Q_PROPERTY(QString lastVCardLabel READ lastVCardLabel NOTIFY lastVCardLabelChanged)
+    Q_PROPERTY(int lastEventType READ lastEventType NOTIFY lastEventTypeChanged)
+    Q_PROPERTY(int lastEventStatus READ lastEventStatus NOTIFY lastEventStatusChanged)
+    Q_PROPERTY(bool lastEventIsDraft READ lastEventIsDraft NOTIFY lastEventIsDraftChanged)
+    Q_PROPERTY(QDateTime lastModified READ lastModified NOTIFY lastModifiedChanged)
 
 public:
     GroupObject(GroupManager *parent);

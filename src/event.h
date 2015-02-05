@@ -427,9 +427,9 @@ LIBCOMMHISTORY_EXPORT const QDBusArgument &operator>>(const QDBusArgument &argum
 LIBCOMMHISTORY_EXPORT QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event);
 LIBCOMMHISTORY_EXPORT QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event);
 
-Q_DECLARE_METATYPE(CommHistory::Event);
-Q_DECLARE_METATYPE(QList<CommHistory::Event>);
-Q_DECLARE_METATYPE(CommHistory::Event::Contact);
-Q_DECLARE_METATYPE(QList<CommHistory::Event::Contact>);
+Q_DECLARE_METATYPE(CommHistory::Event)
+Q_DECLARE_METATYPE(QList<CommHistory::Event>)
+Q_DECLARE_METATYPE(CommHistory::Event::Contact)
+Q_DECLARE_METATYPE(QList<CommHistory::Event::Contact>)
 
 #endif
