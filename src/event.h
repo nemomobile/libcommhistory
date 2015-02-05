@@ -62,10 +62,6 @@ public:
          */
         StatusMessageEvent,
         MMSEvent,
-        /*!
-         * Event that could be added to ClassZeroSMSModel, not persistent.
-         * Similar to StatusMessageEvent
-         */
         ClassZeroSMSEvent
     };
 
