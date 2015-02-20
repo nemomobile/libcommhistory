@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2013-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -76,6 +77,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + EventCount] = "eventCount";
     roles[BaseRole + FromVCardFileName] = "fromVCardFileName";
     roles[BaseRole + FromVCardLabel] = "fromVCardLabel";
+    roles[BaseRole + ReadStatus] = "readStatus";
     roles[ContactIdsRole] = "contactIds";
     roles[ContactNamesRole] = "contactNames";
     roles[MessagePartsRole] = "messageParts";
@@ -331,6 +333,9 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             break;
         case FromVCardLabel:
             var = QVariant::fromValue(event.fromVCardLabel());
+            break;
+        case ReadStatus:
+            var = QVariant::fromValue((int)event.readStatus());
             break;
         default:
             DEBUG() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
