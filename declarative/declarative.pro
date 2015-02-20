@@ -23,6 +23,7 @@ HEADERS += src/constants.h \
     src/sharedbackgroundthread.h \
     src/contactaddresslookup.h \
     src/debug.h \
+    src/plugin.h \
     src/mmshelper.h \
     src/draftevent.h
 

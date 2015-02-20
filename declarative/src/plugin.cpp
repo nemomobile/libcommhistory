@@ -1,4 +1,6 @@
-/* Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+/* Copyright (C) 2015 Jolla Ltd.
+ * Copyright (C) 2012 John Brooks <john.brooks@dereferenced.net>
+ * Contact: Slava Monich <slava.monich@jolla.com>
  *
  * You may use this file under the terms of the BSD license as follows:
  *
@@ -28,10 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
  */
 
-#include <QtGlobal>
-#include <QtQml>
-#include <QQmlEngine>
-#include <QQmlExtensionPlugin>
+#include "plugin.h"
 #include "constants.h"
 #include "groupobject.h"
 #include "eventmodel.h"
@@ -47,42 +46,35 @@
 #include "draftevent.h"
 #include "mmshelper.h"
 
-class Q_DECL_EXPORT CommHistoryPlugin : public QQmlExtensionPlugin
+#include <QtQml>
+
+#define COMM_HISTORY_PLUGIN_URI    QLatin1String("org.nemomobile.commhistory")
+
+void CommHistoryPlugin::initializeEngine(QQmlEngine *engine, const char *uri)
 {
-    Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.nemomobile.commhistory")
+    Q_ASSERT(uri == COMM_HISTORY_PLUGIN_URI);
+    Q_UNUSED(uri);
+    Q_UNUSED(engine);
+}
 
-public:
-    virtual ~CommHistoryPlugin() { }
+void CommHistoryPlugin::registerTypes(const char *uri)
+{
+    Q_ASSERT(uri == COMM_HISTORY_PLUGIN_URI);
 
-    void initializeEngine(QQmlEngine *engine, const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-        Q_UNUSED(uri);
-        Q_UNUSED(engine);
-    }
+    qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
+    qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
+    qmlRegisterType<CommHistory::GroupModel>(uri, 1, 0, "CommGroupModel");
+    qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
+    qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
+    qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
+    qmlRegisterType<CommHistory::RecentContactsModel>(uri, 1, 0, "CommRecentContactsModel");
+    qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
+    qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
+    qmlRegisterType<CommHistory::ClassZeroSMSModel>(uri, 1, 0, "ClassZeroSMSModel");
+    qmlRegisterType<CommHistory::DraftsModel>(uri, 1, 0, "DraftsModel");
+    qmlRegisterType<DraftEvent>(uri, 1, 0, "DraftEvent");
+    qmlRegisterType<MmsHelper>(uri, 1, 0, "MmsHelper");
 
-    void registerTypes(const char *uri)
-    {
-        Q_ASSERT(uri == QLatin1String("org.nemomobile.commhistory"));
-
-        qmlRegisterUncreatableType<CommHistoryConstants>(uri, 1, 0, "CommHistory", "Constants-only type");
-        qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
-        qmlRegisterType<CommHistory::GroupModel>(uri, 1, 0, "CommGroupModel");
-        qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
-        qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
-        qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
-        qmlRegisterType<CommHistory::RecentContactsModel>(uri, 1, 0, "CommRecentContactsModel");
-        qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
-        qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
-        qmlRegisterType<CommHistory::ClassZeroSMSModel>(uri, 1, 0, "ClassZeroSMSModel");
-        qmlRegisterType<CommHistory::DraftsModel>(uri, 1, 0, "DraftsModel");
-        qmlRegisterType<DraftEvent>(uri, 1, 0, "DraftEvent");
-        qmlRegisterType<MmsHelper>(uri, 1, 0, "MmsHelper");
-
-        qmlRegisterType<CommHistory::GroupObject>();
-        qmlRegisterType<CommHistory::ContactGroup>();
-    }
-};
-
-#include "plugin.moc"
+    qmlRegisterType<CommHistory::GroupObject>();
+    qmlRegisterType<CommHistory::ContactGroup>();
+}
