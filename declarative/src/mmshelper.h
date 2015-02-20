@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Jolla Ltd.
+/* Copyright (C) 2014-2015 Jolla Ltd.
  * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
@@ -33,6 +33,10 @@
 #define MMSHELPER_H
 
 #include <QObject>
+#include <QStringList>
+#include <QVariantList>
+
+class QDBusMessage;
 
 class MmsHelper : public QObject
 {
@@ -44,9 +48,12 @@ public:
 public slots:
     bool receiveMessage(int id);
     bool cancel(int id);
-    bool sendReadReport(int id);
     bool sendMessage(const QStringList &to, const QStringList &cc, const QStringList &bcc, const QString &subject, const QVariantList &parts);
     bool retrySendMessage(int id);
+
+private:
+    static void callEngine(const QString &method, const QVariantList &args);
+    static void callHandler(const QString &method, const QVariantList &args);
 };
 
 #endif

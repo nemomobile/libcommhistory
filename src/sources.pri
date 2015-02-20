@@ -21,6 +21,7 @@ HEADERS += commonutils.h \
            recentcontactsmodel.h \
            updatesemitter.h \
            constants.h \
+           mmsconstants.h \
            groupobject.h \
            groupmanager.h \
            groupmanager_p.h \

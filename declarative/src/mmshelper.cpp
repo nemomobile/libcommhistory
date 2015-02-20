@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 Jolla Ltd.
+/* Copyright (C) 2014-2015 Jolla Ltd.
  * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
@@ -30,6 +30,7 @@
  */
 
 #include "mmshelper.h"
+#include "mmsconstants.h"
 #include "singleeventmodel.h"
 #include <QtDBus>
 #include <QDBusConnection>
@@ -40,16 +41,6 @@
 #include <QTemporaryFile>
 #include <QMimeDatabase>
 #include <QDebug>
-
-// MmsEngine, implemented by the backend mms-engine
-#define MMS_ENGINE_SERVICE "org.nemomobile.MmsEngine"
-#define MMS_ENGINE_PATH "/"
-#define MMS_ENGINE_INTERFACE "org.nemomobile.MmsEngine"
-
-// MmsHandler, implemented by commhistory-daemon
-#define MMS_HANDLER_SERVICE "org.nemomobile.MmsHandler"
-#define MMS_HANDLER_PATH "/"
-#define MMS_HANDLER_INTERFACE "org.nemomobile.MmsHandler"
 
 struct MmsPart
 {
@@ -88,6 +79,20 @@ MmsHelper::MmsHelper(QObject *parent)
     qDBusRegisterMetaType<MmsPartList>();
 }
 
+void MmsHelper::callEngine(const QString &method, const QVariantList &args)
+{
+    QDBusMessage call(QDBusMessage::createMethodCall(MMS_ENGINE_SERVICE, MMS_ENGINE_PATH, MMS_ENGINE_INTERFACE, method));
+    call.setArguments(args);
+    MMS_ENGINE_BUS.asyncCall(call);
+}
+
+void MmsHelper::callHandler(const QString &method, const QVariantList &args)
+{
+    QDBusMessage call(QDBusMessage::createMethodCall(MMS_HANDLER_SERVICE, MMS_HANDLER_PATH, MMS_HANDLER_INTERFACE, method));
+    call.setArguments(args);
+    MMS_HANDLER_BUS.asyncCall(call);
+}
+
 bool MmsHelper::receiveMessage(int id)
 {
     Event event;
@@ -100,8 +105,8 @@ bool MmsHelper::receiveMessage(int id)
         return false;
     }
 
-    QString imsi = event.extraProperty("mms-notification-imsi").toString();
-    QByteArray pushData = QByteArray::fromBase64(event.extraProperty("mms-push-data").toByteArray());
+    QString imsi = event.extraProperty(MMS_PROPERTY_IMSI).toString();
+    QByteArray pushData = QByteArray::fromBase64(event.extraProperty(MMS_PROPERTY_PUSH_DATA).toByteArray());
 
     if (imsi.isEmpty() || pushData.isEmpty()) {
         qWarning() << "MmsHelper::receivedMessage called for event" << id << "without notification data";
@@ -113,11 +118,7 @@ bool MmsHelper::receiveMessage(int id)
     event.setStatus(Event::WaitingStatus);
     model.modifyEvent(event);
 
-    QVariantList args;
-    args << id << imsi << true << pushData;
-    QDBusMessage method = QDBusMessage::createMethodCall(MMS_ENGINE_SERVICE, MMS_ENGINE_PATH, MMS_ENGINE_INTERFACE, "receiveMessage");
-    method.setArguments(args);
-    QDBusPendingCall call = QDBusConnection::systemBus().asyncCall(method);
+    callEngine("receiveMessage", QVariantList() << id << imsi << true << pushData);
     return true;
 }
 
@@ -136,43 +137,13 @@ bool MmsHelper::cancel(int id)
     if (event.status() != Event::DownloadingStatus && event.status() != Event::WaitingStatus && event.status() != Event::SendingStatus)
         return false;
 
-    QVariantList args;
-    args << id;
-    QDBusMessage method = QDBusMessage::createMethodCall(MMS_ENGINE_SERVICE, MMS_ENGINE_PATH, MMS_ENGINE_INTERFACE, "cancel");
-    method.setArguments(args);
-    QDBusConnection::systemBus().asyncCall(method);
+    callEngine("cancel", QVariantList() << id);
 
     if (event.direction() == Event::Inbound)
         event.setStatus(Event::ManualNotificationStatus);
     else
         event.setStatus(Event::TemporarilyFailedStatus);
     return model.modifyEvent(event);
-}
-
-bool MmsHelper::sendReadReport(int id)
-{
-    Event event;
-    SingleEventModel model;
-    if (model.getEventById(id))
-        event = model.event(model.index(0, 0));
-
-    if (!event.isValid()) {
-        qWarning() << "MmsHelper::sendReadReport called for unknown event id" << id;
-        return false;
-    }
-
-    QString imsi = event.extraProperty("mms-notification-imsi").toString();
-    if (imsi.isEmpty() || event.mmsId().isEmpty()) {
-        qWarning() << "MmsHelper::sendReadReport called for event" << id << "without MMS data";
-        return false;
-    }
-
-    QVariantList args;
-    args << id << imsi << event.mmsId() << event.remoteUid() << 0;
-    QDBusMessage method = QDBusMessage::createMethodCall(MMS_ENGINE_SERVICE, MMS_ENGINE_PATH, MMS_ENGINE_INTERFACE, "sendReadReport");
-    method.setArguments(args);
-    QDBusConnection::systemBus().asyncCall(method);
-    return true;
 }
 
 static QString createTemporaryTextFile(const QString &text, QString &contentType)
@@ -236,19 +207,12 @@ bool MmsHelper::sendMessage(const QStringList &to, const QStringList &cc, const 
         outParts.append(part);
     }
 
-    QVariantList args;
-    args << to << cc << bcc << subject << QVariant::fromValue(outParts);
-    QDBusMessage method = QDBusMessage::createMethodCall(MMS_HANDLER_SERVICE, MMS_HANDLER_PATH, MMS_HANDLER_INTERFACE, "sendMessage");
-    method.setArguments(args);
-    QDBusConnection::systemBus().asyncCall(method);
+    callHandler("sendMessage", QVariantList() << to << cc << bcc << subject << QVariant::fromValue(outParts));
     return true;
 }
 
 bool MmsHelper::retrySendMessage(int eventId)
 {
-    QDBusMessage method = QDBusMessage::createMethodCall(MMS_HANDLER_SERVICE, MMS_HANDLER_PATH, MMS_HANDLER_INTERFACE, "sendMessageFromEvent");
-    method.setArguments(QVariantList() << eventId);
-    QDBusConnection::systemBus().asyncCall(method);
+    callHandler("sendMessageFromEvent", QVariantList() << eventId);
     return true;
 }
-
