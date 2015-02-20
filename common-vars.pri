@@ -2,8 +2,9 @@
 #
 # This file is part of libcommhistory.
 #
+# Copyright (C) 2013-2015 Jolla Ltd.
 # Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-# Contact: Reto Zingg <reto.zingg@nokia.com>
+# Contact: Reto Zingg <reto.zingg@jolla.com>
 #
 # This library is free software; you can redistribute it and/or modify it
 # under the terms of the GNU Lesser General Public License version 2.1 as
@@ -34,7 +35,7 @@ PROJECT_NAME = libcommhistory-qt5
 # Project version
 # remember to update debian/* files if you changes this
 #-----------------------------------------------------------------------------
-PROJECT_VERSION = 1.8.1
+PROJECT_VERSION = 1.8.3
 
 #------------------------------------------------------------------------------
 # Library version

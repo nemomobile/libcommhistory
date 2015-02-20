@@ -1,6 +1,6 @@
 Name:       libcommhistory-qt5
 Summary:    Communications event history database API
-Version:    1.8.1
+Version:    1.8.3
 Release:    1
 Group:      System/Libraries
 License:    LGPL
@@ -60,14 +60,12 @@ Requires: %{name} = %{version}-%{release}
 %description devel
 Headers and static libraries for the commhistory library.
 
-
 %package doc
 Summary: Documentation for libcommhistory
 Group: Documentation
 
 %description doc
 Documentation for libcommhistory
-
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -121,4 +119,3 @@ done
 %files doc
 %defattr(-,root,root,-)
 %{_datadir}/doc/libcommhistory-qt5/*
-
