@@ -35,7 +35,7 @@ PROJECT_NAME = libcommhistory-qt5
 # Project version
 # remember to update debian/* files if you changes this
 #-----------------------------------------------------------------------------
-PROJECT_VERSION = 1.8.3
+PROJECT_VERSION = 1.8.4
 
 #------------------------------------------------------------------------------
 # Library version
