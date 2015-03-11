@@ -117,7 +117,7 @@ bool DeclarativeGroupManager::setEventStatus(int eventId, int status)
         return false;
     }
 
-    Event ev = model.event(model.index(0, 0));
+    Event ev = model.event();
     if (ev.status() == status)
         return true;
 

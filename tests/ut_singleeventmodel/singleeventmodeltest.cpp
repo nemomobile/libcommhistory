@@ -58,7 +58,7 @@ void SingleEventModelTest::getEventById()
 
     QCOMPARE(model.rowCount(), 1);
 
-    Event modelEvent = model.event(model.index(0, 0));
+    Event modelEvent = model.event();
     QVERIFY(compareEvents(event, modelEvent));
 }
 
@@ -110,7 +110,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    Event modelEvent = model.event(model.index(0, 0));
+    Event modelEvent = model.event();
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id()));
@@ -118,7 +118,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    modelEvent = model.event(model.index(0, 0));
+    modelEvent = model.event();
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("messageTokenB1", "", group1.id() + 1));
@@ -132,7 +132,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    modelEvent = model.event(model.index(0, 0));
+    modelEvent = model.event();
     QVERIFY(compareEvents(event, modelEvent));
 
     QVERIFY(model.getEventByTokens("", "nonExistingMmsId", group1.id()));
@@ -145,7 +145,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    modelEvent = model.event(model.index(0, 0));
+    modelEvent = model.event();
     QVERIFY(compareEvents(mms, modelEvent));
 
     QVERIFY(model.getEventByTokens("", "mmsId", group2.id()));
@@ -153,7 +153,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    modelEvent = model.event(model.index(0, 0));
+    modelEvent = model.event();
     QVERIFY(compareEvents(mms2, modelEvent));
 
     QVERIFY(model.getEventByTokens("mmsMessageToken", "mmsId", group1.id()));
@@ -161,7 +161,7 @@ void SingleEventModelTest::getEventByTokens()
 
     QCOMPARE(model.rowCount(), 1);
 
-    modelEvent = model.event(model.index(0, 0));
+    modelEvent = model.event();
     QVERIFY(compareEvents(mms, modelEvent));
 }
 
@@ -202,7 +202,7 @@ void SingleEventModelTest::contactMatching()
 
     QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
-    Event event = model.event(model.index(0, 0));
+    Event event = model.event();
     QCOMPARE(event.id(), eventId);
     QCOMPARE(event.contactId(), 0);
 
@@ -215,7 +215,7 @@ void SingleEventModelTest::contactMatching()
 
     QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
-    event = model.event(model.index(0, 0));
+    event = model.event();
     QCOMPARE(event.id(), eventId);
     QCOMPARE(event.contactId(), 0);
 
@@ -223,7 +223,7 @@ void SingleEventModelTest::contactMatching()
 
     QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
-    event = model.event(model.index(0, 0));
+    event = model.event();
     QCOMPARE(event.id(), eventId);
 
     QCOMPARE(event.contactId(), contactId);
@@ -271,7 +271,7 @@ void SingleEventModelTest::updateStatus()
 
     QCOMPARE(model.rowCount(), 1);
 
-    Event modelEvent = model.event(model.index(0, 0));
+    Event modelEvent = model.event();
 
     QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::Status));
     QVERIFY(modelEvent.validProperties().contains(CommHistory::Event::MessageToken));
@@ -286,7 +286,7 @@ void SingleEventModelTest::updateStatus()
 
     QCOMPARE(observer.rowCount(), 1);
 
-    Event observedEvent = observer.event(observer.index(0, 0));
+    Event observedEvent = observer.event();
 
     QVERIFY(compareEvents(event, observedEvent));
 
@@ -297,7 +297,7 @@ void SingleEventModelTest::updateStatus()
 
     //check observer model
     QTest::qWait(100);
-    observedEvent = observer.event(observer.index(0, 0));
+    observedEvent = observer.event();
 
     QCOMPARE(observedEvent.freeText(), event.freeText());
     QCOMPARE(observedEvent.status(), Event::SentStatus);
