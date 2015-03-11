@@ -2,7 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd.
+** Copyright (C) 2013-2015 Jolla Ltd.
 ** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ namespace CommHistory {
 
 class Group;
 class DatabaseIO;
+class UpdatesEmitter;
 
 /**
  * \class DatabaseIOPrivate
@@ -57,7 +58,7 @@ public:
     DatabaseIOPrivate(DatabaseIO *parent);
     ~DatabaseIOPrivate();
 
-    static QString makeCallGroupURI(const CommHistory::Event &event);
+    static QString makeCallGroupURI(const Event &event);
 
     static void readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties,
             bool &hasMessageParts);
@@ -65,18 +66,19 @@ public:
 
     static QString eventQueryBase();
 
-    bool getEvents(const QString &querySuffix, QList<Event> &events);
-
     bool deleteEmptyGroups();
 
     bool insertEventProperties(int eventId, const QVariantMap &properties);
     bool insertMessageParts(Event &event);
 
     QSqlQuery createQuery();
+    QSqlQuery prepare(const char *statement);
     QSqlDatabase& connection();
+    UpdatesEmitter* emitter();
 
 public:
     QSqlDatabase m_pConnection;
+    QSharedPointer<UpdatesEmitter> m_emitter;
 };
 
 } // namespace

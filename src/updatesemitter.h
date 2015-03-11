@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2015 Jolla Ltd.
 ** Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -40,9 +41,6 @@ public:
     ~UpdatesEmitter();
 
 Q_SIGNALS:
-#ifndef Q_MOC_RUN
-public:
-#endif
     void eventsAdded(const QList<CommHistory::Event> &events);
     void eventsUpdated(const QList<CommHistory::Event> &events);
     void eventDeleted(int id);
@@ -50,6 +48,7 @@ public:
     void groupsUpdated(const QList<int> &groupIds);
     void groupsUpdatedFull(const QList<CommHistory::Group> &groups);
     void groupsDeleted(const QList<int> &groupIds);
+    void mmsEventsMarkedAsRead(const QList<CommHistory::Event> &events);
 
 private:
     UpdatesEmitter();
