@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -23,8 +24,7 @@
 #ifndef COMMHISTORY_CONSTANTS_H
 #define COMMHISTORY_CONSTANTS_H
 
-namespace CommHistory {
-
+#include <QString>
 
 #define COMM_HISTORY_SERVICE_NAME  QLatin1String("com.nokia.commhistory")
 #define COMM_HISTORY_INTERFACE     QLatin1String("com.nokia.commhistory")
@@ -39,6 +39,6 @@ namespace CommHistory {
 #define GROUPS_UPDATED_FULL_SIGNAL QLatin1String("groupsUpdatedFull")
 #define GROUPS_DELETED_SIGNAL      QLatin1String("groupsDeleted")
 
-} /* namespace CommHistory */
+#define MMS_EVENTS_MARKED_AS_READ_SIGNAL QLatin1String("mmsEventsMarkedAsRead")
 
-#endif /* CONSTANTS_H */
+#endif /* COMMHISTORY_CONSTANTS_H */

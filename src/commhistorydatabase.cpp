@@ -2,7 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013-2014 Jolla Ltd.
+** Copyright (C) 2013-2015 Jolla Ltd.
 ** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
@@ -343,6 +343,18 @@ QSqlQuery CommHistoryDatabase::prepare(const char *statement, const QSqlDatabase
         return QSqlQuery();
     }
     return query;
+}
+
+bool CommHistoryDatabase::exec(QSqlQuery query)
+{
+    if (query.exec()) {
+        return true;
+    } else {
+        qWarning() << "Failed to execute query";
+        qWarning() << query.lastError();
+        qWarning() << query.lastQuery();
+        return false;
+    }
 }
 
 QString CommHistoryDatabasePath::databaseDir()

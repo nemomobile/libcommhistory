@@ -2,7 +2,7 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd.
+** Copyright (C) 2013-2015 Jolla Ltd.
 ** Contact: John Brooks <john.brooks@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 #include "databaseio_p.h"
 #include "databaseio.h"
 #include "commhistorydatabase.h"
+#include "updatesemitter.h"
 #include "group.h"
 #include "contactlistener.h"
 #include <QSqlQuery>
@@ -330,6 +331,7 @@ DatabaseIOPrivate *DatabaseIOPrivate::instance()
 
 DatabaseIOPrivate::DatabaseIOPrivate(DatabaseIO *p)
     : q(p)
+
 {
 }
 
@@ -348,6 +350,19 @@ QSqlDatabase &DatabaseIOPrivate::connection()
 QSqlQuery DatabaseIOPrivate::createQuery()
 {
     return QSqlQuery(connection());
+}
+
+QSqlQuery DatabaseIOPrivate::prepare(const char *q)
+{
+    return CommHistoryDatabase::prepare(q, connection());
+}
+
+UpdatesEmitter* DatabaseIOPrivate::emitter()
+{
+    if (m_emitter.isNull()) {
+        m_emitter = UpdatesEmitter::instance();
+    }
+    return m_emitter.data();
 }
 
 bool DatabaseIO::addEvent(Event &event)
@@ -589,6 +604,29 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     event.setIsAction(query.value(++field).toBool());
     hasExtraProperties = query.value(++field).toBool();
     hasMessageParts = query.value(++field).toBool();
+}
+
+void DatabaseIO::getEvents(QSqlQuery &query, QList<Event> &events)
+{
+    events.clear();
+    if (CommHistoryDatabase::exec(query)) {
+        QList<bool> hasExtra;
+        QList<bool> hasParts;
+        while (query.next()) {
+            Event e;
+            bool extra = false, parts = false;
+            DatabaseIOPrivate::readEventResult(query, e, extra, parts);
+            hasExtra.append(extra);
+            hasParts.append(parts);
+            events.append(e);
+        }
+        query.finish();
+        const int n = events.size();
+        for (int i=0; i<n; i++) {
+            if (hasExtra.at(i)) getEventExtraProperties(events[i]);
+            if (hasParts.at(i)) getMessageParts(events[i]);
+        }
+    }
 }
 
 bool DatabaseIO::getEvent(int id, Event &event)
@@ -1087,50 +1125,69 @@ bool DatabaseIO::totalEventsInGroup(int groupId, int &totalEvents)
 
 bool DatabaseIO::markAsReadGroup(int groupId)
 {
-    static const char *q = "UPDATE Events SET isRead=1 WHERE groupId=:groupId AND isRead=0";
-    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
+    // Check if we are about to mark any MMS events as read
+    QList<Event> mmsEvents;
+    QSqlQuery query = d->prepare(QByteArray(baseEventQuery) +
+        "WHERE groupId=:groupId AND type=:eventType AND isRead=0 AND reportRead=1");
     query.bindValue(":groupId", groupId);
+    query.bindValue(":eventType", Event::MMSEvent);
+    getEvents(query, mmsEvents);
 
-    if (!query.exec()) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
+    // Actually mark events as read
+    query = d->prepare("UPDATE Events SET isRead=1 WHERE groupId=:groupId AND isRead=0");
+    query.bindValue(":groupId", groupId);
+    if (CommHistoryDatabase::exec(query)) {
+        if (!mmsEvents.isEmpty()) {
+            d->emitter()->mmsEventsMarkedAsRead(mmsEvents);
+        }
+        return true;
     }
-
-    return true;
+    return false;
 }
 
 bool DatabaseIO::markAsRead(const QList<int> &eventIds)
 {
-    QByteArray q = "UPDATE Events SET isRead=1 WHERE id IN (";
-    q += joinNumberList(eventIds) + ") AND isRead=0";
+    if (!eventIds.isEmpty()) {
+        QList<Event> mmsEvents;
+        QByteArray idList(joinNumberList(eventIds));
 
-    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
-    if (!query.exec()) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
+        // Check if we are about to mark any MMS events as read
+        QSqlQuery query = d->prepare(QByteArray(baseEventQuery) +
+            "WHERE id IN (" + idList + ") AND type=:eventType AND isRead=0 AND reportRead=1");
+        query.bindValue(":eventType", Event::MMSEvent);
+        getEvents(query, mmsEvents);
+
+        if (CommHistoryDatabase::exec(d->prepare("UPDATE Events SET isRead=1 WHERE id IN (" + idList + ") AND isRead=0"))) {
+            if (!mmsEvents.isEmpty()) {
+                d->emitter()->mmsEventsMarkedAsRead(mmsEvents);
+            }
+            return true;
+        }
         return false;
     }
-
     return true;
 }
 
 bool DatabaseIO::markAsReadAll(Event::EventType eventType)
 {
-    static const char *q = "UPDATE Events SET isRead=1 WHERE type=:eventType AND isRead=0";
-    QSqlQuery query = CommHistoryDatabase::prepare(q, d->connection());
-    query.bindValue(":eventType", eventType);
-
-    if (!query.exec()) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
+    // Check if we are about to mark MMS events as read
+    QList<Event> mmsEvents;
+    if (eventType == Event::MMSEvent) {
+        QSqlQuery query = d->prepare(QByteArray(baseEventQuery) +
+            "WHERE type=:eventType AND isRead=0 AND reportRead=1");
+        query.bindValue(":eventType", eventType);
+        getEvents(query, mmsEvents);
     }
 
-    return true;
+    QSqlQuery query = d->prepare("UPDATE Events SET isRead=1 WHERE type=:eventType AND isRead=0");
+    query.bindValue(":eventType", eventType);
+    if (CommHistoryDatabase::exec(query)) {
+        if (!mmsEvents.isEmpty()) {
+            d->emitter()->mmsEventsMarkedAsRead(mmsEvents);
+        }
+        return true;
+    }
+    return false;
 }
 
 bool DatabaseIO::deleteAllEvents(Event::EventType eventType)
