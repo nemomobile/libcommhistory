@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -21,17 +22,15 @@
 ******************************************************************************/
 
 #include <QtDBus/QtDBus>
-#include <QDebug>
 #include <QSqlQuery>
-#include <QSqlError>
 
 #include "eventmodel_p.h"
 #include "conversationmodel.h"
 #include "conversationmodel_p.h"
 #include "constants.h"
+#include "mmsconstants.h"
 #include "commhistorydatabase.h"
 #include "databaseio_p.h"
-#include "contactlistener.h"
 #include "debug.h"
 
 namespace {
@@ -44,17 +43,118 @@ static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::Pr
 }
 namespace CommHistory {
 
-ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
-            : EventModelPrivate(model)
-            , filterType(Event::UnknownType)
-            , filterAccount(QString())
-            , filterDirection(Event::UnknownDirection)
+// Filters
+class ConversationModelPrivate::Filter {
+public:
+    virtual ~Filter() {}
+    virtual QString filterString() const = 0;
+    virtual void bindValues(QSqlQuery &query) const = 0;
+    virtual bool acceptsEvent(const Event &event) const = 0;
+};
+
+class ConversationModelPrivate::FilterDefault: public ConversationModelPrivate::Filter {
+public:
+    FilterDefault(Event::EventType type, const QString &account, Event::EventDirection direction) :
+        filterType(type), filterAccount(account), filterDirection(direction) {}
+    ~FilterDefault() {}
+
+    QString filterString() const;
+    void bindValues(QSqlQuery &query) const;
+    bool acceptsEvent(const Event &event) const;
+
+private:
+    Event::EventType filterType;
+    QString filterAccount;
+    Event::EventDirection filterDirection;
+};
+
+QString ConversationModelPrivate::FilterDefault::filterString() const
+{
+    QString filters;
+    if (!filterAccount.isEmpty())
+        filters += "AND Events.localUid = :filterAccount ";
+    if (filterType != Event::UnknownType)
+        filters += "AND Events.type = :filterType ";
+    if (filterDirection != Event::UnknownDirection)
+        filters += "AND Events.direction = :filterDirection ";
+    return filters;
+}
+
+void ConversationModelPrivate::FilterDefault::bindValues(QSqlQuery &query) const
+{
+    if (!filterAccount.isEmpty())
+        query.bindValue(":filterAccount", filterAccount);
+    if (filterType != Event::UnknownType)
+        query.bindValue(":filterType", filterType);
+    if (filterDirection != Event::UnknownDirection)
+        query.bindValue(":filterDirection", filterDirection);
+}
+
+bool ConversationModelPrivate::FilterDefault::acceptsEvent(const Event &event) const
+{
+    if (filterType != Event::UnknownType && event.type() != filterType)
+        return false;
+
+    if (!filterAccount.isEmpty() && event.localUid() != filterAccount)
+        return false;
+
+    if (filterDirection != Event::UnknownDirection && event.direction() != filterDirection)
+        return false;
+
+    return true;
+}
+
+class ConversationModelPrivate::FilterForMmsReadReport: public ConversationModelPrivate::Filter {
+public:
+    QString filterString() const;
+    void bindValues(QSqlQuery &query) const;
+    bool acceptsEvent(const Event &event) const;
+};
+
+QString ConversationModelPrivate::FilterForMmsReadReport::filterString() const
+{
+    return QString("AND Events.type = :filterType "
+                   "AND Events.direction = :filterDirection "
+                   "AND Events.isRead = :isRead "
+                   "AND Events.reportRead = :reportRead "
+                   "AND Events.mmsId != '' "
+                   "AND Events.id IN ( "
+                   "SELECT DISTINCT eventId from EventProperties WHERE EventProperties.key = :propertyKey ) ");
+}
+
+void ConversationModelPrivate::FilterForMmsReadReport::bindValues(QSqlQuery &query) const
+{
+    query.bindValue(":filterType", Event::MMSEvent);
+    query.bindValue(":filterDirection", Event::Inbound);
+    query.bindValue(":isRead", true);
+    query.bindValue(":reportRead", true);
+    query.bindValue(":propertyKey", QString(MMS_PROPERTY_IMSI));
+}
+
+bool ConversationModelPrivate::FilterForMmsReadReport::acceptsEvent(const Event &event) const
+{
+    return (event.type() == Event::MMSEvent &&
+            event.direction() == Event::Inbound &&
+            event.isRead() &&
+            event.reportRead() &&
+            !event.mmsId().isEmpty() &&
+            !event.extraProperty(MMS_PROPERTY_IMSI).toString().isEmpty());
+}
+
+ConversationModelPrivate::ConversationModelPrivate(EventModel *model):
+    EventModelPrivate(model),
+    filter(NULL)
 {
     QDBusConnection::sessionBus().connect(
         QString(), QString(), COMM_HISTORY_INTERFACE, GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;
+}
+
+ConversationModelPrivate::~ConversationModelPrivate()
+{
+    delete filter;
 }
 
 void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
@@ -85,14 +185,8 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     if (event.isDraft())
         return false;
 
-    if (filterType != Event::UnknownType &&
-        event.type() != filterType) return false;
-
-    if (!filterAccount.isEmpty() &&
-        event.localUid() != filterAccount) return false;
-
-    if (filterDirection != Event::UnknownDirection &&
-        event.direction() != filterDirection) return false;
+    if (filter && !filter->acceptsEvent(event))
+        return false;
 
     if (!filterGroupIds.contains(event.groupId())) return false;
 
@@ -115,12 +209,8 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     }
 
     QString filters;
-    if (!filterAccount.isEmpty())
-        filters += "AND Events.localUid = :filterAccount ";
-    if (filterType != Event::UnknownType)
-        filters += "AND Events.type = :filterType ";
-    if (filterDirection != Event::UnknownDirection)
-        filters += "AND Events.direction = :filterDirection ";
+    if (filter)
+        filters += filter->filterString();
     if (firstId >= 0) {
         filters += "AND (Events.endTime < :firstTimestamp OR (Events.endTime = :firstTimestamp "
                     "AND Events.id < :firstId)) ";
@@ -159,12 +249,8 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
         q += "LIMIT " + QString::number((firstId < 0 && firstChunkSize > 0) ? firstChunkSize : chunkSize);
 
     QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
-    if (!filterAccount.isEmpty())
-        query.bindValue(":filterAccount", filterAccount);
-    if (filterType != Event::UnknownType)
-        query.bindValue(":filterType", filterType);
-    if (filterDirection != Event::UnknownDirection)
-        query.bindValue(":filterDirection", filterDirection);
+    if (filter)
+        filter->bindValues(query);
     if (firstId >= 0) {
         query.bindValue(":firstTimestamp", firstTimestamp);
         query.bindValue(":firstId", firstId);
@@ -213,12 +299,25 @@ bool ConversationModel::setFilter(Event::EventType type,
 {
     Q_D(ConversationModel);
 
-    d->filterType = type;
-    d->filterAccount = account;
-    d->filterDirection = direction;
+    delete d->filter;
+    d->filter = new ConversationModelPrivate::FilterDefault(type, account, direction);
 
     if (!d->filterGroupIds.isEmpty()) {
-        return getEvents(d->filterGroupIds.toList());
+        return fetchEvents();
+    }
+
+    return true;
+}
+
+bool ConversationModel::setFilterForMmsReadReport()
+{
+    Q_D(ConversationModel);
+
+    delete d->filter;
+    d->filter = new ConversationModelPrivate::FilterForMmsReadReport();
+
+    if (!d->filterGroupIds.isEmpty()) {
+        return fetchEvents();
     }
 
     return true;
@@ -233,13 +332,24 @@ bool ConversationModel::getEvents(QList<int> groupIds)
 {
     Q_D(ConversationModel);
 
-    d->filterGroupIds = QSet<int>::fromList(groupIds);
+    QSet<int> ids = QSet<int>::fromList(groupIds);
+    if (d->filterGroupIds != ids) {
+        d->filterGroupIds = ids;
+        return fetchEvents();
+    }
+
+    return true;
+}
+
+bool ConversationModel::fetchEvents()
+{
+    Q_D(ConversationModel);
 
     beginResetModel();
     d->clearEvents();
     endResetModel();
 
-    if (groupIds.isEmpty())
+    if (d->filterGroupIds.isEmpty())
         return true;
 
     QSqlQuery query = d->buildQuery();

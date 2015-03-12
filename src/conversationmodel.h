@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -76,6 +77,12 @@ public:
                    const QString &account = QString(),
                    Event::EventDirection direction = Event::UnknownDirection);
 
+    /**
+     * Set filter that matches read MMS messages for which read report
+     * has been requested. That overrides any other previously set filter.
+     */
+    bool setFilterForMmsReadReport();
+
     /*!
      * Reset model to events from the specified group.
      *
@@ -84,6 +91,7 @@ public:
      * \return true if successful, otherwise false
      */
     bool getEvents(int groupId);
+
     /*!
      * Reset model to events from the specified groups.
      *
@@ -96,7 +104,10 @@ public:
     virtual void fetchMore(const QModelIndex &parent);
 
 private:
-    Q_DECLARE_PRIVATE(ConversationModel);
+    bool fetchEvents();
+
+private:
+    Q_DECLARE_PRIVATE(ConversationModel)
 
 };
 
