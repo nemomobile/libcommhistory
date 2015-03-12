@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -1415,7 +1416,7 @@ void EventModelTest::testExtraProperties()
     // Read property
     SingleEventModel model2;
     QVERIFY(model2.getEventById(newEvent.id()));
-    Event returnedEvent = model2.event(model2.index(0, 0));
+    Event returnedEvent = model2.event();
     QVERIFY(returnedEvent.isValid());
     QCOMPARE(returnedEvent.extraProperties().size(), 1);
     QCOMPARE(returnedEvent.extraProperty("testing").toInt(), 42);
@@ -1429,7 +1430,7 @@ void EventModelTest::testExtraProperties()
 
     // Re-read property
     QVERIFY(model2.getEventById(newEvent.id()));
-    returnedEvent = model2.event(model2.index(0, 0));
+    returnedEvent = model2.event();
     QVERIFY(returnedEvent.isValid());
     QVERIFY(returnedEvent.extraProperties().isEmpty());
 }

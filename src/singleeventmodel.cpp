@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -37,7 +38,7 @@ using namespace CommHistory;
 
 class SingleEventModelPrivate : public EventModelPrivate {
 public:
-    Q_DECLARE_PUBLIC(SingleEventModel);
+    Q_DECLARE_PUBLIC(SingleEventModel)
 
     SingleEventModelPrivate(EventModel *model)
         : EventModelPrivate(model) {
@@ -161,5 +162,11 @@ bool SingleEventModel::getEventByTokens(const QString &token,
 
     return d->executeQuery(query);
 }
+
+Event SingleEventModel::event() const
+{
+    return EventModel::event(index(0, 0));
+}
+
 
 } // namespace CommHistory

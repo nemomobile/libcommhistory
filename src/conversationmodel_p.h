@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014-2015 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: Reto Zingg <reto.zingg@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -32,13 +33,17 @@ class QSqlQuery;
 
 namespace CommHistory
 {
-
 class ConversationModelPrivate : public EventModelPrivate {
 public:
+    class Filter;
+    class FilterDefault;
+    class FilterForMmsReadReport;
+
     Q_OBJECT
-    Q_DECLARE_PUBLIC(ConversationModel);
+    Q_DECLARE_PUBLIC(ConversationModel)
 
     ConversationModelPrivate(EventModel *model);
+    ~ConversationModelPrivate();
 
     bool acceptsEvent(const Event &event) const;
     QSqlQuery buildQuery() const;
@@ -51,9 +56,7 @@ public Q_SLOTS:
 
 public:
     QSet<int> filterGroupIds;
-    Event::EventType filterType;
-    QString filterAccount;
-    Event::EventDirection filterDirection;
+    Filter* filter;
 };
 
 }
