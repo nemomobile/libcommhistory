@@ -22,6 +22,7 @@ HEADERS += commonutils.h \
            updatesemitter.h \
            constants.h \
            mmsconstants.h \
+           mmsreadreportmodel.h \
            groupobject.h \
            groupmanager.h \
            groupmanager_p.h \
@@ -48,6 +49,7 @@ SOURCES += commonutils.cpp \
            adaptor.cpp \
            event.cpp \
            messagepart.cpp \
+           mmsreadreportmodel.cpp \
            classzerosmsmodel.cpp \
            contactlistener.cpp \
            singleeventmodel.cpp \
