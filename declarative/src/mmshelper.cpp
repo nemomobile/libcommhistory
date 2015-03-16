@@ -98,7 +98,7 @@ bool MmsHelper::receiveMessage(int id)
     Event event;
     SingleEventModel model;
     if (model.getEventById(id))
-        event = model.event(model.index(0, 0));
+        event = model.event();
 
     if (!event.isValid()) {
         qWarning() << "MmsHelper::receiveMessage called for unknown event id" << id;
@@ -127,7 +127,7 @@ bool MmsHelper::cancel(int id)
     Event event;
     SingleEventModel model;
     if (model.getEventById(id))
-        event = model.event(model.index(0, 0));
+        event = model.event();
 
     if (!event.isValid()) {
         qWarning() << "MmsHelper::cancel called for unknown event id" << id;
