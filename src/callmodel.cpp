@@ -37,7 +37,7 @@
 #include "debug.h"
 
 namespace {
-    static CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
+CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertySet()
         << CommHistory::Event::IsDraft
         << CommHistory::Event::FreeText
         << CommHistory::Event::MessageToken

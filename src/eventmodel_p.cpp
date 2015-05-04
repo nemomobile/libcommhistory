@@ -39,7 +39,7 @@
 using namespace CommHistory;
 
 namespace {
-    static const int defaultChunkSize = 50;
+const int defaultChunkSize = 50;
 }
 
 EventModelPrivate::EventModelPrivate(EventModel *model)

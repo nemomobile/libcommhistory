@@ -47,7 +47,7 @@ class GroupPrivate;
  */
 class LIBCOMMHISTORY_EXPORT Group
 {
-    Q_ENUMS(CommHistory::Group::ChatType);
+    Q_ENUMS(CommHistory::Group::ChatType)
 
 public:
     enum ChatType {
@@ -285,8 +285,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, CommHistory::Grou
 LIBCOMMHISTORY_EXPORT QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group);
 LIBCOMMHISTORY_EXPORT QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group);
 
-Q_DECLARE_METATYPE(CommHistory::Group);
-Q_DECLARE_METATYPE(QList<CommHistory::Group>);
+Q_DECLARE_METATYPE(CommHistory::Group)
+Q_DECLARE_METATYPE(QList<CommHistory::Group>)
 Q_DECLARE_METATYPE(QList<int>)
 
 #endif

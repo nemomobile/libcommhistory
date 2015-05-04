@@ -67,8 +67,8 @@ inline const QDBusArgument& operator>>(const QDBusArgument &arg, MmsPart &part)
 
 typedef QList<MmsPart> MmsPartList;
 
-Q_DECLARE_METATYPE(MmsPart);
-Q_DECLARE_METATYPE(MmsPartList);
+Q_DECLARE_METATYPE(MmsPart)
+Q_DECLARE_METATYPE(MmsPartList)
 
 using namespace CommHistory;
 

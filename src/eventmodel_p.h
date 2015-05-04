@@ -51,7 +51,7 @@ class LIBCOMMHISTORY_EXPORT EventModelPrivate : public QObject
 {
     Q_OBJECT
 
-    Q_DECLARE_PUBLIC(EventModel);
+    Q_DECLARE_PUBLIC(EventModel)
 
     typedef enum {
         ContactUpdated, ContactRemoved

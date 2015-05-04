@@ -41,7 +41,6 @@
 #include "recentcontactsmodel.h"
 #include "declarativegroupmanager.h"
 #include "contactaddresslookup.h"
-#include "classzerosmsmodel.h"
 #include "draftsmodel.h"
 #include "draftevent.h"
 #include "mmshelper.h"
@@ -70,7 +69,6 @@ void CommHistoryPlugin::registerTypes(const char *uri)
     qmlRegisterType<CommHistory::RecentContactsModel>(uri, 1, 0, "CommRecentContactsModel");
     qmlRegisterType<DeclarativeGroupManager>(uri, 1, 0, "CommGroupManager");
     qmlRegisterType<ContactAddressLookup>(uri, 1, 0, "ContactAddressLookup");
-    qmlRegisterType<CommHistory::ClassZeroSMSModel>(uri, 1, 0, "ClassZeroSMSModel");
     qmlRegisterType<CommHistory::DraftsModel>(uri, 1, 0, "DraftsModel");
     qmlRegisterType<DraftEvent>(uri, 1, 0, "DraftEvent");
     qmlRegisterType<MmsHelper>(uri, 1, 0, "MmsHelper");

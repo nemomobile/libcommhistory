@@ -38,7 +38,7 @@
 #include "debug.h"
 
 namespace {
-static const int defaultChunkSize = 50;
+const int defaultChunkSize = 50;
 }
 
 using namespace CommHistory;

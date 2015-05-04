@@ -100,7 +100,7 @@ Q_SIGNALS:
     void resolvingChanged();
 
 private:
-    Q_DECLARE_PRIVATE(RecentContactsModel);
+    Q_DECLARE_PRIVATE(RecentContactsModel)
 };
 
 } // namespace CommHistory

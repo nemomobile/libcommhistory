@@ -29,7 +29,7 @@
 namespace CommHistory {
 
 class ContactGroupPrivate {
-    Q_DECLARE_PUBLIC(ContactGroup);
+    Q_DECLARE_PUBLIC(ContactGroup)
 
 public:
     ContactGroupPrivate(ContactGroup *parent);

@@ -37,7 +37,7 @@ using namespace CommHistory;
 class CallModelPrivate : public EventModelPrivate
 {
     Q_OBJECT
-    Q_DECLARE_PUBLIC( CallModel );
+    Q_DECLARE_PUBLIC( CallModel )
 
 public:
     CallModelPrivate( EventModel *model );
