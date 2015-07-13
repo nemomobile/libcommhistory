@@ -1511,7 +1511,7 @@ void EventModelTest::testAddNonDigitRemoteId()
     QVERIFY(model.databaseIO().getGroup(g.id(), tg));
     QCOMPARE(tg.id(), g.id());
     QCOMPARE(tg.localUid(), tg.localUid());
-    QCOMPARE(tg.remoteUids(), tg.remoteUids());
+    QCOMPARE(tg.recipients(), tg.recipients());
 
     watcher.setModel(&model);
     Event event;

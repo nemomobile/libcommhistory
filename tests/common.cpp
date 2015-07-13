@@ -50,6 +50,7 @@
 #include "groupmodel.h"
 #include "singleeventmodel.h"
 #include "event.h"
+#include "recipient.h"
 #include "common.h"
 #include "commonutils.h"
 #include "contactlistener.h"
@@ -208,9 +209,7 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid)
     GroupModel groupModel;
     groupModel.enableContactChanges(false);
     grp.setLocalUid(localUid);
-    QStringList uids;
-    uids << remoteUid;
-    grp.setRemoteUids(uids);
+    grp.setRecipients(RecipientList::fromUids(localUid, QStringList() << remoteUid));
     QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QVERIFY(groupModel.addGroup(grp));
 

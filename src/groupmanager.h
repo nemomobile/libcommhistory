@@ -213,15 +213,20 @@ public:
     DatabaseIO& databaseIO();
 
     /*!
-     * If enabled (default), Group::contactId and Group::contactName in model
-     * contents will be updated live (emitting dataChanged()) when
-     * contacts are added, changed or deleted.
-     * NOTE: This method must be called before getGroups() or it will
-     * not have any effect.
+     * If enabled, contacts will be resolved for all groups, and changes
+     * to contacts will be updated live (emitting dataChanged()). Contacts
+     * will be resolved before groups are inserted into the model, and the
+     * modelReady() signal indicates that all events are inserted and all
+     * contacts are resolved.
      *
-     * \param enabled If true, track contact changes.
+     * \param enabled If true, resolve and update contacts for events
      */
-    void enableContactChanges(bool enabled);
+    Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
+    void setResolveContacts(bool enabled);
+    bool resolveContacts() const;
+
+    // Deprecated name for setResolveContacts
+    void enableContactChanges(bool enabled) { setResolveContacts(enabled); }
 
     bool canFetchMore() const;
     void fetchMore();
@@ -264,6 +269,10 @@ Q_SIGNALS:
      * \param group Group
      */
     void groupDeleted(GroupObject *group);
+    /*!
+     * Emitted when contact resolution policy is changed.
+     */
+    void resolveContactsChanged();
 
 private:
     friend class GroupManagerPrivate;

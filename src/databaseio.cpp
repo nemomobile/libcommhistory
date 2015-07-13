@@ -206,8 +206,8 @@ public:
                 case Group::LocalUid:
                     fields.append(QueryHelper::Field("localUid", group.localUid()));
                     break;
-                case Group::RemoteUids:
-                    fields.append(QueryHelper::Field("remoteUids", group.remoteUids().join(QString(QChar('\n')))));
+                case Group::Recipients:
+                    fields.append(QueryHelper::Field("remoteUids", group.recipients().remoteUids().join(QString(QChar('\n')))));
                     break;
                 case Group::Type:
                     fields.append(QueryHelper::Field("type", group.chatType()));
@@ -855,7 +855,7 @@ bool DatabaseIO::deleteEvent(Event &event, QThread *)
 
 bool DatabaseIO::addGroup(Group &group)
 {
-    if (group.localUid().isEmpty() || group.remoteUids().isEmpty()) {
+    if (group.localUid().isEmpty() || group.recipients().isEmpty()) {
         qWarning() << Q_FUNC_INFO << "No local/remote UIDs for new group";
         return false;
     }
@@ -881,7 +881,8 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
 {
     group.setId(query.value(0).toInt());
     group.setLocalUid(query.value(1).toString());
-    group.setRemoteUids(query.value(2).toString().split('\n'));
+    group.setRecipients(RecipientList::fromUids(group.localUid(), query.value(2).toString().split('\n')));
+
     group.setChatType(static_cast<Group::ChatType>(query.value(3).toInt()));
     group.setChatName(query.value(4).toString());
     group.setLastModified(QDateTime::fromTime_t(query.value(5).toUInt()));
@@ -909,10 +910,6 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setLastEventType(static_cast<Event::EventType>(query.value(13).toInt()));
     group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(14).toInt()));
     group.setLastEventIsDraft(query.value(15).toBool());
-    
-    // contacts
-    foreach (const QString &remoteUid, group.remoteUids())
-        ContactListener::instance()->resolveContact(group.localUid(), remoteUid);
 }
 
 static const char *baseGroupQuery =

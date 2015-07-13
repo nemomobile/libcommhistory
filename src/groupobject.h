@@ -56,18 +56,14 @@ class LIBCOMMHISTORY_EXPORT GroupObject : public QObject
     Q_PROPERTY(bool isValid READ isValid CONSTANT)
     Q_PROPERTY(int id READ id CONSTANT)
     Q_PROPERTY(QString localUid READ localUid NOTIFY localUidChanged)
-    Q_PROPERTY(QStringList remoteUids READ remoteUids NOTIFY remoteUidsChanged)
+    Q_PROPERTY(RecipientList recipients READ recipients NOTIFY recipientsChanged);
+    Q_PROPERTY(QStringList remoteUids READ remoteUids NOTIFY recipientsChanged);
     Q_PROPERTY(int chatType READ chatType NOTIFY chatTypeChanged)
     Q_PROPERTY(QString chatName READ chatName NOTIFY chatNameChanged)
 
     Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged)
     Q_PROPERTY(QDateTime endTime READ endTime NOTIFY endTimeChanged)
     Q_PROPERTY(int unreadMessages READ unreadMessages NOTIFY unreadMessagesChanged)
-
-    Q_PROPERTY(int contactId READ contactId NOTIFY contactsChanged)
-    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged)
-    Q_PROPERTY(QString contactName READ contactName NOTIFY contactsChanged)
-    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged)
 
     Q_PROPERTY(int lastEventId READ lastEventId NOTIFY lastEventIdChanged)
     Q_PROPERTY(QString lastMessageText READ lastMessageText NOTIFY lastMessageTextChanged)
@@ -116,11 +112,12 @@ public:
     void setLocalUid(const QString &uid);
 
     /*!
-     * Remote contacts participating in this conversation.
-     * NOTE: "<hidden>" is used for a hidden/private phone number.
+     * Remote recipients participating in this conversation.
      */
-    QStringList remoteUids() const;
-    void setRemoteUids(const QStringList &uids);
+    RecipientList recipients() const;
+    void setRecipients(const RecipientList &recipients);
+
+    QStringList remoteUids() const { return recipients().remoteUids(); }
 
     /*!
      * Chat type (roughly corresponds to Telepathy handle type).
@@ -163,45 +160,6 @@ public:
      */
     int lastEventId() const;
     void setLastEventId(int id);
-
-    /*!
-     * Returns the id of the first contact.
-     * Id of the remote contact in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    int contactId() const;
-    void setContactId(int id);
-    /*!
-     * Returns a list of ids for all contacts in the group.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QList<int> contactIds() const;
-
-    /*!
-     * Returns the name of the first contact.
-     * Name of the remote contact in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QString contactName() const;
-    void setContactName(const QString &name);
-    /*!
-     * Returns a list of names for all contacts in the group.
-     * The list of names is in the same order as contactIds().
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QList<QString> contactNames() const;
-
-    /*!
-     * Ids and names for the contacts in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QList<Event::Contact> contacts() const;
-    void setContacts(const QList<Event::Contact> &contacts);
 
     /*!
      * Text of the last message.
@@ -292,14 +250,13 @@ public:
 
 signals:
     void localUidChanged();
-    void remoteUidsChanged();
+    void recipientsChanged();
     void chatTypeChanged();
     void chatNameChanged();
     void startTimeChanged();
     void endTimeChanged();
     void unreadMessagesChanged();
     void lastEventIdChanged();
-    void contactsChanged();
     void lastMessageTextChanged();
     void lastVCardFileNameChanged();
     void lastVCardLabelChanged();

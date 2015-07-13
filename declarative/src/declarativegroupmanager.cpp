@@ -134,7 +134,7 @@ int DeclarativeGroupManager::ensureGroupExists(const QString &localUid, const QS
     } else {
         Group g;
         g.setLocalUid(localUid);
-        g.setRemoteUids(remoteUids);
+        g.setRecipients(RecipientList::fromUids(localUid, remoteUids));
         g.setChatType(Group::ChatTypeP2P);
         DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUids;
         if (!addGroup(g)) {

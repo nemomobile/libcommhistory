@@ -33,18 +33,29 @@
 
 using namespace CommHistory;
 
-inline static bool groupObjectSort(GroupObject *a, GroupObject *b)
+namespace {
+
+bool initializeTypes()
+{
+    qRegisterMetaType<QList<CommHistory::Event> >();
+    qRegisterMetaType<QList<CommHistory::Group> >();
+    qRegisterMetaType<QList<int> >();
+    return true;
+}
+
+inline bool groupObjectSort(GroupObject *a, GroupObject *b)
 {
     return a->endTime() > b->endTime(); // descending order
 }
+
+}
+
+bool groupmodel_initialized = initializeTypes();
 
 GroupModelPrivate::GroupModelPrivate(GroupModel *model)
         : q_ptr(model)
         , manager(0)
 {
-    qRegisterMetaType<QList<CommHistory::Event> >();
-    qRegisterMetaType<QList<CommHistory::Group> >();
-    qRegisterMetaType<QList<int> >();
 }
 
 GroupModelPrivate::~GroupModelPrivate()
@@ -264,7 +275,7 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
     } else if (role == GroupObjectRole) {
         return QVariant::fromValue<QObject*>(group);
     } else if (role == ContactIdsRole) {
-        return QVariant::fromValue(group->contactIds());
+        return QVariant::fromValue<QList<int> >(group->recipients().contactIds());
     } else if (role == WeekdaySectionRole) {
         QDateTime dateTime = group->endTime().toLocalTime();
 
@@ -297,7 +308,7 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(group->localUid());
             break;
         case RemoteUids:
-            var = QVariant::fromValue(group->remoteUids());
+            var = QVariant::fromValue(group->recipients().remoteUids());
             break;
         case ChatName:
             var = QVariant::fromValue(group->chatName());
@@ -312,7 +323,7 @@ QVariant GroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(group->lastEventId());
             break;
         case Contacts:
-            var = QVariant::fromValue(group->contacts());
+            var = QVariant::fromValue(group->recipients().contactIds());
             break;
         case LastMessageText:
             var = QVariant::fromValue(group->lastMessageText());

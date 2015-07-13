@@ -62,7 +62,7 @@ public:
         EndTime,
         UnreadMessages,
         LastEventId,
-        Contacts,
+        Contacts,       // TODO: deprecated
         LastMessageText,
         LastVCardFileName,
         LastVCardLabel,

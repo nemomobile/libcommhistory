@@ -205,9 +205,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
     if (options.contains("-newgroup")) {
         Group group;
         group.setLocalUid(localUid);
-        QStringList remoteUids;
-        remoteUids << remoteUid;
-        group.setRemoteUids(remoteUids);
+        group.setRecipients(RecipientList::fromUids(localUid, QStringList() << remoteUid));
         if (!groupModel.addGroup(group)) {
             qCritical() << "Error adding group";
             return -1;
@@ -1036,7 +1034,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
                 qWarning() << "Error adding group ( local"
-                           << group.localUid() << ", remote" << group.remoteUids() << ")";
+                           << group.localUid() << ", remote" << group.recipients().debugString() << ")";
                 ok = false;
             }
             groupCatcher.waitCommit(0);
@@ -1165,14 +1163,14 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             continue;
         }
 
-        group.setRemoteUids(QStringList() << to);
+        group.setRecipients(RecipientList::fromUids(group.localUid(), QStringList() << to));
         group.setChatType(Group::ChatTypeP2P);
 
         // Calls don't actually belong to groups
         if (type != Event::CallEvent) {
             groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
-                qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
+                qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.recipients().debugString() << ")";
                 ok = false;
                 continue;
             }
@@ -1193,7 +1191,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             if (group.id() >= 0)
                 event.setGroupId(group.id());
             event.setLocalUid(group.localUid());
-            event.setRemoteUid(group.remoteUids().first());
+            event.setRemoteUid(group.recipients().remoteUids().first());
 
             eventCount++;
 
@@ -1245,7 +1243,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         }
         eventCatcher.waitCommit(events.size());
 
-        qDebug() << "CONVERSATION " << group.id() << ":" << group.localUid() << group.remoteUids() << "-"
+        qDebug() << "CONVERSATION " << group.id() << ":" << group.localUid() << group.recipients().debugString() << "-"
                  << events.size() << "messages";
     }
 

@@ -40,7 +40,7 @@ public:
     QList<GroupObject*> groups;
  
     QList<int> contactIds;
-    QList<QString> contactNames;
+    QStringList displayNames;
     QDateTime startTime, endTime, lastModified;
     int unreadMessages;
     int lastEventId;
@@ -107,16 +107,20 @@ void ContactGroupPrivate::update()
        the changes to one group and have reliable data.
      */
 
-    QMap<int,QString> contacts;
- 
+    QList<int> uContactIds;
+    QStringList uDisplayNames;
     QDateTime uStartTime, uEndTime, uLastModified;
     int uUnreadMessages = 0;
     GroupObject *uLastEventGroup = 0;
 
-    foreach (GroupObject *group, groups) {
-        foreach (const Event::Contact &contact, group->contacts())
-            contacts[contact.first] = contact.second;
+    if (!groups.isEmpty()) {
+        /* Because of the mechanics of hasSameContacts, these values must be the
+         * same for all groups, so we can just use the first. */
+        uContactIds = groups[0]->recipients().contactIds();
+        uDisplayNames = groups[0]->recipients().displayNames();
+    }
 
+    foreach (GroupObject *group, groups) {
         if (!uStartTime.isValid() || group->startTime() > uStartTime)
             uStartTime = group->startTime();
 
@@ -132,13 +136,14 @@ void ContactGroupPrivate::update()
         uUnreadMessages += group->unreadMessages();
     }
 
-    QList<int> uContactIds = contacts.keys();
-    QList<QString> uContactNames = contacts.values();
-
-    if (uContactIds != contactIds || uContactNames != contactNames) {
+    if (uContactIds != contactIds) {
         contactIds = uContactIds;
-        contactNames = uContactNames;
-        emit q->contactsChanged();
+        emit q->contactIdsChanged();
+    }
+
+    if (uDisplayNames != displayNames) {
+        displayNames = uDisplayNames;
+        emit q->displayNamesChanged();
     }
 
     if (uStartTime != startTime) {
@@ -202,13 +207,17 @@ void ContactGroupPrivate::update()
 QList<int> ContactGroup::contactIds() const
 {
     Q_D(const ContactGroup);
-    return d->contactIds;
+    if (d->groups.isEmpty())
+        return QList<int>();
+    return d->groups[0]->recipients().contactIds();
 }
 
-QStringList ContactGroup::contactNames() const
+QStringList ContactGroup::displayNames() const
 {
     Q_D(const ContactGroup);
-    return d->contactNames;
+    if (d->groups.isEmpty())
+        return QStringList();
+    return d->groups[0]->recipients().displayNames();
 }
 
 QDateTime ContactGroup::startTime() const
@@ -370,9 +379,9 @@ GroupObject *ContactGroup::findGroup(const QString &localUid, const QStringList 
 {
     Q_D(ContactGroup);
 
+    RecipientList match = RecipientList::fromUids(localUid, remoteUids);
     foreach (GroupObject *g, d->groups) {
-        if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
-                && CommHistory::remoteAddressMatch(localUid, g->remoteUids(), remoteUids))
+        if (g->localUid() == localUid && g->recipients() == match)
             return g;
     }
 

@@ -143,7 +143,7 @@ void ConversationModelPerfTest::getEvents()
     while(gi < contacts) {
         Group grp;
         grp.setLocalUid(RING_ACCOUNT);
-        grp.setRemoteUids(QStringList() << remoteUids.at(contactIndices.at(gi)));
+        grp.setRecipients(RecipientList::fromUids(RING_ACCOUNT, QStringList() << remoteUids.at(contactIndices.at(gi))));
 
         QVERIFY(groupModel.addGroup(grp));
         groupList << grp;

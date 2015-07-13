@@ -31,7 +31,9 @@
 #include <QDateTime>
 #include <QDebug>
 
+#include "recipient.h"
 #include "event.h"
+#include "recipient.h"
 #include "libcommhistoryexport.h"
 
 class QDBusArgument;
@@ -59,7 +61,7 @@ public:
     enum Property {
         Id = 0,        // always valid
         LocalUid,
-        RemoteUids,
+        Recipients,
         Type,
         ChatName,
         EndTime,
@@ -74,7 +76,7 @@ public:
         LastEventStatus,
         LastModified,
         StartTime,
-        Contacts,
+        Contacts, // TODO: remove
         LastEventIsDraft,
         NumProperties
     };
@@ -144,10 +146,9 @@ public:
     QString localUid() const;
 
     /*!
-     * Remote contacts participating in this conversation.
-     * NOTE: "<hidden>" is used for a hidden/private phone number.
+     * Remote recipients participating in this conversation.
      */
-    QStringList remoteUids() const;
+    RecipientList recipients() const;
 
     /*!
      * Chat type (roughly corresponds to Telepathy handle type).
@@ -184,22 +185,6 @@ public:
      * Database id of the last message. -1 if the group has no messages.
      */
     int lastEventId() const;
-
-    /*!
-     * DEPRECATED - use contacts(). Returns the id of the first contact.
-     * Id of the remote contact in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    int contactId() const;
-
-    /*!
-     * DEPRECATED - use contacts(). Returns the name of the first contact.
-     * Name of the remote contact in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QString contactName() const;
 
     /*!
      * Ids and names for the contacts in this conversation.
@@ -249,18 +234,13 @@ public:
 
     void setId(int id);
     void setLocalUid(const QString &uid);
-    void setRemoteUids(const QStringList &uids);
+    void setRecipients(const RecipientList &recipients);
     void setChatType(Group::ChatType chatType);
     void setChatName(const QString &name);
     void setStartTime(const QDateTime &startTime);
     void setEndTime(const QDateTime &endTime);
     void setUnreadMessages(int unread);
     void setLastEventId(int id);
-    /* DEPRECATED - use setContacts() */
-    void setContactId(int id);
-    /* DEPRECATED - use setContacts() */
-    void setContactName(const QString &name);
-    void setContacts(const QList<Event::Contact> &contacts);
     void setLastMessageText(const QString &text);
     void setLastVCardFileName(const QString &filename);
     void setLastVCardLabel(const QString &label);
