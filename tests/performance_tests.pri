@@ -32,7 +32,7 @@ PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
 SOURCES += ../common.cpp
 HEADERS += ../common.h
 
-DEFINES += PERF_ITERATIONS=10
+DEFINES += PERF_ITERATIONS=5
 DEFINES += PERF_BATCH_SIZE=25
 
 !include( ../common-installs-config.pri ) : \

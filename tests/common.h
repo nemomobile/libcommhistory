@@ -36,10 +36,10 @@ const QString ACCOUNT2 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut2_
 const QString RING_ACCOUNT = "/org/freedesktop/Telepathy/Account/ring/";
 
 /* The default load polling interval when waiting system to become idle */
-const int IDLE_POLL_INTERVAL = 2000;
+const int IDLE_POLL_INTERVAL = 500;
 
 /* System is considered idle when system load drops below this value */
-const double IDLE_TRESHOLD = 0.05; // 5%
+const double IDLE_TRESHOLD = 0.07; // 7% (system often sits at 5-6%)
 
 const int WAIT_SIGNAL_TIMEOUT = 5000;
 
