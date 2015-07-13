@@ -42,6 +42,7 @@
 #include <QContactPhoneNumber>
 #include <QContactSyncTarget>
 
+#include <QEventLoop>
 #include <QFile>
 #include <QTextStream>
 
@@ -58,6 +59,7 @@ QTCONTACTS_USE_NAMESPACE
 using namespace QtContactsSqliteExtensions;
 
 namespace {
+
 static int contactNumber = 0;
 
 QContactManager *createManager()
@@ -78,7 +80,67 @@ QContactManager *manager()
     static QContactManager *manager = createManager();
     return manager;
 }
-};
+
+QContact createTestContact(const QString &name, const QString &remoteUid, const QString &localUid, const QString &contactUri)
+{
+    QContact contact;
+
+    QContactSyncTarget syncTarget;
+    syncTarget.setSyncTarget(QLatin1String("commhistory-tests"));
+    if (!contact.saveDetail(&syncTarget)) {
+        qWarning() << "Unable to add sync target to contact:" << contactUri;
+        return QContact();
+    }
+
+    if (!localUid.isEmpty() && !localUidComparesPhoneNumbers(localUid)) {
+        // Create a metadata detail to link the contact with the account
+        QContactOriginMetadata metadata;
+        metadata.setGroupId(localUid);
+        metadata.setId(remoteUid);
+        metadata.setEnabled(true);
+        if (!contact.saveDetail(&metadata)) {
+            qWarning() << "Unable to add metadata to contact:" << contactUri;
+            return QContact();
+        }
+
+        QContactOnlineAccount qcoa;
+        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
+        qcoa.setAccountUri(remoteUid);
+        if (!contact.saveDetail(&qcoa)) {
+            qWarning() << "Unable to add online account to contact:" << contactUri;
+            return QContact();
+        }
+    } else {
+        QContactPhoneNumber phoneNumberDetail;
+        phoneNumberDetail.setNumber(remoteUid);
+        if (!contact.saveDetail(&phoneNumberDetail)) {
+            qWarning() << "Unable to add phone number to contact:" << contactUri;
+            return QContact();
+        }
+    }
+
+    QContactName nameDetail;
+    nameDetail.setLastName(name);
+    if (!contact.saveDetail(&nameDetail)) {
+        qWarning() << "Unable to add name to contact:" << contactUri;
+        return QContact();
+    }
+
+    return contact;
+}
+
+}
+
+namespace CommHistory {
+
+void waitForSignal(QObject *object, const char *signal)
+{
+    QEventLoop loop;
+    QObject::connect(object, signal, &loop, SLOT(quit()));
+    loop.exec();
+}
+
+}
 
 using namespace CommHistory;
 
@@ -160,69 +222,59 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
 
-    QContact contact;
-
-    QContactSyncTarget syncTarget;
-    syncTarget.setSyncTarget(QLatin1String("commhistory-tests"));
-    if (!contact.saveDetail(&syncTarget)) {
-        qWarning() << "Unable to add sync target to contact:" << contactUri;
+    QContact contact(createTestContact(name, remoteUid, localUid, contactUri));
+    if (contact.isEmpty())
         return -1;
-    }
-
-    if (!localUidComparesPhoneNumbers(localUid)) {
-        // Create a metadata detail to link the contact with the account
-        QContactOriginMetadata metadata;
-        metadata.setGroupId(localUid);
-        metadata.setId(remoteUid);
-        metadata.setEnabled(true);
-        if (!contact.saveDetail(&metadata)) {
-            qWarning() << "Unable to add metadata to contact:" << contactUri;
-            return false;
-        }
-
-        QContactOnlineAccount qcoa;
-        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
-        qcoa.setAccountUri(remoteUid);
-        if (!contact.saveDetail(&qcoa)) {
-            qWarning() << "Unable to add online account to contact:" << contactUri;
-            return -1;
-        }
-    } else {
-        QContactPhoneNumber phoneNumberDetail;
-        phoneNumberDetail.setNumber(remoteUid);
-        if (!contact.saveDetail(&phoneNumberDetail)) {
-            qWarning() << "Unable to add phone number to contact:" << contactUri;
-            return -1;
-        }
-    }
-
-    QContactName nameDetail;
-    nameDetail.setLastName(name);
-    if (!contact.saveDetail(&nameDetail)) {
-        qWarning() << "Unable to add name to contact:" << contactUri;
-        return -1;
-    }
 
     if (!manager()->saveContact(&contact)) {
         qWarning() << "Unable to store contact:" << contactUri;
         return -1;
     }
 
-    // We should return the aggregated instance of this contact
-    QContactRelationshipFilter filter;
-    filter.setRelatedContactRole(QContactRelationship::Second);
-
-    filter.setRelatedContact(contact);
-    filter.setRelationshipType(QContactRelationship::Aggregates());
-
-    foreach (const QContactId &id, manager()->contactIds(filter)) {
-        qDebug() << "********** contact id" << id;
-        addedContactIds.insert(id);
-        return internalContactId(id);
+    foreach (const QContactRelationship &relationship, manager()->relationships(QContactRelationship::Aggregates(), contact, QContactRelationship::Second)) {
+        const QContactId &aggId = relationship.first().id();
+        qDebug() << "********** contact id" << aggId;
+        addedContactIds.insert(aggId);
+        return internalContactId(aggId);
     }
 
     qWarning() << "Could not find aggregator";
     return internalContactId(contact.id());
+}
+
+QList<int> addTestContacts(const QList<QPair<QString, QPair<QString, QString> > > &details)
+{
+    QList<int> ids;
+    QList<QContact> contacts;
+
+    QList<QPair<QString, QPair<QString, QString> > >::const_iterator it = details.constBegin(), end = details.constEnd();
+    for ( ; it != end; ++it) {
+        QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
+
+        QContact contact(createTestContact(it->first, it->second.first, it->second.second, contactUri));
+        if (!contact.isEmpty())
+            contacts.append(contact);
+    }
+
+    if (!manager()->saveContacts(&contacts)) {
+        qWarning() << "Unable to store contacts";
+        return ids;
+    }
+
+    QSet<QContactId> constituentIds;
+    foreach (const QContact &contact, contacts) {
+        constituentIds.insert(contact.id());
+    }
+    foreach (const QContactRelationship &relationship, manager()->relationships(QContactRelationship::Aggregates())) {
+        if (constituentIds.contains(relationship.second().id())) {
+            const QContactId &aggId = relationship.first().id();
+            qDebug() << "********** contact id" << aggId;
+            addedContactIds.insert(aggId);
+            ids.append(internalContactId(aggId));
+        }
+    }
+
+    return ids;
 }
 
 bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid)

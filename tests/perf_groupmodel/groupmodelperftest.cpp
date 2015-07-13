@@ -26,11 +26,10 @@
 #include <QModelIndex>
 #include <cstdlib>
 #include "groupmodelperftest.h"
+#include "groupmodel.h"
 #include "common.h"
 
 using namespace CommHistory;
-
-const int TIMEOUT = 5000;
 
 void GroupModelPerfTest::initTestCase()
 {
@@ -41,34 +40,60 @@ void GroupModelPerfTest::initTestCase()
     }
 
     qsrand( QDateTime::currentDateTime().toTime_t() );
+
+    deleteAll();
 }
 
 void GroupModelPerfTest::init()
 {
-    deleteAll();
-    QTest::qWait(TIMEOUT);
-    waitForIdle();
 }
 
 void GroupModelPerfTest::getGroups_data()
 {
     QTest::addColumn<int>("groups");
     QTest::addColumn<int>("messages");
+    QTest::addColumn<int>("contacts");
+    QTest::addColumn<bool>("resolve");
 
-    QTest::newRow("10 groups, 1 message each") << 10 << 1;
-    QTest::newRow("10 groups, 10 messages each") << 10 << 10;
-    QTest::newRow("100 groups, 1 message each") << 100 << 1;
-    QTest::newRow("100 groups, 10 messages each") << 100 << 10;
+    QTest::newRow("10 groups of 1 message, from 10 contacts") << 10 << 1 << 10 << false;
+    QTest::newRow("10 groups of 1 message, from 10 contacts with resolve") << 10 << 1 << 10 << true;
+    QTest::newRow("10 groups of 10 messages, from 10 contacts") << 10 << 10 << 10 << false;
+    QTest::newRow("10 groups of 10 messages, from 10 contacts with resolve") << 10 << 10 << 10 << true;
+    QTest::newRow("10 groups of 100 messages, from 10 contacts") << 10 << 100 << 10 << false;
+    QTest::newRow("10 groups of 100 messages, from 10 contacts with resolve") << 10 << 100 << 10 << true;
+
+    QTest::newRow("10 groups of 100 messages, from 100 contacts") << 10 << 100 << 100 << false;
+    QTest::newRow("10 groups of 100 messages, from 100 contacts with resolve") << 10 << 100 << 100 << true;
+
+    QTest::newRow("100 groups of 1 message, from 100 contacts") << 100 << 1 << 100 << false;
+    QTest::newRow("100 groups of 1 message, from 100 contacts with resolve") << 100 << 1 << 100 << true;
+    QTest::newRow("100 groups of 10 messages, from 100 contacts") << 100 << 10 << 100 << false;
+    QTest::newRow("100 groups of 10 messages, from 100 contacts with resolve") << 100 << 10 << 100 << true;
+    QTest::newRow("100 groups of 100 messages, from 100 contacts") << 100 << 100 << 100 << false;
+    QTest::newRow("100 groups of 100 messages, from 100 contacts with resolve") << 100 << 100 << 100 << true;
+
+    QTest::newRow("100 groups of 100 messages, from 1000 contacts") << 10 << 100 << 1000 << false;
+    QTest::newRow("100 groups of 100 messages, from 1000 contacts with resolve") << 10 << 100 << 1000 << true;
+
+    QTest::newRow("1000 groups of 1 message, from 1000 contacts") << 1000 << 1 << 1000 << false;
+    QTest::newRow("1000 groups of 1 message, from 1000 contacts with resolve") << 1000 << 1 << 1000 << true;
+    QTest::newRow("1000 groups of 10 messages, from 1000 contacts") << 1000 << 10 << 1000 << false;
+    QTest::newRow("1000 groups of 10 messages, from 1000 contacts with resolve") << 1000 << 10 << 1000 << true;
+    QTest::newRow("1000 groups of 100 messages, from 1000 contacts") << 1000 << 100 << 1000 << false;
+    QTest::newRow("1000 groups of 100 messages, from 1000 contacts with resolve") << 1000 << 100 << 1000 << true;
 }
 
 void GroupModelPerfTest::getGroups()
 {
-    qDebug() << __FUNCTION__;
+    QFETCH(int, groups);
+    QFETCH(int, messages);
+    QFETCH(int, contacts);
+    QFETCH(bool, resolve);
 
     QDateTime startTime = QDateTime::currentDateTime();
 
-    QFETCH(int, groups);
-    QFETCH(int, messages);
+    cleanupTestGroups();
+    cleanupTestEvents();
 
     int commitBatchSize = 75;
     #ifdef PERF_BATCH_SIZE
@@ -77,36 +102,61 @@ void GroupModelPerfTest::getGroups()
 
     GroupModel addModel;
     QDateTime when = QDateTime::currentDateTime();
-    QList<Group> groupList;
 
-    qDebug() << __FUNCTION__ << "- Creating" << groups << "new contacts and groups";
+    qDebug() << __FUNCTION__ << "- Creating" << contacts << "contacts";
+
+    QList<QPair<QString, QPair<QString, QString> > > contactDetails;
+
+    int ci = remoteUids.count();
+    while(ci < contacts) {
+        QString phoneNumber;
+        do {
+            phoneNumber = QString().setNum(qrand() % 10000000);
+        } while (remoteUids.contains(phoneNumber));
+        remoteUids << phoneNumber;
+        contactIndices << ci;
+        ci++;
+
+        contactDetails.append(qMakePair(QString("Test Contact %1").arg(ci), qMakePair(phoneNumber, QString())));
+
+        if(ci % commitBatchSize == 0 && ci < contacts) {
+            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+                << "contacts (" << ci << "/" << contacts << ")";
+            addTestContacts(contactDetails);
+            contactDetails.clear();
+        }
+    }
+    if (!contactDetails.isEmpty()) {
+        qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
+                 << ci << "/" << contacts << ")";
+        addTestContacts(contactDetails);
+        contactDetails.clear();
+    }
+
+    // Randomize the contact indices
+    random_shuffle(contactIndices.begin(), contactIndices.end());
+
+    qDebug() << __FUNCTION__ << "- Creating" << groups << "new groups";
+
+    QList<Group> groupList;
 
     int gi = 0;
     while(gi < groups) {
-        gi++;
-
-        QString phoneNumber = QString().setNum(qrand() % 10000000);
-        addTestContact(QString("Test Contact %1").arg(gi), phoneNumber);
-
         Group grp;
-        grp.setLocalUid(ACCOUNT1);
-        QStringList uids;
-        uids << phoneNumber;
-        grp.setRemoteUids(uids);
+        grp.setLocalUid(RING_ACCOUNT);
+        grp.setRemoteUids(QStringList() << remoteUids.at(contactIndices.at(gi)));
 
         QVERIFY(addModel.addGroup(grp));
         groupList << grp;
 
+        gi++;
         if(gi % commitBatchSize == 0 && gi < groups) {
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "groups (" << gi << "/" << groups << ")";
-            waitForIdle(5000);
         }
     }
     qDebug() << __FUNCTION__ << "- adding rest of the groups ("
              << gi << "/" << groups << ")";
-    waitForIdle(5000);
-    QTest::qWait(TIMEOUT);
 
     qDebug() << __FUNCTION__ << "- Creating" << messages << "messages to each group";
 
@@ -114,9 +164,7 @@ void GroupModelPerfTest::getGroups()
 
     gi = 0;
     foreach (Group grp, groupList) {
-        gi++;
         QList<Event> eventList;
-
         for(int i = 0; i < messages; i++) {
 
             Event e;
@@ -125,7 +173,7 @@ void GroupModelPerfTest::getGroups()
             e.setGroupId(grp.id());
             e.setStartTime(when.addSecs(i));
             e.setEndTime(when.addSecs(i));
-            e.setLocalUid(ACCOUNT1);
+            e.setLocalUid(RING_ACCOUNT);
             e.setRemoteUid(grp.remoteUids().at(0));
             e.setFreeText(randomMessage(qrand() % 49 + 1));  // Max 50 words / message
             e.setIsDraft(false);
@@ -135,16 +183,16 @@ void GroupModelPerfTest::getGroups()
         }
 
         QVERIFY(eventModel.addEvents(eventList, false));
+        gi++;
         qDebug() << __FUNCTION__ << "- adding" << messages << "messages ("
                  << gi << "/" << groups << ")";
         eventList.clear();
-        waitForIdle();
     }
 
-    int iterations = 10;
     int sum = 0;
     QList<int> times;
 
+    int iterations = 10;
     #ifdef PERF_ITERATIONS
     iterations = PERF_ITERATIONS;
     #endif
@@ -157,25 +205,32 @@ void GroupModelPerfTest::getGroups()
         }
     }
 
-    QTest::qWait(TIMEOUT);
-
     qDebug() << __FUNCTION__ << "- Fetching groups." << iterations << "iterations";
     for(int i = 0; i < iterations; i++) {
 
         GroupModel fetchModel;
-        bool result = false;
 
-        fetchModel.setQueryMode(EventModel::SyncQuery);
+        GroupManager manager;
+        //manager.setResolveContacts(resolve);
+        Q_UNUSED(resolve)
+
+        fetchModel.setManager(&manager);
+
+        waitForIdle();
 
         QTime time;
         time.start();
-        result = fetchModel.getGroups();
+        bool result = fetchModel.getGroups();
+        QVERIFY(result);
+
+        if (!fetchModel.isReady())
+            waitForSignal(&fetchModel, SIGNAL(modelReady(bool)));
+
         int elapsed = time.elapsed();
         times << elapsed;
         sum += elapsed;
         qDebug("Time elapsed: %d ms", elapsed);
 
-        QVERIFY(result);
         QCOMPARE(fetchModel.rowCount(), groups);
     }
 
@@ -204,11 +259,11 @@ void GroupModelPerfTest::getGroups()
     float mean = sum / (float)iterations;
     int testSecs = startTime.secsTo(QDateTime::currentDateTime());
 
-    qDebug("##### Mean: %.1f; Median: %.1f; Test time: %dsec", mean, median, testSecs);
+    qDebug("##### Mean: %.1f; Median: %.1f; Min: %d; Max: %d; Test time: %dsec", mean, median, times[0], times[iterations-1], testSecs);
 
     if(logFile) {
         QTextStream out(logFile);
-        out << "Median average: " << (int)median << " ms. Test time: ";
+        out << "Median average: " << (int)median << " ms. Min:" << times[0] << "ms. Max:" << times[iterations-1] << " ms. Test time: ";
         if (testSecs > 3600) { out << (testSecs / 3600) << "h "; }
         if (testSecs > 60) { out << ((testSecs % 3600) / 60) << "m "; }
         out << ((testSecs % 3600) % 60) << "s\n";
@@ -217,15 +272,13 @@ void GroupModelPerfTest::getGroups()
 
 void GroupModelPerfTest::cleanupTestCase()
 {
-    deleteAll();
-    QTest::qWait(TIMEOUT);
-    waitForIdle();
-
     if(logFile) {
         logFile->close();
         delete logFile;
         logFile = 0;
     }
+
+    deleteAll();
 }
 
 QTEST_MAIN(GroupModelPerfTest)

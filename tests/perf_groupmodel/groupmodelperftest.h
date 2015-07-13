@@ -25,11 +25,7 @@
 
 #include <QObject>
 #include <QFile>
-#include "groupmodel.h"
-
-using namespace CommHistory;
-
-class QModelIndex;
+#include <QStringList>
 
 class GroupModelPerfTest : public QObject
 {
@@ -44,6 +40,8 @@ private slots:
 
 private:
     QFile *logFile;
+    QStringList remoteUids;
+    QList<int> contactIndices;
 };
 
 #endif

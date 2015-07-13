@@ -23,17 +23,35 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include "commonutils.h"
 #include "eventmodel.h"
 #include "event.h"
 #include "group.h"
 
 #include <QSignalSpy>
 
+#include <iterator>
+
+namespace CommHistory {
+
+template <class RandomAccessIterator>
+void random_shuffle (RandomAccessIterator first, RandomAccessIterator last)
+{
+    typename std::iterator_traits<RandomAccessIterator>::difference_type i, n;
+    n = (last-first);
+    for (i=n-1; i>0; --i) {
+        qSwap(first[i],first[qrand() % (i+1)]);
+    }
+}
+
+void waitForSignal(QObject *object, const char *signal);
+
+}
+
 using namespace CommHistory;
 
 const QString ACCOUNT1 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut_40localhost0";
 const QString ACCOUNT2 = "/org/freedesktop/Telepathy/Account/gabble/jabber/dut2_40localhost0";
-const QString RING_ACCOUNT = "/org/freedesktop/Telepathy/Account/ring/";
 
 /* The default load polling interval when waiting system to become idle */
 const int IDLE_POLL_INTERVAL = 500;
@@ -62,6 +80,7 @@ int addTestEvent(EventModel &model,
 void addTestGroups(Group &group1, Group &group2);
 void addTestGroup(Group& grp, QString localUid, QString remoteUid);
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid=QString());
+QList<int> addTestContacts(const QList<QPair<QString, QPair<QString, QString> > > &details);
 bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid=QString());
 void modifyTestContact(int id, const QString &name);
 void deleteTestContact(int id);

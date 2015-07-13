@@ -25,11 +25,10 @@
 #include <QDBusConnection>
 #include <cstdlib>
 #include "callmodelperftest.h"
+#include "callmodel.h"
 #include "common.h"
 
 using namespace CommHistory;
-
-const int TIMEOUT = 5000;
 
 void CallModelPerfTest::initTestCase()
 {
@@ -40,69 +39,103 @@ void CallModelPerfTest::initTestCase()
     }
 
     qsrand( QDateTime::currentDateTime().toTime_t() );
+
+    deleteAll();
 }
 
 void CallModelPerfTest::init()
 {
-    deleteAll();
-    QTest::qWait(TIMEOUT);
-    waitForIdle();
 }
 
 void CallModelPerfTest::getEvents_data()
 {
     QTest::addColumn<int>("events");
     QTest::addColumn<int>("contacts");
+    QTest::addColumn<int>("selected");
+    QTest::addColumn<bool>("resolve");
 
-    QTest::newRow("10 events, 3 contacts") << 10 << 3;
-    QTest::newRow("10 events, 300 contacts") << 10 << 300;
-    QTest::newRow("100 events, 3 contacts") << 100 << 3;
-    QTest::newRow("100 events, 300 contacts") << 100 << 300;
-    QTest::newRow("1000 events, 3 contacts") << 1000 << 3;
-    QTest::newRow("1000 events, 300 contacts") << 1000 << 300;
+    QTest::newRow("10 events, 1 of 3 contacts") << 10 << 3 << 1 << false;
+    QTest::newRow("10 events, 1 of 3 contacts with resolve") << 10 << 3 << 1 << true;
+    QTest::newRow("100 events, 1 of 3 contacts") << 100 << 3 << 1 << false;
+    QTest::newRow("100 events, 1 of 3 contacts with resolve") << 100 << 3 << 1 << true;
+    QTest::newRow("1000 events, 1 of 3 contacts") << 1000 << 3 << 1 << false;
+    QTest::newRow("1000 events, 1 of 3 contacts with resolve") << 1000 << 3 << 1 << true;
+    QTest::newRow("10 events, 3 of 3 contacts") << 10 << 3 << 3 << false;
+    QTest::newRow("10 events, 3 of 3 contacts with resolve") << 10 << 3 << 3 << true;
+    QTest::newRow("100 events, 3 of 3 contacts") << 100 << 3 << 3 << false;
+    QTest::newRow("100 events, 3 of 3 contacts with resolve") << 100 << 3 << 3 << true;
+    QTest::newRow("1000 events, 3 of 3 contacts") << 1000 << 3 << 3 << false;
+    QTest::newRow("1000 events, 3 of 3 contacts with resolve") << 1000 << 3 << 3 << true;
+    QTest::newRow("10 events, 1 of 300 contacts") << 10 << 300 << 1 << false;
+    QTest::newRow("10 events, 1 of 300 contacts with resolve") << 10 << 300 << 1 << true;
+    QTest::newRow("100 events, 1 of 300 contacts") << 100 << 300 << 1 << false;
+    QTest::newRow("100 events, 1 of 300 contacts with resolve") << 100 << 300 << 1 << true;
+    QTest::newRow("1000 events, 1 of 300 contacts") << 1000 << 300 << 1 << false;
+    QTest::newRow("1000 events, 1 of 300 contacts with resolve") << 1000 << 300 << 1 << true;
+    QTest::newRow("10 events, 300 of 300 contacts") << 10 << 300 << 300 << false;
+    QTest::newRow("10 events, 300 of 300 contacts with resolve") << 10 << 300 << 300 << true;
+    QTest::newRow("100 events, 300 of 300 contacts") << 100 << 300 << 300 << false;
+    QTest::newRow("100 events, 300 of 300 contacts with resolve") << 100 << 300 << 300 << true;
+    QTest::newRow("1000 events, 300 of 300 contacts") << 1000 << 300 << 300 << false;
+    QTest::newRow("1000 events, 300 of 300 contacts with resolve") << 1000 << 300 << 300 << true;
 }
 
 void CallModelPerfTest::getEvents()
 {
     QFETCH(int, events);
     QFETCH(int, contacts);
+    QFETCH(int, selected);
+    QFETCH(bool, resolve);
 
     QDateTime startTime = QDateTime::currentDateTime();
+
+    cleanupTestGroups();
+    cleanupTestEvents();
 
     int commitBatchSize = 75;
     #ifdef PERF_BATCH_SIZE
     commitBatchSize = PERF_BATCH_SIZE;
     #endif
 
-
     EventModel addModel;
     QDateTime when = QDateTime::currentDateTime();
-    QList<QString> remoteUids;
 
-    qDebug() << __FUNCTION__ << "- Creating" << contacts << "new contacts";
+    qDebug() << __FUNCTION__ << "- Creating" << contacts << "contacts";
 
-    int ci = 0;
+    QList<QPair<QString, QPair<QString, QString> > > contactDetails;
+
+    int ci = remoteUids.count();
     while(ci < contacts) {
-        ci++;
-        QString phoneNumber = QString().setNum(qrand() % 10000000);
+        QString phoneNumber;
+        do {
+            phoneNumber = QString().setNum(qrand() % 10000000);
+        } while (remoteUids.contains(phoneNumber));
         remoteUids << phoneNumber;
-        addTestContact(QString("Test Contact %1").arg(ci), phoneNumber);
+        contactIndices << ci;
+        ci++;
+
+        contactDetails.append(qMakePair(QString("Test Contact %1").arg(ci), qMakePair(phoneNumber, QString())));
 
         if(ci % commitBatchSize == 0 && ci < contacts) {
             qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
-            waitForIdle(5000);
+            addTestContacts(contactDetails);
+            contactDetails.clear();
         }
     }
-    qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
-        << ci << "/" << contacts << ")";
-
-    waitForIdle(5000);
-    QTest::qWait(TIMEOUT);
+    if (!contactDetails.isEmpty()) {
+        qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
+            << ci << "/" << contacts << ")";
+        addTestContacts(contactDetails);
+        contactDetails.clear();
+    }
 
     qDebug() << __FUNCTION__ << "- Creating" << events << "new events";
 
     QList<Event> eventList;
+
+    // Randomize the contact indices
+    random_shuffle(contactIndices.begin(), contactIndices.end());
 
     int ei = 0;
     while(ei < events) {
@@ -124,8 +157,8 @@ void CallModelPerfTest::getEvents()
         e.setGroupId(-1);
         e.setStartTime(when.addSecs(ei));
         e.setEndTime(when.addSecs(ei));
-        e.setLocalUid(ACCOUNT1);
-        e.setRemoteUid(remoteUids.at(qrand() % contacts));
+        e.setLocalUid(RING_ACCOUNT);
+        e.setRemoteUid(remoteUids.at(contactIndices.at(qrand() % selected)));
         e.setFreeText("");
         e.setIsDraft(false);
         e.setIsMissedCall(isMissed);
@@ -137,7 +170,6 @@ void CallModelPerfTest::getEvents()
                 << "events (" << ei << "/" << events << ")";
             QVERIFY(addModel.addEvents(eventList, false));
             eventList.clear();
-            waitForIdle();
         }
     }
 
@@ -145,12 +177,11 @@ void CallModelPerfTest::getEvents()
     qDebug() << __FUNCTION__ << "- adding rest of the events ("
         << ei << "/" << events << ")";
     eventList.clear();
-    waitForIdle();
 
-    int iterations = 10;
     int sum = 0;
     QList<int> times;
 
+    int iterations = 10;
     #ifdef PERF_ITERATIONS
     iterations = PERF_ITERATIONS;
     #endif
@@ -163,29 +194,31 @@ void CallModelPerfTest::getEvents()
         }
     }
 
-    QTest::qWait(TIMEOUT);
-
     qDebug() << __FUNCTION__ << "- Fetching events." << iterations << "iterations";
     for(int i = 0; i < iterations; i++) {
 
         CallModel fetchModel;
-        bool result = false;
 
-        fetchModel.setQueryMode(EventModel::SyncQuery);
+        fetchModel.setResolveContacts(resolve);
         fetchModel.setFilter(CallModel::SortByContact);
+
+        waitForIdle();
 
         QTime time;
         time.start();
-        result = fetchModel.getEvents();
+
+        bool result = fetchModel.getEvents();
+        QVERIFY(result);
+
+        if (!fetchModel.isReady())
+            waitForSignal(&fetchModel, SIGNAL(modelReady(bool)));
+
         int elapsed = time.elapsed();
         times << elapsed;
         sum += elapsed;
         qDebug("Time elapsed: %d ms", elapsed);
 
-        QVERIFY(result);
         QVERIFY(fetchModel.rowCount() > 0);
-
-        waitForIdle();
     }
 
     if(logFile) {
@@ -213,11 +246,11 @@ void CallModelPerfTest::getEvents()
     float mean = sum / (float)iterations;
     int testSecs = startTime.secsTo(QDateTime::currentDateTime());
 
-    qDebug("##### Mean: %.1f; Median: %.1f; Test time: %dsec", mean, median, testSecs);
+    qDebug("##### Mean: %.1f; Median: %.1f; Min: %d; Max: %d; Test time: %dsec", mean, median, times[0], times[iterations-1], testSecs);
 
     if(logFile) {
         QTextStream out(logFile);
-        out << "Median average: " << (int)median << " ms. Test time: ";
+        out << "Median average: " << (int)median << " ms. Min:" << times[0] << "ms. Max:" << times[iterations-1] << " ms. Test time: ";
         if (testSecs > 3600) { out << (testSecs / 3600) << "h "; }
         if (testSecs > 60) { out << ((testSecs % 3600) / 60) << "m "; }
         out << ((testSecs % 3600) % 60) << "s\n";
@@ -226,15 +259,13 @@ void CallModelPerfTest::getEvents()
 
 void CallModelPerfTest::cleanupTestCase()
 {
-    deleteAll();
-    QTest::qWait(TIMEOUT);
-    waitForIdle();
-
     if(logFile) {
         logFile->close();
         delete logFile;
         logFile = 0;
     }
+
+    deleteAll();
 }
 
 QTEST_MAIN(CallModelPerfTest)
