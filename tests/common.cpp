@@ -86,8 +86,8 @@ const int numWords = 23;
 const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
     "adipiscing","elit","in","imperdiet","cursus","lacus","vitae","suscipit",
     "maecenas","bibendum","rutrum","dolor","at","hendrerit",":)",":P","OMG!!" };
-int ticks = 0;
-int idleTicks = 0;
+quint64 allTicks = 0;
+quint64 idleTicks = 0;
 
 QSet<QContactId> addedContactIds;
 QSet<int> addedEventIds;
@@ -469,25 +469,27 @@ double getSystemLoad()
     file.close();
 
     QStringList parts = line.split(" ", QString::SkipEmptyParts);
-    if (parts.size() != 10) {
+    if (parts.size() < 10) {
+        qWarning() << __PRETTY_FUNCTION__ << "Invalid input from /proc/stat:" << line;
+        return -1;
+    }
+    if (parts.at(0) != QStringLiteral("cpu")) {
         qWarning() << __PRETTY_FUNCTION__ << "Invalid input from /proc/stat:" << line;
         return -1;
     }
 
     int newIdleTicks = parts.at(4).toInt();
     int newAllTicks = 0;
-    for (int i = 1; i < 10; i++) {
+    for (int i = 1; i < parts.count(); i++) {
         newAllTicks += parts.at(i).toInt();
     }
 
-    int idleTickDelta = newIdleTicks - idleTicks;
-    int allTickDelta = newAllTicks - ticks;
-    double load = 1.0 - ((double)idleTickDelta / allTickDelta);
-
+    quint64 idleTickDelta = newIdleTicks - idleTicks;
+    quint64 allTickDelta = newAllTicks - allTicks;
     idleTicks = newIdleTicks;
-    ticks = newAllTicks;
+    allTicks = newAllTicks;
 
-    return load;
+    return 1.0 - ((double)idleTickDelta / allTickDelta);
 }
 
 /*
