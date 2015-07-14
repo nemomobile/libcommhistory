@@ -2,9 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd. <john.brooks@jollamobile.com>
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -53,12 +53,7 @@ class LIBCOMMHISTORY_EXPORT EventModelPrivate : public QObject
 
     Q_DECLARE_PUBLIC(EventModel)
 
-    typedef enum {
-        ContactUpdated, ContactRemoved
-    } ContactChangeType;
-
 public:
-    typedef ContactListener::ContactAddress ContactAddress;
 
     EventModel *q_ptr;
 
@@ -119,25 +114,11 @@ public:
 
     bool canFetchMore() const;
 
-    /*
-     * Called when contacts are somehow modified. Traverses through the
-     * event list and updates event.contactId() and event.contactName()
-     * as necessary. Also updates contact cache.
-     * \param changeType Contact change type (removed, updated (= added or modified)).
-     * \param contactId LocalId of the modified contact.
-     * \param contactName Name of the modified contact. Empty for removed contacts.
-     * \param contactAddresses List of all IM addresses and phone numbers for the contact. Empty for removed contacts.
-     * \param parent Current top item for recursion (start with eventRootItem).
-     */
-    void changeContactsRecursive(ContactChangeType changeType,
-                                 quint32 contactId,
-                                 const QString &contactName,
-                                 const QList< QPair<QString,QString> > &contactAddresses,
-                                 EventTreeItem *parent);
     void setResolveContacts(bool enabled);
 
     DatabaseIO *database();
 
+    void recipientsChangedRecursive(const QSet<Recipient> &recipients, EventTreeItem *parent);
     void emitDataChanged(int row, void *data);
 
     // This is the root node for the internal event tree. In a standard
@@ -187,13 +168,9 @@ public Q_SLOTS:
 
     virtual void canFetchMoreChangedSlot(bool canFetch);
 
-    virtual void slotContactUpdated(quint32 localId,
-                                    const QString &contactName,
-                                    const QList<ContactAddress> &contactAddresses);
+    virtual void slotContactInfoChanged(const RecipientList &recipients);
 
-    virtual void slotContactRemoved(quint32 localId);
-
-    virtual void slotContactUnknown(const QPair<QString, QString> &address);
+    virtual void slotContactChanged(const RecipientList &recipients);
 
 Q_SIGNALS:
     void eventsAdded(const QList<CommHistory::Event> &events);

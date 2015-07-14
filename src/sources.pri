@@ -14,7 +14,6 @@ HEADERS += commonutils.h \
            adaptor.h \
            conversationmodel_p.h \
            contactlistener.h \
-           contactlistener_p.h \
            libcommhistoryexport.h \
            singleeventmodel.h \
            recentcontactsmodel.h \

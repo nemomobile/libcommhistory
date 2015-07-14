@@ -36,7 +36,7 @@ using namespace CommHistory;
 
 static int eventContact(const Event &event)
 {
-    return event.contacts().isEmpty() ? 0 : event.contacts().first().first;
+    return event.recipients().contactIds().value(0);
 }
 
 class RecentContactsModelPrivate : public EventModelPrivate {
@@ -54,10 +54,10 @@ public:
     virtual bool fillModel(int start, int end, QList<Event> events);
     virtual void prependEvents(QList<Event> events);
 
-    void slotContactRemoved(quint32 localId);
+    virtual void slotContactInfoChanged(const RecipientList &recipients);
+    virtual void slotContactChanged(const RecipientList &recipients);
 
 private:
-
     int requiredProperty;
 };
 
@@ -83,17 +83,46 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
     return true;
 }
 
-void RecentContactsModelPrivate::slotContactRemoved(quint32 localId)
+void RecentContactsModelPrivate::slotContactInfoChanged(const RecipientList &recipients)
 {
-    EventModelPrivate::slotContactRemoved(localId);
+    EventModelPrivate::slotContactInfoChanged(recipients);
 
-    // Remove any event for this contact (there can only be one)
-    const int rowCount = eventRootItem->childCount();
-    for (int row = 0; row < rowCount; ++row) {
+    // XXX This signal isn't emitted for all changes, and we don't have
+    // access to the full list of accounts from here.. ugh.
+#if 0
+    bool hasAddressType[3] = { false, false, false };
+    foreach (const ContactAddress &address, contactAddresses) {
+        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
+        hasAddressType[address.type - 1] = true;
+    }
+
+    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
+    for (int i = 0; i < 3; ++i) {
+        if (hasAddressType[i]) {
+            typeSet[i]->insert(localId);
+        } else {
+            typeSet[i]->remove(localId);
+        }
+    }
+#endif
+
+    // FIXME: Contact updates can result in the model being wrong. But, because
+    // unwanted events are discarded, that's difficult to solve without re-querying.
+}
+
+void RecentContactsModelPrivate::slotContactChanged(const RecipientList &recipients)
+{
+    EventModelPrivate::slotContactChanged(recipients);
+
+    // If any of our events no longer resolve to a contact, remove them
+    int rowCount = eventRootItem->childCount();
+    for (int row = 0; row < rowCount; ) {
         const Event &existing(eventRootItem->eventAt(row));
-        if (existing.contacts().isEmpty()) {
+        if (existing.contactRecipients().isEmpty()) {
             deleteFromModel(existing.id());
-            break;
+            --rowCount;
+        } else {
+            ++row;
         }
     }
 }
