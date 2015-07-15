@@ -53,10 +53,6 @@ public:
     QDateTime startTime;
     QDateTime endTime;
     Event::EventDirection direction;
-    bool isDraft;
-    bool isRead;
-    bool isMissedCall;
-    bool isEmergencyCall;
     Event::EventStatus status;
     int bytesReceived;
 
@@ -73,9 +69,6 @@ public:
     int eventCount;
     QString fromVCardFileName;
     QString fromVCardLabel;
-    bool reportDelivery;
-    bool reportRead;
-    bool reportReadRequested;
     int validityPeriod;
 
     QString contentLocation;
@@ -83,13 +76,24 @@ public:
     QList<MessagePart> messageParts;
     Event::EventReadStatus readStatus;
 
-    bool isAction;
-
     QHash<QString, QString> headers;
     QVariantMap extraProperties;
 
     Event::PropertySet validProperties;
     Event::PropertySet modifiedProperties;
+
+    mutable struct {
+        quint32 isDraft: 1;
+        quint32 isRead: 1;
+        quint32 isMissedCall: 1;
+        quint32 isEmergencyCall: 1;
+        quint32 isVideoCall: 1;
+        quint32 isVideoCallKnown: 1;
+        quint32 reportDelivery: 1;
+        quint32 reportRead: 1;
+        quint32 reportReadRequested: 1;
+        quint32 isAction: 1;
+    } flags;
 };
 
 }
@@ -133,19 +137,19 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
 {
     EventPrivate p;
     int type, direction, status, rstatus, parentId;
-    bool isDeleted;
+    bool isDraft, isRead, isMissedCall, isEmergencyCall, reportRead, isDeleted, reportDelivery, reportReadRequested, isAction;
     QString encoding, charset, language;
     argument.beginStructure();
     argument >> p.id >> type >> p.startTime >> p.endTime
-             >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
+             >> direction  >> isDraft >>  isRead >> isMissedCall >> isEmergencyCall
              >> status >> p.bytesReceived >> p.localUid >> p.recipients
              >> parentId >> p.freeText >> p.groupId
              >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel >> encoding  >> charset >> language
-             >> isDeleted >> p.reportDelivery >> p.contentLocation >> p.subject
+             >> isDeleted >> reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts
-             >> rstatus >> p.reportRead >> p.reportReadRequested
-             >> p.validityPeriod >> p.isAction >> p.headers >> p.extraProperties;
+             >> rstatus >> reportRead >> reportReadRequested
+             >> p.validityPeriod >> isAction >> p.headers >> p.extraProperties;
 
     //read valid properties
     argument.beginArray();
@@ -162,10 +166,10 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setStartTime(p.startTime);
     event.setEndTime(p.endTime);
     event.setDirection((Event::EventDirection)direction);
-    event.setIsDraft( p.isDraft );
-    event.setIsRead(p.isRead);
-    event.setIsMissedCall( p.isMissedCall );
-    event.setIsEmergencyCall( p.isEmergencyCall );
+    event.setIsDraft( isDraft );
+    event.setIsRead(isRead);
+    event.setIsMissedCall( isMissedCall );
+    event.setIsEmergencyCall( isEmergencyCall );
     event.setStatus((Event::EventStatus)status);
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
@@ -178,14 +182,14 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setLastModified(p.lastModified);
     event.setEventCount(p.eventCount);
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
-    event.setReportDelivery(p.reportDelivery);
+    event.setReportDelivery(reportDelivery);
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
     event.setMessageParts(p.messageParts);
     event.setReadStatus((Event::EventReadStatus)rstatus);
-    event.setReportRead(p.reportRead);
-    event.setReportReadRequested(p.reportReadRequested);
-    event.setIsAction(p.isAction);
+    event.setReportRead(reportRead);
+    event.setReportReadRequested(reportReadRequested);
+    event.setIsAction(isAction);
     event.setHeaders(p.headers);
     event.setExtraProperties(p.extraProperties);
 
@@ -241,30 +245,30 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
 {
     EventPrivate p;
     int type, direction, status, rstatus, parentId;
-    bool isDeleted;
+    bool isDraft, isRead, isMissedCall, isEmergencyCall, reportRead, isDeleted, reportDelivery, reportReadRequested, isAction;
     QString encoding, charset, language;
     QString localUid, remoteUid;
 
     stream >> p.id >> type >> p.startTime >> p.endTime
-           >> direction  >> p.isDraft >>  p.isRead >> p.isMissedCall >> p.isEmergencyCall
+           >> direction  >> isDraft >>  isRead >> isMissedCall >> isEmergencyCall
            >> status >> p.bytesReceived >> localUid >> remoteUid
            >> parentId >> p.freeText >> p.groupId
            >> p.messageToken >> p.mmsId >>p.lastModified
            >> p.fromVCardFileName >> p.fromVCardLabel >> encoding >> charset >> language
-           >> isDeleted >> p.reportDelivery >> p.contentLocation >> p.subject
+           >> isDeleted >> reportDelivery >> p.contentLocation >> p.subject
            >> p.messageParts
-           >> rstatus >> p.reportRead >> p.reportReadRequested
-           >> p.validityPeriod >> p.isAction >> p.headers;
+           >> rstatus >> reportRead >> reportReadRequested
+           >> p.validityPeriod >> isAction >> p.headers;
 
     event.setId(p.id);
     event.setType((Event::EventType)type);
     event.setStartTime(p.startTime);
     event.setEndTime(p.endTime);
     event.setDirection((Event::EventDirection)direction);
-    event.setIsDraft( p.isDraft );
-    event.setIsRead(p.isRead);
-    event.setIsMissedCall( p.isMissedCall );
-    event.setIsEmergencyCall( p.isEmergencyCall );
+    event.setIsDraft( isDraft );
+    event.setIsRead(isRead);
+    event.setIsMissedCall( isMissedCall );
+    event.setIsEmergencyCall( isEmergencyCall );
     event.setStatus((Event::EventStatus)status);
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(localUid);
@@ -276,14 +280,14 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setMmsId(p.mmsId);
     event.setLastModified(p.lastModified);
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
-    event.setReportDelivery(p.reportDelivery);
+    event.setReportDelivery(reportDelivery);
     event.setValidityPeriod(p.validityPeriod);
     event.setContentLocation(p.contentLocation);
     event.setMessageParts(p.messageParts);
     event.setReadStatus((Event::EventReadStatus)rstatus);
-    event.setReportRead(p.reportRead);
-    event.setReportReadRequested(p.reportReadRequested);
-    event.setIsAction(p.isAction);
+    event.setReportRead(reportRead);
+    event.setReportReadRequested(reportReadRequested);
+    event.setIsAction(isAction);
     event.setHeaders(p.headers);
 
     event.resetModifiedProperties();
@@ -295,21 +299,24 @@ EventPrivate::EventPrivate()
         : id(-1)
         , type(Event::UnknownType)
         , direction(Event::UnknownDirection)
-        , isDraft( false )
-        , isRead(false)
-        , isMissedCall( false )
-        , isEmergencyCall( false )
         , status(Event::UnknownStatus)
         , bytesReceived(0)
         , groupId(-1)
         , eventCount(0)
-        , reportDelivery(false)
-        , reportRead(false)
-        , reportReadRequested(false)
         , validityPeriod(0)
         , readStatus(Event::UnknownReadStatus)
-        , isAction(false)
 {
+    flags.isDraft = false;
+    flags.isRead = false;
+    flags.isMissedCall = false;
+    flags.isEmergencyCall = false;
+    flags.isVideoCall = false;
+    flags.isVideoCallKnown = false;
+    flags.reportDelivery = false;
+    flags.reportRead = false;
+    flags.reportReadRequested = false;
+    flags.isAction = false;
+
     lastModified = QDateTime::fromTime_t(0);
 }
 
@@ -320,10 +327,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , startTime(other.startTime)
         , endTime(other.endTime)
         , direction(other.direction)
-        , isDraft( other.isDraft )
-        , isRead(other.isRead)
-        , isMissedCall( other.isMissedCall )
-        , isEmergencyCall( other.isEmergencyCall )
         , status(other.status)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
@@ -336,20 +339,26 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , eventCount( other.eventCount )
         , fromVCardFileName( other.fromVCardFileName )
         , fromVCardLabel( other.fromVCardLabel )
-        , reportDelivery(other.reportDelivery)
-        , reportRead(other.reportRead)
-        , reportReadRequested(other.reportReadRequested)
         , validityPeriod(other.validityPeriod)
         , contentLocation(other.contentLocation)
         , subject(other.subject)
         , messageParts(other.messageParts)
         , readStatus(other.readStatus)
-        , isAction(other.isAction)
         , headers(other.headers)
         , extraProperties(other.extraProperties)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
 {
+    flags.isDraft = other.flags.isDraft;
+    flags.isRead = other.flags.isRead;
+    flags.isMissedCall = other.flags.isMissedCall;
+    flags.isEmergencyCall = other.flags.isEmergencyCall;
+    flags.isVideoCall = other.flags.isVideoCall;
+    flags.isVideoCallKnown = other.flags.isVideoCallKnown;
+    flags.reportDelivery = other.flags.reportDelivery;
+    flags.reportRead = other.flags.reportRead;
+    flags.reportReadRequested = other.flags.reportReadRequested;
+    flags.isAction = other.flags.isAction;
 }
 
 EventPrivate::~EventPrivate()
@@ -413,19 +422,19 @@ Event::PropertySet Event::modifiedProperties() const
 
 bool Event::operator==(const Event &other) const
 {
-    return (this->d->recipients        == other.recipients()        &&
-            this->d->localUid          == other.localUid()          &&
-            this->d->startTime         == other.startTime()         &&
-            this->d->endTime           == other.endTime()           &&
-            this->d->isDraft           == other.isDraft()           &&
-            this->d->isRead            == other.isRead()            &&
-            this->d->isMissedCall      == other.isMissedCall()      &&
-            this->d->isEmergencyCall   == other.isEmergencyCall()   &&
-            this->d->direction         == other.direction()         &&
-            this->d->id                == other.id()                &&
-            this->d->fromVCardFileName == other.fromVCardFileName() &&
-            this->d->reportDelivery    == other.reportDelivery()    &&
-            this->d->messageParts      == other.messageParts());
+    return (this->d->recipients             == other.d->recipients &&
+            this->d->localUid               == other.d->localUid &&
+            this->d->startTime              == other.d->startTime &&
+            this->d->endTime                == other.d->endTime &&
+            this->d->flags.isDraft          == other.d->flags.isDraft &&
+            this->d->flags.isRead           == other.d->flags.isRead &&
+            this->d->flags.isMissedCall     == other.d->flags.isMissedCall &&
+            this->d->flags.isEmergencyCall  == other.d->flags.isEmergencyCall &&
+            this->d->direction              == other.d->direction &&
+            this->d->id                     == other.d->id &&
+            this->d->fromVCardFileName      == other.d->fromVCardFileName &&
+            this->d->flags.reportDelivery   == other.d->flags.reportDelivery &&
+            this->d->messageParts           == other.d->messageParts);
 }
 
 bool Event::operator!=(const Event &other) const
@@ -465,33 +474,34 @@ Event::EventDirection Event::direction() const
 
 bool Event::isDraft() const
 {
-    return d->isDraft;
+    return d->flags.isDraft;
 }
 
 bool Event::isRead() const
 {
-    return d->isRead;
+    return d->flags.isRead;
 }
 
 bool Event::isMissedCall() const
 {
-    return d->isMissedCall;
+    return d->flags.isMissedCall;
 }
 
 bool Event::isEmergencyCall() const
 {
-    return d->isEmergencyCall;
+    return d->flags.isEmergencyCall;
 }
 
 bool Event::isVideoCall() const
 {
-    bool isVideo = false;
-
-    QString header = d->headers.value(VIDEO_CALL_HEADER).toLower();
-    if (header == "true" || header == "1" || header == "yes")
-        isVideo = true;
-
-    return isVideo;
+    if (!d->flags.isVideoCallKnown) {
+        d->flags.isVideoCallKnown = true;
+        d->flags.isVideoCall = false;
+        QString header = d->headers.value(VIDEO_CALL_HEADER).toLower();
+        if (header == QStringLiteral("true") || header == QStringLiteral("1") || header == QStringLiteral("yes"))
+            d->flags.isVideoCall = true;
+    }
+    return d->flags.isVideoCall;
 }
 
 Event::EventStatus Event::status() const
@@ -617,17 +627,17 @@ QString Event::fromVCardLabel() const
 
 bool Event::reportDelivery() const
 {
-    return d->reportDelivery;
+    return d->flags.reportDelivery;
 }
 
 bool Event::reportRead() const
 {
-    return d->reportRead;
+    return d->flags.reportRead;
 }
 
 bool Event::reportReadRequested() const
 {
-    return d->reportReadRequested;
+    return d->flags.reportReadRequested;
 }
 
 int Event::validityPeriod() const
@@ -642,7 +652,7 @@ QString Event::contentLocation() const
 
 bool Event::isAction() const
 {
-    return d->isAction;
+    return d->flags.isAction;
 }
 
 QHash<QString, QString> Event::headers() const
@@ -697,25 +707,25 @@ void Event::setDirection(Event::EventDirection direction)
 
 void Event::setIsDraft( bool isDraft )
 {
-    d->isDraft = isDraft;
+    d->flags.isDraft = isDraft;
     d->propertyChanged(Event::IsDraft);
 }
 
 void Event::setIsRead(bool isRead)
 {
-    d->isRead = isRead;
+    d->flags.isRead = isRead;
     d->propertyChanged(Event::IsRead);
 }
 
 void Event::setIsMissedCall( bool isMissed )
 {
-    d->isMissedCall = isMissed;
+    d->flags.isMissedCall = isMissed;
     d->propertyChanged(Event::IsMissedCall);
 }
 
 void Event::setIsEmergencyCall( bool isEmergency )
 {
-    d->isEmergencyCall = isEmergency;
+    d->flags.isEmergencyCall = isEmergency;
     d->propertyChanged(Event::IsEmergencyCall);
 }
 
@@ -726,6 +736,8 @@ void Event::setIsVideoCall( bool isVideo )
     } else {
         d->headers.insert(VIDEO_CALL_HEADER, "true");
     }
+    d->flags.isVideoCall = isVideo;
+    d->flags.isVideoCallKnown = true;
     d->propertyChanged(Event::Headers);
 }
 
@@ -806,7 +818,7 @@ void Event::setFromVCard( const QString &filename, const QString &label )
 
 void Event::setReportDelivery(bool reportDelivery)
 {
-    d->reportDelivery = reportDelivery;
+    d->flags.reportDelivery = reportDelivery;
     d->propertyChanged(Event::ReportDelivery);
 }
 
@@ -872,19 +884,19 @@ void Event::setReadStatus(const Event::EventReadStatus eventReadStatus)
 
 void Event::setReportReadRequested(bool reportShouldRequested)
 {
-    d->reportReadRequested = reportShouldRequested;
+    d->flags.reportReadRequested = reportShouldRequested;
     d->propertyChanged(Event::ReportReadRequested);
 }
 
 void Event::setReportRead(bool reportRequested)
 {
-    d->reportRead = reportRequested;
+    d->flags.reportRead = reportRequested;
     d->propertyChanged(Event::ReportRead);
 }
 
 void Event::setIsAction(bool isAction)
 {
-    d->isAction = isAction;
+    d->flags.isAction = isAction;
     d->propertyChanged(Event::IsAction);
 }
 
@@ -892,6 +904,7 @@ void Event::setHeaders(const QHash<QString, QString> &headers)
 {
     d->headers = headers;
     d->propertyChanged(Event::Headers);
+    d->flags.isVideoCallKnown = false;
 }
 
 QVariantMap Event::extraProperties() const
