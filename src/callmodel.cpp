@@ -138,8 +138,8 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         bool replaced = false;
         QModelIndex index;
         for (int row = 0; row < eventRootItem->childCount(); row++) {
-            if (belongToSameGroup(eventRootItem->eventAt(row), event)
-                || eventRootItem->eventAt(row).id() == event.id()) {
+            if (eventRootItem->eventAt(row).id() == event.id()
+                || belongToSameGroup(eventRootItem->eventAt(row), event)) {
                 DEBUG() << "replacing row" << row;
                 replaced = true;
                 index = q->createIndex(row, 0, eventRootItem->child(row));
@@ -219,9 +219,9 @@ bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
         return true;
     }
     else if ((sortBy == CallModel::SortByTime || sortBy == CallModel::SortByContactAndType)
-             && (e1.recipients().matches(e2.recipients())
-                 && e1.direction() == e2.direction()
+             && (e1.direction() == e2.direction()
                  && e1.isMissedCall() == e2.isMissedCall()
+                 && e1.recipients().matches(e2.recipients())
                  && e1.isVideoCall() == e2.isVideoCall()))
     {
         return true;
@@ -557,8 +557,9 @@ void CallModelPrivate::insertEvent(Event event)
 
             // if new item is groupable with the first one in the list
             // NOTE: assumption is that time value is ok
-            if (eventRootItem->childCount() && belongToSameGroup(event, eventRootItem->child(0)->event())
-                && eventRootItem->child(0)->event().eventCount() != -1)
+            if (eventRootItem->childCount()
+                && eventRootItem->child(0)->event().eventCount() != -1
+                && belongToSameGroup(event, eventRootItem->child(0)->event()))
             {
                 // alias
                 EventTreeItem *firstTopLevelItem = eventRootItem->child( 0 );
