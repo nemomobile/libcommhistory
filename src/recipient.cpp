@@ -324,49 +324,91 @@ bool RecipientList::operator==(const RecipientList &o) const
     return true;
 }
 
-bool RecipientList::matches(const RecipientList &o) const
-{
-    QSet<int> otherMatches;
+namespace {
 
-    foreach (const Recipient &r, m_recipients) {
-        bool found = false;
-        
-        /* We have to check for a match against every item in the other list,
-         * so we can later tell if any of the other's items weren't a match to
-         * any of ours. */
-        for (int i = 0; i < o.m_recipients.size(); i++) {
-            if (r.matches(o.m_recipients[i])) {
-                otherMatches.insert(i);
-                found = true;
+QList<Recipient> removeMatches(const RecipientList &list, bool (Recipient::*mf)(const Recipient &) const)
+{
+    QList<Recipient> rv;
+    rv.reserve(list.size());
+
+    foreach (const Recipient &r, list) {
+        QList<Recipient>::const_iterator it = rv.constBegin(), end = rv.constEnd();
+        for ( ; it != end; ++it) {
+            if ((r.*mf)(*it)) {
+                break;
             }
         }
+        if (it == end) {
+            // No previous instances that match this recipient
+            rv.append(r);
+        }
+    }
 
-        if (!found)
+    return rv;
+}
+
+QList<Recipient> removeMatches(const RecipientList &list)
+{
+    return removeMatches(list, &Recipient::matches);
+}
+
+QList<Recipient> removeSameContacts(const RecipientList &list)
+{
+    return removeMatches(list, &Recipient::isSameContact);
+}
+
+}
+
+bool RecipientList::matches(const RecipientList &o) const
+{
+    if (m_recipients.size() == 1 && o.m_recipients.size() == 1)
+        return m_recipients.first().matches(o.m_recipients.first());
+
+    QList<Recipient> myRecipients(removeMatches(m_recipients));
+    QList<Recipient> otherRecipients(removeMatches(o.m_recipients));
+
+    if (myRecipients.size() != otherRecipients.size())
+        return false;
+
+    foreach (const Recipient &r, myRecipients) {
+        QList<Recipient>::iterator it = otherRecipients.begin(), end = otherRecipients.end();
+        for ( ; it != end; ++it) {
+            if (r.matches(*it)) {
+                otherRecipients.erase(it);
+                break;
+            }
+        }
+        if (it == end)
             return false;
     }
 
-    return otherMatches.size() == o.m_recipients.size();
+    return true;
 }
 
 bool RecipientList::hasSameContacts(const RecipientList &o) const
 {
-    QSet<int> otherMatches;
+    if (m_recipients.size() == 1 && o.m_recipients.size() == 1)
+        return m_recipients.first().matches(o.m_recipients.first());
 
-    foreach (const Recipient &r, m_recipients) {
-        bool found = false;
+    QList<Recipient> myRecipients(removeSameContacts(m_recipients));
+    QList<Recipient> otherRecipients(removeSameContacts(o.m_recipients));
 
-        for (int i = 0; i < o.m_recipients.size(); i++) {
-            if (r.isSameContact(o.m_recipients[i])) {
-                otherMatches.insert(i);
-                found = true;
+    if (myRecipients.size() != otherRecipients.size())
+        return false;
+
+    foreach (const Recipient &r, myRecipients) {
+        QList<Recipient>::iterator it = otherRecipients.begin(), end = otherRecipients.end();
+        for ( ; it != end; ++it) {
+            if (r.isSameContact(*it)) {
+                otherRecipients.erase(it);
+                break;
             }
         }
-
-        if (!found)
+        if (it == end)
             return false;
     }
 
-    return otherMatches.size() == o.m_recipients.size();
+    return true;
 }
 
 bool RecipientList::allContactsResolved() const
