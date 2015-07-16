@@ -177,9 +177,9 @@ void ContactResolverPrivate::addressResolved(const QString &first, const QString
         return;
     } else if (first.isEmpty()) {
         // Phone numbers have no localUid, search the set manually
+        const QPair<QString, quint32> phoneNumber(Recipient::phoneNumberMatchDetails(second));
         for (it = pending.begin(); it != pending.end(); it++) {
-            // second should be identical to input, so string equality is ok
-            if (it->isPhoneNumber() && it->remoteUid() == second)
+            if (it->matchesPhoneNumber(phoneNumber))
                 break;
         }
     } else {

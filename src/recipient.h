@@ -80,8 +80,10 @@ public:
     bool operator==(const Recipient &o) const;
     bool operator!=(const Recipient &o) const { return !operator==(o); }
     bool matches(const Recipient &o) const;
-    bool matches(const QString &remoteUid) const;
     bool isSameContact(const Recipient &o) const;
+
+    bool matchesRemoteUid(const QString &remoteUid) const;
+    bool matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const;
 
     int contactId() const;
     QString contactName() const;
@@ -105,6 +107,10 @@ public:
      * had no contact matches.
      */
     static QList<Recipient> recipientsForContact(int contactId);
+
+    /* Return the string in the form suitable for testing phone number matches
+     */
+    static QPair<QString, quint32> phoneNumberMatchDetails(const QString &s);
 
 private:
     QSharedPointer<RecipientPrivate> d;
@@ -135,6 +141,24 @@ public:
     bool operator!=(const RecipientList &o) const { return !operator==(o); }
     bool matches(const RecipientList &o) const;
     bool hasSameContacts(const RecipientList &o) const;
+
+    bool matchesRemoteUid(const QString &remoteUid) const
+    {
+        for (const_iterator it = constBegin(), end = constEnd(); it != end; ++it)
+            if (it->matchesRemoteUid(remoteUid))
+                return true;
+
+        return false;
+    }
+
+    bool matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const
+    {
+        for (const_iterator it = constBegin(), end = constEnd(); it != end; ++it)
+            if (it->matchesPhoneNumber(phoneNumber))
+                return true;
+
+        return false;
+    }
 
     template<typename Sequence>
     bool intersects(const Sequence &sequence) const

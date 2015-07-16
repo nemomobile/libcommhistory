@@ -26,6 +26,25 @@
 #include <QHash>
 #include <QDebug>
 
+namespace {
+
+bool initializeTypes()
+{
+    qRegisterMetaType<CommHistory::Recipient>();
+    qRegisterMetaType<CommHistory::RecipientList>();
+    return true;
+}
+
+QString minimizeRemoteUid(const QString &remoteUid, bool isPhoneNumber)
+{
+    // For non-standard localUid values, we still need a comparable value
+    return isPhoneNumber ? CommHistory::minimizePhoneNumber(remoteUid).toLower() : remoteUid.toLower();
+}
+
+}
+
+bool recipient_initialized = initializeTypes();
+
 namespace CommHistory {
 
 class RecipientPrivate
@@ -37,6 +56,9 @@ public:
     int contactId;
     bool contactResolved;
     bool isPhoneNumber;
+    QString minimizedRemoteUid;
+    quint32 localUidHash;
+    quint32 remoteUidHash;
 
     RecipientPrivate(const QString &localUid, const QString &remoteUid);
     ~RecipientPrivate();
@@ -47,19 +69,6 @@ public:
 }
 
 using namespace CommHistory;
-
-namespace {
-
-bool initializeTypes()
-{
-    qRegisterMetaType<CommHistory::Recipient>();
-    qRegisterMetaType<CommHistory::RecipientList>();
-    return true;
-}
-
-}
-
-bool recipient_initialized = initializeTypes();
 
 typedef QHash<QPair<QString,QString>,WeakRecipient> RecipientUidMap;
 typedef QMultiHash<int,WeakRecipient> RecipientContactMap;
@@ -105,8 +114,12 @@ RecipientPrivate::RecipientPrivate(const QString &local, const QString &remote)
     , remoteUid(remote)
     , contactId(0)
     , contactResolved(false)
+    , isPhoneNumber(localUidComparesPhoneNumbers(localUid))
+    // The following members could be initialized on-demand, but that appears to be slower overall
+    , minimizedRemoteUid(::minimizeRemoteUid(remoteUid, isPhoneNumber))
+    , localUidHash(qHash(localUid))
+    , remoteUidHash(qHash(minimizedRemoteUid))
 {
-    isPhoneNumber = localUid.startsWith(QStringLiteral("/org/freedesktop/Telepathy/Account/ring/"));
 }
 
 RecipientPrivate::~RecipientPrivate()
@@ -163,7 +176,7 @@ QString Recipient::minimizedPhoneNumber() const
 
 QString Recipient::minimizedRemoteUid() const
 {
-    return d->isPhoneNumber ? CommHistory::minimizePhoneNumber(d->remoteUid) : d->remoteUid;
+    return d->minimizedRemoteUid;
 }
 
 // Because all equal instances share a dptr, this is a very fast comparison
@@ -176,13 +189,16 @@ bool Recipient::matches(const Recipient &o) const
 {
     if (d == o.d)
         return true;
-
-    return d->localUid == o.d->localUid && CommHistory::remoteAddressMatch(d->localUid, d->remoteUid, o.d->remoteUid, true);
-}
-
-bool Recipient::matches(const QString &o) const
-{
-    return d->remoteUid == o || CommHistory::remoteAddressMatch(d->localUid, d->remoteUid, o, true);
+    if (d->isPhoneNumber != o.d->isPhoneNumber)
+        return false;
+    // For phone numbers, we ignore localUid comparison - may have to change in future?
+    if (!d->isPhoneNumber && d->localUidHash != o.d->localUidHash)
+        return false;
+    if (d->remoteUidHash != o.d->remoteUidHash)
+        return false;
+    if (!d->isPhoneNumber && d->localUid != o.d->localUid)
+        return false;
+    return d->minimizedRemoteUid == o.d->minimizedRemoteUid;
 }
 
 bool Recipient::isSameContact(const Recipient &o) const
@@ -192,6 +208,21 @@ bool Recipient::isSameContact(const Recipient &o) const
     if (d->contactResolved && o.d->contactResolved && (d->contactId > 0 || o.d->contactId > 0))
         return d->contactId == o.d->contactId;
     return matches(o);
+}
+
+bool Recipient::matchesRemoteUid(const QString &o) const
+{
+    const QString minimizedMatch(::minimizeRemoteUid(o, d->isPhoneNumber));
+    return d->minimizedRemoteUid == minimizedMatch;
+}
+
+bool Recipient::matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const
+{
+    if (!d->isPhoneNumber)
+        return false;
+    if (d->remoteUidHash != phoneNumber.second)
+        return false;
+    return d->minimizedRemoteUid == phoneNumber.first;
 }
 
 int Recipient::contactId() const
@@ -239,6 +270,12 @@ QList<Recipient> Recipient::recipientsForContact(int contactId)
         it++;
     }
     return re;
+}
+
+QPair<QString, quint32> Recipient::phoneNumberMatchDetails(const QString &s)
+{
+    const QString minimized(minimizeRemoteUid(s, true));
+    return qMakePair(minimized, qHash(minimized));
 }
 
 RecipientList::RecipientList()
@@ -388,7 +425,7 @@ bool RecipientList::matches(const RecipientList &o) const
 bool RecipientList::hasSameContacts(const RecipientList &o) const
 {
     if (m_recipients.size() == 1 && o.m_recipients.size() == 1)
-        return m_recipients.first().matches(o.m_recipients.first());
+        return m_recipients.first().isSameContact(o.m_recipients.first());
 
     QList<Recipient> myRecipients(removeSameContacts(m_recipients));
     QList<Recipient> otherRecipients(removeSameContacts(o.m_recipients));
