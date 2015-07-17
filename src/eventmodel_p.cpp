@@ -282,12 +282,12 @@ void EventModelPrivate::modifyInModel(Event &event)
     if (index.isValid()) {
         EventTreeItem *item = static_cast<EventTreeItem *>(index.internalPointer());
         Event oldEvent = item->event();
-        QDateTime oldTime = oldEvent.endTime();
+        quint32 oldTimeT = oldEvent.endTimeT();
         oldEvent.copyValidProperties(event);
         item->setEvent(oldEvent);
 
         // move event if endTime has changed
-        if (index.row() > 0 && oldTime < event.endTime()) {
+        if (index.row() > 0 && oldTimeT < event.endTimeT()) {
             EventTreeItem *parent = item->parent();
             if (!parent)
                 parent = eventRootItem;

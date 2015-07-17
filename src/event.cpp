@@ -50,8 +50,8 @@ public:
 
     int id;
     Event::EventType type;
-    QDateTime startTime;
-    QDateTime endTime;
+    mutable QDateTime startTime;
+    mutable QDateTime endTime;
     Event::EventDirection direction;
     Event::EventStatus status;
     int bytesReceived;
@@ -64,7 +64,7 @@ public:
     QString messageToken;
     QString mmsId;
 
-    QDateTime lastModified;
+    mutable QDateTime lastModified;
 
     int eventCount;
     QString fromVCardFileName;
@@ -81,6 +81,10 @@ public:
 
     Event::PropertySet validProperties;
     Event::PropertySet modifiedProperties;
+
+    mutable quint32 startTimeT;
+    mutable quint32 endTimeT;
+    mutable quint32 lastModifiedT;
 
     mutable struct {
         quint32 isDraft: 1;
@@ -106,13 +110,13 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
 {
     argument.beginStructure();
     bool isDeleted = false;
-    argument << event.id() << event.type() << event.startTime()
-             << event.endTime() << event.direction()  << event.isDraft()
+    argument << event.id() << event.type() << event.startTimeT()
+             << event.endTimeT() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
              << event.isEmergencyCall() << event.status()
              << event.bytesReceived() << event.localUid() << event.recipients()
              << -1 /* parentId */ << event.freeText() << event.groupId()
-             << event.messageToken() << event.mmsId() << event.lastModified()
+             << event.messageToken() << event.mmsId() << event.lastModifiedT()
              << event.eventCount()
              << event.fromVCardFileName() << event.fromVCardLabel()
              << QString() /* encoding */ << QString() /* charset */ << QString() /* language */
@@ -140,11 +144,11 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     bool isDraft, isRead, isMissedCall, isEmergencyCall, reportRead, isDeleted, reportDelivery, reportReadRequested, isAction;
     QString encoding, charset, language;
     argument.beginStructure();
-    argument >> p.id >> type >> p.startTime >> p.endTime
+    argument >> p.id >> type >> p.startTimeT >> p.endTimeT
              >> direction  >> isDraft >>  isRead >> isMissedCall >> isEmergencyCall
              >> status >> p.bytesReceived >> p.localUid >> p.recipients
              >> parentId >> p.freeText >> p.groupId
-             >> p.messageToken >> p.mmsId >>p.lastModified  >> p.eventCount
+             >> p.messageToken >> p.mmsId >> p.lastModifiedT >> p.eventCount
              >> p.fromVCardFileName >> p.fromVCardLabel >> encoding  >> charset >> language
              >> isDeleted >> reportDelivery >> p.contentLocation >> p.subject
              >> p.messageParts
@@ -163,8 +167,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
 
     event.setId(p.id);
     event.setType((Event::EventType)type);
-    event.setStartTime(p.startTime);
-    event.setEndTime(p.endTime);
+    event.setStartTimeT(p.startTimeT);
+    event.setEndTimeT(p.endTimeT);
     event.setDirection((Event::EventDirection)direction);
     event.setIsDraft( isDraft );
     event.setIsRead(isRead);
@@ -179,7 +183,7 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     event.setGroupId(p.groupId);
     event.setMessageToken(p.messageToken);
     event.setMmsId(p.mmsId);
-    event.setLastModified(p.lastModified);
+    event.setLastModifiedT(p.lastModifiedT);
     event.setEventCount(p.eventCount);
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
     event.setReportDelivery(reportDelivery);
@@ -253,7 +257,7 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
            >> direction  >> isDraft >>  isRead >> isMissedCall >> isEmergencyCall
            >> status >> p.bytesReceived >> localUid >> remoteUid
            >> parentId >> p.freeText >> p.groupId
-           >> p.messageToken >> p.mmsId >>p.lastModified
+           >> p.messageToken >> p.mmsId >> p.lastModified
            >> p.fromVCardFileName >> p.fromVCardLabel >> encoding >> charset >> language
            >> isDeleted >> reportDelivery >> p.contentLocation >> p.subject
            >> p.messageParts
@@ -262,8 +266,8 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
 
     event.setId(p.id);
     event.setType((Event::EventType)type);
-    event.setStartTime(p.startTime);
-    event.setEndTime(p.endTime);
+    event.setStartTimeT(p.startTime.toTime_t());
+    event.setEndTimeT(p.endTime.toTime_t());
     event.setDirection((Event::EventDirection)direction);
     event.setIsDraft( isDraft );
     event.setIsRead(isRead);
@@ -278,7 +282,7 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
     event.setGroupId(p.groupId);
     event.setMessageToken(p.messageToken);
     event.setMmsId(p.mmsId);
-    event.setLastModified(p.lastModified);
+    event.setLastModifiedT(p.lastModified.toTime_t());
     event.setFromVCard( p.fromVCardFileName, p.fromVCardLabel );
     event.setReportDelivery(reportDelivery);
     event.setValidityPeriod(p.validityPeriod);
@@ -305,6 +309,9 @@ EventPrivate::EventPrivate()
         , eventCount(0)
         , validityPeriod(0)
         , readStatus(Event::UnknownReadStatus)
+        , startTimeT(0)
+        , endTimeT(0)
+        , lastModifiedT(0)
 {
     flags.isDraft = false;
     flags.isRead = false;
@@ -316,16 +323,12 @@ EventPrivate::EventPrivate()
     flags.reportRead = false;
     flags.reportReadRequested = false;
     flags.isAction = false;
-
-    lastModified = QDateTime::fromTime_t(0);
 }
 
 EventPrivate::EventPrivate(const EventPrivate &other)
         : QSharedData(other)
         , id(other.id)
         , type(other.type)
-        , startTime(other.startTime)
-        , endTime(other.endTime)
         , direction(other.direction)
         , status(other.status)
         , bytesReceived(other.bytesReceived)
@@ -335,7 +338,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , groupId(other.groupId)
         , messageToken(other.messageToken)
         , mmsId(other.mmsId)
-        , lastModified(other.lastModified)
         , eventCount( other.eventCount )
         , fromVCardFileName( other.fromVCardFileName )
         , fromVCardLabel( other.fromVCardLabel )
@@ -348,6 +350,9 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , extraProperties(other.extraProperties)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
+        , startTimeT(other.startTimeT)
+        , endTimeT(other.endTimeT)
+        , lastModifiedT(other.lastModifiedT)
 {
     flags.isDraft = other.flags.isDraft;
     flags.isRead = other.flags.isRead;
@@ -424,8 +429,8 @@ bool Event::operator==(const Event &other) const
 {
     return (this->d->recipients             == other.d->recipients &&
             this->d->localUid               == other.d->localUid &&
-            this->d->startTime              == other.d->startTime &&
-            this->d->endTime                == other.d->endTime &&
+            this->d->startTimeT             == other.d->startTimeT &&
+            this->d->endTimeT               == other.d->endTimeT &&
             this->d->flags.isDraft          == other.d->flags.isDraft &&
             this->d->flags.isRead           == other.d->flags.isRead &&
             this->d->flags.isMissedCall     == other.d->flags.isMissedCall &&
@@ -459,11 +464,17 @@ Event::EventType Event::type() const
 
 QDateTime Event::startTime() const
 {
+    if (d->startTime.isNull() && d->startTimeT != 0) {
+        d->startTime = QDateTime::fromTime_t(d->startTimeT);
+    }
     return d->startTime;
 }
 
 QDateTime Event::endTime() const
 {
+    if (d->endTime.isNull() && d->endTimeT != 0) {
+        d->endTime = QDateTime::fromTime_t(d->endTimeT);
+    }
     return d->endTime;
 }
 
@@ -582,6 +593,9 @@ QString Event::mmsId() const
 
 QDateTime Event::lastModified() const
 {
+    if (d->lastModified.isNull()) {
+        d->lastModified = QDateTime::fromTime_t(d->lastModifiedT);
+    }
     return d->lastModified;
 }
 
@@ -660,6 +674,21 @@ QHash<QString, QString> Event::headers() const
     return d->headers;
 }
 
+quint32 Event::startTimeT() const
+{
+    return d->startTimeT;
+}
+
+quint32 Event::endTimeT() const
+{
+    return d->endTimeT;
+}
+
+quint32 Event::lastModifiedT() const
+{
+    return d->lastModifiedT;
+}
+
 void Event::setValidProperties(const Event::PropertySet &properties)
 {
     d->validProperties = properties;
@@ -689,13 +718,23 @@ void Event::setType(Event::EventType type)
 
 void Event::setStartTime(const QDateTime &startTime)
 {
-    d->startTime = startTime.toUTC();
+    if (d->startTime.isNull()) {
+        d->startTimeT = startTime.toUTC().toTime_t();
+    } else {
+        d->startTime = startTime.toUTC();
+        d->startTimeT = d->startTime.toTime_t();
+    }
     d->propertyChanged(Event::StartTime);
 }
 
 void Event::setEndTime(const QDateTime &endTime)
 {
-    d->endTime = endTime.toUTC();
+    if (d->endTime.isNull()) {
+        d->endTimeT = endTime.toUTC().toTime_t();
+    } else {
+        d->endTime = endTime.toUTC();
+        d->endTimeT = d->endTime.toTime_t();
+    }
     d->propertyChanged(Event::EndTime);
 }
 
@@ -798,7 +837,12 @@ void Event::setMmsId(const QString &mmsId)
 
 void Event::setLastModified(const QDateTime &modified)
 {
-    d->lastModified = modified.toUTC();
+    if (d->lastModified.isNull()) {
+        d->lastModifiedT = modified.toUTC().toTime_t();
+    } else {
+        d->lastModified = modified.toUTC();
+        d->lastModifiedT = d->lastModified.toTime_t();
+    }
     d->propertyChanged(Event::LastModified);
 }
 
@@ -938,6 +982,33 @@ void Event::setExtraProperty(const QString &key, const QVariant &value)
     d->propertyChanged(Event::ExtraProperties);
 }
 
+void Event::setStartTimeT(quint32 startTime)
+{
+    d->startTimeT = startTime;
+    if (!d->startTime.isNull()) {
+        d->startTime = QDateTime::fromTime_t(d->startTimeT);
+    }
+    d->propertyChanged(Event::StartTime);
+}
+
+void Event::setEndTimeT(quint32 endTime)
+{
+    d->endTimeT = endTime;
+    if (!d->endTime.isNull()) {
+        d->endTime = QDateTime::fromTime_t(d->endTimeT);
+    }
+    d->propertyChanged(Event::EndTime);
+}
+
+void Event::setLastModifiedT(quint32 modified)
+{
+    d->lastModifiedT = modified;
+    if (!d->lastModified.isNull()) {
+        d->lastModified = QDateTime::fromTime_t(d->lastModifiedT);
+    }
+    d->propertyChanged(Event::LastModified);
+}
+
 QString Event::toString() const
 {
     QString headers;
@@ -989,10 +1060,10 @@ void Event::copyValidProperties(const Event &other)
             setType(other.type());
             break;
         case StartTime:
-            setStartTime(other.startTime());
+            setStartTimeT(other.startTimeT());
             break;
         case EndTime:
-            setEndTime(other.endTime());
+            setEndTimeT(other.endTimeT());
             break;
         case Direction:
             setDirection(other.direction());
@@ -1042,7 +1113,7 @@ void Event::copyValidProperties(const Event &other)
             setMessageToken(other.messageToken());
             break;
         case LastModified:
-            setLastModified(other.lastModified());
+            setLastModifiedT(other.lastModifiedT());
             break;
         case EventCount:
             setEventCount(other.eventCount());

@@ -577,8 +577,8 @@ bool EventModel::modifyEvents(QList<Event> &events)
             return false;
         }
 
-        if (event.lastModified() == QDateTime::fromTime_t(0))
-             event.setLastModified(QDateTime::currentDateTime());
+        if (event.lastModifiedT() == 0)
+            event.setLastModifiedT(Event::currentTime_t());
 
         if (!d->database()->modifyEvent(event)) {
             d->database()->rollback();
@@ -749,16 +749,15 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             return false;
         }
 
-        if (event.lastModified() == QDateTime::fromTime_t(0)) {
-             event.setLastModified(QDateTime::currentDateTime());
-        }
+        if (event.lastModifiedT() == 0)
+            event.setLastModifiedT(Event::currentTime_t());
 
         if (!d->database()->modifyEvent(event)) {
             d->database()->rollback();
             return false;
         }
         if (group.lastEventId() == event.id()
-            || event.endTime() > group.endTime()) {
+            || event.endTimeT() > group.endTimeT()) {
             Event::PropertySet modified;
             if (group.lastEventId() == event.id()) {
                 modified = event.modifiedProperties();
@@ -793,9 +792,9 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             if (modified.contains(Event::IsDraft))
                 group.setLastEventIsDraft(event.isDraft());
             if (modified.contains(Event::StartTime))
-                group.setStartTime(event.startTime());
+                group.setStartTimeT(event.startTimeT());
             if (modified.contains(Event::EndTime))
-                group.setEndTime(event.endTime());
+                group.setEndTimeT(event.endTimeT());
         }
     }
 

@@ -207,6 +207,15 @@ public:
     QDateTime lastModified() const;
     void setLastModified(const QDateTime &modified);
 
+    quint32 startTimeT() const;
+    void setStartTimeT(quint32 startTime);
+
+    quint32 endTimeT() const;
+    void setEndTimeT(quint32 endTime);
+
+    quint32 lastModifiedT() const;
+    void setLastModifiedT(quint32 modified);
+
     /* API from Group */
     static int urlToId(const QString &url);
     static QUrl idToUrl(int id);

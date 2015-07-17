@@ -232,6 +232,10 @@ public:
 
     QDateTime lastModified() const;
 
+    quint32 startTimeT() const;
+    quint32 endTimeT() const;
+    quint32 lastModifiedT() const;
+
     void setId(int id);
     void setLocalUid(const QString &uid);
     void setRecipients(const RecipientList &recipients);
@@ -248,6 +252,10 @@ public:
     void setLastEventStatus(Event::EventStatus eventStatus);
     void setLastEventIsDraft(bool isDraft);
     void setLastModified(const QDateTime &modified);
+
+    void setStartTimeT(quint32 startTime);
+    void setEndTimeT(quint32 endTime);
+    void setLastModifiedT(quint32 modified);
 
     QString toString() const;
 

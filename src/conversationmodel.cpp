@@ -134,7 +134,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     int firstId = -1;
     if (eventRootItem->childCount() > 0) {
         Event firstEvent = eventRootItem->eventAt(eventRootItem->childCount() - 1);
-        firstTimestamp = firstEvent.endTime().toTime_t();
+        firstTimestamp = firstEvent.endTimeT();
         firstId = firstEvent.id();
     }
 

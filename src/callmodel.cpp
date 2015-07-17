@@ -68,7 +68,7 @@ CallModelPrivate::CallModelPrivate( EventModel *model )
         : EventModelPrivate( model )
         , sortBy( CallModel::SortByContact )
         , eventType( CallEvent::UnknownCallType )
-        , referenceTime( QDateTime() )
+        , referenceTime( 0 )
         , hasBeenFetched( false )
 {
     propertyMask -= unusedProperties;
@@ -109,7 +109,7 @@ bool CallModelPrivate::acceptsEvent( const Event &event ) const
         return false;
     }
 
-    if(!referenceTime.isNull() && (event.startTime() < referenceTime)) // a reference Time is already set, so any further event addition should be beyond that
+    if (referenceTime != 0 && (event.startTimeT() < referenceTime)) // a reference Time is already set, so any further event addition should be beyond that
     {
         return false;
     }
@@ -172,7 +172,7 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         if (!replaced) {
             int row;
             for (row = 0; row < eventRootItem->childCount(); row++) {
-                if (eventRootItem->child(row)->event().endTime() <= event.endTime())
+                if (eventRootItem->child(row)->event().endTimeT() <= event.endTimeT())
                     break;
             }
 
@@ -835,7 +835,7 @@ void CallModel::setFilterType(CallEvent::CallType type)
 void CallModel::setFilterReferenceTime(const QDateTime &referenceTime)
 {
     Q_D(CallModel);
-    d->referenceTime = referenceTime;
+    d->referenceTime = referenceTime.isNull() ? 0 : referenceTime.toTime_t();
 }
 
 void CallModel::setFilterAccount(const QString &localUid)
@@ -849,7 +849,7 @@ void CallModel::resetFilters()
     Q_D(CallModel);
     d->sortBy = SortByContact;
     d->eventType = CallEvent::UnknownCallType;
-    d->referenceTime = QDateTime();
+    d->referenceTime = 0;
     d->filterLocalUid = QString();
 }
 
@@ -880,8 +880,8 @@ bool CallModel::getEvents()
         q += QString::fromLatin1("AND localUid=:filterLocalUid ");
     }
 
-    if (!d->referenceTime.isNull()) {
-        q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime.toTime_t());
+    if (d->referenceTime != 0) {
+        q += QString::fromLatin1("AND startTime >= %1 ").arg(d->referenceTime);
     }
 
     q += "ORDER BY endTime DESC, id DESC";

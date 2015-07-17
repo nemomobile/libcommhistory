@@ -45,7 +45,7 @@ bool initializeTypes()
 
 inline bool groupObjectSort(GroupObject *a, GroupObject *b)
 {
-    return a->endTime() > b->endTime(); // descending order
+    return a->endTimeT() > b->endTimeT(); // descending order
 }
 
 }

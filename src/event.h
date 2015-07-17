@@ -317,6 +317,10 @@ public:
     // Optional message headers, key/value.
     QHash<QString, QString> headers() const;
 
+    quint32 startTimeT() const;
+    quint32 endTimeT() const;
+    quint32 lastModifiedT() const;
+
     //\\//\\// S E T - A C C E S S O R S //\\//\\//
     void setId(int id);
 
@@ -397,6 +401,10 @@ public:
 
     void setHeaders(const QHash<QString, QString> &headers);
 
+    void setStartTimeT(quint32 t);
+    void setEndTimeT(quint32 t);
+    void setLastModifiedT(quint32 t);
+
     QString toString() const;
 
     bool resetModifiedProperty(Event::Property property);
@@ -407,6 +415,8 @@ public:
      * \param another event
      */
     void copyValidProperties(const Event &other);
+
+    static quint32 currentTime_t() { return QDateTime::currentDateTimeUtc().toTime_t(); }
 
 private:
     QSharedDataPointer<EventPrivate> d;

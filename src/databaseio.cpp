@@ -86,10 +86,10 @@ public:
                     fields.append(QueryHelper::Field("type", event.type()));
                     break;
                 case Event::StartTime:
-                    fields.append(QueryHelper::Field("startTime", event.startTime().toTime_t()));
+                    fields.append(QueryHelper::Field("startTime", event.startTimeT()));
                     break;
                 case Event::EndTime:
-                    fields.append(QueryHelper::Field("endTime", event.endTime().toTime_t()));
+                    fields.append(QueryHelper::Field("endTime", event.endTimeT()));
                     break;
                 case Event::Direction:
                     fields.append(QueryHelper::Field("direction", event.direction()));
@@ -131,7 +131,7 @@ public:
                     fields.append(QueryHelper::Field("messageToken", event.messageToken()));
                     break;
                 case Event::LastModified:
-                    fields.append(QueryHelper::Field("lastModified", event.lastModified()));
+                    fields.append(QueryHelper::Field("lastModified", event.lastModifiedT()));
                     break;
                 case Event::FromVCardFileName:
                     fields.append(QueryHelper::Field("vCardFileName", event.fromVCardFileName()));
@@ -217,7 +217,7 @@ public:
                     fields.append(QueryHelper::Field("chatName", group.chatName()));
                     break;
                 case Group::LastModified:
-                    fields.append(QueryHelper::Field("lastModified", group.lastModified().toTime_t()));
+                    fields.append(QueryHelper::Field("lastModified", group.lastModifiedT()));
                     break;
                 /* Ignored properties (not settable) */
                 case Group::Id:
@@ -549,8 +549,8 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     int field = 0;
     event.setId(query.value(field).toInt());
     event.setType(static_cast<Event::EventType>(query.value(++field).toInt()));
-    event.setStartTime(QDateTime::fromTime_t(query.value(++field).toUInt()));
-    event.setEndTime(QDateTime::fromTime_t(query.value(++field).toUInt()));
+    event.setStartTimeT(query.value(++field).toUInt());
+    event.setEndTimeT(query.value(++field).toUInt());
     event.setDirection(static_cast<Event::EventDirection>(query.value(++field).toInt()));
     event.setIsDraft(query.value(++field).toBool());
     event.setIsRead(query.value(++field).toBool());
@@ -567,7 +567,7 @@ void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &ha
     else
         event.setGroupId(query.value(field).toInt());
     event.setMessageToken(query.value(++field).toString());
-    event.setLastModified(QDateTime::fromTime_t(query.value(++field).toUInt()));
+    event.setLastModifiedT(query.value(++field).toUInt());
     QString vCardFileName = query.value(++field).toString();
     QString vCardLabel = query.value(++field).toString();
     event.setFromVCard(vCardFileName, vCardLabel);
@@ -886,19 +886,19 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
 
     group.setChatType(static_cast<Group::ChatType>(query.value(3).toInt()));
     group.setChatName(query.value(4).toString());
-    group.setLastModified(QDateTime::fromTime_t(query.value(5).toUInt()));
+    group.setLastModifiedT(query.value(5).toUInt());
     // startTime and endTime are below
     group.setUnreadMessages(query.value(8).toInt());
 
     if (query.value(6).isNull())
-        group.setStartTime(QDateTime());
+        group.setStartTimeT(0);
     else
-        group.setStartTime(QDateTime::fromTime_t(query.value(6).toUInt()));
+        group.setStartTimeT(query.value(6).toUInt());
 
     if (query.value(7).isNull())
-        group.setEndTime(QDateTime());
+        group.setEndTimeT(0);
     else
-        group.setEndTime(QDateTime::fromTime_t(query.value(7).toUInt()));
+        group.setEndTimeT(query.value(7).toUInt());
 
     if (query.value(9).isNull())
         group.setLastEventId(-1);

@@ -76,7 +76,7 @@ public Q_SLOTS:
 public:
     CallModel::Sorting sortBy;
     CallEvent::CallType eventType;
-    QDateTime referenceTime;
+    quint32 referenceTime;
     QString filterLocalUid;
     bool hasBeenFetched;
     QSet<QString> countedUids;

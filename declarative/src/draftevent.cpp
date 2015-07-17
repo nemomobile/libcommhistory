@@ -71,8 +71,8 @@ void DraftEvent::save()
     SingleEventModel model;
     m_event.setIsDraft(true);
     m_event.setIsRead(true);
-    m_event.setStartTime(QDateTime::currentDateTime());
-    m_event.setEndTime(QDateTime::currentDateTime());
+    m_event.setStartTimeT(Event::currentTime_t());
+    m_event.setEndTimeT(m_event.startTimeT());
     m_event.setType(localUidComparesPhoneNumbers(m_event.localUid()) ? Event::SMSEvent : Event::IMEvent);
     m_event.setDirection(Event::Outbound);
 

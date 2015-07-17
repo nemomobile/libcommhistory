@@ -86,6 +86,10 @@ public:
     QList<GroupObject*> groups() const;
     QList<QObject*> groupObjects() const;
 
+    quint32 startTimeT() const;
+    quint32 endTimeT() const;
+    quint32 lastModifiedT() const;
+
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid);
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids);
 
