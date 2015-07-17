@@ -57,6 +57,7 @@ public:
 
     void add(const Recipient &recipient);
     void add(const RecipientList &recipients);
+    void add(const QList<Recipient> &recipients);
     template<typename T> void add(const T &value);
     template<typename T> void add(const QList<T> &value);
 

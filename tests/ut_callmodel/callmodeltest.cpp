@@ -1013,7 +1013,6 @@ void CallModelTest::testModifyEvent()
 // minimize to the same number.
 void CallModelTest::testMinimizedPhone()
 {
-    QSKIP("Contact matching is not yet supported with SQLite");
     deleteAll();
 
     const QString phone00("0011112222");
@@ -1032,26 +1031,91 @@ void CallModelTest::testMinimizedPhone()
 
     QDateTime when = QDateTime::currentDateTime();
     addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when, phone00);
-    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(10), phone99);
-    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(20), phone00);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, true, when.addSecs(10), phone99);
+    addTestEvent(model, Event::CallEvent, Event::Outbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(20), phone00);
     QVERIFY(watcher.waitForAdded(3));
 
+    model.setFilter(CallModel::SortByTime);
     model.setResolveContacts(true);
     QVERIFY(model.getEvents());
     QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(model.rowCount(), 3);
 
     Event e;
     e = model.event(model.index(0, 0));
-    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
-    QCOMPARE(e.recipients().value(0).remoteUid(), phone00);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QCOMPARE(e.recipients().at(0).isContactResolved(), true);
+    /* libcontacts does not necessarily return the correct resolution...
+    QCOMPARE(e.recipients().at(0).contactId(), user00id);
+    QCOMPARE(e.recipients().at(0).contactName(), user00);
+    */
+    QVERIFY(e.recipients().at(0).contactId() != 0);
+    QVERIFY(e.recipients().at(0).contactName() != QString());
 
     e = model.event(model.index(1, 0));
-    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user99id, user99));
-    QCOMPARE(e.recipients().value(0).remoteUid(), phone99);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone99));
+    QCOMPARE(e.recipients().at(0).isContactResolved(), true);
+    /*
+    QCOMPARE(e.recipients().at(0).contactId(), user99id);
+    QCOMPARE(e.recipients().at(0).contactName(), user99);
+    */
+    QVERIFY(e.recipients().at(0).contactId() != 0);
+    QVERIFY(e.recipients().at(0).contactName() != QString());
 
     e = model.event(model.index(2, 0));
-    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(user00id, user00));
-    QCOMPARE(e.recipients().value(0).remoteUid(), phone00);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QCOMPARE(e.recipients().at(0).isContactResolved(), true);
+    /*
+    QCOMPARE(e.recipients().at(0).contactId(), user00id);
+    QCOMPARE(e.recipients().at(0).contactName(), user00);
+    */
+    QVERIFY(e.recipients().at(0).contactId() != 0);
+    QVERIFY(e.recipients().at(0).contactName() != QString());
+
+    // If we delete one of these contacts the number should resolve to the other
+    deleteTestContact(user99id);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), user00id);
+    QCOMPARE(e.recipients().at(0).contactName(), user00);
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone99));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), user00id);
+    QCOMPARE(e.recipients().at(0).contactName(), user00);
+
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), user00id);
+    QCOMPARE(e.recipients().at(0).contactName(), user00);
+
+    // Delete the other contact, the numbers should no longer resolve to any contact
+    deleteTestContact(user00id);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), 0);
+    QCOMPARE(e.recipients().at(0).contactName(), QString());
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone99));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), 0);
+    QCOMPARE(e.recipients().at(0).contactName(), QString());
+
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
+    QTRY_COMPARE(e.recipients().at(0).contactId(), 0);
+    QCOMPARE(e.recipients().at(0).contactName(), QString());
 }
 
 void CallModelTest::cleanupTestCase()

@@ -46,7 +46,8 @@ public:
     explicit ContactResolverPrivate(ContactResolver *parent);
     ~ContactResolverPrivate();
 
-    bool resolve(Recipient recipient);
+    void resolve(Recipient recipient);
+    void checkIfFinishedAsynchronously();
     virtual void addressResolved(const QString &first, const QString &second, SeasideCache::CacheItem *item);
 
 public slots:
@@ -91,32 +92,28 @@ void ContactResolver::setForceResolving(bool enabled)
 void ContactResolver::add(const Recipient &recipient)
 {
     Q_D(ContactResolver);
-    if (!d->resolving) {
-        // On the first resolve, make a queued call to checkIfFinished.
-        // This handles asynchronously emitting the signal if nothing has
-        // to be resolved, to preserve API assumptions.
-        bool ok = d->metaObject()->invokeMethod(d, "checkIfFinished", Qt::QueuedConnection);
-        Q_UNUSED(ok);
-        Q_ASSERT(ok);
-    }
-
-    d->resolving = true;
     d->resolve(recipient);
+    d->checkIfFinishedAsynchronously();
 }
 
 void ContactResolver::add(const RecipientList &recipients)
 {
     Q_D(ContactResolver);
 
-    if (!d->resolving) {
-        bool ok = d->metaObject()->invokeMethod(d, "checkIfFinished", Qt::QueuedConnection);
-        Q_UNUSED(ok);
-        Q_ASSERT(ok);
-    }
-
-    d->resolving = true;
     foreach (const Recipient &recipient, recipients)
         d->resolve(recipient);
+
+    d->checkIfFinishedAsynchronously();
+}
+
+void ContactResolver::add(const QList<Recipient> &recipients)
+{
+    Q_D(ContactResolver);
+
+    foreach (const Recipient &recipient, recipients)
+        d->resolve(recipient);
+
+    d->checkIfFinishedAsynchronously();
 }
 
 static QString contactName(const QContact &contact)
@@ -124,21 +121,20 @@ static QString contactName(const QContact &contact)
     return SeasideCache::generateDisplayLabel(contact, SeasideCache::displayLabelOrder());
 }
 
-// Returns true if resolved immediately
-bool ContactResolverPrivate::resolve(Recipient recipient)
+void ContactResolverPrivate::resolve(Recipient recipient)
 {
     if (!forceResolving && recipient.isContactResolved())
-        return true;
+        return;
 
     Q_ASSERT(!recipient.localUid().isEmpty());
     if (recipient.localUid().isEmpty() || recipient.remoteUid().isEmpty()) {
         // Cannot match any contact. Set as resolved to nothing.
         recipient.setResolvedContact(0, QString());
-        return true;
+        return;
     }
 
     if (pending.contains(recipient))
-        return false;
+        return;
 
     SeasideCache::CacheItem *item = 0;
     if (recipient.isPhoneNumber()) {
@@ -149,12 +145,22 @@ bool ContactResolverPrivate::resolve(Recipient recipient)
 
     if (item) {
         recipient.setResolvedContact(item->iid, contactName(item->contact));
-        return true;
     } else {
         pending.insert(recipient);
     }
+}
 
-    return false;
+void ContactResolverPrivate::checkIfFinishedAsynchronously()
+{
+    if (!resolving) {
+        resolving = true;
+
+        if (pending.isEmpty()) {
+            bool ok = metaObject()->invokeMethod(this, "checkIfFinished", Qt::QueuedConnection);
+            Q_UNUSED(ok);
+            Q_ASSERT(ok);
+        }
+    }
 }
 
 bool ContactResolverPrivate::checkIfFinished()

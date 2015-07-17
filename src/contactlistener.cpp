@@ -53,16 +53,20 @@ public:
 
     ContactResolver *retryResolver;
     QList<Recipient> retryRecipients;
+    QList<Recipient> unresolvedRecipients;
 
 private slots:
     void retryFinished();
     void resolveAgain(const CommHistory::Recipient &recipient);
+    void retryUnresolved();
 
 protected:
     void itemUpdated(SeasideCache::CacheItem *item);
     void itemAboutToBeRemoved(SeasideCache::CacheItem *item);
 
 private:
+    ContactResolver *resolver();
+
     ContactListener *q_ptr;
 };
 
@@ -106,15 +110,27 @@ ContactListenerPrivate::~ContactListenerPrivate()
     SeasideCache::unregisterChangeListener(this);
 }
 
-void ContactListenerPrivate::resolveAgain(const Recipient &recipient)
+ContactResolver *ContactListenerPrivate::resolver()
 {
     if (!retryResolver) {
         retryResolver = new ContactResolver(this);
         retryResolver->setForceResolving(true);
         connect(retryResolver, SIGNAL(finished()), SLOT(retryFinished()));
     }
+    return retryResolver;
+}
+
+void ContactListenerPrivate::resolveAgain(const Recipient &recipient)
+{
     retryRecipients.append(recipient);
-    retryResolver->add(recipient);
+    resolver()->add(recipient);
+}
+
+void ContactListenerPrivate::retryUnresolved()
+{
+    retryRecipients.append(unresolvedRecipients);
+    resolver()->add(unresolvedRecipients);
+    unresolvedRecipients.clear();
 }
 
 void ContactListenerPrivate::retryFinished()
@@ -209,10 +225,18 @@ void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
 void ContactListenerPrivate::itemAboutToBeRemoved(SeasideCache::CacheItem *item)
 {
     QList<Recipient> recipients = Recipient::recipientsForContact(item->iid);
-    foreach (const Recipient &recipient, recipients) {
-        DEBUG() << "Recipient" << recipient << "matched removed contact" << item->iid;
-        // Delay retrying to be sure the contact is removed from cache
-        metaObject()->invokeMethod(this, "resolveAgain", Qt::QueuedConnection, Q_ARG(CommHistory::Recipient, recipient));
+    if (!recipients.isEmpty()) {
+        foreach (const Recipient &recipient, recipients) {
+            DEBUG() << "Recipient" << recipient << "matched removed contact" << item->iid;
+        }
+
+        const bool retryPending(!unresolvedRecipients.isEmpty());
+        unresolvedRecipients.append(recipients);
+
+        if (!retryPending) {
+            // Delay retrying to be sure the contact is removed from cache
+            metaObject()->invokeMethod(this, "retryUnresolved", Qt::QueuedConnection);
+        }
     }
 }
 
