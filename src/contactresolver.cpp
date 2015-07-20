@@ -142,12 +142,12 @@ bool ContactResolverPrivate::resolve(Recipient recipient)
 
     SeasideCache::CacheItem *item = 0;
     if (recipient.isPhoneNumber()) {
-        item = SeasideCache::resolvePhoneNumber(this, recipient.remoteUid(), true);
+        item = SeasideCache::resolvePhoneNumber(this, recipient.remoteUid(), false);
     } else {
-        item = SeasideCache::resolveOnlineAccount(this, recipient.localUid(), recipient.remoteUid(), true);
+        item = SeasideCache::resolveOnlineAccount(this, recipient.localUid(), recipient.remoteUid(), false);
     }
 
-    if (item && (item->contactState == SeasideCache::ContactComplete)) {
+    if (item) {
         recipient.setResolvedContact(item->iid, contactName(item->contact));
         return true;
     } else {
