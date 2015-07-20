@@ -58,6 +58,7 @@ public:
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
     bool lastEventIsDraft;
+    bool recipientsResolved;
     mutable QDateTime lastModified;
     mutable quint32 startTimeT;
     mutable quint32 endTimeT;
@@ -77,6 +78,7 @@ GroupObjectPrivate::GroupObjectPrivate(GroupManager *m, GroupObject *parent)
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
         , lastEventIsDraft(false)
+        , recipientsResolved(manager->resolveContacts())
         , startTimeT(0)
         , endTimeT(0)
         , lastModifiedT(0)
@@ -439,6 +441,19 @@ bool GroupObject::deleteGroup()
     }
 
     return d->manager->deleteGroups(QList<int>() << id());
+}
+
+bool GroupObject::isResolved() const
+{
+    return d->recipientsResolved;
+}
+
+void GroupObject::resolve()
+{
+    if (!d->recipientsResolved) {
+        d->recipientsResolved = true;
+        d->manager->resolve(*this);
+    }
 }
 
 QString GroupObject::toString() const

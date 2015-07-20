@@ -231,6 +231,8 @@ public:
     bool canFetchMore() const;
     void fetchMore();
 
+    void resolve(GroupObject &group);
+
 Q_SIGNALS:
     /*!
      * Emitted when an async query is finished and the model has been filled.

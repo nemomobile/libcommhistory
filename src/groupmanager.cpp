@@ -77,6 +77,10 @@ public:
 
     void modifyInModel(Group &group, bool query = true);
 
+    void resolve(GroupObject &group);
+
+    ContactResolver *resolver();
+
     bool canFetchMore() const;
 
     bool commitTransaction(const QList<int> &groupIds);
@@ -118,6 +122,7 @@ public:
     QSharedPointer<UpdatesEmitter> emitter;
 
     QList<Group> pendingResolve;
+    QList<GroupObject *> pendingObjects;
 };
 
 }
@@ -202,14 +207,8 @@ void GroupManagerPrivate::addGroups(const QList<Group> &groups)
 {
     if (!groups.isEmpty()) {
         if (resolveContacts && queryMode != EventModel::SyncQuery) {
-            if (!contactResolver) {
-                contactResolver = new ContactResolver(this);
-                connect(contactResolver, SIGNAL(finished()),
-                        this, SLOT(contactResolveFinished()));
-            }
-
             pendingResolve.append(groups);
-            contactResolver->add(groups);
+            resolver()->add(groups);
         } else {
             foreach (const Group &group, groups)
                 add(group);
@@ -243,6 +242,22 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
 
     emit q->groupUpdated(go);
     DEBUG() << __PRETTY_FUNCTION__ << ": updated" << go->toString();
+}
+
+void GroupManagerPrivate::resolve(GroupObject &group)
+{
+    pendingObjects.append(&group);
+    resolver()->add(group);
+}
+
+ContactResolver *GroupManagerPrivate::resolver()
+{
+    if (!contactResolver) {
+        contactResolver = new ContactResolver(this);
+        connect(contactResolver, SIGNAL(finished()),
+                this, SLOT(contactResolveFinished()));
+    }
+    return contactResolver;
 }
 
 void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
@@ -549,16 +564,28 @@ void GroupManagerPrivate::contactResolveFinished()
 {
     Q_Q(GroupManager);
 
-    QList<Group> results = pendingResolve;
-    pendingResolve.clear();
+    if (!pendingResolve.isEmpty()) {
+        DEBUG() << "Finished resolving" << pendingResolve.size() << "groups";
 
-    DEBUG() << "Finished resolving" << results.size() << "groups";
+        foreach (const Group &g, pendingResolve) {
+            GroupObject *go = new GroupObject(g, q);
+            DEBUG() << g.id() << g.recipients().debugString();
+            groups.insert(g.id(), go);
+            emit q->groupAdded(go);
+        }
 
-    foreach (const Group &g, results) {
-        GroupObject *go = new GroupObject(g, q);
-        DEBUG() << g.id() << g.recipients().debugString();
-        groups.insert(g.id(), go);
-        emit q->groupAdded(go);
+        pendingResolve.clear();
+    }
+
+    if (!pendingObjects.isEmpty()) {
+        DEBUG() << "Finished resolving" << pendingObjects.size() << "group objects";
+
+        foreach (GroupObject *go, pendingObjects) {
+            DEBUG() << go->id() << go->recipients().debugString();
+            emit q->groupUpdated(go);
+        }
+
+        pendingObjects.clear();
     }
 
     if (!isReady) {
@@ -728,5 +755,9 @@ void GroupManager::setResolveContacts(bool enabled)
     emit resolveContactsChanged();
 }
 
-#include "groupmanager.moc"
+void GroupManager::resolve(GroupObject &group)
+{
+    d->resolve(group);
+}
 
+#include "groupmanager.moc"

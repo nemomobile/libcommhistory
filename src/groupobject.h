@@ -250,6 +250,9 @@ public:
      */
     void resetModifiedProperties();
 
+    bool isResolved() const;
+    void resolve();
+
     QString toString() const;
 
     void set(const Group &other);

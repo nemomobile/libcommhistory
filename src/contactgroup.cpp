@@ -36,6 +36,8 @@ public:
 
     void update();
 
+    void resolve();
+
     ContactGroup *q_ptr;
     QList<GroupObject*> groups;
  
@@ -48,14 +50,15 @@ public:
     QString lastMessageText, lastVCardFileName, lastVCardLabel;
     int lastEventType, lastEventStatus;
     bool lastEventIsDraft;
+    bool groupsResolved;
 };
 
 }
 
 using namespace CommHistory;
 
-ContactGroupPrivate::ContactGroupPrivate(ContactGroup *parent)
-    : q_ptr(parent)
+ContactGroupPrivate::ContactGroupPrivate(ContactGroup *q)
+    : q_ptr(q)
     , startTimeT(0)
     , endTimeT(0)
     , lastModifiedT(0)
@@ -65,6 +68,7 @@ ContactGroupPrivate::ContactGroupPrivate(ContactGroup *parent)
     , lastEventType(Event::UnknownType)
     , lastEventStatus(Event::UnknownStatus)
     , lastEventIsDraft(false)
+    , groupsResolved(true)
 {
 }
 
@@ -77,6 +81,7 @@ void ContactGroup::addGroup(GroupObject *group)
 {
     Q_D(ContactGroup);
     if (!d->groups.contains(group)) {
+        d->groupsResolved &= group->isResolved();
         d->groups.append(group);
         emit groupsChanged();
     }
@@ -211,6 +216,9 @@ QList<int> ContactGroup::contactIds() const
     Q_D(const ContactGroup);
     if (d->groups.isEmpty())
         return QList<int>();
+
+    // We need our groups resolved to give (asynchronously) the correct result
+    const_cast<ContactGroupPrivate *>(d)->resolve();
     return d->groups[0]->recipients().contactIds();
 }
 
@@ -219,6 +227,9 @@ QStringList ContactGroup::displayNames() const
     Q_D(const ContactGroup);
     if (d->groups.isEmpty())
         return QStringList();
+
+    // We need our groups resolved to give (asynchronously) the correct result
+    const_cast<ContactGroupPrivate *>(d)->resolve();
     return d->groups[0]->recipients().displayNames();
 }
 
@@ -388,6 +399,27 @@ quint32 ContactGroup::lastModifiedT() const
 {
     Q_D(const ContactGroup);
     return d->lastModifiedT;
+}
+
+bool ContactGroup::isResolved() const
+{
+    Q_D(const ContactGroup);
+    return d->groupsResolved;
+}
+
+void ContactGroup::resolve()
+{
+    Q_D(ContactGroup);
+    d->resolve();
+}
+
+void ContactGroupPrivate::resolve()
+{
+    if (!groupsResolved) {
+        groupsResolved = true;
+        foreach (GroupObject *group, groups)
+            group->resolve();
+    }
 }
 
 GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)

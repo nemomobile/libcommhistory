@@ -31,6 +31,7 @@
 namespace CommHistory {
 
 class ContactGroupPrivate;
+class ContactGroupModel;
 
 class LIBCOMMHISTORY_EXPORT ContactGroup : public QObject
 {
@@ -89,6 +90,9 @@ public:
     quint32 startTimeT() const;
     quint32 endTimeT() const;
     quint32 lastModifiedT() const;
+
+    bool isResolved() const;
+    void resolve();
 
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid);
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids);
