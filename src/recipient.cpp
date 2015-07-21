@@ -52,9 +52,8 @@ class RecipientPrivate
 public:
     QString localUid;
     QString remoteUid;
-    QString contactName;
-    int contactId;
-    bool contactResolved;
+    SeasideCache::CacheItem* item;
+    bool isResolved;
     bool isPhoneNumber;
     QString minimizedRemoteUid;
     quint32 localUidHash;
@@ -112,8 +111,8 @@ Recipient::~Recipient()
 RecipientPrivate::RecipientPrivate(const QString &local, const QString &remote)
     : localUid(local)
     , remoteUid(remote)
-    , contactId(0)
-    , contactResolved(false)
+    , item(0)
+    , isResolved(false)
     , isPhoneNumber(localUidComparesPhoneNumbers(localUid))
     // The following members could be initialized on-demand, but that appears to be slower overall
     , minimizedRemoteUid(::minimizeRemoteUid(remoteUid, isPhoneNumber))
@@ -151,7 +150,7 @@ bool Recipient::isNull() const
 
 QString Recipient::displayName() const
 {
-    return d->contactName.isEmpty() ? d->remoteUid : d->contactName;
+    return d->item ? d->item->displayLabel : d->remoteUid;
 }
 
 QString Recipient::localUid() const
@@ -205,8 +204,8 @@ bool Recipient::isSameContact(const Recipient &o) const
 {
     if (d == o.d)
         return true;
-    if (d->contactResolved && o.d->contactResolved && (d->contactId > 0 || o.d->contactId > 0))
-        return d->contactId == o.d->contactId;
+    if (d->isResolved && o.d->isResolved && (d->item || o.d->item))
+        return d->item == o.d->item;
     return matches(o);
 }
 
@@ -227,33 +226,44 @@ bool Recipient::matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) c
 
 int Recipient::contactId() const
 {
-    return d->contactId;
+    return d->item ? d->item->iid : 0;
 }
 
 QString Recipient::contactName() const
 {
-    return d->contactName;
+    return d->item ? d->item->displayLabel : QString();
 }
 
 bool Recipient::isContactResolved() const
 {
-    return d->contactResolved;
+    return d->isResolved;
 }
 
-void Recipient::setResolvedContact(int contactId, const QString &contactName) const
+bool Recipient::setResolved(SeasideCache::CacheItem *item) const
 {
-    if (d->contactResolved && contactId == d->contactId && contactName == d->contactName)
+    if (d->isResolved && item == d->item)
+        return false;
+
+    if (d->isResolved && d->item)
+        recipientContactMap->remove(d->item->iid, d);
+
+    recipientContactMap->insert(item ? item->iid : 0, d.toWeakRef());
+
+    d->isResolved = true;
+    d->item = item;
+    return true;
+}
+
+void Recipient::setUnresolved() const
+{
+    if (!d->isResolved)
         return;
 
-    if (!d->contactResolved || d->contactId != contactId) {
-        if (d->contactResolved)
-            recipientContactMap->remove(d->contactId, d);
-        recipientContactMap->insert(contactId, d.toWeakRef());
-    }
+    if (d->item)
+        recipientContactMap->remove(d->item->iid, d);
 
-    d->contactResolved = true;
-    d->contactId = contactId;
-    d->contactName = contactName;
+    d->isResolved = false;
+    d->item = 0;
 }
 
 QList<Recipient> Recipient::recipientsForContact(int contactId)

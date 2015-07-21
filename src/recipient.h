@@ -23,13 +23,15 @@
 #ifndef COMMHISTORY_RECIPIENT_H
 #define COMMHISTORY_RECIPIENT_H
 
+#include "libcommhistoryexport.h"
+
+#include <seasidecache.h>
+
 #include <QObject>
 #include <QDBusArgument>
 #include <QSharedPointer>
 #include <QHash>
 #include <QDebug>
-
-#include "libcommhistoryexport.h"
 
 namespace CommHistory {
 
@@ -89,16 +91,29 @@ public:
     QString contactName() const;
     bool isContactResolved() const;
 
-    /* Update the resolved contact information for this recipient
+    /* Update the resolved contact for this recipient
      *
      * Generally, this is only called by the contact resolver, but it can be
      * used to inject known contact matches. The change will apply to all
      * Recipient instances that compare equal to this instance.
      *
-     * A contactId of 0 is taken to mean that no contact matches. In this
+     * A null item pointer is taken to mean that no contact matches. In this
      * case, the contact is still considered resolved.
+     *
+     * Returns true if the receipient resolution was updated.
      */
-    void setResolvedContact(int contactId, const QString &contactName) const;
+    bool setResolved(SeasideCache::CacheItem *item) const;
+
+    /* Removes the resolved contact from this recipient
+     *
+     * Generally, this is only called by the contact listener.
+     *
+     * Unlike setResolved() called with a null item pointer, after this function
+     * the contact is no longer considered resolved. Typically, resolution
+     * will be attempted again, resulting in the recipient being resolved
+     * once more.
+     */
+    void setUnresolved() const;
 
     /* Get all existing recipients that are resolved to a contact ID
      *

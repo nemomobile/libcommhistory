@@ -27,10 +27,11 @@ VERSION = $$PROJECT_VERSION
 TARGET = commhistory-tool
 
 QT -= gui
-QT += dbus
+QT += dbus contacts
 CONFIG += debug \
     pkgconfig
 
+PKGCONFIG += qtcontacts-sqlite-qt5-extensions contactcache-qt5
 LIBS += -L../src ../src/libcommhistory-qt5.so
 
 INCLUDEPATH += ../src 

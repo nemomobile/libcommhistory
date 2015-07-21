@@ -26,7 +26,6 @@
 
 #include "commonutils.h"
 #include "debug.h"
-#include <seasidecache.h>
 
 using namespace CommHistory;
 
@@ -116,11 +115,6 @@ void ContactResolver::add(const QList<Recipient> &recipients)
     d->checkIfFinishedAsynchronously();
 }
 
-static QString contactName(const QContact &contact)
-{
-    return SeasideCache::generateDisplayLabel(contact, SeasideCache::displayLabelOrder());
-}
-
 void ContactResolverPrivate::resolve(Recipient recipient)
 {
     if (!forceResolving && recipient.isContactResolved())
@@ -129,7 +123,7 @@ void ContactResolverPrivate::resolve(Recipient recipient)
     Q_ASSERT(!recipient.localUid().isEmpty());
     if (recipient.localUid().isEmpty() || recipient.remoteUid().isEmpty()) {
         // Cannot match any contact. Set as resolved to nothing.
-        recipient.setResolvedContact(0, QString());
+        recipient.setResolved(0);
         return;
     }
 
@@ -144,7 +138,7 @@ void ContactResolverPrivate::resolve(Recipient recipient)
     }
 
     if (item) {
-        recipient.setResolvedContact(item->iid, contactName(item->contact));
+        recipient.setResolved(item);
     } else {
         pending.insert(recipient);
     }
@@ -197,11 +191,9 @@ void ContactResolverPrivate::addressResolved(const QString &first, const QString
         return;
     }
 
-    if (item)
-        it->setResolvedContact(item->iid, contactName(item->contact));
-    else
-        it->setResolvedContact(0, QString());
+    it->setResolved(item);
     pending.erase(it);
+
     checkIfFinished();
 }
 

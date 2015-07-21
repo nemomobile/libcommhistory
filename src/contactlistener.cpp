@@ -27,7 +27,6 @@
 #include <QDebug>
 
 #include <qtcontacts-extensions.h>
-#include <seasidecache.h>
 
 #include <QContactOnlineAccount>
 #include <QContactPhoneNumber>
@@ -144,11 +143,6 @@ void ContactListenerPrivate::retryFinished()
     retryRecipients.clear();
 }
 
-static QString contactName(const QContact &contact)
-{
-    return SeasideCache::generateDisplayLabel(contact, SeasideCache::displayLabelOrder());
-}
-
 static bool recipientMatchesDetails(const Recipient &recipient, const QList<Recipient> &addresses, const QList<QPair<QString, quint32> > &phoneNumbers)
 {
     if (recipient.isPhoneNumber()) {
@@ -187,22 +181,18 @@ void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
         phoneNumbers.append(Recipient::phoneNumberMatchDetails(phoneNumber.number()));
     }
 
-    QString displayName = contactName(item->contact);
-
     // Check that all recipients resolved to this contact still match
     QList<Recipient> recipients = Recipient::recipientsForContact(item->iid);
     foreach (const Recipient &recipient, recipients) {
         if (!recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
             DEBUG() << "Recipient" << recipient.remoteUid() << "no longer matches contact" << item->iid;
-            // Try to resolve again to find a new match before emitting signals
+            recipient.setUnresolved();
+
+            // Try to resolve again to find a new match
             resolveAgain(recipient);
         } else {
-            if (recipient.contactName() != displayName) {
-                recipient.setResolvedContact(item->iid, displayName);
-                // XXX combine signal
-                emit q->contactInfoChanged(recipient);
-            }
-
+            // XXX combine signal
+            emit q->contactInfoChanged(recipient);
             emit q->contactDetailsChanged(recipient);
         }
     }
@@ -212,7 +202,8 @@ void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
     foreach (const Recipient &recipient, recipients) {
         if (recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
             DEBUG() << "Recipient" << recipient << "now resolves to updated contact" << item->iid;
-            recipient.setResolvedContact(item->iid, displayName);
+            recipient.setResolved(item);
+
             // XXX combine signal
             // XXX must emit details signal too
             emit q->contactChanged(recipient);
