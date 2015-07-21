@@ -47,6 +47,7 @@ public:
 public Q_SLOTS:
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
     virtual void modelUpdatedSlot(bool successful);
+    void groupsAddedSlot(const QList<Group> &groups);
     void groupsDeletedSlot(const QList<int> &groupIds);
 
 public:
@@ -54,6 +55,7 @@ public:
     Event::EventType filterType;
     QString filterAccount;
     Event::EventDirection filterDirection;
+    bool allGroups;
 };
 
 }
