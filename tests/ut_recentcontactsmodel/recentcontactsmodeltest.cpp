@@ -215,11 +215,6 @@ void RecentContactsModelTest::repeated()
 
     QVERIFY(model.getEvents());
     QTRY_COMPARE(model.resolving(), false);
-    // The query in getEvents (optimized in commit 582b32de) now only
-    // returns the latest event in an event group, which means in this
-    // test case it no longer includes the one for Charlie.
-    // This should be fixed, but will take some thought.
-    QEXPECT_FAIL("", "getEvents does not do the right thing currently", Abort);
     QCOMPARE(insert.count(), 3);
 
     // We should have one row for each contact

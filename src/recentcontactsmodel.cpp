@@ -260,23 +260,22 @@ bool RecentContactsModel::getEvents()
         limitClause = QString::fromLatin1(" LIMIT %1").arg(2 * d->queryLimit);
     }
 
-    /* Grouping by string indexes is expensive, so we avoid just querying for the
-     * remoteUids of all events. This query finds all events with groups (messages),
-     * then all events without groups, and returns the sorted union of them. */
-    QString q = DatabaseIOPrivate::eventQueryBase();
-    q += " JOIN Groups ON ("
-          " Events.id = ("
-           " SELECT id FROM Events WHERE groupId=Groups.id"
-           " ORDER BY endTime DESC, id DESC LIMIT 1"
-         " ))"
-         " UNION ALL ";
-    q += DatabaseIOPrivate::eventQueryBase();
-    q += " JOIN ("
-          " SELECT id, max(endTime) FROM Events"
-          " WHERE groupId IS NULL GROUP BY remoteUid, endTime"
-         " ) USING (id)";
-
-    q += " ORDER BY endTime DESC, id DESC " + limitClause;
+    QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(
+" WHERE Events.id IN ("
+  " SELECT lastId FROM ("
+    " SELECT max(id) AS lastId, max(endTime) FROM Events"
+    " JOIN ("
+      " SELECT remoteUid, localUid, max(endTime) AS lastEventTime FROM Events"
+      " GROUP BY remoteUid, localUid"
+      " ORDER BY lastEventTime DESC %1"
+    " ) AS LastEvent ON Events.endTime = LastEvent.lastEventTime"
+                   " AND Events.remoteUid = LastEvent.remoteUid"
+                   " AND Events.localUid = LastEvent.localUid"
+    " GROUP BY Events.remoteUid, Events.localUid"
+    " ORDER BY max(endTime) DESC"
+  " )"
+" )"
+" ORDER BY Events.endTime DESC").arg(limitClause);
 
     QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
     if (!query.prepare(q)) {
