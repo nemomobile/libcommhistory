@@ -58,6 +58,7 @@ public:
     QString minimizedRemoteUid;
     quint32 localUidHash;
     quint32 remoteUidHash;
+    quint32 contactNameHash;
 
     RecipientPrivate(const QString &localUid, const QString &remoteUid);
     ~RecipientPrivate();
@@ -118,6 +119,7 @@ RecipientPrivate::RecipientPrivate(const QString &local, const QString &remote)
     , minimizedRemoteUid(::minimizeRemoteUid(remoteUid, isPhoneNumber))
     , localUidHash(qHash(localUid))
     , remoteUidHash(qHash(minimizedRemoteUid))
+    , contactNameHash(0)
 {
 }
 
@@ -251,6 +253,7 @@ bool Recipient::setResolved(SeasideCache::CacheItem *item) const
 
     d->isResolved = true;
     d->item = item;
+    d->contactNameHash = item ? qHash(item->displayLabel) : 0;
     return true;
 }
 
@@ -264,6 +267,20 @@ void Recipient::setUnresolved() const
 
     d->isResolved = false;
     d->item = 0;
+    d->contactNameHash = 0;
+}
+
+bool Recipient::contactUpdateIsSignificant() const
+{
+    if (d->item) {
+        // The contact display label may have been updated
+        quint32 hash(qHash(d->item->displayLabel));
+        if (hash != d->contactNameHash) {
+            d->contactNameHash = hash;
+            return true;
+        }
+    }
+    return false;
 }
 
 QList<Recipient> Recipient::recipientsForContact(int contactId)

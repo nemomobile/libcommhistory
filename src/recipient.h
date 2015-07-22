@@ -115,6 +115,12 @@ public:
      */
     void setUnresolved() const;
 
+    /* Returns true if a contact update updates any property of the recipient
+     *
+     * Generally, this is only called by the contact listener.
+     */
+    bool contactUpdateIsSignificant() const;
+
     /* Get all existing recipients that are resolved to a contact ID
      *
      * This is primarily used for contact change notifications. contactId

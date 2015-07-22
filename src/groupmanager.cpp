@@ -746,6 +746,7 @@ void GroupManager::setResolveContacts(bool enabled)
                 SLOT(slotContactInfoChanged(RecipientList)));
         connect(d->contactListener.data(),
                 SIGNAL(contactChanged(RecipientList)),
+                d,
                 SLOT(slotContactChanged(RecipientList)));
     } else if (!d->resolveContacts && d->contactListener) {
         disconnect(d->contactListener.data(), 0, d, 0);

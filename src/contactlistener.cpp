@@ -136,8 +136,6 @@ void ContactListenerPrivate::retryFinished()
 {
     Q_Q(ContactListener);
     emit q->contactChanged(retryRecipients);
-    emit q->contactInfoChanged(retryRecipients);
-    emit q->contactDetailsChanged(retryRecipients);
     retryResolver->deleteLater();
     retryResolver = 0;
     retryRecipients.clear();
@@ -181,36 +179,38 @@ void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
         phoneNumbers.append(Recipient::phoneNumberMatchDetails(phoneNumber.number()));
     }
 
+    QList<Recipient> infoChanged, detailsChanged, contactChanged;
+
     // Check that all recipients resolved to this contact still match
-    QList<Recipient> recipients = Recipient::recipientsForContact(item->iid);
-    foreach (const Recipient &recipient, recipients) {
+    foreach (const Recipient &recipient, Recipient::recipientsForContact(item->iid)) {
         if (!recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
             DEBUG() << "Recipient" << recipient.remoteUid() << "no longer matches contact" << item->iid;
             recipient.setUnresolved();
 
             // Try to resolve again to find a new match
             resolveAgain(recipient);
+        } else if (recipient.contactUpdateIsSignificant()) {
+            infoChanged.append(recipient);
         } else {
-            // XXX combine signal
-            emit q->contactInfoChanged(recipient);
-            emit q->contactDetailsChanged(recipient);
+            detailsChanged.append(recipient);
         }
     }
 
     // Check all recipients that resolved to no match against these addresses
-    recipients = Recipient::recipientsForContact(0);
-    foreach (const Recipient &recipient, recipients) {
+    foreach (const Recipient &recipient, Recipient::recipientsForContact(0)) {
         if (recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
             DEBUG() << "Recipient" << recipient << "now resolves to updated contact" << item->iid;
             recipient.setResolved(item);
-
-            // XXX combine signal
-            // XXX must emit details signal too
-            emit q->contactChanged(recipient);
-            emit q->contactInfoChanged(recipient);
-            emit q->contactDetailsChanged(recipient);
+            contactChanged.append(recipient);
         }
     }
+
+    if (!contactChanged.isEmpty())
+        emit q->contactChanged(contactChanged);
+    if (!infoChanged.isEmpty())
+        emit q->contactInfoChanged(infoChanged);
+    if (!detailsChanged.isEmpty())
+        emit q->contactDetailsChanged(detailsChanged);
 }
 
 void ContactListenerPrivate::itemAboutToBeRemoved(SeasideCache::CacheItem *item)

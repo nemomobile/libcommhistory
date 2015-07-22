@@ -51,6 +51,8 @@ CONFIG += hide_symbols
 # -----------------------------------------------------------------------------
 QT_LIKE_HEADERS += headers/CallEvent \
                    headers/CallModel \
+                   headers/ContactListener \
+                   headers/ContactResolver \
                    headers/ConversationModel \
                    headers/Event \
                    headers/EventModel \
