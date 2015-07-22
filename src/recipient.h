@@ -87,6 +87,8 @@ public:
     bool matchesRemoteUid(const QString &remoteUid) const;
     bool matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const;
 
+    bool matchesAddressFlags(quint64 flags) const;
+
     int contactId() const;
     QString contactName() const;
     bool isContactResolved() const;

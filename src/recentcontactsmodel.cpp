@@ -45,7 +45,8 @@ public:
 
     RecentContactsModelPrivate(EventModel *model)
         : EventModelPrivate(model),
-          requiredProperty(RecentContactsModel::NoPropertyRequired)
+          requiredProperty(RecentContactsModel::NoPropertyRequired),
+          addressFlags(0)
     {
         setResolveContacts(true);
     }
@@ -59,6 +60,7 @@ public:
 
 private:
     int requiredProperty;
+    quint64 addressFlags;
 };
 
 bool RecentContactsModelPrivate::acceptsEvent(const Event &event) const
@@ -85,35 +87,40 @@ bool RecentContactsModelPrivate::fillModel(int start, int end, QList<Event> even
 
 void RecentContactsModelPrivate::slotContactInfoChanged(const RecipientList &recipients)
 {
-    EventModelPrivate::slotContactInfoChanged(recipients);
+    if (addressFlags != 0) {
+        // Find if any of these recipients no longer matches our address requirements
+        QSet<int> nonmatchingIds;
+        foreach (const Recipient &recipient, recipients) {
+            if (!recipient.matchesAddressFlags(addressFlags)) {
+                nonmatchingIds.insert(recipient.contactId());
+            }
+        }
 
-    // XXX This signal isn't emitted for all changes, and we don't have
-    // access to the full list of accounts from here.. ugh.
-#if 0
-    bool hasAddressType[3] = { false, false, false };
-    foreach (const ContactAddress &address, contactAddresses) {
-        Q_ASSERT((address.type >= ContactListener::IMAccountType) && (address.type <= ContactListener::EmailAddressType));
-        hasAddressType[address.type - 1] = true;
-    }
+        if (!nonmatchingIds.isEmpty()) {
+            // If any of our events no longer resolve to a contact, remove them
+            int rowCount = eventRootItem->childCount();
+            for (int row = 0; row < rowCount; ) {
+                const Event &existing(eventRootItem->eventAt(row));
+                const int contactId(existing.recipients().contactIds().value(0));
+                if (nonmatchingIds.contains(contactId)) {
+                    deleteFromModel(existing.id());
+                    --rowCount;
 
-    QSet<quint32> * const typeSet[3] = { &imContacts, &phoneContacts, &emailContacts };
-    for (int i = 0; i < 3; ++i) {
-        if (hasAddressType[i]) {
-            typeSet[i]->insert(localId);
-        } else {
-            typeSet[i]->remove(localId);
+                    nonmatchingIds.remove(contactId);
+                    if (nonmatchingIds.isEmpty())
+                        break;
+                } else {
+                    ++row;
+                }
+            }
         }
     }
-#endif
 
-    // FIXME: Contact updates can result in the model being wrong. But, because
-    // unwanted events are discarded, that's difficult to solve without re-querying.
+    EventModelPrivate::slotContactInfoChanged(recipients);
 }
 
 void RecentContactsModelPrivate::slotContactChanged(const RecipientList &recipients)
 {
-    EventModelPrivate::slotContactChanged(recipients);
-
     // If any of our events no longer resolve to a contact, remove them
     int rowCount = eventRootItem->childCount();
     for (int row = 0; row < rowCount; ) {
@@ -125,6 +132,8 @@ void RecentContactsModelPrivate::slotContactChanged(const RecipientList &recipie
             ++row;
         }
     }
+
+    EventModelPrivate::slotContactChanged(recipients);
 }
 
 void RecentContactsModelPrivate::prependEvents(QList<Event> events)
@@ -135,14 +144,18 @@ void RecentContactsModelPrivate::prependEvents(QList<Event> events)
     QList<Event> newEvents;
     QSet<int> newContactIds;
     foreach (const Event &event, events) {
-        const int eventContactId = eventContact(event);
-        if (eventContactId && !newContactIds.contains(eventContactId)) {
-            newContactIds.insert(eventContactId);
-            newEvents.append(event);
+        const Recipient &recipient = *event.recipients().constBegin();
+        const int contactId = recipient.contactId();
+        if (contactId != 0 && !newContactIds.contains(contactId)) {
+            // Is this contact relevant to our required types?
+            if (!addressFlags || recipient.matchesAddressFlags(addressFlags)) {
+                newContactIds.insert(contactId);
+                newEvents.append(event);
 
-            // Don't add any more events than we can present
-            if (newEvents.count() == queryLimit) {
-                break;
+                // Don't add any more events than we can present
+                if (newEvents.count() == queryLimit) {
+                    break;
+                }
             }
         }
     }
@@ -232,9 +245,17 @@ int RecentContactsModel::requiredProperty() const
 void RecentContactsModel::setRequiredProperty(int requiredProperty)
 {
     Q_D(RecentContactsModel);
+
+    quint64 addressFlags = 0;
+    if (requiredProperty & RecentContactsModel::PhoneNumberRequired)
+        addressFlags |= QContactStatusFlags::HasPhoneNumber;
+    if (requiredProperty & RecentContactsModel::EmailAddressRequired)
+        addressFlags |= QContactStatusFlags::HasEmailAddress;
+    if (requiredProperty & RecentContactsModel::AccountUriRequired)
+        addressFlags |= QContactStatusFlags::HasOnlineAccount;
+
     d->requiredProperty = requiredProperty;
-    if (requiredProperty != RecentContactsModel::NoPropertyRequired)
-        qWarning() << "requiredProperty not supported in RecentContactsModel";
+    d->addressFlags = addressFlags;
 }
 
 bool RecentContactsModel::resolving() const

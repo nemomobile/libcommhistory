@@ -41,6 +41,11 @@ QString minimizeRemoteUid(const QString &remoteUid, bool isPhoneNumber)
     return isPhoneNumber ? CommHistory::minimizePhoneNumber(remoteUid).toLower() : remoteUid.toLower();
 }
 
+quint32 addressFlagValues(quint64 statusFlags)
+{
+    return statusFlags & (QContactStatusFlags::HasPhoneNumber | QContactStatusFlags::HasEmailAddress | QContactStatusFlags::HasOnlineAccount);
+}
+
 }
 
 bool recipient_initialized = initializeTypes();
@@ -59,6 +64,7 @@ public:
     quint32 localUidHash;
     quint32 remoteUidHash;
     quint32 contactNameHash;
+    quint32 addressFlags;
 
     RecipientPrivate(const QString &localUid, const QString &remoteUid);
     ~RecipientPrivate();
@@ -120,6 +126,7 @@ RecipientPrivate::RecipientPrivate(const QString &local, const QString &remote)
     , localUidHash(qHash(localUid))
     , remoteUidHash(qHash(minimizedRemoteUid))
     , contactNameHash(0)
+    , addressFlags(0)
 {
 }
 
@@ -226,6 +233,15 @@ bool Recipient::matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) c
     return d->minimizedRemoteUid == phoneNumber.first;
 }
 
+bool Recipient::matchesAddressFlags(quint64 flags) const
+{
+    if (!d->item)
+        return false;
+    if (addressFlagValues(flags) == 0)
+        return true;
+    return d->item->statusFlags & flags;
+}
+
 int Recipient::contactId() const
 {
     return d->item ? d->item->iid : 0;
@@ -254,6 +270,7 @@ bool Recipient::setResolved(SeasideCache::CacheItem *item) const
     d->isResolved = true;
     d->item = item;
     d->contactNameHash = item ? qHash(item->displayLabel) : 0;
+    d->addressFlags = item ? addressFlagValues(item->statusFlags) : 0;
     return true;
 }
 
@@ -268,15 +285,18 @@ void Recipient::setUnresolved() const
     d->isResolved = false;
     d->item = 0;
     d->contactNameHash = 0;
+    d->addressFlags = 0;
 }
 
 bool Recipient::contactUpdateIsSignificant() const
 {
     if (d->item) {
         // The contact display label may have been updated
-        quint32 hash(qHash(d->item->displayLabel));
-        if (hash != d->contactNameHash) {
+        const quint32 hash(qHash(d->item->displayLabel));
+        const quint32 addressFlags(addressFlagValues(d->item->statusFlags));
+        if (hash != d->contactNameHash || addressFlags != d->addressFlags) {
             d->contactNameHash = hash;
+            d->addressFlags = addressFlags;
             return true;
         }
     }

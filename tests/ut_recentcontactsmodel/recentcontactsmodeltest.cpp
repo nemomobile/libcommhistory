@@ -340,10 +340,6 @@ void RecentContactsModelTest::differentTypes()
 
 void RecentContactsModelTest::requiredProperty()
 {
-    // requiredProperty support broke in 1.7.0 and we don't have a use
-    // case for it.
-    QSKIP("RecentContactsModel::requiredProperty is not supported");
-
     RecentContactsModel phoneModel;
     phoneModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired);
 
