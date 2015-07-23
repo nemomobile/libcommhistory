@@ -83,6 +83,8 @@ private slots:
 
 private:
     void itemDataChanged(int index);
+    void addGroupToIndex(GroupObject *group, int index);
+    void removeGroupFromIndex(GroupObject *group, int index);
 };
 
 }
@@ -191,35 +193,6 @@ int ContactGroupModelPrivate::indexForObject(GroupObject *group)
     return -1;
 }
 
-void ContactGroupModelPrivate::groupAdded(GroupObject *group)
-{
-    Q_Q(ContactGroupModel);
-
-    int index = indexForContacts(group);
-
-    if (index < 0) {
-        ContactGroup *item = new ContactGroup(this);
-        item->addGroup(group);
-
-        for (index = 0; index < items.size(); index++) {
-            if (contactGroupSort(item, items[index]))
-                break;
-        }
-
-        q->beginInsertRows(QModelIndex(), index, index);
-        items.insert(index, item);
-        q->endInsertRows();
-
-        emit q->contactGroupCreated(item);
-        return;
-    }
-
-    ContactGroup *item = items[index];
-    item->addGroup(group);
-
-    itemDataChanged(index);
-}
-
 void ContactGroupModelPrivate::itemDataChanged(int index)
 {
     Q_Q(ContactGroupModel);
@@ -251,6 +224,55 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
     emit q->contactGroupChanged(items[newIndex]);
 }
 
+void ContactGroupModelPrivate::addGroupToIndex(GroupObject *group, int index)
+{
+    Q_Q(ContactGroupModel);
+
+    ContactGroup *item = index < 0 ? new ContactGroup(this) : items[index];
+    item->addGroup(group);
+
+    if (index < 0) {
+        for (index = 0; index < items.size(); index++) {
+            if (contactGroupSort(item, items[index]))
+                break;
+        }
+
+        q->beginInsertRows(QModelIndex(), index, index);
+        items.insert(index, item);
+        q->endInsertRows();
+
+        emit q->contactGroupCreated(item);
+    } else {
+        itemDataChanged(index);
+    }
+}
+
+void ContactGroupModelPrivate::removeGroupFromIndex(GroupObject *group, int index)
+{
+    Q_Q(ContactGroupModel);
+
+    ContactGroup *item = items[index];
+
+    // Returns true when removing the last group
+    if (item->removeGroup(group)) {
+        emit q->beginRemoveRows(QModelIndex(), index, index);
+        items.removeAt(index);
+        emit q->endRemoveRows();
+
+        emit q->contactGroupRemoved(item);
+
+        delete item;
+    } else {
+        itemDataChanged(index);
+    }
+}
+
+void ContactGroupModelPrivate::groupAdded(GroupObject *group)
+{
+    int index = indexForContacts(group);
+    addGroupToIndex(group, index);
+}
+
 void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 {
     int oldIndex = indexForObject(group);
@@ -261,13 +283,13 @@ void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 
         if (oldIndex != newIndex) {
             // Remove from old
-            groupDeleted(group);
+            removeGroupFromIndex(group, oldIndex);
         }
     }
 
     if (newIndex < 0 || oldIndex != newIndex) {
         // Add to new, creating if necessary
-        groupAdded(group);
+        addGroupToIndex(group, newIndex);
     } else {
         // Update data
         items[oldIndex]->updateGroup(group);
@@ -277,26 +299,11 @@ void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
 
 void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
 {
-    Q_Q(ContactGroupModel);
-
     int index = indexForObject(group);
     if (index < 0)
         return;
 
-    ContactGroup *item = items[index];
-    // Returns true when removing the last group
-    if (item->removeGroup(group)) {
-        emit q->beginRemoveRows(QModelIndex(), index, index);
-        items.removeAt(index);
-        emit q->endRemoveRows();
-
-        emit q->contactGroupRemoved(item);
-
-        delete item;
-        return;
-    }
-
-    itemDataChanged(index);
+    removeGroupFromIndex(group, index);
 }
 
 ContactGroupModel::ContactGroupModel(QObject *parent)
