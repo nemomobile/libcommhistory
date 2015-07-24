@@ -157,7 +157,7 @@ void CallModelProfileTest::execute()
 
         CallModel fetchModel;
 
-        fetchModel.setResolveContacts(resolve);
+        fetchModel.setResolveContacts(resolve ? EventModel::ResolveImmediately : EventModel::DoNotResolve);
         fetchModel.setFilter(CallModel::SortByContact);
 
         waitForIdle();

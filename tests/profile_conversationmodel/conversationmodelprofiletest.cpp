@@ -175,7 +175,7 @@ void ConversationModelProfileTest::execute()
     for(int i = 0; i < iterations; i++) {
 
         ConversationModel fetchModel;
-        fetchModel.setResolveContacts(resolve);
+        fetchModel.setResolveContacts(resolve ? EventModel::ResolveImmediately : EventModel::DoNotResolve);
 
         if (limit > 0) {
             fetchModel.setQueryMode(EventModel::StreamedAsyncQuery);

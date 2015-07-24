@@ -276,16 +276,14 @@ int CallModelPrivate::calculateEventCount( EventTreeItem *item )
     return count;
 }
 
-bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> events )
+bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> events, bool resolved )
 {
-    Q_UNUSED( start );
-    Q_UNUSED( end );
     Q_Q( CallModel );
 
     //for flat mode EventModelPrivate::fillModel is sufficient as all the events will be stored at the top level
     if(!isInTreeMode)
     {
-        return EventModelPrivate::fillModel(start, end, events);
+        return EventModelPrivate::fillModel(start, end, events, resolved);
     }
 
     if ( events.count() > 0 )
@@ -466,10 +464,10 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
     return true;
 }
 
-void CallModelPrivate::prependEvents(QList<Event> events)
+void CallModelPrivate::prependEvents(QList<Event> events, bool resolved)
 {
     if (!isInTreeMode) {
-        EventModelPrivate::prependEvents(events);
+        EventModelPrivate::prependEvents(events, resolved);
         return;
     }
 
@@ -609,6 +607,7 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
     // TODO regrouping of events might occur =(
 
     // reimp from EventModelPrivate, plus additional isVideoCall processing
+    QList<Event> additions;
     foreach (const Event &event, events) {
         DEBUG() << Q_FUNC_INFO << "updated" << event.toString();
         QModelIndex index = findEvent(event.id());
@@ -616,7 +615,7 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
 
         if (!index.isValid()) {
             if (acceptsEvent(e))
-                addToModel(e);
+                additions.append(e);
 
             continue;
         }
@@ -635,6 +634,9 @@ void CallModelPrivate::eventsUpdatedSlot( const QList<Event> &events )
             }
         }
     }
+
+    if (!additions.isEmpty())
+        addToModel(additions);
 
     DEBUG() << Q_FUNC_INFO << "updatedGroups" << updatedGroups;
 

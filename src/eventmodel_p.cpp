@@ -55,6 +55,7 @@ bool eventmodel_p_initialized = initializeTypes();
 EventModelPrivate::EventModelPrivate(EventModel *model)
         : addResolver(0)
         , receiveResolver(0)
+        , onDemandResolver(0)
         , isInTreeMode(false)
         , queryMode(EventModel::AsyncQuery)
         , chunkSize(defaultChunkSize)
@@ -63,7 +64,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , queryOffset(0)
         , isReady(true)
         , threadCanFetchMore(false)
-        , resolveContacts(false)
+        , resolveContacts(EventModel::DoNotResolve)
         , propertyMask(Event::allProperties())
         , bgThread(0)
 {
@@ -170,12 +171,11 @@ bool EventModelPrivate::executeQuery(QSqlQuery &query)
     return true;
 }
 
-bool EventModelPrivate::fillModel(int start,
-                                 int end,
-                                 QList<CommHistory::Event> events)
+bool EventModelPrivate::fillModel(int start, int end, QList<CommHistory::Event> events, bool resolved)
 {
     Q_UNUSED(start);
     Q_UNUSED(end);
+    Q_UNUSED(resolved);
 
     if (events.isEmpty())
         return false;
@@ -193,7 +193,7 @@ bool EventModelPrivate::fillModel(int start,
     return true;
 }
 
-bool EventModelPrivate::fillModel(QList<CommHistory::Event> events)
+bool EventModelPrivate::fillModel(QList<CommHistory::Event> events, bool resolved)
 {
     Q_Q(EventModel);
 
@@ -206,7 +206,10 @@ bool EventModelPrivate::fillModel(QList<CommHistory::Event> events)
         }
     }
 
-    return fillModel(q->rowCount(), q->rowCount() + events.count() - 1, events);
+    if (!events.isEmpty())
+        return fillModel(q->rowCount(), q->rowCount() + events.count() - 1, events, resolved);
+
+    return true;
 }
 
 void EventModelPrivate::clearEvents()
@@ -216,37 +219,41 @@ void EventModelPrivate::clearEvents()
     eventRootItem = new EventTreeItem(Event());
 }
 
-void EventModelPrivate::addToModel(const Event &event, bool sync)
+void EventModelPrivate::addToModel(const QList<Event> &events, bool sync)
 {
-    DEBUG() << Q_FUNC_INFO << event.toString();
+    DEBUG() << Q_FUNC_INFO << events.count();
 
     // Insert immediately if synchronous (and resolve contact later if necessary),
     // or if not resolving contacts
-    if (sync || !resolveContacts) {
-        prependEvents(QList<Event>() << event);
-    }
+    if (sync || resolveContacts != EventModel::ResolveImmediately)
+        prependEvents(events, false);
 
     // Resolve contacts. If inserted above, the duplicate will be ignored
-    if (resolveContacts) {
-        if (!addResolver) {
-            addResolver = new ContactResolver(this);
-            connect(addResolver, SIGNAL(finished()), SLOT(addResolverFinished()));
-        }
+    if (resolveContacts == EventModel::ResolveImmediately)
+        resolveAddedEvents(events);
+}
 
-        pendingAdded.prepend(event);
-        addResolver->add(event);
+void EventModelPrivate::resolveAddedEvents(const QList<Event> &events)
+{
+    if (!addResolver) {
+        addResolver = new ContactResolver(this);
+        connect(addResolver, SIGNAL(finished()), SLOT(addResolverFinished()));
     }
+
+    pendingAdded.append(events);
+    addResolver->add(events);
 }
 
 void EventModelPrivate::addResolverFinished()
 {
     QList<Event> added = pendingAdded;
     pendingAdded.clear();
-    prependEvents(added);
+    prependEvents(added, true);
 }
 
-void EventModelPrivate::prependEvents(QList<Event> events)
+void EventModelPrivate::prependEvents(QList<Event> events, bool resolved)
 {
+    Q_UNUSED(resolved);
     Q_Q(EventModel);
 
     // Replace exact duplicates instead of inserting. This is a workaround
@@ -271,6 +278,35 @@ void EventModelPrivate::prependEvents(QList<Event> events)
         eventRootItem->prependChild(new EventTreeItem(events[i], eventRootItem));
     }
     q->endInsertRows();
+}
+
+void EventModelPrivate::resolveIfRequired(const Event &event) const
+{
+    if (resolveContacts != EventModel::ResolveOnDemand || event.isResolved())
+        return;
+
+    if (!onDemandResolver) {
+        onDemandResolver = new ContactResolver(const_cast<EventModelPrivate *>(this));
+        connect(onDemandResolver, SIGNAL(finished()), SLOT(onDemandResolverFinished()));
+    }
+
+    pendingOnDemand.append(event);
+    onDemandResolver->add(event);
+}
+
+void EventModelPrivate::onDemandResolverFinished()
+{
+    QList<Event> resolved(pendingOnDemand);
+    pendingOnDemand.clear();
+
+    QSet<Recipient> resolvedRecipients;
+    foreach (const Event &event, resolved) {
+        const RecipientList &recipients(event.recipients());
+        for (RecipientList::const_iterator it = recipients.constBegin(), end = recipients.constEnd(); it != end; ++it)
+            resolvedRecipients.insert(*it);
+    }
+
+    slotContactChanged(resolvedRecipients.toList());
 }
 
 void EventModelPrivate::modifyInModel(Event &event)
@@ -326,7 +362,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
     }
 
     // Contact resolution is not allowed in synchronous query mode
-    if (resolveContacts && queryMode != EventModel::SyncQuery) {
+    if (resolveContacts == EventModel::ResolveImmediately && queryMode != EventModel::SyncQuery) {
         if (!receiveResolver) {
             receiveResolver = new ContactResolver(this);
             connect(receiveResolver, SIGNAL(finished()), SLOT(receiveResolverFinished()));
@@ -335,7 +371,7 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
         pendingReceived.append(events);
         receiveResolver->add(events);
     } else {
-        fillModel(start, end, events);
+        fillModel(start, end, events, false);
     }
 }
 
@@ -343,7 +379,7 @@ void EventModelPrivate::receiveResolverFinished()
 {
     QList<Event> received = pendingReceived;
     pendingReceived.clear();
-    fillModel(received);
+    fillModel(received, true);
 }
 
 void EventModelPrivate::modelUpdatedSlot(bool successful)
@@ -436,13 +472,13 @@ DatabaseIO* EventModelPrivate::database()
     return DatabaseIO::instance();
 }
 
-void EventModelPrivate::setResolveContacts(bool enabled)
+void EventModelPrivate::setResolveContacts(EventModel::ContactResolveType type)
 {
-    if (resolveContacts == enabled)
+    if (resolveContacts == type)
         return;
-    resolveContacts = enabled;
 
-    if (resolveContacts && !contactListener) {
+    resolveContacts = type;
+    if (resolveContacts != EventModel::DoNotResolve && !contactListener) {
         contactListener = ContactListener::instance();
         connect(contactListener.data(),
                 SIGNAL(contactInfoChanged(RecipientList)),
@@ -450,12 +486,15 @@ void EventModelPrivate::setResolveContacts(bool enabled)
         connect(contactListener.data(),
                 SIGNAL(contactChanged(RecipientList)),
                 SLOT(slotContactChanged(RecipientList)));
-    } else if (!resolveContacts && contactListener) {
+    } else if (resolveContacts == EventModel::DoNotResolve && contactListener) {
         disconnect(contactListener.data(), 0, this, 0);
         contactListener.clear();
 
         delete receiveResolver;
         receiveResolver = 0;
+
+        delete onDemandResolver;
+        onDemandResolver = 0;
     }
 }
 

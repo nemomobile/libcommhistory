@@ -244,6 +244,8 @@ static QVariantList messagePartData(const Event &event)
 
 QVariant EventModel::data(const QModelIndex &index, int role) const
 {
+    Q_D(const EventModel);
+
     if (!index.isValid()) {
         return QVariant();
     }
@@ -255,8 +257,10 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case EventRole:
             return QVariant::fromValue(event);
         case ContactIdsRole:
+            d->resolveIfRequired(event);
             return QVariant::fromValue(contactIds(event.contacts()));
         case ContactNamesRole:
+            d->resolveIfRequired(event);
             return QVariant::fromValue(contactNames(event.contacts()));
         case MessagePartsRole:
             return QVariant::fromValue(messagePartData(event));
@@ -311,6 +315,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(event.recipients().value(0).remoteUid());
             break;
         case Contacts:
+            d->resolveIfRequired(event);
             var = QVariant::fromValue(event.contacts());
             break;
         case FreeText:
@@ -453,8 +458,8 @@ void EventModel::setQueryMode(QueryMode mode)
         return;
 
     d->queryMode = mode;
-    if (d->queryMode == SyncQuery && d->resolveContacts)
-        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+    if (d->queryMode == SyncQuery && d->resolveContacts == ResolveImmediately)
+        qWarning() << "EventMode does not support immediate contact resolution for synchronous models. Contacts will not be resolved.";
 }
 
 void EventModel::setChunkSize(uint size)
@@ -481,22 +486,22 @@ void EventModel::setOffset(int offset)
     d->queryOffset = offset;
 }
 
-bool EventModel::resolveContacts() const
+EventModel::ContactResolveType EventModel::resolveContacts() const
 {
     Q_D(const EventModel);
     return d->resolveContacts;
 }
 
-void EventModel::setResolveContacts(bool enabled)
+void EventModel::setResolveContacts(ContactResolveType resolveType)
 {
     Q_D(EventModel);
-    if (enabled == d->resolveContacts)
+    if (resolveType == d->resolveContacts)
         return;
 
-    if (d->queryMode == SyncQuery && d->resolveContacts)
-        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+    if (d->queryMode == SyncQuery && resolveType == ResolveImmediately)
+        qWarning() << "EventMode does not support immediate contact resolution for synchronous models. Contacts will not be resolved.";
 
-    d->setResolveContacts(enabled);
+    d->setResolveContacts(resolveType);
 }
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)

@@ -193,7 +193,7 @@ void MemEventModelTest::callSetFilter()
     MALLINFO_DUMP("start");
 
     CallModel *model = new CallModel();
-    model->enableContactChanges(false);
+    model->setResolveContacts(EventModel::DoNotResolve);
     QSignalSpy ready(model, SIGNAL(modelReady(bool)));
 
     model->getEvents();

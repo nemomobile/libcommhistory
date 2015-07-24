@@ -1036,7 +1036,7 @@ void CallModelTest::testMinimizedPhone()
     QVERIFY(watcher.waitForAdded(3));
 
     model.setFilter(CallModel::SortByTime);
-    model.setResolveContacts(true);
+    model.setResolveContacts(EventModel::ResolveImmediately);
     QVERIFY(model.getEvents());
     QVERIFY(watcher.waitForModelReady());
     QCOMPARE(model.rowCount(), 3);

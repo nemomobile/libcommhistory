@@ -52,11 +52,11 @@ public:
 
     int calculateEventCount( EventTreeItem *item );
 
-    bool fillModel( int start, int end, QList<CommHistory::Event> events );
+    bool fillModel( int start, int end, QList<CommHistory::Event> events, bool resolved );
 
     bool belongToSameGroup( const Event &e1, const Event &e2 );
 
-    void prependEvents(QList<Event> events);
+    void prependEvents(QList<Event> events, bool resolved);
 
     void insertEvent(Event event);
 

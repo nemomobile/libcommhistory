@@ -54,7 +54,6 @@ class LIBCOMMHISTORY_EXPORT EventModelPrivate : public QObject
     Q_DECLARE_PUBLIC(EventModel)
 
 public:
-
     EventModel *q_ptr;
 
     EventModelPrivate(EventModel *model = 0);
@@ -99,14 +98,16 @@ public:
      *
      * \return true if successful (return value not used at the moment).
      */
-    virtual bool fillModel(int start, int end, QList<CommHistory::Event> events);
+    virtual bool fillModel(int start, int end, QList<CommHistory::Event> events, bool resolved);
 
     /*!
      * Delete all events from the internal event storage.
      */
     virtual void clearEvents();
 
-    virtual void addToModel(const Event &event, bool synchronous = false);
+    void addToModel(const Event &event, bool synchronous = false) { addToModel(QList<Event>() << event, synchronous); }
+
+    virtual void addToModel(const QList<Event> &event, bool synchronous = false);
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
 
@@ -114,7 +115,10 @@ public:
 
     bool canFetchMore() const;
 
-    void setResolveContacts(bool enabled);
+    void setResolveContacts(EventModel::ContactResolveType resolveType);
+    void resolveAddedEvents(const QList<Event> &events);
+
+    void resolveIfRequired(const Event &event) const;
 
     DatabaseIO *database();
 
@@ -127,8 +131,8 @@ public:
     // a nonstandard model.
     EventTreeItem *eventRootItem;
 
-    ContactResolver *addResolver, *receiveResolver;
-    QList<Event> pendingAdded, pendingReceived;
+    mutable ContactResolver *addResolver, *receiveResolver, *onDemandResolver;
+    mutable QList<Event> pendingAdded, pendingReceived, pendingOnDemand;
 
     bool isInTreeMode;
     EventModel::QueryMode queryMode;
@@ -138,8 +142,9 @@ public:
     int queryOffset;
     bool isReady;
     bool threadCanFetchMore;
+
     // Do not set directly, use setResolveContacts to enable listener
-    bool resolveContacts;
+    EventModel::ContactResolveType resolveContacts;
 
     Event::PropertySet propertyMask;
 
@@ -150,11 +155,12 @@ public:
     QSharedPointer<UpdatesEmitter> emitter;
 
 public Q_SLOTS:
-    virtual void prependEvents(QList<Event> events);
-    virtual bool fillModel(QList<Event> events);
+    virtual void prependEvents(QList<Event> events, bool resolved);
+    virtual bool fillModel(QList<Event> events, bool resolved);
 
     virtual void receiveResolverFinished();
     virtual void addResolverFinished();
+    virtual void onDemandResolverFinished();
 
     virtual void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
 
