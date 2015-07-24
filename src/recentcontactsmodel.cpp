@@ -307,12 +307,12 @@ bool RecentContactsModel::getEvents()
     " JOIN ("
       " SELECT remoteUid, localUid, max(endTime) AS lastEventTime FROM Events"
       " GROUP BY remoteUid, localUid"
-      " ORDER BY lastEventTime DESC %1"
+      " ORDER BY lastEventTime DESC"
+      " %1"
     " ) AS LastEvent ON Events.endTime = LastEvent.lastEventTime"
                    " AND Events.remoteUid = LastEvent.remoteUid"
                    " AND Events.localUid = LastEvent.localUid"
     " GROUP BY Events.remoteUid, Events.localUid"
-    " ORDER BY max(endTime) DESC"
   " )"
 " )"
 " ORDER BY Events.endTime DESC").arg(limitClause);
@@ -329,7 +329,6 @@ bool RecentContactsModel::getEvents()
     if (re)
         emit resolvingChanged();
     return re;
-
 }
 
 } // namespace CommHistory
