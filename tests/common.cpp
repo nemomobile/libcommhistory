@@ -585,3 +585,46 @@ void waitWithDeletes(int msec)
         QCoreApplication::processEvents();
     }
 }
+
+void summarizeResults(const QString &className, QList<int> &times, QFile *logFile, int testSecs)
+{
+    int sum = 0;
+    QStringList timeList;
+    foreach (int time, times) {
+        sum += time;
+        timeList.append(QString::number(time));
+    }
+
+    qSort(times);
+    float median = 0.0;
+    const int iterations(times.count());
+    if (iterations % 2 > 0) {
+        median = times[(int)(iterations / 2)];
+    } else {
+        median = (times[iterations / 2] + times[iterations / 2 - 1]) / 2.0f;
+    }
+
+    const float mean = sum / (float)iterations;
+    qDebug("##### Mean: %.1f; Median: %.1f; Min: %d; Max: %d; Test time: %dsec", mean, median, times[0], times[iterations-1], testSecs);
+
+    if (logFile) {
+        QString descriptor(className + "::" + QTest::currentTestFunction());
+        if (QTest::currentDataTag())
+            descriptor.append(":").append(QTest::currentDataTag());
+
+        QTextStream out(logFile);
+        out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << ": "
+            << descriptor << " (" << iterations << " iterations)"
+            << "\n"
+            << timeList.join(" ")
+            << "\n"
+            << "Median average: " << (int)median << " ms. Min: " << times[0] << "ms. Max: " << times[iterations-1] << " ms. Test time: ";
+        if (testSecs > 3600)
+            out << (testSecs / 3600) << "h ";
+        if (testSecs > 60)
+            out << ((testSecs % 3600) / 60) << "m ";
+        out << ((testSecs % 3600) % 60) << "s"
+            << "\n";
+    }
+}
+

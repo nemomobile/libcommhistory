@@ -28,6 +28,7 @@
 #include "event.h"
 #include "group.h"
 
+#include <QFile>
 #include <QSignalSpy>
 
 #include <iterator>
@@ -95,5 +96,6 @@ void waitForIdle(int pollInterval = IDLE_POLL_INTERVAL);
 bool waitSignal(QSignalSpy &spy, int msec = WAIT_SIGNAL_TIMEOUT);
 // wait and allow deferred deletes to be processed (http://bugreports.qt.nokia.com/browse/QTBUG-12575)
 void waitWithDeletes(int msec = WAIT_SIGNAL_TIMEOUT);
+void summarizeResults(const QString &className, QList<int> &times, QFile *logFile, int testSecs);
 
 #endif

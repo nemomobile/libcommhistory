@@ -181,7 +181,6 @@ void RecentContactsModelPerfTest::getEvents()
         << ei << "/" << events << ")";
     eventList.clear();
 
-    int sum = 0;
     QList<int> times;
 
     int iterations = 10;
@@ -217,46 +216,12 @@ void RecentContactsModelPerfTest::getEvents()
 
         int elapsed = time.elapsed();
         times << elapsed;
-        sum += elapsed;
         qDebug("Time elapsed: %d ms", elapsed);
 
         QVERIFY(fetchModel.rowCount() > 0);
     }
 
-    if(logFile) {
-        QTextStream out(logFile);
-
-        out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << ": "
-            << metaObject()->className() << "::" << QTest::currentTestFunction() << "("
-            << QTest::currentDataTag() << ", " << iterations << " iterations)"
-            << "\n";
-
-        for (int i = 0; i < times.size(); i++) {
-            out << times.at(i) << " ";
-        }
-        out << "\n";
-    }
-
-    qSort(times);
-    float median = 0.0;
-    if(iterations % 2 > 0) {
-        median = times[(int)(iterations / 2)];
-    } else {
-        median = (times[iterations / 2] + times[iterations / 2 - 1]) / 2.0f;
-    }
-
-    float mean = sum / (float)iterations;
-    int testSecs = startTime.secsTo(QDateTime::currentDateTime());
-
-    qDebug("##### Mean: %.1f; Median: %.1f; Min: %d; Max: %d; Test time: %dsec", mean, median, times[0], times[iterations-1], testSecs);
-
-    if(logFile) {
-        QTextStream out(logFile);
-        out << "Median average: " << (int)median << " ms. Min:" << times[0] << "ms. Max:" << times[iterations-1] << " ms. Test time: ";
-        if (testSecs > 3600) { out << (testSecs / 3600) << "h "; }
-        if (testSecs > 60) { out << ((testSecs % 3600) / 60) << "m "; }
-        out << ((testSecs % 3600) % 60) << "s\n";
-    }
+    summarizeResults(metaObject()->className(), times, logFile, startTime.secsTo(QDateTime::currentDateTime()));
 }
 
 void RecentContactsModelPerfTest::cleanupTestCase()
