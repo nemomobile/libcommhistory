@@ -124,13 +124,10 @@ public:
         ValidityPeriod,
         ContentLocation,
         MessageParts,
-        Cc,
-        Bcc,
         ReadStatus,
         ReportRead,
         ReportReadRequested,
         MmsId,
-        To, // TODO: remove, wrapped into Headers
         Contacts,
         IsAction,
         Headers,

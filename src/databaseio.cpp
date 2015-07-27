@@ -174,6 +174,7 @@ public:
                         }
                         fields.append(QueryHelper::Field("headers", re));
                     }
+                    break;
                 /* Irrelevant properties from Event */
                 case Event::Id:
                 case Event::ContactId:
@@ -183,12 +184,9 @@ public:
                 case Event::Recipients:
                 case Event::IsResolved:
                     break;
-                /* XXX Disabled properties (remove?) */
-                case Event::EventCount:
-                case Event::To:
-                case Event::Cc:
-                case Event::Bcc:
+                /* Handled separately */
                 case Event::MessageParts:
+                case Event::EventCount:
                     break;
                 default:
                     qWarning() << Q_FUNC_INFO << "Event field ignored:" << property;

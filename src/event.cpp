@@ -110,7 +110,6 @@ static Event::PropertySet setOfAllProperties;
 QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
 {
     argument.beginStructure();
-    bool isDeleted = false;
     argument << event.id() << event.type() << event.startTimeT()
              << event.endTimeT() << event.direction()  << event.isDraft()
              << event.isRead() << event.isMissedCall()
@@ -121,7 +120,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Event &event)
              << event.eventCount()
              << event.fromVCardFileName() << event.fromVCardLabel()
              << QString() /* encoding */ << QString() /* charset */ << QString() /* language */
-             << isDeleted << event.reportDelivery()
+             << false /* isDeleted */ << event.reportDelivery()
              << event.contentLocation() << event.subject()
              << event.messageParts()
              << event.readStatus() << event.reportRead() << event.reportReadRequested()
@@ -226,7 +225,6 @@ const QDBusArgument &operator>>(const QDBusArgument &argument,
 // To be replaced.
 QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
 {
-    bool isDeleted = false;
     stream << event.id() << event.type() << event.startTime()
            << event.endTime() << event.direction()  << event.isDraft()
            << event.isRead() << event.isMissedCall()
@@ -237,7 +235,7 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Event &event)
            << event.messageToken() << event.mmsId() << event.lastModified()
            << event.fromVCardFileName() << event.fromVCardLabel()
            << QString() /* encoding */ << QString() /* charset */ << QString() /* language */
-           << isDeleted << event.reportDelivery()
+           << false /* isDeleted */ << event.reportDelivery()
            << event.contentLocation() << event.subject()
            << event.messageParts()
            << event.readStatus() << event.reportRead() << event.reportReadRequested()
@@ -1106,16 +1104,8 @@ void Event::copyValidProperties(const Event &other)
         case LocalUid:
             setLocalUid(other.localUid());
             break;
-        case RemoteUid:
-            // XXX deprecated
-            break;
         case Recipients:
             setRecipients(other.recipients());
-            break;
-        case ContactId:
-        case ContactName:
-        case Contacts:
-            // Deprecated, not settable
             break;
         case Subject:
             setSubject(other.subject());
@@ -1166,9 +1156,6 @@ void Event::copyValidProperties(const Event &other)
         case IsAction:
             setIsAction(other.isAction());
             break;
-        case To:
-        case Cc:
-        case Bcc:
         case Headers:
             setHeaders(other.headers());
             break;
@@ -1177,6 +1164,12 @@ void Event::copyValidProperties(const Event &other)
             break;
         case IsResolved:
             setIsResolved(other.isResolved());
+            break;
+        /* Derivatives of recipients */
+        case RemoteUid:
+        case ContactId:
+        case ContactName:
+        case Contacts:
             break;
         default:
             qCritical() << "Unknown event property";

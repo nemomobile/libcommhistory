@@ -46,13 +46,10 @@ CommHistory::Event::PropertySet unusedProperties = CommHistory::Event::PropertyS
         << CommHistory::Event::FromVCardFileName
         << CommHistory::Event::FromVCardLabel
         << CommHistory::Event::MessageParts
-        << CommHistory::Event::Cc
-        << CommHistory::Event::Bcc
         << CommHistory::Event::ReadStatus
         << CommHistory::Event::ReportRead
         << CommHistory::Event::ReportReadRequested
-        << CommHistory::Event::MmsId
-        << CommHistory::Event::To;
+        << CommHistory::Event::MmsId;
 }
 
 namespace CommHistory
