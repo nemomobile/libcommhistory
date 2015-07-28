@@ -323,16 +323,23 @@ void EventModelPrivate::modifyInModel(Event &event)
         item->setEvent(oldEvent);
 
         // move event if endTime has changed
-        if (index.row() > 0 && oldTimeT < event.endTimeT()) {
+        const int row(index.row());
+        if (row > 0 && oldTimeT < event.endTimeT()) {
             EventTreeItem *parent = item->parent();
             if (!parent)
                 parent = eventRootItem;
-            // TODO: beginMoveRows if/when view supports it
-            emit q->layoutAboutToBeChanged();
-            parent->moveChild(index.row(), 0);
-            emit q->layoutChanged();
+
+            if (parent == eventRootItem) {
+                q->beginMoveRows(index.parent(), row, row, index.parent(), 0);
+                parent->moveChild(row, 0);
+                q->endRemoveRows();
+            } else {
+                emit q->layoutAboutToBeChanged();
+                parent->moveChild(row, 0);
+                emit q->layoutChanged();
+            }
         } else {
-            emitDataChanged(index.row(), index.internalPointer());
+            emitDataChanged(row, index.internalPointer());
         }
     }
 }
