@@ -49,38 +49,8 @@ public:
     }
 
     int id;
-    mutable QDateTime startTime;
-    mutable QDateTime endTime;
-    int bytesReceived;
-
-    QString localUid;
-    RecipientList recipients;
-
-    QString freeText;
     int groupId;
-    QString messageToken;
-    QString mmsId;
-
-    mutable QDateTime lastModified;
-
     int eventCount;
-    QString fromVCardFileName;
-    QString fromVCardLabel;
-    int validityPeriod;
-
-    QString contentLocation;
-    QString subject;
-    QList<MessagePart> messageParts;
-
-    QHash<QString, QString> headers;
-    QVariantMap extraProperties;
-
-    Event::PropertySet validProperties;
-    Event::PropertySet modifiedProperties;
-
-    mutable quint32 startTimeT;
-    mutable quint32 endTimeT;
-    mutable quint32 lastModifiedT;
 
     mutable struct {
         quint32 isDraft: 1;
@@ -100,6 +70,37 @@ public:
         qint32 status: 5;
         quint32 readStatus: 2;
     } flags;
+
+    mutable quint32 startTimeT;
+    mutable quint32 endTimeT;
+    mutable quint32 lastModifiedT;
+
+    mutable QDateTime startTime;
+    mutable QDateTime endTime;
+    mutable QDateTime lastModified;
+
+    RecipientList recipients;
+    QString localUid;
+
+    QString freeText;
+    QString messageToken;
+    QString mmsId;
+
+    QString fromVCardFileName;
+    QString fromVCardLabel;
+
+    int validityPeriod;
+    int bytesReceived;
+
+    QString contentLocation;
+    QString subject;
+    QList<MessagePart> messageParts;
+
+    QHash<QString, QString> headers;
+    QVariantMap extraProperties;
+
+    Event::PropertySet validProperties;
+    Event::PropertySet modifiedProperties;
 };
 
 }
@@ -301,13 +302,13 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
 
 EventPrivate::EventPrivate()
         : id(-1)
-        , bytesReceived(0)
         , groupId(-1)
         , eventCount(0)
-        , validityPeriod(0)
         , startTimeT(0)
         , endTimeT(0)
         , lastModifiedT(0)
+        , validityPeriod(0)
+        , bytesReceived(0)
 {
     flags.isDraft = false;
     flags.isRead = false;
@@ -330,17 +331,20 @@ EventPrivate::EventPrivate()
 EventPrivate::EventPrivate(const EventPrivate &other)
         : QSharedData(other)
         , id(other.id)
-        , bytesReceived(other.bytesReceived)
-        , localUid(other.localUid)
-        , recipients(other.recipients)
-        , freeText(other.freeText)
         , groupId(other.groupId)
+        , eventCount( other.eventCount )
+        , startTimeT(other.startTimeT)
+        , endTimeT(other.endTimeT)
+        , lastModifiedT(other.lastModifiedT)
+        , recipients(other.recipients)
+        , localUid(other.localUid)
+        , freeText(other.freeText)
         , messageToken(other.messageToken)
         , mmsId(other.mmsId)
-        , eventCount( other.eventCount )
         , fromVCardFileName( other.fromVCardFileName )
         , fromVCardLabel( other.fromVCardLabel )
         , validityPeriod(other.validityPeriod)
+        , bytesReceived(other.bytesReceived)
         , contentLocation(other.contentLocation)
         , subject(other.subject)
         , messageParts(other.messageParts)
@@ -348,9 +352,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , extraProperties(other.extraProperties)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
-        , startTimeT(other.startTimeT)
-        , endTimeT(other.endTimeT)
-        , lastModifiedT(other.lastModifiedT)
 {
     flags.isDraft = other.flags.isDraft;
     flags.isRead = other.flags.isRead;
@@ -431,18 +432,18 @@ Event::PropertySet Event::modifiedProperties() const
 
 bool Event::operator==(const Event &other) const
 {
-    return (this->d->recipients             == other.d->recipients &&
-            this->d->localUid               == other.d->localUid &&
+    return (this->d->id                     == other.d->id &&
+            this->d->recipients             == other.d->recipients &&
             this->d->startTimeT             == other.d->startTimeT &&
             this->d->endTimeT               == other.d->endTimeT &&
+            this->d->flags.direction        == other.d->flags.direction &&
             this->d->flags.isDraft          == other.d->flags.isDraft &&
             this->d->flags.isRead           == other.d->flags.isRead &&
             this->d->flags.isMissedCall     == other.d->flags.isMissedCall &&
             this->d->flags.isEmergencyCall  == other.d->flags.isEmergencyCall &&
-            this->d->flags.direction        == other.d->flags.direction &&
-            this->d->id                     == other.d->id &&
-            this->d->fromVCardFileName      == other.d->fromVCardFileName &&
             this->d->flags.reportDelivery   == other.d->flags.reportDelivery &&
+            this->d->localUid               == other.d->localUid &&
+            this->d->fromVCardFileName      == other.d->fromVCardFileName &&
             this->d->messageParts           == other.d->messageParts);
 }
 
