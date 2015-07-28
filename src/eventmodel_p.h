@@ -122,7 +122,7 @@ public:
 
     DatabaseIO *database();
 
-    void recipientsChangedRecursive(const QSet<Recipient> &recipients, EventTreeItem *parent);
+    void recipientsChangedRecursive(const QSet<Recipient> &recipients, EventTreeItem *parent, bool resolved = false);
     void emitDataChanged(int row, void *data);
 
     // This is the root node for the internal event tree. In a standard

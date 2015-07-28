@@ -246,9 +246,9 @@ void EventModelPrivate::resolveAddedEvents(const QList<Event> &events)
 
 void EventModelPrivate::addResolverFinished()
 {
-    QList<Event> added = pendingAdded;
+    QList<Event> resolved(pendingAdded);
     pendingAdded.clear();
-    prependEvents(added, true);
+    prependEvents(resolved, true);
 }
 
 void EventModelPrivate::prependEvents(QList<Event> events, bool resolved)
@@ -377,9 +377,9 @@ void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> even
 
 void EventModelPrivate::receiveResolverFinished()
 {
-    QList<Event> received = pendingReceived;
+    QList<Event> resolved(pendingReceived);
     pendingReceived.clear();
-    fillModel(received, true);
+    fillModel(resolved, true);
 }
 
 void EventModelPrivate::modelUpdatedSlot(bool successful)
@@ -440,12 +440,18 @@ bool EventModelPrivate::canFetchMore() const
     return threadCanFetchMore;
 }
 
-void EventModelPrivate::recipientsChangedRecursive(const QSet<Recipient> &recipients, EventTreeItem *parent)
+void EventModelPrivate::recipientsChangedRecursive(const QSet<Recipient> &recipients, EventTreeItem *parent, bool resolved)
 {
     for (int row = 0; row < parent->childCount(); row++) {
         const Event &event(parent->eventAt(row));
         EventTreeItem *child = parent->child(row);
         if (event.recipients().intersects(recipients)) {
+            if (resolved) {
+                Event &event(child->event());
+                if (!event.isResolved() && event.recipients().allContactsResolved())
+                    event.setIsResolved(true);
+            }
+
             // XXX coalesce
             // XXX role dataChanged signal
             emitDataChanged(row, child);
@@ -464,7 +470,7 @@ void EventModelPrivate::slotContactInfoChanged(const RecipientList &recipients)
 void EventModelPrivate::slotContactChanged(const RecipientList &recipients)
 {
     QSet<Recipient> changed = QSet<Recipient>::fromList(recipients.recipients());
-    recipientsChangedRecursive(changed, eventRootItem);
+    recipientsChangedRecursive(changed, eventRootItem, true);
 }
 
 DatabaseIO* EventModelPrivate::database()

@@ -97,6 +97,7 @@ public:
         quint32 reportRead: 1;
         quint32 reportReadRequested: 1;
         quint32 isAction: 1;
+        quint32 isResolved: 1;
     } flags;
 };
 
@@ -323,6 +324,7 @@ EventPrivate::EventPrivate()
     flags.reportRead = false;
     flags.reportReadRequested = false;
     flags.isAction = false;
+    flags.isResolved = false;
 }
 
 EventPrivate::EventPrivate(const EventPrivate &other)
@@ -364,6 +366,7 @@ EventPrivate::EventPrivate(const EventPrivate &other)
     flags.reportRead = other.flags.reportRead;
     flags.reportReadRequested = other.flags.reportReadRequested;
     flags.isAction = other.flags.isAction;
+    flags.isResolved = other.flags.isResolved;
 }
 
 EventPrivate::~EventPrivate()
@@ -669,6 +672,11 @@ bool Event::isAction() const
     return d->flags.isAction;
 }
 
+bool Event::isResolved() const
+{
+    return d->flags.isResolved;
+}
+
 QHash<QString, QString> Event::headers() const
 {
     return d->headers;
@@ -801,8 +809,10 @@ void Event::setLocalUid(const QString &uid)
 void Event::setRecipients(const RecipientList &recipients)
 {
     d->recipients = recipients;
+    d->flags.isResolved = recipients.allContactsResolved();
     d->propertyChanged(Event::Recipients);
     d->propertyChanged(Event::RemoteUid);
+    d->propertyChanged(Event::IsResolved);
 }
 
 void Event::setSubject(const QString &subject)
@@ -944,6 +954,12 @@ void Event::setIsAction(bool isAction)
     d->propertyChanged(Event::IsAction);
 }
 
+void Event::setIsResolved(bool isResolved)
+{
+    d->flags.isResolved = isResolved;
+    d->propertyChanged(Event::IsResolved);
+}
+
 void Event::setHeaders(const QHash<QString, QString> &headers)
 {
     d->headers = headers;
@@ -1045,6 +1061,7 @@ QString Event::toString() const
                    QString::number(status())          % QChar('|') %
                    QString::number(reportDelivery())  % QChar('|') %
                    QString::number(isAction())        % QChar('|') %
+                   QString::number(isResolved())      % QChar('|') %
                    QString::number(messageParts().count()) % QChar('|') %
                    headers);
 }
@@ -1157,6 +1174,9 @@ void Event::copyValidProperties(const Event &other)
             break;
         case ExtraProperties:
             setExtraProperties(other.extraProperties());
+            break;
+        case IsResolved:
+            setIsResolved(other.isResolved());
             break;
         default:
             qCritical() << "Unknown event property";

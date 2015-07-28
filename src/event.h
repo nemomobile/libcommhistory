@@ -136,6 +136,7 @@ public:
         Headers,
         ExtraProperties,
         Recipients,
+        IsResolved,
         //
         NumProperties
     };
@@ -314,6 +315,9 @@ public:
     // Action chat messages (e.g. "/me is happy"), supported only for IMEvent
     bool isAction() const;
 
+    // True if the recipients in this event have all been resolved
+    bool isResolved() const;
+
     // Optional message headers, key/value.
     QHash<QString, QString> headers() const;
 
@@ -398,6 +402,8 @@ public:
     void setBccList(const QStringList &bccList);
 
     void setIsAction(bool isAction);
+
+    void setIsResolved(bool isResolved);
 
     void setHeaders(const QHash<QString, QString> &headers);
 

@@ -181,6 +181,7 @@ public:
                 case Event::Contacts:
                 case Event::ExtraProperties:
                 case Event::Recipients:
+                case Event::IsResolved:
                     break;
                 /* XXX Disabled properties (remove?) */
                 case Event::EventCount:
