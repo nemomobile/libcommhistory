@@ -49,11 +49,8 @@ public:
     }
 
     int id;
-    Event::EventType type;
     mutable QDateTime startTime;
     mutable QDateTime endTime;
-    Event::EventDirection direction;
-    Event::EventStatus status;
     int bytesReceived;
 
     QString localUid;
@@ -74,7 +71,6 @@ public:
     QString contentLocation;
     QString subject;
     QList<MessagePart> messageParts;
-    Event::EventReadStatus readStatus;
 
     QHash<QString, QString> headers;
     QVariantMap extraProperties;
@@ -98,6 +94,11 @@ public:
         quint32 reportReadRequested: 1;
         quint32 isAction: 1;
         quint32 isResolved: 1;
+        //
+        quint32 type: 4;
+        quint32 direction: 2;
+        qint32 status: 5;
+        quint32 readStatus: 2;
     } flags;
 };
 
@@ -166,15 +167,15 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Event &event)
     argument.endStructure();
 
     event.setId(p.id);
-    event.setType((Event::EventType)type);
+    event.setType(static_cast<Event::EventType>(type));
     event.setStartTimeT(p.startTimeT);
     event.setEndTimeT(p.endTimeT);
-    event.setDirection((Event::EventDirection)direction);
+    event.setDirection(static_cast<Event::EventDirection>(direction));
     event.setIsDraft( isDraft );
     event.setIsRead(isRead);
     event.setIsMissedCall( isMissedCall );
     event.setIsEmergencyCall( isEmergencyCall );
-    event.setStatus((Event::EventStatus)status);
+    event.setStatus(static_cast<Event::EventStatus>(status));
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(p.localUid);
     event.setRecipients(p.recipients);
@@ -264,15 +265,15 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
            >> p.validityPeriod >> isAction >> p.headers;
 
     event.setId(p.id);
-    event.setType((Event::EventType)type);
+    event.setType(static_cast<Event::EventType>(type));
     event.setStartTimeT(p.startTime.toTime_t());
     event.setEndTimeT(p.endTime.toTime_t());
-    event.setDirection((Event::EventDirection)direction);
+    event.setDirection(static_cast<Event::EventDirection>(direction));
     event.setIsDraft( isDraft );
     event.setIsRead(isRead);
     event.setIsMissedCall( isMissedCall );
     event.setIsEmergencyCall( isEmergencyCall );
-    event.setStatus((Event::EventStatus)status);
+    event.setStatus(static_cast<Event::EventStatus>(status));
     event.setBytesReceived(p.bytesReceived);
     event.setLocalUid(localUid);
     event.setRecipients(Recipient(localUid, remoteUid));
@@ -300,14 +301,10 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Event &event)
 
 EventPrivate::EventPrivate()
         : id(-1)
-        , type(Event::UnknownType)
-        , direction(Event::UnknownDirection)
-        , status(Event::UnknownStatus)
         , bytesReceived(0)
         , groupId(-1)
         , eventCount(0)
         , validityPeriod(0)
-        , readStatus(Event::UnknownReadStatus)
         , startTimeT(0)
         , endTimeT(0)
         , lastModifiedT(0)
@@ -323,14 +320,16 @@ EventPrivate::EventPrivate()
     flags.reportReadRequested = false;
     flags.isAction = false;
     flags.isResolved = false;
+
+    flags.type = Event::UnknownType;
+    flags.direction = Event::UnknownDirection;
+    flags.status = Event::UnknownStatus;
+    flags.readStatus = Event::UnknownReadStatus;
 }
 
 EventPrivate::EventPrivate(const EventPrivate &other)
         : QSharedData(other)
         , id(other.id)
-        , type(other.type)
-        , direction(other.direction)
-        , status(other.status)
         , bytesReceived(other.bytesReceived)
         , localUid(other.localUid)
         , recipients(other.recipients)
@@ -345,7 +344,6 @@ EventPrivate::EventPrivate(const EventPrivate &other)
         , contentLocation(other.contentLocation)
         , subject(other.subject)
         , messageParts(other.messageParts)
-        , readStatus(other.readStatus)
         , headers(other.headers)
         , extraProperties(other.extraProperties)
         , validProperties(other.validProperties)
@@ -365,6 +363,11 @@ EventPrivate::EventPrivate(const EventPrivate &other)
     flags.reportReadRequested = other.flags.reportReadRequested;
     flags.isAction = other.flags.isAction;
     flags.isResolved = other.flags.isResolved;
+
+    flags.type = other.flags.type;
+    flags.direction = other.flags.direction;
+    flags.status = other.flags.status;
+    flags.readStatus = other.flags.readStatus;
 }
 
 EventPrivate::~EventPrivate()
@@ -436,7 +439,7 @@ bool Event::operator==(const Event &other) const
             this->d->flags.isRead           == other.d->flags.isRead &&
             this->d->flags.isMissedCall     == other.d->flags.isMissedCall &&
             this->d->flags.isEmergencyCall  == other.d->flags.isEmergencyCall &&
-            this->d->direction              == other.d->direction &&
+            this->d->flags.direction        == other.d->flags.direction &&
             this->d->id                     == other.d->id &&
             this->d->fromVCardFileName      == other.d->fromVCardFileName &&
             this->d->flags.reportDelivery   == other.d->flags.reportDelivery &&
@@ -460,7 +463,7 @@ QUrl Event::url() const
 
 Event::EventType Event::type() const
 {
-    return d->type;
+    return static_cast<Event::EventType>(d->flags.type);
 }
 
 QDateTime Event::startTime() const
@@ -481,7 +484,7 @@ QDateTime Event::endTime() const
 
 Event::EventDirection Event::direction() const
 {
-    return d->direction;
+    return static_cast<Event::EventDirection>(d->flags.direction);
 }
 
 bool Event::isDraft() const
@@ -518,7 +521,7 @@ bool Event::isVideoCall() const
 
 Event::EventStatus Event::status() const
 {
-    return d->status;
+    return static_cast<Event::EventStatus>(d->flags.status);
 }
 
 int Event::bytesReceived() const
@@ -627,7 +630,7 @@ QStringList Event::bccList() const
 
 Event::EventReadStatus Event::readStatus() const
 {
-    return d->readStatus;
+    return static_cast<Event::EventReadStatus>(d->flags.readStatus);
 }
 
 QString Event::fromVCardFileName() const
@@ -718,7 +721,7 @@ void Event::setId(int id)
 
 void Event::setType(Event::EventType type)
 {
-    d->type = type;
+    d->flags.type = type;
     d->propertyChanged(Event::Type);
 }
 
@@ -746,7 +749,7 @@ void Event::setEndTime(const QDateTime &endTime)
 
 void Event::setDirection(Event::EventDirection direction)
 {
-    d->direction = direction;
+    d->flags.direction = direction;
     d->propertyChanged(Event::Direction);
 }
 
@@ -788,7 +791,7 @@ void Event::setIsVideoCall( bool isVideo )
 
 void Event::setStatus( Event::EventStatus status )
 {
-    d->status = status;
+    d->flags.status = status;
     d->propertyChanged(Event::Status);
 }
 
@@ -930,7 +933,7 @@ void Event::setBccList(const QStringList &bccList)
 
 void Event::setReadStatus(const Event::EventReadStatus eventReadStatus)
 {
-    d->readStatus = eventReadStatus;
+    d->flags.readStatus = eventReadStatus;
     d->propertyChanged(Event::ReadStatus);
 }
 
