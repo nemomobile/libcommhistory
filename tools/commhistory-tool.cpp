@@ -151,7 +151,7 @@ void printUsage()
 int doAdd(const QStringList &arguments, const QVariantMap &options)
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
 
     bool isSms = options.contains("-sms");
     bool isMms = options.contains("-mms");
@@ -555,7 +555,7 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     bool showParts = options.contains("-p");
 
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getGroups(localUid, remoteUid)) {
         qCritical() << "Error fetching groups";
@@ -852,7 +852,7 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
 
     if (!hasAnyOption || options.contains("-groups")) {
         GroupModel model;
-        model.enableContactChanges(false);
+        model.setResolveContacts(GroupManager::DoNotResolve);
         model.setQueryMode(EventModel::SyncQuery);
         if (!model.getGroups()) {
             qCritical() << "Error fetching groups";
@@ -950,7 +950,7 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
     out.setVersion(QDataStream::Qt_4_7);
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
 
     if (options.contains("-group")) {
@@ -1020,7 +1020,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
     in >> numGroups;
     if (numGroups) {
         GroupModel groupModel;
-        groupModel.enableContactChanges(false);
+        groupModel.setResolveContacts(GroupManager::DoNotResolve);
         groupModel.setQueryMode(EventModel::SyncQuery);
         Catcher groupCatcher(&groupModel);
         EventModel model;
@@ -1121,7 +1121,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
     QVariantList result = json.array().toVariantList();
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     Catcher groupCatcher(&groupModel);
     EventModel model;

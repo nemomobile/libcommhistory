@@ -118,7 +118,7 @@ public:
 
     QSharedPointer<ContactListener> contactListener;
     ContactResolver *contactResolver;
-    bool resolveContacts;
+    GroupManager::ContactResolveType resolveContacts;
     QSharedPointer<UpdatesEmitter> emitter;
 
     QList<Group> pendingResolve;
@@ -141,7 +141,7 @@ GroupManagerPrivate::GroupManagerPrivate(GroupManager *manager)
         , filterRemoteUid(QString())
         , bgThread(0)
         , contactResolver(0)
-        , resolveContacts(false)
+        , resolveContacts(GroupManager::DoNotResolve)
 {
     emitter = UpdatesEmitter::instance();
 
@@ -206,7 +206,7 @@ void GroupManagerPrivate::add(const Group &group)
 void GroupManagerPrivate::addGroups(const QList<Group> &groups)
 {
     if (!groups.isEmpty()) {
-        if (resolveContacts && queryMode != EventModel::SyncQuery) {
+        if (resolveContacts == GroupManager::ResolveImmediately && queryMode != EventModel::SyncQuery) {
             pendingResolve.append(groups);
             resolver()->add(groups);
         } else {
@@ -246,8 +246,10 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
 
 void GroupManagerPrivate::resolve(GroupObject &group)
 {
-    pendingObjects.append(&group);
-    resolver()->add(group);
+    if (resolveContacts == GroupManager::ResolveOnDemand) {
+        pendingObjects.append(&group);
+        resolver()->add(group);
+    }
 }
 
 ContactResolver *GroupManagerPrivate::resolver()
@@ -727,18 +729,18 @@ DatabaseIO& GroupManager::databaseIO()
     return *d->database();
 }
 
-bool GroupManager::resolveContacts() const
+GroupManager::ContactResolveType GroupManager::resolveContacts() const
 {
     return d->resolveContacts;
 }
 
-void GroupManager::setResolveContacts(bool enabled)
+void GroupManager::setResolveContacts(ContactResolveType type)
 {
-    if (d->resolveContacts == enabled)
+    if (d->resolveContacts == type)
         return;
-    d->resolveContacts = enabled;
+    d->resolveContacts = type;
 
-    if (d->resolveContacts && !d->contactListener) {
+    if (d->resolveContacts != DoNotResolve && !d->contactListener) {
         d->contactListener = ContactListener::instance();
         connect(d->contactListener.data(),
                 SIGNAL(contactInfoChanged(RecipientList)),
@@ -748,7 +750,7 @@ void GroupManager::setResolveContacts(bool enabled)
                 SIGNAL(contactChanged(RecipientList)),
                 d,
                 SLOT(slotContactChanged(RecipientList)));
-    } else if (!d->resolveContacts && d->contactListener) {
+    } else if (d->resolveContacts == DoNotResolve && d->contactListener) {
         disconnect(d->contactListener.data(), 0, d, 0);
         d->contactListener.clear();
     }

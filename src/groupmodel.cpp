@@ -546,9 +546,9 @@ DatabaseIO& GroupModel::databaseIO()
     return d->manager->databaseIO();
 }
 
-void GroupModel::enableContactChanges(bool enabled)
+void GroupModel::setResolveContacts(GroupManager::ContactResolveType type)
 {
     d->ensureManager();
-    d->manager->enableContactChanges(enabled);
+    d->manager->setResolveContacts(type);
 }
 

@@ -207,7 +207,7 @@ void addTestGroups(Group &group1, Group &group2)
 void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     grp.setLocalUid(localUid);
     grp.setRecipients(RecipientList::fromUids(localUid, QStringList() << remoteUid));
     QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
@@ -376,7 +376,7 @@ void cleanUpTestContacts()
 void cleanupTestGroups()
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     if (!groupModel.getGroups()) {
         qCritical() << Q_FUNC_INFO << "groupModel::getGroups failed";

@@ -40,6 +40,8 @@ using namespace CommHistory;
 DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
     : CommHistory::GroupManager(parent)
 {
+    GroupManager::setResolveContacts(GroupManager::ResolveOnDemand);
+
     QTimer::singleShot(0, this, SLOT(reload()));
 }
 
@@ -66,6 +68,20 @@ void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
     }
 
     emit backgroundThreadChanged();
+}
+
+bool DeclarativeGroupManager::resolveContacts() const
+{
+    return GroupManager::resolveContacts() == GroupManager::ResolveImmediately;
+}
+
+void DeclarativeGroupManager::setResolveContacts(bool enabled)
+{
+    if (enabled == GroupManager::resolveContacts())
+        return;
+
+    GroupManager::setResolveContacts(enabled ? GroupManager::ResolveImmediately : GroupManager::ResolveOnDemand);
+    emit resolveContactsChanged();
 }
 
 int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,

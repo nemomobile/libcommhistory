@@ -87,6 +87,7 @@ void GroupModelTest::dataChangedSlot(const QModelIndex &start, const QModelIndex
 void GroupModelTest::initTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 
     QVERIFY(QDBusConnection::sessionBus().isConnected());
 
@@ -149,21 +150,20 @@ void GroupModelTest::init()
 
 void GroupModelTest::cleanup()
 {
-    QTest::qWait(1000);
-
     deleteAll();
+    QTest::qWait(100);
+
     QDir mms_content(QDir::homePath() + QDir::separator() + mms_content_path);
     mms_content.rmdir(mms_token1);
     mms_content.rmdir(mms_token2);
     mms_content.rmdir(mms_token3);
-    //QTest::qWait(1000);
 }
 
 void GroupModelTest::addGroups()
 {
     GroupModel model;
     EventModel eventModel;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
 
     /* add invalid group */
@@ -209,7 +209,7 @@ void GroupModelTest::addGroups()
 void GroupModelTest::modifyGroup()
 {
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>,bool)));
 
     Group group5;
@@ -257,12 +257,12 @@ void GroupModelTest::getGroups()
     QFETCH(bool, useThread);
 
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>,bool)));
 
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
     GroupModel listenerModel;
-    listenerModel.enableContactChanges(false);
+    listenerModel.setResolveContacts(GroupManager::DoNotResolve);
 
     QThread modelThread;
     if (useThread) {
@@ -392,7 +392,7 @@ void GroupModelTest::getGroups()
 void GroupModelTest::updateGroups()
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     QVERIFY(groupModel.getGroups(ACCOUNT1));
     connect(&groupModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)),
@@ -505,7 +505,7 @@ void GroupModelTest::deleteGroups()
     QSignalSpy groupsCommitted(&deleterModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QSignalSpy rowsRemoved(&groupModel, SIGNAL(rowsRemoved(QModelIndex,int,int)));
 
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     QVERIFY(groupModel.getGroups());
     int numGroups = groupModel.rowCount();
@@ -581,9 +581,9 @@ void GroupModelTest::streamingQuery()
     QFETCH(bool, useThread);
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     GroupModel streamModel;
-    streamModel.enableContactChanges(false);
+    streamModel.setResolveContacts(GroupManager::DoNotResolve);
     QSignalSpy modelReady0(&groupModel, SIGNAL(modelReady(bool)));
     QThread modelThread;
     if (useThread) {
@@ -694,6 +694,7 @@ void GroupModelTest::streamingQuery()
 void GroupModelTest::addMultipleGroups()
 {
     deleteAll();
+    QTest::qWait(100);
 
     QList<Group> groups;
     for (int i = 0; i < ADD_GROUPS_NUM; i++) {
@@ -704,7 +705,7 @@ void GroupModelTest::addMultipleGroups()
     }
 
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
     QSignalSpy groupsCommitted(&model, SIGNAL(groupsCommitted(QList<int>, bool)));
     QVERIFY(model.addGroups(groups));
@@ -731,7 +732,7 @@ void GroupModelTest::addMultipleGroups()
 void GroupModelTest::limitOffset()
 {
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
 
     QVERIFY(model.getGroups());
@@ -785,6 +786,7 @@ void GroupModelTest::limitOffset()
 void GroupModelTest::cleanupTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 }
 
 int addTestMms (EventModel &model,
@@ -815,7 +817,7 @@ void GroupModelTest::deleteMmsContent()
 {
     Group group1, group2, group3;
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     EventModel eventModel;
     Event e;
     int id1, id2, id3;
@@ -912,7 +914,7 @@ void GroupModelTest::markGroupAsRead()
     EventModel eventModel;
     GroupModel groupModel;
     QSignalSpy groupsCommitted(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     Group group;
     addTestGroup(group,ACCOUNT2,QString("td@localhost"));
 
@@ -1028,7 +1030,7 @@ void GroupModelTest::queryContacts()
 {
     QSKIP("Contact matching is not yet supported with SQLite");
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     QSignalSpy modelReady(&model, SIGNAL(modelReady(bool)));
 
     //add cellular groups
@@ -1188,7 +1190,7 @@ void GroupModelTest::changeRemoteUid()
         QCoreApplication::processEvents();
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     QSignalSpy modelReady(&groupModel, SIGNAL(modelReady(bool)));
     QVERIFY(groupModel.getGroups());
@@ -1279,7 +1281,7 @@ void GroupModelTest::changeRemoteUid()
 void GroupModelTest::noRemoteId()
 {
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
     Group groupR;
 
@@ -1291,7 +1293,7 @@ void GroupModelTest::endTimeUpdate()
 {
     GroupModel model;
     EventModel eventModel;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
 
     addTestGroup(group1, "endTimeUpdate", QString("td@localhost"));
