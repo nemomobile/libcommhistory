@@ -143,6 +143,8 @@ void ContactGroupPrivate::update()
         uUnreadMessages += group->unreadMessages();
     }
 
+    const bool contactsChanged(uContactIds != contactIds || uDisplayNames != displayNames);
+
     if (uContactIds != contactIds) {
         contactIds = uContactIds;
         emit q->contactIdsChanged();
@@ -152,6 +154,10 @@ void ContactGroupPrivate::update()
         displayNames = uDisplayNames;
         emit q->displayNamesChanged();
     }
+
+    // Temporary: to be removed
+    if (contactsChanged)
+        emit q->contactsChanged();
 
     if (uStartTimeT != startTimeT) {
         startTimeT = uStartTimeT;

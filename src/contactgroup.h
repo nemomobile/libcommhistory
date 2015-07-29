@@ -106,6 +106,7 @@ public slots:
     bool deleteGroups();
 
 signals:
+    void contactsChanged(); // TODO: Obsolete, to be removed
     void contactIdsChanged();
     void displayNamesChanged();
     void startTimeChanged();
