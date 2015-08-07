@@ -22,12 +22,14 @@
 
 #include "adaptor.h"
 #include "messagepart.h"
+#include "recipient.h"
 
 using namespace CommHistory;
 
 Adaptor::Adaptor(QObject *parent)
     : QDBusAbstractAdaptor(parent)
 {
+    qDBusRegisterMetaType<CommHistory::Recipient>();
     qDBusRegisterMetaType<CommHistory::Event>();
     qDBusRegisterMetaType<QList<CommHistory::Event> >();
     qDBusRegisterMetaType<CommHistory::Event::Contact>();

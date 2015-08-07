@@ -59,6 +59,7 @@ QT_LIKE_HEADERS += headers/CallEvent \
                    headers/GroupModel \
                    headers/SingleEventModel \
                    headers/RecentContactsModel \
+                   headers/Recipient \
                    headers/Events \
                    headers/Models \
                    headers/DatabaseIO
