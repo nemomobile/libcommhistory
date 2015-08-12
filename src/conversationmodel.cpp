@@ -99,7 +99,7 @@ void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
 
 bool ConversationModelPrivate::acceptsEvent(const Event &event) const
 {
-    DEBUG() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << Q_FUNC_INFO << event.id();
     if ((event.type() != Event::IMEvent
          && event.type() != Event::SMSEvent
          && event.type() != Event::MMSEvent
@@ -120,7 +120,7 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
 
     if (!allGroups && !filterGroupIds.contains(event.groupId())) return false;
 
-    DEBUG() << __PRETTY_FUNCTION__ << ": true";
+    DEBUG() << Q_FUNC_INFO << ": true";
     return true;
 }
 

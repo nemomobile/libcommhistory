@@ -100,7 +100,7 @@ bool CallModelPrivate::eventMatchesFilter( const Event &event ) const
 
 bool CallModelPrivate::acceptsEvent( const Event &event ) const
 {
-    DEBUG() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << Q_FUNC_INFO << event.id();
     if ( event.type() != Event::CallEvent || !eventMatchesFilter(event) )
     {
         return false;
@@ -475,7 +475,7 @@ void CallModelPrivate::prependEvents(QList<Event> events, bool resolved)
 void CallModelPrivate::insertEvent(Event event)
 {
     Q_Q(CallModel);
-    DEBUG() << __PRETTY_FUNCTION__ << event.toString();
+    DEBUG() << Q_FUNC_INFO << event.toString();
 
     switch ( sortBy )
     {
@@ -584,7 +584,7 @@ void CallModelPrivate::insertEvent(Event event)
         }
         default :
         {
-            qWarning() << __PRETTY_FUNCTION__ << "Adding call events to model sorted by type or by service has not been implemented yet.";
+            qWarning() << Q_FUNC_INFO << "Adding call events to model sorted by type or by service has not been implemented yet.";
             return;
         }
     }
@@ -592,7 +592,7 @@ void CallModelPrivate::insertEvent(Event event)
 
 void CallModelPrivate::eventsAddedSlot( const QList<Event> &events )
 {
-    DEBUG() << __PRETTY_FUNCTION__ << events.count();
+    DEBUG() << Q_FUNC_INFO << events.count();
     // TODO: sorting?
     EventModelPrivate::eventsAddedSlot(events);
 }
@@ -699,7 +699,7 @@ void CallModelPrivate::deleteFromModel( int id )
     // if id was not found, do nothing
     if ( !index.isValid() )
     {
-        DEBUG() << __PRETTY_FUNCTION__ << "*** Invalid";
+        DEBUG() << Q_FUNC_INFO << "*** Invalid";
         return;
     }
 
@@ -729,7 +729,7 @@ void CallModelPrivate::deleteFromModel( int id )
             }
         }
 
-        DEBUG() << __PRETTY_FUNCTION__ << "*** Top level" << row;
+        DEBUG() << Q_FUNC_INFO << "*** Top level" << row;
         // if there is no need to regroup the previous and following items,
         // then delete only one row
         if ( !isRegroupingNeeded )
@@ -752,7 +752,7 @@ void CallModelPrivate::deleteFromModel( int id )
     // otherwise item is a grouped event
     else
     {
-        DEBUG() << __PRETTY_FUNCTION__ << "*** Sth else";
+        DEBUG() << Q_FUNC_INFO << "*** Sth else";
         // TODO :
         // delete it from the model
         // update top level item
@@ -765,7 +765,7 @@ void CallModelPrivate::slotAllCallsDeleted(int unused)
     Q_UNUSED(unused);
     Q_Q(CallModel);
 
-    qWarning() << __PRETTY_FUNCTION__ << "clearing model";
+    qWarning() << Q_FUNC_INFO << "clearing model";
 
     q->beginResetModel();
     clearEvents();
@@ -923,7 +923,7 @@ bool CallModel::deleteAll()
     bool deleted;
     deleted = d->database()->deleteAllEvents(Event::CallEvent);
     if (!deleted) {
-        qWarning() << __PRETTY_FUNCTION__ << "Failed to delete events";
+        qWarning() << Q_FUNC_INFO << "Failed to delete events";
         return false;
     }
 
@@ -939,7 +939,7 @@ bool CallModel::markAllRead()
     bool marked;
     marked = d->database()->markAsReadAll(Event::CallEvent);
     if (!marked) {
-        qWarning() << __PRETTY_FUNCTION__ << "Failed to delete events";
+        qWarning() << Q_FUNC_INFO << "Failed to delete events";
         return false;
     }
 
@@ -1042,7 +1042,7 @@ bool CallModel::deleteEvent( int id )
         }
         default :
         {
-            qWarning() << __PRETTY_FUNCTION__ << "Deleting of call events from model sorted by type or by service has not been implemented yet.";
+            qWarning() << Q_FUNC_INFO << "Deleting of call events from model sorted by type or by service has not been implemented yet.";
             return false;
         }
     }

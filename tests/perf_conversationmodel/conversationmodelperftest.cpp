@@ -99,7 +99,7 @@ void ConversationModelPerfTest::getEvents()
     commitBatchSize = PERF_BATCH_SIZE;
     #endif
 
-    qDebug() << __FUNCTION__ << "- Creating" << contacts << "contacts";
+    qDebug() << Q_FUNC_INFO << "- Creating" << contacts << "contacts";
 
     QList<QPair<QString, QPair<QString, QString> > > contactDetails;
 
@@ -116,14 +116,14 @@ void ConversationModelPerfTest::getEvents()
         contactDetails.append(qMakePair(QString("Test Contact %1").arg(ci), qMakePair(phoneNumber, QString())));
 
         if(ci % commitBatchSize == 0 && ci < contacts) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
             addTestContacts(contactDetails);
             contactDetails.clear();
         }
     }
     if (!contactDetails.isEmpty()) {
-        qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
+        qDebug() << Q_FUNC_INFO << "- adding rest of the contacts ("
                  << ci << "/" << contacts << ")";
         addTestContacts(contactDetails);
         contactDetails.clear();
@@ -132,7 +132,7 @@ void ConversationModelPerfTest::getEvents()
     // Randomize the contact indices
     random_shuffle(contactIndices.begin(), contactIndices.end());
 
-    qDebug() << __FUNCTION__ << "- Creating" << contacts << "new groups";
+    qDebug() << Q_FUNC_INFO << "- Creating" << contacts << "new groups";
 
     QList<Group> groupList;
     QList<int> groupIds;
@@ -151,17 +151,17 @@ void ConversationModelPerfTest::getEvents()
 
         gi++;
         if(gi % commitBatchSize == 0 && gi < contacts) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "groups (" << gi << "/" << contacts << ")";
         }
     }
-    qDebug() << __FUNCTION__ << "- adding rest of the groups ("
+    qDebug() << Q_FUNC_INFO << "- adding rest of the groups ("
              << gi << "/" << contacts << ")";
 
     EventModel addModel;
     QDateTime when = QDateTime::currentDateTime();
 
-    qDebug() << __FUNCTION__ << "- Creating" << messages << "new messages";
+    qDebug() << Q_FUNC_INFO << "- Creating" << messages << "new messages";
 
     QList<Event> eventList;
 
@@ -189,7 +189,7 @@ void ConversationModelPerfTest::getEvents()
         eventList << e;
 
         if(ei % commitBatchSize == 0 && ei != messages) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "messages (" << ei << "/" << messages << ")";
             QVERIFY(addModel.addEvents(eventList, false));
             eventList.clear();
@@ -197,7 +197,7 @@ void ConversationModelPerfTest::getEvents()
     }
 
     QVERIFY(addModel.addEvents(eventList, false));
-    qDebug() << __FUNCTION__ << "- adding rest of the messages ("
+    qDebug() << Q_FUNC_INFO << "- adding rest of the messages ("
         << ei << "/" << messages << ")";
     eventList.clear();
 
@@ -216,7 +216,7 @@ void ConversationModelPerfTest::getEvents()
         }
     }
 
-    qDebug() << __FUNCTION__ << "- Fetching messages." << iterations << "iterations";
+    qDebug() << Q_FUNC_INFO << "- Fetching messages." << iterations << "iterations";
     for(int i = 0; i < iterations; i++) {
 
         ConversationModel fetchModel;

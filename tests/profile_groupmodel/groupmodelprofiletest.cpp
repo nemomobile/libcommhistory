@@ -52,7 +52,7 @@ void GroupModelProfileTest::prepare()
 
     int commitBatchSize = 100;
 
-    qDebug() << __FUNCTION__ << "- Creating" << contacts << "contacts";
+    qDebug() << Q_FUNC_INFO << "- Creating" << contacts << "contacts";
 
     QList<QPair<QString, QPair<QString, QString> > > contactDetails;
 
@@ -69,14 +69,14 @@ void GroupModelProfileTest::prepare()
         contactDetails.append(qMakePair(QString("Test Contact %1").arg(ci), qMakePair(phoneNumber, QString())));
 
         if(ci % commitBatchSize == 0 && ci < contacts) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
             addTestContacts(contactDetails);
             contactDetails.clear();
         }
     }
     if (!contactDetails.isEmpty()) {
-        qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
+        qDebug() << Q_FUNC_INFO << "- adding rest of the contacts ("
                  << ci << "/" << contacts << ")";
         addTestContacts(contactDetails);
         contactDetails.clear();
@@ -85,7 +85,7 @@ void GroupModelProfileTest::prepare()
     // Randomize the contact indices
     random_shuffle(contactIndices.begin(), contactIndices.end());
 
-    qDebug() << __FUNCTION__ << "- Creating" << groups << "new groups";
+    qDebug() << Q_FUNC_INFO << "- Creating" << groups << "new groups";
 
     QList<Group> groupList;
     GroupModel addModel;
@@ -101,14 +101,14 @@ void GroupModelProfileTest::prepare()
 
         gi++;
         if(gi % commitBatchSize == 0 && gi < groups) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "groups (" << gi << "/" << groups << ")";
         }
     }
-    qDebug() << __FUNCTION__ << "- adding rest of the groups ("
+    qDebug() << Q_FUNC_INFO << "- adding rest of the groups ("
              << gi << "/" << groups << ")";
 
-    qDebug() << __FUNCTION__ << "- Creating" << messages << "messages to each group";
+    qDebug() << Q_FUNC_INFO << "- Creating" << messages << "messages to each group";
 
     EventModel eventModel;
     QDateTime when = QDateTime::currentDateTime();
@@ -135,7 +135,7 @@ void GroupModelProfileTest::prepare()
 
         QVERIFY(eventModel.addEvents(eventList, false));
         gi++;
-        qDebug() << __FUNCTION__ << "- adding" << messages << "messages ("
+        qDebug() << Q_FUNC_INFO << "- adding" << messages << "messages ("
                  << gi << "/" << groups << ")";
         eventList.clear();
     }
@@ -157,7 +157,7 @@ void GroupModelProfileTest::execute()
 
     QDateTime startTime = QDateTime::currentDateTime();
 
-    qDebug() << __FUNCTION__ << "- Fetching groups." << iterations << "iterations";
+    qDebug() << Q_FUNC_INFO << "- Fetching groups." << iterations << "iterations";
     for(int i = 0; i < iterations; i++) {
 
         GroupModel fetchModel;

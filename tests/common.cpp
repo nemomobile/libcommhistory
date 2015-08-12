@@ -482,7 +482,7 @@ bool compareEvents(Event &e1, Event &e2)
 
 void deleteAll()
 {
-    qDebug() << __FUNCTION__ << "- Deleting all";
+    qDebug() << Q_FUNC_INFO << "- Deleting all";
 
     cleanUpTestContacts();
     cleanupTestGroups();
@@ -511,7 +511,7 @@ double getSystemLoad()
 
     QFile file("/proc/stat");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << __PRETTY_FUNCTION__ << "Failed to open /proc/stat";
+        qWarning() << Q_FUNC_INFO << "Failed to open /proc/stat";
         return -1;
     }
 
@@ -521,11 +521,11 @@ double getSystemLoad()
 
     QStringList parts = line.split(" ", QString::SkipEmptyParts);
     if (parts.size() < 10) {
-        qWarning() << __PRETTY_FUNCTION__ << "Invalid input from /proc/stat:" << line;
+        qWarning() << Q_FUNC_INFO << "Invalid input from /proc/stat:" << line;
         return -1;
     }
     if (parts.at(0) != QStringLiteral("cpu")) {
-        qWarning() << __PRETTY_FUNCTION__ << "Invalid input from /proc/stat:" << line;
+        qWarning() << Q_FUNC_INFO << "Invalid input from /proc/stat:" << line;
         return -1;
     }
 
@@ -551,13 +551,13 @@ void waitForIdle(int pollInterval) {
     QDateTime startTime = QDateTime::currentDateTime();
     getSystemLoad();
     while (load > IDLE_TRESHOLD) {
-        qDebug() << __PRETTY_FUNCTION__ << "Waiting system to calm down. Wait time:"
+        qDebug() << Q_FUNC_INFO << "Waiting system to calm down. Wait time:"
             << startTime.secsTo(QDateTime::currentDateTime()) << "seconds. Load:"
             << load * 100 << "\%";
         QTest::qWait(pollInterval);
         load = getSystemLoad();
     }
-    qDebug() << __PRETTY_FUNCTION__ << "Done. Wait time:"
+    qDebug() << Q_FUNC_INFO << "Done. Wait time:"
         << startTime.secsTo(QDateTime::currentDateTime()) << "seconds. Load:"
         << load * 100 << "\%";
 }

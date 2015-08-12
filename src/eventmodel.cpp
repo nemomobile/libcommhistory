@@ -343,7 +343,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue((int)event.readStatus());
             break;
         default:
-            DEBUG() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
+            DEBUG() << Q_FUNC_INFO << ": invalid column id??" << column;
             var = QVariant();
             break;
     }
@@ -611,7 +611,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
 bool EventModel::deleteEvent(int id)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << id;
+    DEBUG() << Q_FUNC_INFO << ":" << id;
 
     QModelIndex index = d->findEvent(id);
     Event event;
@@ -627,10 +627,10 @@ bool EventModel::deleteEvent(int id)
 bool EventModel::deleteEvent(Event &event)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << Q_FUNC_INFO << ":" << event.id();
 
     if (!event.isValid()) {
-        qWarning() << __FUNCTION__ << "Invalid event";
+        qWarning() << Q_FUNC_INFO << "Invalid event";
         return false;
     }
 
@@ -651,7 +651,7 @@ bool EventModel::deleteEvent(Event &event)
         }
 
         if (total == 0) {
-            DEBUG() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << Q_FUNC_INFO << ": deleting empty group";
             if (!d->database()->deleteGroup(event.groupId())) {
                 d->database()->rollback();
                 return false;
@@ -679,10 +679,10 @@ bool EventModel::deleteEvent(Event &event)
 bool EventModel::moveEvent(Event &event, int groupId)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << Q_FUNC_INFO << ":" << event.id();
 
     if (!event.isValid()) {
-        qWarning() << __FUNCTION__ << "Invalid event";
+        qWarning() << Q_FUNC_INFO << "Invalid event";
         return false;
     }
 
@@ -710,7 +710,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
         }
 
         if (total == 0) {
-            DEBUG() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << Q_FUNC_INFO << ": deleting empty group";
             if (!d->database()->deleteGroup(oldGroupId)) {
                 qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->database()->rollback();

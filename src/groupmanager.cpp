@@ -196,7 +196,7 @@ void GroupManagerPrivate::add(const Group &group)
 {
     Q_Q(GroupManager);
 
-    DEBUG() << __PRETTY_FUNCTION__ << ": added" << group.toString();
+    DEBUG() << Q_FUNC_INFO << ": added" << group.toString();
 
     GroupObject *go = new GroupObject(group, q);
     groups.insert(go->id(), go);
@@ -241,7 +241,7 @@ void GroupManagerPrivate::modifyInModel(Group &group, bool query)
     }
 
     emit q->groupUpdated(go);
-    DEBUG() << __PRETTY_FUNCTION__ << ": updated" << go->toString();
+    DEBUG() << Q_FUNC_INFO << ": updated" << go->toString();
 }
 
 void GroupManagerPrivate::resolve(GroupObject &group)
@@ -265,7 +265,7 @@ ContactResolver *GroupManagerPrivate::resolver()
 void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
 {
     Q_Q(GroupManager);
-    DEBUG() << __PRETTY_FUNCTION__ << events.count();
+    DEBUG() << Q_FUNC_INFO << events.count();
 
     foreach (const Event &event, events) {
         // statusmessages are not shown in group model
@@ -279,7 +279,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             continue;
 
         if (event.endTimeT() >= go->endTimeT()) {
-            DEBUG() << __PRETTY_FUNCTION__ << ": updating group" << go->id();
+            DEBUG() << Q_FUNC_INFO << ": updating group" << go->id();
             go->setLastEventId(event.id());
             if (event.type() == Event::MMSEvent) {
                 go->setLastMessageText(event.subject().isEmpty() ? event.freeText() : event.subject());
@@ -320,7 +320,7 @@ void GroupManagerPrivate::groupsAddedSlot(const QList<CommHistory::Group> &added
 
 void GroupManagerPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << groupIds.count();
+    DEBUG() << Q_FUNC_INFO << groupIds.count();
 
     foreach (int id, groupIds) {
         Group g;
@@ -332,7 +332,7 @@ void GroupManagerPrivate::groupsUpdatedSlot(const QList<int> &groupIds)
 
 void GroupManagerPrivate::groupsUpdatedFullSlot(const QList<CommHistory::Group> &groups)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << groups.count();
+    DEBUG() << Q_FUNC_INFO << groups.count();
 
     foreach (Group g, groups) {
         modifyInModel(g, false);
@@ -343,7 +343,7 @@ void GroupManagerPrivate::groupsDeletedSlot(const QList<int> &groupIds)
 {
     Q_Q(GroupManager);
 
-    DEBUG() << __PRETTY_FUNCTION__ << groupIds.count();
+    DEBUG() << Q_FUNC_INFO << groupIds.count();
 
     foreach (int id, groupIds) {
         GroupObject *go = groups.value(id);
@@ -506,7 +506,7 @@ bool GroupManager::modifyGroup(Group &group)
     DEBUG() << Q_FUNC_INFO << group.id();
 
     if (group.id() == -1) {
-        qWarning() << __FUNCTION__ << "Group id not set";
+        qWarning() << Q_FUNC_INFO << "Group id not set";
         return false;
     }
 

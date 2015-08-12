@@ -136,7 +136,7 @@ QModelIndex EventModelPrivate::findEvent(int id) const
 
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
-    DEBUG() << __PRETTY_FUNCTION__;
+    DEBUG() << Q_FUNC_INFO;
 
     isReady = false;
 
@@ -181,7 +181,7 @@ bool EventModelPrivate::fillModel(int start, int end, QList<CommHistory::Event> 
         return false;
 
     Q_Q(EventModel);
-    DEBUG() << __PRETTY_FUNCTION__ << ": read" << events.count() << "events";
+    DEBUG() << Q_FUNC_INFO << ": read" << events.count() << "events";
 
     q->beginInsertRows(QModelIndex(), q->rowCount(), q->rowCount() + events.count() - 1);
     foreach (const Event &event, events) {
@@ -214,7 +214,7 @@ bool EventModelPrivate::fillModel(QList<CommHistory::Event> events, bool resolve
 
 void EventModelPrivate::clearEvents()
 {
-    DEBUG() << __PRETTY_FUNCTION__;
+    DEBUG() << Q_FUNC_INFO;
     delete eventRootItem;
     eventRootItem = new EventTreeItem(Event());
 }
@@ -312,7 +312,7 @@ void EventModelPrivate::onDemandResolverFinished()
 void EventModelPrivate::modifyInModel(Event &event)
 {
     Q_Q(EventModel);
-    DEBUG() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << Q_FUNC_INFO << event.id();
 
     QModelIndex index = findEvent(event.id());
     if (index.isValid()) {
@@ -347,7 +347,7 @@ void EventModelPrivate::modifyInModel(Event &event)
 void EventModelPrivate::deleteFromModel(int id)
 {
     Q_Q(EventModel);
-    DEBUG() << __PRETTY_FUNCTION__ << id;
+    DEBUG() << Q_FUNC_INFO << id;
     QModelIndex index = findEvent(id);
     if (index.isValid()) {
         q->beginRemoveRows(index.parent(), index.row(), index.row());
@@ -360,7 +360,7 @@ void EventModelPrivate::deleteFromModel(int id)
 
 void EventModelPrivate::eventsReceivedSlot(int start, int end, QList<Event> events)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << ":" << start << end << events.count();
+    DEBUG() << Q_FUNC_INFO << ":" << start << end << events.count();
 
     if (events.isEmpty()) {
         // Empty results are still "ready"
@@ -391,7 +391,7 @@ void EventModelPrivate::receiveResolverFinished()
 
 void EventModelPrivate::modelUpdatedSlot(bool successful)
 {
-    DEBUG() << __PRETTY_FUNCTION__;
+    DEBUG() << Q_FUNC_INFO;
 
     isReady = true;
     emit modelReady(successful);
@@ -399,7 +399,7 @@ void EventModelPrivate::modelUpdatedSlot(bool successful)
 
 void EventModelPrivate::eventsAddedSlot(const QList<Event> &events)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << ":" << events.count() << "events";
+    DEBUG() << Q_FUNC_INFO << ":" << events.count() << "events";
 
     foreach (const Event &event, events) {
         QModelIndex index = findEvent(event.id());
@@ -413,7 +413,7 @@ void EventModelPrivate::eventsAddedSlot(const QList<Event> &events)
 
 void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << ":" << events.count();
+    DEBUG() << Q_FUNC_INFO << ":" << events.count();
 
     foreach (const Event &event, events) {
         QModelIndex index = findEvent(event.id());
@@ -432,7 +432,7 @@ void EventModelPrivate::eventsUpdatedSlot(const QList<Event> &events)
 
 void EventModelPrivate::eventDeletedSlot(int id)
 {
-    DEBUG() << __PRETTY_FUNCTION__ << ":" << id;
+    DEBUG() << Q_FUNC_INFO << ":" << id;
 
     deleteFromModel(id);
 }

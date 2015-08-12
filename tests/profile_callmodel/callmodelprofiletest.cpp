@@ -56,7 +56,7 @@ void CallModelProfileTest::prepare()
     EventModel addModel;
     QDateTime when = QDateTime::currentDateTime();
 
-    qDebug() << __FUNCTION__ << "- Creating" << contacts << "new contacts";
+    qDebug() << Q_FUNC_INFO << "- Creating" << contacts << "new contacts";
 
     QList<QPair<QString, QPair<QString, QString> > > contactDetails;
 
@@ -73,14 +73,14 @@ void CallModelProfileTest::prepare()
         contactDetails.append(qMakePair(QString("Test Contact %1").arg(ci), qMakePair(phoneNumber, QString())));
 
         if(ci % commitBatchSize == 0 && ci < contacts) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "contacts (" << ci << "/" << contacts << ")";
             addTestContacts(contactDetails);
             contactDetails.clear();
         }
     }
     if (!contactDetails.isEmpty()) {
-        qDebug() << __FUNCTION__ << "- adding rest of the contacts ("
+        qDebug() << Q_FUNC_INFO << "- adding rest of the contacts ("
                  << ci << "/" << contacts << ")";
         addTestContacts(contactDetails);
         contactDetails.clear();
@@ -89,7 +89,7 @@ void CallModelProfileTest::prepare()
     // Randomize the contact indices
     random_shuffle(contactIndices.begin(), contactIndices.end());
 
-    qDebug() << __FUNCTION__ << "- Creating" << events << "new events";
+    qDebug() << Q_FUNC_INFO << "- Creating" << events << "new events";
 
     QList<Event> eventList;
 
@@ -122,7 +122,7 @@ void CallModelProfileTest::prepare()
         eventList << e;
 
         if(ei % commitBatchSize == 0 && ei != events) {
-            qDebug() << __FUNCTION__ << "- adding" << commitBatchSize
+            qDebug() << Q_FUNC_INFO << "- adding" << commitBatchSize
                 << "events (" << ei << "/" << events << ")";
             QVERIFY(addModel.addEvents(eventList, false));
             eventList.clear();
@@ -130,7 +130,7 @@ void CallModelProfileTest::prepare()
     }
 
     QVERIFY(addModel.addEvents(eventList, false));
-    qDebug() << __FUNCTION__ << "- adding rest of the events ("
+    qDebug() << Q_FUNC_INFO << "- adding rest of the events ("
         << ei << "/" << events << ")";
     eventList.clear();
 }
@@ -151,7 +151,7 @@ void CallModelProfileTest::execute()
 
     QDateTime startTime = QDateTime::currentDateTime();
 
-    qDebug() << __FUNCTION__ << "- Fetching events." << iterations << "iterations";
+    qDebug() << Q_FUNC_INFO << "- Fetching events." << iterations << "iterations";
     for(int i = 0; i < iterations; i++) {
 
         CallModel fetchModel;

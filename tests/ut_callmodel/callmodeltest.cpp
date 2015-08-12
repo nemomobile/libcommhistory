@@ -110,7 +110,7 @@ void CallModelTest::testGetEvents( CallModel::Sorting sorting, int row_count, QL
     CallModel model;
     model.setQueryMode(EventModel::SyncQuery);
 
-    qDebug() << __PRETTY_FUNCTION__ << "*** Sorting by " << (int)sorting;
+    qDebug() << Q_FUNC_INFO << "*** Sorting by " << (int)sorting;
     model.setFilter(  sorting  );
     QVERIFY( model.getEvents() );
 
