@@ -35,6 +35,8 @@
 #include "groupmanager.h"
 #include "sharedbackgroundthread.h"
 
+#include <QJSValue>
+
 class DeclarativeGroupManager : public CommHistory::GroupManager
 {
     Q_OBJECT
@@ -63,12 +65,26 @@ public:
     Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QString &remoteUid, const QString &text);
     Q_INVOKABLE int createOutgoingMessageEvent(int groupId, const QString &localUid, const QStringList &remoteUids, const QString &text);
 
+    /* Create an event for an outgoing plain text message, which will be
+     * in the sending state. The event ID will be passed to the callback
+     * function supplied, and should be passed using the x-commhistory-event-id
+     * header in a Telepathy message to inform commhistory-daemon about the
+     * existing event.
+     *
+     * If groupId is negative, an appropriate group will be found or created
+     * inline if necessary. */
+    Q_INVOKABLE void createOutgoingMessageEvent(int groupId, const QString &localUid, const QString &remoteUid, const QString &text, QJSValue callback);
+    Q_INVOKABLE void createOutgoingMessageEvent(int groupId, const QString &localUid, const QStringList &remoteUids, const QString &text, QJSValue callback);
+
     Q_INVOKABLE bool setEventStatus(int eventId, int status);
 
     Q_INVOKABLE int ensureGroupExists(const QString &localUid, const QStringList &remoteUids);
 
 public slots:
     void reload();
+
+private slots:
+    void eventWritten(int eventId, QJSValue callback);
 
 signals:
     void backgroundThreadChanged();

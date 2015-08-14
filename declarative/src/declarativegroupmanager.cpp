@@ -37,6 +37,49 @@
 
 using namespace CommHistory;
 
+namespace {
+
+Event outgoingEvent(int groupId, const QString &localUid, const QStringList &remoteUids, const QString &text)
+{
+    Event event;
+    event.setType(localUid.indexOf("/ring/tel/") >= 0 ? Event::SMSEvent : Event::IMEvent);
+    event.setDirection(Event::Outbound);
+    event.setIsRead(true);
+    event.setGroupId(groupId);
+    event.setLocalUid(localUid);
+    event.setRecipients(RecipientList::fromUids(localUid, remoteUids));
+    event.setFreeText(text);
+    event.setStartTimeT(Event::currentTime_t());
+    event.setEndTimeT(event.startTimeT());
+    event.setStatus(Event::SendingStatus);
+    return event;
+}
+
+class EventWriter : public QObject
+{
+    Q_OBJECT
+
+    Event m_event;
+    QJSValue m_callback;
+
+public:
+    EventWriter(const CommHistory::Event &event, QJSValue callback) : m_event(event), m_callback(callback) {}
+
+    Q_INVOKABLE void writeEvent();
+
+signals:
+    void eventWritten(int eventId, QJSValue callback);
+};
+
+void EventWriter::writeEvent()
+{
+    EventModel model;
+    model.addEvent(m_event);
+    emit eventWritten(m_event.id(), m_callback);
+}
+
+}
+
 DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
     : CommHistory::GroupManager(parent)
 {
@@ -93,35 +136,71 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
 int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
                                                         const QStringList &remoteUids, const QString &text)
 {
-    if (groupId < 0)
+    if (groupId < 0) {
         groupId = ensureGroupExists(localUid, remoteUids);
-
-    if (groupId < 0)
+    }
+    if (groupId < 0) {
+        qWarning() << Q_FUNC_INFO << "Failed finding group for UIDs:" << localUid << remoteUids;
         return -1;
-
-    Event event;
-    if (localUid.indexOf("/ring/tel/") >= 0)
-        event.setType(Event::SMSEvent);
-    else
-        event.setType(Event::IMEvent);
-
-    event.setDirection(Event::Outbound);
-    event.setIsRead(true);
-    event.setLocalUid(localUid);
-    event.setRecipients(RecipientList::fromUids(localUid, remoteUids));
-    event.setFreeText(text);
-    event.setStartTimeT(Event::currentTime_t());
-    event.setEndTimeT(event.startTimeT());
-    event.setStatus(Event::SendingStatus);
-    event.setGroupId(groupId);
+    }
 
     DEBUG() << Q_FUNC_INFO << groupId << localUid << remoteUids << text;
+    Event event(outgoingEvent(groupId, localUid, remoteUids, text));
     EventModel model;
     if (model.addEvent(event))
         return event.id();
 
     qWarning() << Q_FUNC_INFO << "Failed creating event";
     return -1;
+}
+
+void DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
+                                                         const QString &remoteUid, const QString &text, QJSValue callback)
+{
+    createOutgoingMessageEvent(groupId, localUid, QStringList() << remoteUid, text, callback);
+}
+
+void DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
+                                                        const QStringList &remoteUids, const QString &text, QJSValue callback)
+{
+    if (!callback.isCallable()) {
+        qWarning() << Q_FUNC_INFO << "Invalid callback argument:" << callback.toString();
+        return;
+    }
+    if (!useBackgroundThread()) {
+        qWarning() << Q_FUNC_INFO << "useBackgroundThread must be true to use asynchronous message event creation";
+        return;
+    }
+
+    if (groupId < 0) {
+        groupId = ensureGroupExists(localUid, remoteUids);
+    }
+    if (groupId < 0) {
+        qWarning() << Q_FUNC_INFO << "Failed finding group for UIDs:" << localUid << remoteUids;
+        callback.call(QJSValueList() << QJSValue(-1));
+        return;
+    }
+
+    DEBUG() << Q_FUNC_INFO << groupId << localUid << remoteUids << text;
+    if (QThread *thread = threadInstance.data()) {
+        EventWriter *writer = new EventWriter(outgoingEvent(groupId, localUid, remoteUids, text), callback);
+        writer->moveToThread(thread);
+
+        QObject::connect(writer, &EventWriter::eventWritten, this, &DeclarativeGroupManager::eventWritten);
+        if (!thread->isRunning()) {
+            thread->start();
+        }
+
+        QMetaObject::invokeMethod(writer, "writeEvent", Qt::QueuedConnection);
+    } else {
+        qWarning() << Q_FUNC_INFO << "Could not dispatch event write to background thread";
+    }
+}
+
+void DeclarativeGroupManager::eventWritten(int eventId, QJSValue callback)
+{
+    callback.call(QJSValueList() << QJSValue(eventId));
+    sender()->deleteLater();
 }
 
 bool DeclarativeGroupManager::setEventStatus(int eventId, int status)
@@ -159,4 +238,6 @@ int DeclarativeGroupManager::ensureGroupExists(const QString &localUid, const QS
         return g.id();
     }
 }
+
+#include "declarativegroupmanager.moc"
 
