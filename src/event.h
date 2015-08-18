@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -31,6 +32,7 @@
 #include <QSet>
 
 #include "messagepart.h"
+#include "recipient.h"
 #include "libcommhistoryexport.h"
 
 class QDBusArgument;
@@ -107,7 +109,7 @@ public:
         Status,
         BytesReceived,
         LocalUid,
-        RemoteUid,
+        RemoteUid, // TODO: remove, deprecated
         ContactId, // TODO: remove
         ContactName, // TODO: remove
         Subject,
@@ -122,17 +124,16 @@ public:
         ValidityPeriod,
         ContentLocation,
         MessageParts,
-        Cc,
-        Bcc,
         ReadStatus,
         ReportRead,
         ReportReadRequested,
         MmsId,
-        To, // TODO: remove, wrapped into Headers
         Contacts,
         IsAction,
         Headers,
         ExtraProperties,
+        Recipients,
+        IsResolved,
         //
         NumProperties
     };
@@ -241,9 +242,10 @@ public:
 
     int bytesReceived() const;
 
-    QString localUid() const;  /* telepathy account */
+    QString localUid() const;
 
-    QString remoteUid() const;
+    const RecipientList &recipients() const;
+    RecipientList contactRecipients() const;
 
     /* DEPRECATED - use contacts(). Returns the id of the first matching contact. */
     int contactId() const;
@@ -310,8 +312,15 @@ public:
     // Action chat messages (e.g. "/me is happy"), supported only for IMEvent
     bool isAction() const;
 
+    // True if the recipients in this event have all been resolved
+    bool isResolved() const;
+
     // Optional message headers, key/value.
     QHash<QString, QString> headers() const;
+
+    quint32 startTimeT() const;
+    quint32 endTimeT() const;
+    quint32 lastModifiedT() const;
 
     //\\//\\// S E T - A C C E S S O R S //\\//\\//
     void setId(int id);
@@ -340,15 +349,7 @@ public:
 
     void setLocalUid(const QString &uid);
 
-    void setRemoteUid(const QString &uid);
-
-    /* DEPRECATED - use setContacts() */
-    void setContactId(int id);
-
-    /* DEPRECATED - use setContacts() */
-    void setContactName(const QString &name);
-
-    void setContacts(const QList<Event::Contact> &contacts);
+    void setRecipients(const RecipientList &recipients);
 
     void setSubject(const QString &subject);
 
@@ -399,7 +400,13 @@ public:
 
     void setIsAction(bool isAction);
 
+    void setIsResolved(bool isResolved);
+
     void setHeaders(const QHash<QString, QString> &headers);
+
+    void setStartTimeT(quint32 t);
+    void setEndTimeT(quint32 t);
+    void setLastModifiedT(quint32 t);
 
     QString toString() const;
 
@@ -411,6 +418,8 @@ public:
      * \param another event
      */
     void copyValidProperties(const Event &other);
+
+    static quint32 currentTime_t() { return QDateTime::currentDateTimeUtc().toTime_t(); }
 
 private:
     QSharedDataPointer<EventPrivate> d;

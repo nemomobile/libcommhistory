@@ -91,6 +91,12 @@ public:
      * \return true if successful, otherwise false
      */
     bool getEvents(QList<int> groupIds);
+    /*!
+     * Reset model to all events.
+     *
+     * \return true if successful, otherwise false
+     */
+    bool getEvents();
 
     virtual bool canFetchMore(const QModelIndex &parent) const;
     virtual void fetchMore(const QModelIndex &parent);

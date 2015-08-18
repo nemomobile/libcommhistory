@@ -31,7 +31,6 @@
 #include "constants.h"
 #include "commhistorydatabase.h"
 #include "databaseio_p.h"
-#include "contactlistener.h"
 #include "debug.h"
 
 namespace {
@@ -49,12 +48,31 @@ ConversationModelPrivate::ConversationModelPrivate(EventModel *model)
             , filterType(Event::UnknownType)
             , filterAccount(QString())
             , filterDirection(Event::UnknownDirection)
+            , allGroups(false)
 {
+    QDBusConnection::sessionBus().connect(
+        QString(), QString(), COMM_HISTORY_INTERFACE, GROUPS_ADDED_SIGNAL,
+        this, SLOT(groupsAddedSlot(const QList<Group> &)));
     QDBusConnection::sessionBus().connect(
         QString(), QString(), COMM_HISTORY_INTERFACE, GROUPS_DELETED_SIGNAL,
         this, SLOT(groupsDeletedSlot(const QList<int> &)));
     // remove call properties
     propertyMask -= unusedProperties;
+}
+
+void ConversationModelPrivate::groupsAddedSlot(const QList<Group> &/*groups*/)
+{
+    Q_Q(ConversationModel);
+    bool changed = allGroups;
+
+    // XXX This could be more efficient by adding events from this group without
+    // refreshing others
+    if (changed) {
+        if (allGroups)
+            q->getEvents();
+        else
+            q->getEvents(filterGroupIds.toList());
+    }
 }
 
 void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
@@ -63,19 +81,25 @@ void ConversationModelPrivate::groupsDeletedSlot(const QList<int> &groupIds)
     bool changed = false;
 
     foreach (int group, groupIds) {
-        if (filterGroupIds.remove(group))
+        if (allGroups)
+            changed = true;
+        else if (filterGroupIds.remove(group))
             changed = true;
     }
 
     // XXX This could be more efficient by removing events from this group without
     // refreshing others
-    if (changed)
-        q->getEvents(filterGroupIds.toList());
+    if (changed) {
+        if (allGroups)
+            q->getEvents();
+        else
+            q->getEvents(filterGroupIds.toList());
+    }
 }
 
 bool ConversationModelPrivate::acceptsEvent(const Event &event) const
 {
-    DEBUG() << __PRETTY_FUNCTION__ << event.id();
+    DEBUG() << Q_FUNC_INFO << event.id();
     if ((event.type() != Event::IMEvent
          && event.type() != Event::SMSEvent
          && event.type() != Event::MMSEvent
@@ -94,9 +118,9 @@ bool ConversationModelPrivate::acceptsEvent(const Event &event) const
     if (filterDirection != Event::UnknownDirection &&
         event.direction() != filterDirection) return false;
 
-    if (!filterGroupIds.contains(event.groupId())) return false;
+    if (!allGroups && !filterGroupIds.contains(event.groupId())) return false;
 
-    DEBUG() << __PRETTY_FUNCTION__ << ": true";
+    DEBUG() << Q_FUNC_INFO << ": true";
     return true;
 }
 
@@ -110,7 +134,7 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
     int firstId = -1;
     if (eventRootItem->childCount() > 0) {
         Event firstEvent = eventRootItem->eventAt(eventRootItem->childCount() - 1);
-        firstTimestamp = firstEvent.endTime().toTime_t();
+        firstTimestamp = firstEvent.endTimeT();
         firstId = firstEvent.id();
     }
 
@@ -126,30 +150,36 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
                     "AND Events.id < :firstId)) ";
     }
 
-    /* Rather than the intuitive solution of groupId IN (1,2),
-     * this query is built as:
-     *
-     * SELECT .. FROM Events WHERE groupId=1
-     * UNION ALL
-     * SELECT .. FROM Events WHERE groupId=2
-     *
-     * Because SQLite is unable to use indexes for ORDER BY after a IN
-     * or OR expression in the query, yet somehow is able to use that indexes
-     * on the UNION ALL of these queries. This is true at least up to SQLite
-     * 3.8.1. */
-    do {
-        if (unionCount)
-            q += "UNION ALL ";
+    if (!groups.isEmpty()) {
+        /* Rather than the intuitive solution of groupId IN (1,2),
+         * this query is built as:
+         *
+         * SELECT .. FROM Events WHERE groupId=1
+         * UNION ALL
+         * SELECT .. FROM Events WHERE groupId=2
+         *
+         * Because SQLite is unable to use indexes for ORDER BY after a IN
+         * or OR expression in the query, yet somehow is able to use that indexes
+         * on the UNION ALL of these queries. This is true at least up to SQLite
+         * 3.8.1. */
+        do {
+            if (unionCount)
+                q += "UNION ALL ";
+            q += DatabaseIOPrivate::eventQueryBase();
+            q += "WHERE Events.isDraft = 0 ";
+
+            if (unionCount < groups.size())
+                q += "AND Events.groupId = " + QString::number(groups[unionCount]) + " ";
+
+            q += filters;
+
+            unionCount++;
+        } while (unionCount < groups.size());
+    } else if (allGroups) {
         q += DatabaseIOPrivate::eventQueryBase();
         q += "WHERE Events.isDraft = 0 ";
-
-        if (unionCount < groups.size())
-            q += "AND Events.groupId = " + QString::number(groups[unionCount]) + " ";
-
         q += filters;
-
-        unionCount++;
-    } while (unionCount < groups.size());
+    }
 
     q += "ORDER BY Events.endTime DESC, Events.id DESC ";
 
@@ -219,6 +249,8 @@ bool ConversationModel::setFilter(Event::EventType type,
 
     if (!d->filterGroupIds.isEmpty()) {
         return getEvents(d->filterGroupIds.toList());
+    } else if (d->allGroups) {
+        return getEvents();
     }
 
     return true;
@@ -234,13 +266,29 @@ bool ConversationModel::getEvents(QList<int> groupIds)
     Q_D(ConversationModel);
 
     d->filterGroupIds = QSet<int>::fromList(groupIds);
+    d->allGroups = false;
 
     beginResetModel();
     d->clearEvents();
     endResetModel();
 
-    if (groupIds.isEmpty())
+    if (d->filterGroupIds.isEmpty())
         return true;
+
+    QSqlQuery query = d->buildQuery();
+    return d->executeQuery(query);
+}
+
+bool ConversationModel::getEvents()
+{
+    Q_D(ConversationModel);
+
+    d->filterGroupIds.clear();
+    d->allGroups = true;
+
+    beginResetModel();
+    d->clearEvents();
+    endResetModel();
 
     QSqlQuery query = d->buildQuery();
     return d->executeQuery(query);

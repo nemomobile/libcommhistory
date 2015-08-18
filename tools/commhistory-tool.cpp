@@ -151,7 +151,7 @@ void printUsage()
 int doAdd(const QStringList &arguments, const QVariantMap &options)
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
 
     bool isSms = options.contains("-sms");
     bool isMms = options.contains("-mms");
@@ -205,9 +205,7 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
     if (options.contains("-newgroup")) {
         Group group;
         group.setLocalUid(localUid);
-        QStringList remoteUids;
-        remoteUids << remoteUid;
-        group.setRemoteUids(remoteUids);
+        group.setRecipients(RecipientList::fromUids(localUid, QStringList() << remoteUid));
         if (!groupModel.addGroup(group)) {
             qCritical() << "Error adding group";
             return -1;
@@ -314,9 +312,9 @@ int doAdd(const QStringList &arguments, const QVariantMap &options)
         e.setBytesReceived(qrand() % 1024);
         e.setGroupId(groupId);
         if (randomRemote) {
-            e.setRemoteUid(remoteUids[qrand() % numRemoteUids]);
+            e.setRecipients(Recipient(e.localUid(), remoteUids[qrand() % numRemoteUids]));
         } else {
-            e.setRemoteUid(remoteUid);
+            e.setRecipients(Recipient(e.localUid(), remoteUid));
         }
 
         e.setFreeText(messageText.isNull() ? textContent[qrand() % numTextContents] : messageText);
@@ -387,9 +385,9 @@ int doAddCall( const QStringList &arguments, const QVariantMap &options )
         }
 
         if (arguments.count() > 4) {
-            e.setRemoteUid(arguments.at(3));
+            e.setRecipients(Recipient(localUid, arguments.at(3)));
         } else {
-            e.setRemoteUid(remoteUids[0]);
+            e.setRecipients(Recipient(localUid, remoteUids[0]));
         }
         e.setDirection( direction );
         e.setIsMissedCall( isMissed );
@@ -457,8 +455,9 @@ int doAddClass0(const QStringList &arguments, const QVariantMap &options)
 
     // prepare class zero sms
     Event e;
-    e.setRemoteUid(sosRemoteUids.at(qrand() % sosRemoteUids.count()));
+
     e.setLocalUid(RING_ACCOUNT);
+    e.setRecipients(Recipient(e.localUid(), sosRemoteUids.at(qrand() % sosRemoteUids.count())));
     e.setDirection(Event::Inbound);
     e.setType(Event::ClassZeroSMSEvent);
     e.setFreeText(sosMessages.at(qrand() % sosMessages.count()));
@@ -556,7 +555,7 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
     bool showParts = options.contains("-p");
 
     GroupModel model;
-    model.enableContactChanges(false);
+    model.setResolveContacts(GroupManager::DoNotResolve);
     model.setQueryMode(EventModel::SyncQuery);
     if (!model.getGroups(localUid, remoteUid)) {
         qCritical() << "Error fetching groups";
@@ -853,7 +852,7 @@ int doDeleteAll(const QStringList &arguments, const QVariantMap &options)
 
     if (!hasAnyOption || options.contains("-groups")) {
         GroupModel model;
-        model.enableContactChanges(false);
+        model.setResolveContacts(GroupManager::DoNotResolve);
         model.setQueryMode(EventModel::SyncQuery);
         if (!model.getGroups()) {
             qCritical() << "Error fetching groups";
@@ -951,7 +950,7 @@ int doExport(const QStringList &arguments, const QVariantMap &options)
     out.setVersion(QDataStream::Qt_4_7);
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
 
     if (options.contains("-group")) {
@@ -1021,7 +1020,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
     in >> numGroups;
     if (numGroups) {
         GroupModel groupModel;
-        groupModel.enableContactChanges(false);
+        groupModel.setResolveContacts(GroupManager::DoNotResolve);
         groupModel.setQueryMode(EventModel::SyncQuery);
         Catcher groupCatcher(&groupModel);
         EventModel model;
@@ -1036,7 +1035,7 @@ int doImport(const QStringList &arguments, const QVariantMap &options)
             groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
                 qWarning() << "Error adding group ( local"
-                           << group.localUid() << ", remote" << group.remoteUids() << ")";
+                           << group.localUid() << ", remote" << group.recipients().debugString() << ")";
                 ok = false;
             }
             groupCatcher.waitCommit(0);
@@ -1122,7 +1121,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
     QVariantList result = json.array().toVariantList();
 
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     Catcher groupCatcher(&groupModel);
     EventModel model;
@@ -1165,14 +1164,14 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             continue;
         }
 
-        group.setRemoteUids(QStringList() << to);
+        group.setRecipients(RecipientList::fromUids(group.localUid(), QStringList() << to));
         group.setChatType(Group::ChatTypeP2P);
 
         // Calls don't actually belong to groups
         if (type != Event::CallEvent) {
             groupCatcher.reset();
             if (!groupModel.addGroup(group)) {
-                qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.remoteUids() << ")";
+                qWarning() << "Error adding conversation" << groupCount << "( local" << group.localUid() << ", remote" << group.recipients().debugString() << ")";
                 ok = false;
                 continue;
             }
@@ -1193,7 +1192,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
             if (group.id() >= 0)
                 event.setGroupId(group.id());
             event.setLocalUid(group.localUid());
-            event.setRemoteUid(group.remoteUids().first());
+            event.setRecipients(group.recipients());
 
             eventCount++;
 
@@ -1245,7 +1244,7 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
         }
         eventCatcher.waitCommit(events.size());
 
-        qDebug() << "CONVERSATION " << group.id() << ":" << group.localUid() << group.remoteUids() << "-"
+        qDebug() << "CONVERSATION " << group.id() << ":" << group.localUid() << group.recipients().debugString() << "-"
                  << events.size() << "messages";
     }
 

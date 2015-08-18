@@ -58,7 +58,8 @@ public:
     void setGroupId(int groupId);
 
     Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
-    // Shadows function from EventModel to emit the signal
+    // Shadow ConversationModel functions:
+    bool resolveContacts() const;
     void setResolveContacts(bool enabled);
 
 public slots:

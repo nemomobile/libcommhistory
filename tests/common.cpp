@@ -42,6 +42,7 @@
 #include <QContactPhoneNumber>
 #include <QContactSyncTarget>
 
+#include <QEventLoop>
 #include <QFile>
 #include <QTextStream>
 
@@ -49,6 +50,7 @@
 #include "groupmodel.h"
 #include "singleeventmodel.h"
 #include "event.h"
+#include "recipient.h"
 #include "common.h"
 #include "commonutils.h"
 #include "contactlistener.h"
@@ -58,6 +60,7 @@ QTCONTACTS_USE_NAMESPACE
 using namespace QtContactsSqliteExtensions;
 
 namespace {
+
 static int contactNumber = 0;
 
 QContactManager *createManager()
@@ -78,7 +81,67 @@ QContactManager *manager()
     static QContactManager *manager = createManager();
     return manager;
 }
-};
+
+QContact createTestContact(const QString &name, const QString &remoteUid, const QString &localUid, const QString &contactUri)
+{
+    QContact contact;
+
+    QContactSyncTarget syncTarget;
+    syncTarget.setSyncTarget(QLatin1String("commhistory-tests"));
+    if (!contact.saveDetail(&syncTarget)) {
+        qWarning() << "Unable to add sync target to contact:" << contactUri;
+        return QContact();
+    }
+
+    if (!localUid.isEmpty() && !localUidComparesPhoneNumbers(localUid)) {
+        // Create a metadata detail to link the contact with the account
+        QContactOriginMetadata metadata;
+        metadata.setGroupId(localUid);
+        metadata.setId(remoteUid);
+        metadata.setEnabled(true);
+        if (!contact.saveDetail(&metadata)) {
+            qWarning() << "Unable to add metadata to contact:" << contactUri;
+            return QContact();
+        }
+
+        QContactOnlineAccount qcoa;
+        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
+        qcoa.setAccountUri(remoteUid);
+        if (!contact.saveDetail(&qcoa)) {
+            qWarning() << "Unable to add online account to contact:" << contactUri;
+            return QContact();
+        }
+    } else {
+        QContactPhoneNumber phoneNumberDetail;
+        phoneNumberDetail.setNumber(remoteUid);
+        if (!contact.saveDetail(&phoneNumberDetail)) {
+            qWarning() << "Unable to add phone number to contact:" << contactUri;
+            return QContact();
+        }
+    }
+
+    QContactName nameDetail;
+    nameDetail.setLastName(name);
+    if (!contact.saveDetail(&nameDetail)) {
+        qWarning() << "Unable to add name to contact:" << contactUri;
+        return QContact();
+    }
+
+    return contact;
+}
+
+}
+
+namespace CommHistory {
+
+void waitForSignal(QObject *object, const char *signal)
+{
+    QEventLoop loop;
+    QObject::connect(object, signal, &loop, SLOT(quit()));
+    loop.exec();
+}
+
+}
 
 using namespace CommHistory;
 
@@ -86,8 +149,8 @@ const int numWords = 23;
 const char* msgWords[] = { "lorem","ipsum","dolor","sit","amet","consectetur",
     "adipiscing","elit","in","imperdiet","cursus","lacus","vitae","suscipit",
     "maecenas","bibendum","rutrum","dolor","at","hendrerit",":)",":P","OMG!!" };
-int ticks = 0;
-int idleTicks = 0;
+quint64 allTicks = 0;
+quint64 idleTicks = 0;
 
 QSet<QContactId> addedContactIds;
 QSet<int> addedEventIds;
@@ -116,9 +179,9 @@ int addTestEvent(EventModel &model,
         event.setEndTime(event.startTime());
     event.setLocalUid(account);
     if (remoteUid.isEmpty()) {
-        event.setRemoteUid(type == Event::SMSEvent ? "555123456" : "td@localhost");
+        event.setRecipients(Recipient(account, type == Event::SMSEvent ? "555123456" : "td@localhost"));
     } else {
-        event.setRemoteUid(remoteUid);
+        event.setRecipients(Recipient(account, remoteUid));
     }
     event.setFreeText(text);
     event.setIsDraft( isDraft );
@@ -144,11 +207,9 @@ void addTestGroups(Group &group1, Group &group2)
 void addTestGroup(Group& grp, QString localUid, QString remoteUid)
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     grp.setLocalUid(localUid);
-    QStringList uids;
-    uids << remoteUid;
-    grp.setRemoteUids(uids);
+    grp.setRecipients(RecipientList::fromUids(localUid, QStringList() << remoteUid));
     QSignalSpy ready(&groupModel, SIGNAL(groupsCommitted(QList<int>,bool)));
     QVERIFY(groupModel.addGroup(grp));
 
@@ -160,69 +221,59 @@ int addTestContact(const QString &name, const QString &remoteUid, const QString 
 {
     QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
 
-    QContact contact;
-
-    QContactSyncTarget syncTarget;
-    syncTarget.setSyncTarget(QLatin1String("commhistory-tests"));
-    if (!contact.saveDetail(&syncTarget)) {
-        qWarning() << "Unable to add sync target to contact:" << contactUri;
+    QContact contact(createTestContact(name, remoteUid, localUid, contactUri));
+    if (contact.isEmpty())
         return -1;
-    }
-
-    if (!localUidComparesPhoneNumbers(localUid)) {
-        // Create a metadata detail to link the contact with the account
-        QContactOriginMetadata metadata;
-        metadata.setGroupId(localUid);
-        metadata.setId(remoteUid);
-        metadata.setEnabled(true);
-        if (!contact.saveDetail(&metadata)) {
-            qWarning() << "Unable to add metadata to contact:" << contactUri;
-            return false;
-        }
-
-        QContactOnlineAccount qcoa;
-        qcoa.setValue(QContactOnlineAccount__FieldAccountPath, localUid);
-        qcoa.setAccountUri(remoteUid);
-        if (!contact.saveDetail(&qcoa)) {
-            qWarning() << "Unable to add online account to contact:" << contactUri;
-            return -1;
-        }
-    } else {
-        QContactPhoneNumber phoneNumberDetail;
-        phoneNumberDetail.setNumber(remoteUid);
-        if (!contact.saveDetail(&phoneNumberDetail)) {
-            qWarning() << "Unable to add phone number to contact:" << contactUri;
-            return -1;
-        }
-    }
-
-    QContactName nameDetail;
-    nameDetail.setLastName(name);
-    if (!contact.saveDetail(&nameDetail)) {
-        qWarning() << "Unable to add name to contact:" << contactUri;
-        return -1;
-    }
 
     if (!manager()->saveContact(&contact)) {
         qWarning() << "Unable to store contact:" << contactUri;
         return -1;
     }
 
-    // We should return the aggregated instance of this contact
-    QContactRelationshipFilter filter;
-    filter.setRelatedContactRole(QContactRelationship::Second);
-
-    filter.setRelatedContact(contact);
-    filter.setRelationshipType(QContactRelationship::Aggregates());
-
-    foreach (const QContactId &id, manager()->contactIds(filter)) {
-        qDebug() << "********** contact id" << id;
-        addedContactIds.insert(id);
-        return internalContactId(id);
+    foreach (const QContactRelationship &relationship, manager()->relationships(QContactRelationship::Aggregates(), contact, QContactRelationship::Second)) {
+        const QContactId &aggId = relationship.first().id();
+        qDebug() << "********** contact id" << aggId;
+        addedContactIds.insert(aggId);
+        return internalContactId(aggId);
     }
 
     qWarning() << "Could not find aggregator";
     return internalContactId(contact.id());
+}
+
+QList<int> addTestContacts(const QList<QPair<QString, QPair<QString, QString> > > &details)
+{
+    QList<int> ids;
+    QList<QContact> contacts;
+
+    QList<QPair<QString, QPair<QString, QString> > >::const_iterator it = details.constBegin(), end = details.constEnd();
+    for ( ; it != end; ++it) {
+        QString contactUri = QString("<testcontact:%1>").arg(contactNumber++);
+
+        QContact contact(createTestContact(it->first, it->second.first, it->second.second, contactUri));
+        if (!contact.isEmpty())
+            contacts.append(contact);
+    }
+
+    if (!manager()->saveContacts(&contacts)) {
+        qWarning() << "Unable to store contacts";
+        return ids;
+    }
+
+    QSet<QContactId> constituentIds;
+    foreach (const QContact &contact, contacts) {
+        constituentIds.insert(contact.id());
+    }
+    foreach (const QContactRelationship &relationship, manager()->relationships(QContactRelationship::Aggregates())) {
+        if (constituentIds.contains(relationship.second().id())) {
+            const QContactId &aggId = relationship.first().id();
+            qDebug() << "********** contact id" << aggId;
+            addedContactIds.insert(aggId);
+            ids.append(internalContactId(aggId));
+        }
+    }
+
+    return ids;
 }
 
 bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid)
@@ -325,7 +376,7 @@ void cleanUpTestContacts()
 void cleanupTestGroups()
 {
     GroupModel groupModel;
-    groupModel.enableContactChanges(false);
+    groupModel.setResolveContacts(GroupManager::DoNotResolve);
     groupModel.setQueryMode(EventModel::SyncQuery);
     if (!groupModel.getGroups()) {
         qCritical() << Q_FUNC_INFO << "groupModel::getGroups failed";
@@ -392,8 +443,8 @@ bool compareEvents(Event &e1, Event &e2)
         qWarning() << Q_FUNC_INFO << "localUid:" << e1.localUid() << e2.localUid();
         return false;
     }
-    if (e1.remoteUid() != e2.remoteUid()) {
-        qWarning() << Q_FUNC_INFO << "remoteUid:" << e1.remoteUid() << e2.remoteUid();
+    if (e1.recipients() != e2.recipients()) {
+        qWarning() << Q_FUNC_INFO << "recipients:" << e1.recipients() << e2.recipients();
         return false;
     }
     if (e1.type() != Event::CallEvent && e1.freeText() != e2.freeText()) {
@@ -431,7 +482,7 @@ bool compareEvents(Event &e1, Event &e2)
 
 void deleteAll()
 {
-    qDebug() << __FUNCTION__ << "- Deleting all";
+    qDebug() << Q_FUNC_INFO << "- Deleting all";
 
     cleanUpTestContacts();
     cleanupTestGroups();
@@ -460,7 +511,7 @@ double getSystemLoad()
 
     QFile file("/proc/stat");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << __PRETTY_FUNCTION__ << "Failed to open /proc/stat";
+        qWarning() << Q_FUNC_INFO << "Failed to open /proc/stat";
         return -1;
     }
 
@@ -469,25 +520,27 @@ double getSystemLoad()
     file.close();
 
     QStringList parts = line.split(" ", QString::SkipEmptyParts);
-    if (parts.size() != 10) {
-        qWarning() << __PRETTY_FUNCTION__ << "Invalid input from /proc/stat:" << line;
+    if (parts.size() < 10) {
+        qWarning() << Q_FUNC_INFO << "Invalid input from /proc/stat:" << line;
+        return -1;
+    }
+    if (parts.at(0) != QStringLiteral("cpu")) {
+        qWarning() << Q_FUNC_INFO << "Invalid input from /proc/stat:" << line;
         return -1;
     }
 
     int newIdleTicks = parts.at(4).toInt();
     int newAllTicks = 0;
-    for (int i = 1; i < 10; i++) {
+    for (int i = 1; i < parts.count(); i++) {
         newAllTicks += parts.at(i).toInt();
     }
 
-    int idleTickDelta = newIdleTicks - idleTicks;
-    int allTickDelta = newAllTicks - ticks;
-    double load = 1.0 - ((double)idleTickDelta / allTickDelta);
-
+    quint64 idleTickDelta = newIdleTicks - idleTicks;
+    quint64 allTickDelta = newAllTicks - allTicks;
     idleTicks = newIdleTicks;
-    ticks = newAllTicks;
+    allTicks = newAllTicks;
 
-    return load;
+    return 1.0 - ((double)idleTickDelta / allTickDelta);
 }
 
 /*
@@ -498,13 +551,13 @@ void waitForIdle(int pollInterval) {
     QDateTime startTime = QDateTime::currentDateTime();
     getSystemLoad();
     while (load > IDLE_TRESHOLD) {
-        qDebug() << __PRETTY_FUNCTION__ << "Waiting system to calm down. Wait time:"
+        qDebug() << Q_FUNC_INFO << "Waiting system to calm down. Wait time:"
             << startTime.secsTo(QDateTime::currentDateTime()) << "seconds. Load:"
             << load * 100 << "\%";
         QTest::qWait(pollInterval);
         load = getSystemLoad();
     }
-    qDebug() << __PRETTY_FUNCTION__ << "Done. Wait time:"
+    qDebug() << Q_FUNC_INFO << "Done. Wait time:"
         << startTime.secsTo(QDateTime::currentDateTime()) << "seconds. Load:"
         << load * 100 << "\%";
 }
@@ -532,3 +585,46 @@ void waitWithDeletes(int msec)
         QCoreApplication::processEvents();
     }
 }
+
+void summarizeResults(const QString &className, QList<int> &times, QFile *logFile, int testSecs)
+{
+    int sum = 0;
+    QStringList timeList;
+    foreach (int time, times) {
+        sum += time;
+        timeList.append(QString::number(time));
+    }
+
+    qSort(times);
+    float median = 0.0;
+    const int iterations(times.count());
+    if (iterations % 2 > 0) {
+        median = times[(int)(iterations / 2)];
+    } else {
+        median = (times[iterations / 2] + times[iterations / 2 - 1]) / 2.0f;
+    }
+
+    const float mean = sum / (float)iterations;
+    qDebug("##### Mean: %.1f; Median: %.1f; Min: %d; Max: %d; Test time: %dsec", mean, median, times[0], times[iterations-1], testSecs);
+
+    if (logFile) {
+        QString descriptor(className + "::" + QTest::currentTestFunction());
+        if (QTest::currentDataTag())
+            descriptor.append(":").append(QTest::currentDataTag());
+
+        QTextStream out(logFile);
+        out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << ": "
+            << descriptor << " (" << iterations << " iterations)"
+            << "\n"
+            << timeList.join(" ")
+            << "\n"
+            << "Median average: " << (int)median << " ms. Min: " << times[0] << "ms. Max: " << times[iterations-1] << " ms. Test time: ";
+        if (testSecs > 3600)
+            out << (testSecs / 3600) << "h ";
+        if (testSecs > 60)
+            out << ((testSecs % 3600) / 60) << "m ";
+        out << ((testSecs % 3600) % 60) << "s"
+            << "\n";
+    }
+}
+

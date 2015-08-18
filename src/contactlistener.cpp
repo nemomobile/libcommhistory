@@ -2,8 +2,9 @@
 **
 ** This file is part of libcommhistory.
 **
+** Copyright (C) 2014 Jolla Ltd.
 ** Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
-** Contact: Reto Zingg <reto.zingg@nokia.com>
+** Contact: John Brooks <john.brooks@jolla.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -21,7 +22,6 @@
 ******************************************************************************/
 
 #include "contactlistener.h"
-#include "contactlistener_p.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -34,30 +34,51 @@
 #include <QContactSyncTarget>
 
 #include "commonutils.h"
+#include "contactresolver.h"
 #include "debug.h"
+
+namespace CommHistory {
+
+class ContactListenerPrivate
+    : public QObject,
+      public SeasideCache::ChangeListener
+{
+    Q_OBJECT
+    Q_DECLARE_PUBLIC(ContactListener)
+
+public:
+    ContactListenerPrivate(ContactListener *q);
+    virtual ~ContactListenerPrivate();
+
+    ContactResolver *retryResolver;
+    QList<Recipient> retryRecipients;
+    QList<Recipient> unresolvedRecipients;
+
+private slots:
+    void retryFinished();
+    void resolveAgain(const CommHistory::Recipient &recipient);
+    void retryUnresolved();
+
+protected:
+    void itemUpdated(SeasideCache::CacheItem *item);
+    void itemAboutToBeRemoved(SeasideCache::CacheItem *item);
+
+private:
+    ContactResolver *resolver();
+
+    ContactListener *q_ptr;
+};
+
+}
 
 using namespace CommHistory;
 
-Q_DECLARE_METATYPE(ContactListener::ContactAddress);
-Q_DECLARE_METATYPE(QList<ContactListener::ContactAddress>);
-
 Q_GLOBAL_STATIC(QWeakPointer<ContactListener>, contactListenerInstance);
-
-typedef QPair<QString, QString> StringPair;
 
 ContactListener::ContactListener(QObject *parent)
     : QObject(parent),
       d_ptr(new ContactListenerPrivate(this))
 {
-    qRegisterMetaType<QList<ContactListener::ContactAddress> >("QList<ContactAddress>");
-    qRegisterMetaType<StringPair>("QPair<QString,QString>");
-
-    connect(d_ptr, SIGNAL(contactAlreadyInCache(quint32,QString,QList<ContactAddress>)),
-            this, SIGNAL(contactUpdated(quint32,QString,QList<ContactAddress>)),
-            Qt::QueuedConnection);
-    connect(d_ptr, SIGNAL(contactAlreadyUnknown(QPair<QString,QString>)),
-            this, SIGNAL(contactUnknown(QPair<QString,QString>)),
-            Qt::QueuedConnection);
 }
 
 ContactListener::~ContactListener()
@@ -76,141 +97,139 @@ QSharedPointer<ContactListener> ContactListener::instance()
 }
 
 ContactListenerPrivate::ContactListenerPrivate(ContactListener *q)
-    : QObject(q), q_ptr(q)
+    : QObject(q)
+    , retryResolver(0)
+    , q_ptr(q)
 {
     SeasideCache::registerChangeListener(this);
 }
 
 ContactListenerPrivate::~ContactListenerPrivate()
 {
-    SeasideCache::unregisterResolveListener(this);
     SeasideCache::unregisterChangeListener(this);
 }
 
-bool ContactListener::addressMatchesList(const QString &localUid,
-                                         const QString &remoteUid,
-                                         const QList< QPair<QString,QString> > &contactAddresses)
+ContactResolver *ContactListenerPrivate::resolver()
 {
-    QListIterator<StringPair> i(contactAddresses);
-    while (i.hasNext()) {
-        StringPair address = i.next();
-        // Empty address.first is allowed to match phone number type localUids
-        if ((address.first == localUid || (address.first.isEmpty() && localUidComparesPhoneNumbers(localUid)))
-            && CommHistory::remoteAddressMatch(localUid, remoteUid, address.second, true)) {
-            return true;
-        }
+    if (!retryResolver) {
+        retryResolver = new ContactResolver(this);
+        retryResolver->setForceResolving(true);
+        connect(retryResolver, SIGNAL(finished()), SLOT(retryFinished()));
     }
-
-    return false;
+    return retryResolver;
 }
 
-bool ContactListener::addressMatchesList(const QString &localUid,
-                                         const QString &remoteUid,
-                                         const QList<ContactAddress> &contactAddresses)
+void ContactListenerPrivate::resolveAgain(const Recipient &recipient)
 {
-    QListIterator<ContactAddress> i(contactAddresses);
-    while (i.hasNext()) {
-        ContactAddress address = i.next();
-        if ((address.localUid == localUid || (address.localUid.isEmpty() && localUidComparesPhoneNumbers(localUid)))
-            && CommHistory::remoteAddressMatch(localUid, remoteUid, address.remoteUid, true)) {
-            return true;
-        }
-    }
-
-    return false;
+    retryRecipients.append(recipient);
+    resolver()->add(recipient);
 }
 
-void ContactListener::resolveContact(const QString &localUid,
-                                     const QString &remoteUid)
+void ContactListenerPrivate::retryUnresolved()
 {
-    Q_D(ContactListener);
-    DEBUG() << Q_FUNC_INFO << localUid << remoteUid;
-
-    const StringPair input(qMakePair(localUid, remoteUid));
-
-    SeasideCache::CacheItem *item = 0;
-
-    if (localUid.isEmpty()) {
-        qWarning() << "Cannot resolve contact with empty localUid (remoteUid is " << remoteUid << ")";
-        emit d->contactAlreadyUnknown(input);
-        return;
-    }
-
-    if (CommHistory::localUidComparesPhoneNumbers(localUid)) {
-        d->m_pending.insert(qMakePair(QString(), remoteUid), input);
-        item = SeasideCache::resolvePhoneNumber(d, remoteUid, true);
-    } else {
-        item = SeasideCache::resolveOnlineAccount(d, localUid, remoteUid, true);
-    }
-
-    if (item && (item->contactState == SeasideCache::ContactComplete)) {
-        // This contact must be reported asynchronously
-        emit d->contactAlreadyInCache(item->iid, d->contactName(item->contact), d->contactAddresses(item->contact));
-    }
+    retryRecipients.append(unresolvedRecipients);
+    resolver()->add(unresolvedRecipients);
+    unresolvedRecipients.clear();
 }
 
-QString ContactListenerPrivate::contactName(const QContact &contact) const
-{
-    return SeasideCache::generateDisplayLabel(contact, SeasideCache::displayLabelOrder());
-}
-
-QList<ContactListener::ContactAddress> ContactListenerPrivate::contactAddresses(const QContact &contact) const
-{
-    QList<ContactAddress> addresses;
-
-    foreach (const QContactOnlineAccount &account, contact.details<QContactOnlineAccount>()) {
-        QString localUid = account.value<QString>(QContactOnlineAccount__FieldAccountPath);
-        if (localUid.isEmpty())
-            continue;
-        addresses += makeContactAddress(localUid, account.accountUri(), ContactListener::IMAccountType);
-    }
-    foreach (const QContactPhoneNumber &phoneNumber, contact.details<QContactPhoneNumber>()) {
-        addresses += makeContactAddress(QString(), phoneNumber.number(), ContactListener::PhoneNumberType);
-    }
-    foreach (const QContactEmailAddress &emailAddress, contact.details<QContactEmailAddress>()) {
-        addresses += makeContactAddress(QString::fromLatin1("email"), emailAddress.emailAddress(), ContactListener::EmailAddressType);
-    }
-
-    return addresses;
-}
-
-void ContactListenerPrivate::addressResolved(const QString &first, const QString &second,
-                                             SeasideCache::CacheItem *item)
+void ContactListenerPrivate::retryFinished()
 {
     Q_Q(ContactListener);
+    emit q->contactChanged(retryRecipients);
+    retryResolver->deleteLater();
+    retryResolver = 0;
+    retryRecipients.clear();
+}
 
-    if (item) {
-        itemUpdated(item);
-    } else {
-        // This address could not be resolved
-        StringPair address(qMakePair(first, second));
-
-        QHash<StringPair, StringPair>::iterator it = m_pending.find(address);
-        if (it != m_pending.end()) {
-            // Report this address as unresolved
-            address = *it;
-            m_pending.erase(it);
+static bool recipientMatchesDetails(const Recipient &recipient, const QList<Recipient> &addresses, const QList<QPair<QString, quint32> > &phoneNumbers)
+{
+    if (recipient.isPhoneNumber()) {
+        for (QList<QPair<QString, quint32> >::const_iterator it = phoneNumbers.begin(), end = phoneNumbers.end(); it != end; ++it) {
+            if (recipient.matchesPhoneNumber(*it))
+                return true;
         }
-
-        emit q->contactUnknown(address);
+    } else {
+        foreach (const Recipient &address, addresses) {
+            if (recipient.matches(address))
+                return true;
+        }
     }
+
+    return false;
 }
 
 void ContactListenerPrivate::itemUpdated(SeasideCache::CacheItem *item)
 {
-    static const QString aggregateTarget(QString::fromLatin1("aggregate"));
     Q_Q(ContactListener);
 
     // Only aggregate contacts are relevant
+    static const QString aggregateTarget(QString::fromLatin1("aggregate"));
     QContactSyncTarget syncTarget(item->contact.detail<QContactSyncTarget>());
-    if (syncTarget.syncTarget() == aggregateTarget) {
-        emit q->contactUpdated(item->iid, contactName(item->contact), contactAddresses(item->contact));
+    if (syncTarget.syncTarget() != aggregateTarget)
+        return;
+
+    // Make a list of Recipient from the contacts addresses to compare against
+    QList<Recipient> addresses;
+    foreach (const QContactOnlineAccount &account, item->contact.details<QContactOnlineAccount>()) {
+        addresses.append(Recipient(account.value<QString>(QContactOnlineAccount__FieldAccountPath), account.accountUri()));
     }
+
+    QList<QPair<QString, quint32> > phoneNumbers;
+    foreach (const QContactPhoneNumber &phoneNumber, item->contact.details<QContactPhoneNumber>()) {
+        phoneNumbers.append(Recipient::phoneNumberMatchDetails(phoneNumber.number()));
+    }
+
+    QList<Recipient> infoChanged, detailsChanged, contactChanged;
+
+    // Check that all recipients resolved to this contact still match
+    foreach (const Recipient &recipient, Recipient::recipientsForContact(item->iid)) {
+        if (!recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
+            DEBUG() << "Recipient" << recipient.remoteUid() << "no longer matches contact" << item->iid;
+            recipient.setUnresolved();
+
+            // Try to resolve again to find a new match
+            resolveAgain(recipient);
+        } else if (recipient.contactUpdateIsSignificant()) {
+            infoChanged.append(recipient);
+        } else {
+            detailsChanged.append(recipient);
+        }
+    }
+
+    // Check all recipients that resolved to no match against these addresses
+    foreach (const Recipient &recipient, Recipient::recipientsForContact(0)) {
+        if (recipientMatchesDetails(recipient, addresses, phoneNumbers)) {
+            DEBUG() << "Recipient" << recipient << "now resolves to updated contact" << item->iid;
+            recipient.setResolved(item);
+            contactChanged.append(recipient);
+        }
+    }
+
+    if (!contactChanged.isEmpty())
+        emit q->contactChanged(contactChanged);
+    if (!infoChanged.isEmpty())
+        emit q->contactInfoChanged(infoChanged);
+    if (!detailsChanged.isEmpty())
+        emit q->contactDetailsChanged(detailsChanged);
 }
 
 void ContactListenerPrivate::itemAboutToBeRemoved(SeasideCache::CacheItem *item)
 {
-    Q_Q(ContactListener);
-    emit q->contactRemoved(item->iid);
+    QList<Recipient> recipients = Recipient::recipientsForContact(item->iid);
+    if (!recipients.isEmpty()) {
+        foreach (const Recipient &recipient, recipients) {
+            DEBUG() << "Recipient" << recipient << "matched removed contact" << item->iid;
+        }
+
+        const bool retryPending(!unresolvedRecipients.isEmpty());
+        unresolvedRecipients.append(recipients);
+
+        if (!retryPending) {
+            // Delay retrying to be sure the contact is removed from cache
+            metaObject()->invokeMethod(this, "retryUnresolved", Qt::QueuedConnection);
+        }
+    }
 }
+
+#include "contactlistener.moc"
 

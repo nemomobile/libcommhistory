@@ -244,6 +244,8 @@ static QVariantList messagePartData(const Event &event)
 
 QVariant EventModel::data(const QModelIndex &index, int role) const
 {
+    Q_D(const EventModel);
+
     if (!index.isValid()) {
         return QVariant();
     }
@@ -255,8 +257,10 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case EventRole:
             return QVariant::fromValue(event);
         case ContactIdsRole:
+            d->resolveIfRequired(event);
             return QVariant::fromValue(contactIds(event.contacts()));
         case ContactNamesRole:
+            d->resolveIfRequired(event);
             return QVariant::fromValue(contactNames(event.contacts()));
         case MessagePartsRole:
             return QVariant::fromValue(messagePartData(event));
@@ -308,9 +312,10 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(event.localUid());
             break;
         case RemoteUid:
-            var = QVariant::fromValue(event.remoteUid());
+            var = QVariant::fromValue(event.recipients().value(0).remoteUid());
             break;
         case Contacts:
+            d->resolveIfRequired(event);
             var = QVariant::fromValue(event.contacts());
             break;
         case FreeText:
@@ -338,7 +343,7 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue((int)event.readStatus());
             break;
         default:
-            DEBUG() << __PRETTY_FUNCTION__ << ": invalid column id??" << column;
+            DEBUG() << Q_FUNC_INFO << ": invalid column id??" << column;
             var = QVariant();
             break;
     }
@@ -453,8 +458,8 @@ void EventModel::setQueryMode(QueryMode mode)
         return;
 
     d->queryMode = mode;
-    if (d->queryMode == SyncQuery && d->resolveContacts)
-        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+    if (d->queryMode == SyncQuery && d->resolveContacts == ResolveImmediately)
+        qWarning() << "EventMode does not support immediate contact resolution for synchronous models. Contacts will not be resolved.";
 }
 
 void EventModel::setChunkSize(uint size)
@@ -481,22 +486,22 @@ void EventModel::setOffset(int offset)
     d->queryOffset = offset;
 }
 
-bool EventModel::resolveContacts() const
+EventModel::ContactResolveType EventModel::resolveContacts() const
 {
     Q_D(const EventModel);
     return d->resolveContacts;
 }
 
-void EventModel::setResolveContacts(bool enabled)
+void EventModel::setResolveContacts(ContactResolveType resolveType)
 {
     Q_D(EventModel);
-    if (enabled == d->resolveContacts)
+    if (resolveType == d->resolveContacts)
         return;
 
-    if (d->queryMode == SyncQuery && d->resolveContacts)
-        qWarning() << "EventMode does not support contact resolution for synchronous models. Contacts will not be resolved.";
+    if (d->queryMode == SyncQuery && resolveType == ResolveImmediately)
+        qWarning() << "EventMode does not support immediate contact resolution for synchronous models. Contacts will not be resolved.";
 
-    d->setResolveContacts(enabled);
+    d->setResolveContacts(resolveType);
 }
 
 bool EventModel::addEvent(Event &event, bool toModelOnly)
@@ -577,8 +582,8 @@ bool EventModel::modifyEvents(QList<Event> &events)
             return false;
         }
 
-        if (event.lastModified() == QDateTime::fromTime_t(0))
-             event.setLastModified(QDateTime::currentDateTime());
+        if (event.lastModifiedT() == 0)
+            event.setLastModifiedT(Event::currentTime_t());
 
         if (!d->database()->modifyEvent(event)) {
             d->database()->rollback();
@@ -606,7 +611,7 @@ bool EventModel::modifyEvents(QList<Event> &events)
 bool EventModel::deleteEvent(int id)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << id;
+    DEBUG() << Q_FUNC_INFO << ":" << id;
 
     QModelIndex index = d->findEvent(id);
     Event event;
@@ -622,10 +627,10 @@ bool EventModel::deleteEvent(int id)
 bool EventModel::deleteEvent(Event &event)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << Q_FUNC_INFO << ":" << event.id();
 
     if (!event.isValid()) {
-        qWarning() << __FUNCTION__ << "Invalid event";
+        qWarning() << Q_FUNC_INFO << "Invalid event";
         return false;
     }
 
@@ -646,7 +651,7 @@ bool EventModel::deleteEvent(Event &event)
         }
 
         if (total == 0) {
-            DEBUG() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << Q_FUNC_INFO << ": deleting empty group";
             if (!d->database()->deleteGroup(event.groupId())) {
                 d->database()->rollback();
                 return false;
@@ -674,10 +679,10 @@ bool EventModel::deleteEvent(Event &event)
 bool EventModel::moveEvent(Event &event, int groupId)
 {
     Q_D(EventModel);
-    DEBUG() << __FUNCTION__ << ":" << event.id();
+    DEBUG() << Q_FUNC_INFO << ":" << event.id();
 
     if (!event.isValid()) {
-        qWarning() << __FUNCTION__ << "Invalid event";
+        qWarning() << Q_FUNC_INFO << "Invalid event";
         return false;
     }
 
@@ -705,7 +710,7 @@ bool EventModel::moveEvent(Event &event, int groupId)
         }
 
         if (total == 0) {
-            DEBUG() << __FUNCTION__ << ": deleting empty group";
+            DEBUG() << Q_FUNC_INFO << ": deleting empty group";
             if (!d->database()->deleteGroup(oldGroupId)) {
                 qWarning() << Q_FUNC_INFO << "error deleting empty group" ;
                 d->database()->rollback();
@@ -749,16 +754,15 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             return false;
         }
 
-        if (event.lastModified() == QDateTime::fromTime_t(0)) {
-             event.setLastModified(QDateTime::currentDateTime());
-        }
+        if (event.lastModifiedT() == 0)
+            event.setLastModifiedT(Event::currentTime_t());
 
         if (!d->database()->modifyEvent(event)) {
             d->database()->rollback();
             return false;
         }
         if (group.lastEventId() == event.id()
-            || event.endTime() > group.endTime()) {
+            || event.endTimeT() > group.endTimeT()) {
             Event::PropertySet modified;
             if (group.lastEventId() == event.id()) {
                 modified = event.modifiedProperties();
@@ -793,9 +797,9 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
             if (modified.contains(Event::IsDraft))
                 group.setLastEventIsDraft(event.isDraft());
             if (modified.contains(Event::StartTime))
-                group.setStartTime(event.startTime());
+                group.setStartTimeT(event.startTimeT());
             if (modified.contains(Event::EndTime))
-                group.setEndTime(event.endTime());
+                group.setEndTimeT(event.endTimeT());
         }
     }
 

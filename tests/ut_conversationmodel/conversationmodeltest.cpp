@@ -36,7 +36,7 @@ using namespace CommHistory;
 Group group1, group2;
 QEventLoop *loop;
 
-ModelWatcher watcher;
+ModelWatcher watcher, watcher2;
 
 void ConversationModelTest::initTestCase()
 {
@@ -171,6 +171,45 @@ void ConversationModelTest::getEvents()
         QCOMPARE(model.event(model.index(i, 0)).localUid(), ACCOUNT1);
         QCOMPARE(model.event(model.index(i, 0)).direction(), Event::Outbound);
     }
+
+    /* without group ID filtering */
+    ConversationModel allModel;
+    watcher.setModel(&allModel);
+    QVERIFY(allModel.getEvents());
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 12);
+
+    QVERIFY(allModel.setFilter(Event::IMEvent));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 6);
+
+    QVERIFY(allModel.setFilter(Event::SMSEvent));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 4);
+
+    QVERIFY(allModel.setFilter(Event::CallEvent));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 2);
+
+    QVERIFY(allModel.setFilter(Event::UnknownType, ACCOUNT1));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 8);
+
+    QVERIFY(allModel.setFilter(Event::UnknownType, ACCOUNT2));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 4);
+
+    QVERIFY(allModel.setFilter(Event::UnknownType, QString(), Event::Inbound));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 6);
+
+    QVERIFY(allModel.setFilter(Event::UnknownType, QString(), Event::Outbound));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 6);
+
+    QVERIFY(allModel.setFilter(Event::IMEvent, ACCOUNT1, Event::Outbound));
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(allModel.rowCount(), 2);
 
     modelThread.quit();
     modelThread.wait(3000);
@@ -425,20 +464,32 @@ void ConversationModelTest::contacts()
 }
 
 void ConversationModelTest::reset() {
-    ConversationModel conv;
+    ConversationModel conv, allConv;
     watcher.setModel(&conv);
+    watcher2.setModel(&allConv);
 
     QVERIFY(conv.getEvents(group1.id()));
     QVERIFY(watcher.waitForModelReady());
 
-    QVERIFY(conv.rowCount() >= 5 );
+    int group1Events = conv.rowCount();
+    QVERIFY(group1Events >= 5 );
 
-    QSignalSpy modelReset(&conv, SIGNAL(modelReset()));
+    QVERIFY(allConv.getEvents());
+    QVERIFY(watcher2.waitForModelReady());
+
+    int allEvents = allConv.rowCount();
+    QVERIFY(allEvents >= group1Events );
+
+    QSignalSpy modelReset(&conv, SIGNAL(modelReset())), modelReset2(&allConv, SIGNAL(modelReset()));
     GroupModel groups;
     groups.deleteGroups(QList<int>() << group1.id());
     if (modelReset.isEmpty())
        QVERIFY(waitSignal(modelReset));
     QCOMPARE(conv.rowCount(), 0);
+
+    if (modelReset2.isEmpty())
+       QVERIFY(waitSignal(modelReset2));
+    QCOMPARE(allConv.rowCount(), (allEvents - group1Events));
 }
 
 void ConversationModelTest::cleanupTestCase()

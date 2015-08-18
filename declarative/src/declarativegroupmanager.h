@@ -39,13 +39,19 @@ class DeclarativeGroupManager : public CommHistory::GroupManager
 {
     Q_OBJECT
 
+    Q_PROPERTY(bool useBackgroundThread READ useBackgroundThread WRITE setUseBackgroundThread NOTIFY backgroundThreadChanged)
+    Q_PROPERTY(bool resolveContacts READ resolveContacts WRITE setResolveContacts NOTIFY resolveContactsChanged)
+
 public:
     DeclarativeGroupManager(QObject *parent = 0);
     virtual ~DeclarativeGroupManager();
 
-    Q_PROPERTY(bool useBackgroundThread READ useBackgroundThread WRITE setUseBackgroundThread NOTIFY backgroundThreadChanged)
     bool useBackgroundThread() { return backgroundThread() != 0; }
     void setUseBackgroundThread(bool on);
+
+    // Shadow GroupManager functions:
+    bool resolveContacts() const;
+    void setResolveContacts(bool enabled);
 
     /* Create an event for an outgoing plain text message, which will be
      * in the sending state. Returns the event ID, which should be passed
@@ -66,6 +72,7 @@ public slots:
 
 signals:
     void backgroundThreadChanged();
+    void resolveContactsChanged();
 
 private:
     QSharedPointer<QThread> threadInstance;

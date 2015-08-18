@@ -14,7 +14,6 @@ HEADERS += commonutils.h \
            adaptor.h \
            conversationmodel_p.h \
            contactlistener.h \
-           contactlistener_p.h \
            libcommhistoryexport.h \
            singleeventmodel.h \
            recentcontactsmodel.h \
@@ -24,9 +23,7 @@ HEADERS += commonutils.h \
            mmsreadreportmodel.h \
            groupobject.h \
            groupmanager.h \
-           groupmanager_p.h \
            contactgroupmodel.h \
-           contactgroupmodel_p.h \
            contactgroup.h \
            databaseio.h \
            databaseio_p.h \
@@ -35,7 +32,8 @@ HEADERS += commonutils.h \
            debug.h \
            contactresolver.h \
            draftsmodel.h \
-           draftsmodel_p.h
+           draftsmodel_p.h \
+           recipient.h
 
 SOURCES += commonutils.cpp \
            eventmodel.cpp \
@@ -60,4 +58,5 @@ SOURCES += commonutils.cpp \
            databaseio.cpp \
            commhistorydatabase.cpp \
            contactresolver.cpp \
-           draftsmodel.cpp
+           draftsmodel.cpp \
+           recipient.cpp

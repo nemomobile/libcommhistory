@@ -25,7 +25,6 @@
 #include <QStringList>
 
 #include "contactgroupmodel.h"
-#include "contactgroupmodel_p.h"
 #include "groupmanager.h"
 #include "contactgroup.h"
 #include "commonutils.h"
@@ -33,9 +32,61 @@
 
 using namespace CommHistory;
 
-inline static bool contactGroupSort(ContactGroup *a, ContactGroup *b)
+namespace {
+
+bool initializeTypes()
 {
-    return a->endTime() > b->endTime(); // descending order
+    qRegisterMetaType<QList<CommHistory::GroupObject*> >();
+    qRegisterMetaType<CommHistory::GroupObject*>();
+    qRegisterMetaType<CommHistory::ContactGroup*>();
+    return true;
+}
+
+inline bool contactGroupSort(ContactGroup *a, ContactGroup *b)
+{
+    return a->endTimeT() > b->endTimeT(); // descending order
+}
+
+}
+
+bool contactgroupmodel_initialized = initializeTypes();
+
+namespace CommHistory {
+
+class GroupManager;
+class GroupObject;
+class ContactGroup;
+
+class ContactGroupModelPrivate : public QObject
+{
+    Q_OBJECT
+    Q_DECLARE_PUBLIC(ContactGroupModel)
+
+public:
+    ContactGroupModel *q_ptr;
+
+    ContactGroupModelPrivate(ContactGroupModel *parent);
+    virtual ~ContactGroupModelPrivate();
+
+    GroupManager *manager;
+    QList<ContactGroup*> items;
+
+    void setManager(GroupManager *manager);
+
+    int indexForContacts(GroupObject *group);
+    int indexForObject(GroupObject *group);
+
+private slots:
+    void groupAdded(GroupObject *group);
+    void groupUpdated(GroupObject *group);
+    void groupDeleted(GroupObject *group);
+
+private:
+    void itemDataChanged(int index);
+    void addGroupToIndex(GroupObject *group, int index);
+    void removeGroupFromIndex(GroupObject *group, int index);
+};
+
 }
 
 ContactGroupModelPrivate::ContactGroupModelPrivate(ContactGroupModel *model)
@@ -103,30 +154,30 @@ void ContactGroupModelPrivate::setManager(GroupManager *m)
 
 int ContactGroupModelPrivate::indexForContacts(GroupObject *group)
 {
-    if (group->remoteUids().size() == 1 && !group->contactIds().isEmpty()) {
-        int contactId = group->contactIds().at(0);
+    const RecipientList &searchRecipients = group->recipients();
 
-        for (int i = 0; i < items.size(); i++) {
-            QList<GroupObject*> groups = items[i]->groups();
-            if (groups.isEmpty() || (groups.size() == 1 && groups[0] == group))
-                continue;
+    for (int i = 0; i < items.size(); i++) {
+        int matched = 0;
+        /* We have to match all groups to be sure that a contact change hasn't
+         * invalidated the relationship */
+        foreach (GroupObject *compareGroup, items[i]->groups()) {
+            const RecipientList &compareRecipients = compareGroup->recipients();
 
-            if (groups[0]->remoteUids().size() == 1 && items[i]->contactIds().value(0) == contactId)
-                return i;
+            /* Multi-recipient groups are never combined, because that would create a
+             * huge set of nasty corner cases, e.g. when two groups match in contacts
+             * but not UIDs. */
+            if (searchRecipients.size() > 1 || compareRecipients.size() > 1) {
+                if (!searchRecipients.matches(compareRecipients))
+                    break;
+            } else if (!searchRecipients.hasSameContacts(compareRecipients)) {
+                break;
+            }
+
+            matched++;
         }
-    } else if (group->remoteUids().size() == 1 && localUidComparesPhoneNumbers(group->localUid())) {
-        // Use the minimized form of phone numbers to combine groups for unresolved contacts
-        // This is important because responses to a SMS may come from a number formatted slightly
-        // differently.
-        for (int i = 0; i < items.size(); i++) {
-            QList<GroupObject*> groups = items[i]->groups();
-            // Ignore any group with contact matches
-            if (!groups[0]->contactIds().isEmpty() || groups[0]->remoteUids().size() > 1 || groups[0]->localUid() != group->localUid())
-                continue;
 
-            if (remoteAddressMatch(group->localUid(), group->remoteUids()[0], groups[0]->remoteUids()[0], true))
-                return i;
-        }
+        if (matched > 0 && matched == items[i]->groups().size())
+            return i;
     }
 
     return -1;
@@ -140,35 +191,6 @@ int ContactGroupModelPrivate::indexForObject(GroupObject *group)
     }
 
     return -1;
-}
-
-void ContactGroupModelPrivate::groupAdded(GroupObject *group)
-{
-    Q_Q(ContactGroupModel);
-
-    int index = indexForContacts(group);
-
-    if (index < 0) {
-        ContactGroup *item = new ContactGroup(this);
-        item->addGroup(group);
-
-        for (index = 0; index < items.size(); index++) {
-            if (contactGroupSort(item, items[index]))
-                break;
-        }
-
-        q->beginInsertRows(QModelIndex(), index, index);
-        items.insert(index, item);
-        q->endInsertRows();
-
-        emit q->contactGroupCreated(item);
-        return;
-    }
-
-    ContactGroup *item = items[index];
-    item->addGroup(group);
-
-    itemDataChanged(index);
 }
 
 void ContactGroupModelPrivate::itemDataChanged(int index)
@@ -202,44 +224,35 @@ void ContactGroupModelPrivate::itemDataChanged(int index)
     emit q->contactGroupChanged(items[newIndex]);
 }
 
-void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
-{
-    int oldIndex = indexForObject(group);
-    int newIndex = -1;
-    
-    // If the group has any contact information, check for a new contactgroup.
-    // Otherwise, the current one is used.
-    if (oldIndex >= 0) {
-        if (!group->contactIds().isEmpty())
-            newIndex = indexForContacts(group);
-
-        if (newIndex < 0) {
-            newIndex = oldIndex;
-        } else if (oldIndex != newIndex) {
-            // Remove from old
-            groupDeleted(group);
-        }
-    }
-
-    if (newIndex < 0 || oldIndex != newIndex) {
-        // Add to new, creating if necessary
-        groupAdded(group);
-    } else {
-        // Update data
-        items[oldIndex]->updateGroup(group);
-        itemDataChanged(oldIndex);
-    }
-}
-
-void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
+void ContactGroupModelPrivate::addGroupToIndex(GroupObject *group, int index)
 {
     Q_Q(ContactGroupModel);
 
-    int index = indexForObject(group);
-    if (index < 0)
-        return;
+    ContactGroup *item = index < 0 ? new ContactGroup(this) : items[index];
+    item->addGroup(group);
+
+    if (index < 0) {
+        for (index = 0; index < items.size(); index++) {
+            if (contactGroupSort(item, items[index]))
+                break;
+        }
+
+        q->beginInsertRows(QModelIndex(), index, index);
+        items.insert(index, item);
+        q->endInsertRows();
+
+        emit q->contactGroupCreated(item);
+    } else {
+        itemDataChanged(index);
+    }
+}
+
+void ContactGroupModelPrivate::removeGroupFromIndex(GroupObject *group, int index)
+{
+    Q_Q(ContactGroupModel);
 
     ContactGroup *item = items[index];
+
     // Returns true when removing the last group
     if (item->removeGroup(group)) {
         emit q->beginRemoveRows(QModelIndex(), index, index);
@@ -249,19 +262,54 @@ void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
         emit q->contactGroupRemoved(item);
 
         delete item;
-        return;
+    } else {
+        itemDataChanged(index);
+    }
+}
+
+void ContactGroupModelPrivate::groupAdded(GroupObject *group)
+{
+    int index = indexForContacts(group);
+    addGroupToIndex(group, index);
+}
+
+void ContactGroupModelPrivate::groupUpdated(GroupObject *group)
+{
+    int oldIndex = indexForObject(group);
+    int newIndex = -1;
+    
+    if (oldIndex >= 0) {
+        newIndex = indexForContacts(group);
+
+        if (oldIndex != newIndex) {
+            // Remove from old
+            removeGroupFromIndex(group, oldIndex);
+        }
     }
 
-    itemDataChanged(index);
+    if (newIndex < 0 || oldIndex != newIndex) {
+        // Add to new, creating if necessary
+        addGroupToIndex(group, newIndex);
+    } else {
+        // Update data
+        items[oldIndex]->updateGroup(group);
+        itemDataChanged(oldIndex);
+    }
+}
+
+void ContactGroupModelPrivate::groupDeleted(GroupObject *group)
+{
+    int index = indexForObject(group);
+    if (index < 0)
+        return;
+
+    removeGroupFromIndex(group, index);
 }
 
 ContactGroupModel::ContactGroupModel(QObject *parent)
     : QAbstractTableModel(parent),
       d(new ContactGroupModelPrivate(this))
 {
-    qRegisterMetaType<QList<CommHistory::GroupObject*> >();
-    qRegisterMetaType<CommHistory::GroupObject*>();
-    qRegisterMetaType<CommHistory::ContactGroup*>();
 }
 
 QHash<int,QByteArray> ContactGroupModel::roleNames() const
@@ -270,7 +318,7 @@ QHash<int,QByteArray> ContactGroupModel::roleNames() const
     roles[ContactGroupRole] = "contactGroup";
     roles[WeekdaySectionRole] = "weekdaySection";
     roles[BaseRole + ContactIds] = "contactIds";
-    roles[BaseRole + ContactNames] = "contactNames";
+    roles[BaseRole + ContactNames] = "contactNames"; // TODO: Obsolete, remove
     roles[BaseRole + EndTime] = "endTime";
     roles[BaseRole + UnreadMessages] = "unreadMessages";
     roles[BaseRole + LastEventGroup] = "lastEventGroup";
@@ -284,6 +332,7 @@ QHash<int,QByteArray> ContactGroupModel::roleNames() const
     roles[BaseRole + LastModified] = "lastModified";
     roles[BaseRole + StartTime] = "startTime";
     roles[BaseRole + Groups] = "groups";
+    roles[BaseRole + DisplayNames] = "displayNames";
     return roles;
 }
 
@@ -358,7 +407,8 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
             var = QVariant::fromValue(g->contactIds());
             break;
         case ContactNames:
-            var = QVariant::fromValue<QStringList>(g->contactNames());
+        case DisplayNames:
+            var = QVariant::fromValue(g->displayNames());
             break;
         case Groups:
             var = QVariant::fromValue<QList<QObject*> >(g->groupObjects());
@@ -435,4 +485,6 @@ void ContactGroupModel::fetchMore(const QModelIndex &parent)
     if (!parent.isValid() && d->manager)
         d->manager->fetchMore();
 }
+
+#include "contactgroupmodel.moc"
 

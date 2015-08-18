@@ -27,6 +27,8 @@
 
 namespace CommHistory {
 
+const QString RING_ACCOUNT = QStringLiteral("/org/freedesktop/Telepathy/Account/ring/tel/");
+
 /*!
  * Whether the given localUid needs phone number comparsions
  *
@@ -35,7 +37,7 @@ namespace CommHistory {
  */
 inline bool localUidComparesPhoneNumbers(const QString &localUid)
 {
-    return localUid.startsWith(QLatin1String("/org/freedesktop/Telepathy/Account/ring/"));
+    return localUid.startsWith(RING_ACCOUNT);
 }
 
 /*!

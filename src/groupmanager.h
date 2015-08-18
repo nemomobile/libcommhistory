@@ -50,6 +50,12 @@ class LIBCOMMHISTORY_EXPORT GroupManager : public QObject
     Q_OBJECT
 
 public:
+    enum ContactResolveType {
+        ResolveImmediately,
+        ResolveOnDemand,
+        DoNotResolve
+    };
+
     GroupManager(QObject *parent = 0);
     virtual ~GroupManager();
 
@@ -213,18 +219,22 @@ public:
     DatabaseIO& databaseIO();
 
     /*!
-     * If enabled (default), Group::contactId and Group::contactName in model
-     * contents will be updated live (emitting dataChanged()) when
-     * contacts are added, changed or deleted.
-     * NOTE: This method must be called before getGroups() or it will
-     * not have any effect.
+     * If set to ResolveImmediately, contacts will be resolved for all groups, and changes
+     * to contacts will be updated live (emitting dataChanged()). Contacts
+     * will be resolved before groups are inserted into the model, and the
+     * modelReady() signal indicates that all events are inserted and all
+     * contacts are resolved.
      *
-     * \param enabled If true, track contact changes.
+     * If set to ResolveOnDemand, contacts will be resolved only when
+     * explicitly requested.  Changes to contacts will be reported.
      */
-    void enableContactChanges(bool enabled);
+    void setResolveContacts(ContactResolveType resolveType);
+    ContactResolveType resolveContacts() const;
 
     bool canFetchMore() const;
     void fetchMore();
+
+    void resolve(GroupObject &group);
 
 Q_SIGNALS:
     /*!
@@ -264,6 +274,10 @@ Q_SIGNALS:
      * \param group Group
      */
     void groupDeleted(GroupObject *group);
+    /*!
+     * Emitted when contact resolution policy is changed.
+     */
+    void resolveContactsChanged();
 
 private:
     friend class GroupManagerPrivate;

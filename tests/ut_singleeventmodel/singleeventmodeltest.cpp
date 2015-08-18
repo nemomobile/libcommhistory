@@ -39,7 +39,7 @@ void SingleEventModelTest::getEventById()
     event.setFreeText("freeText");
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
-    event.setRemoteUid("123456");
+    event.setRecipients(Recipient(event.localUid(), "123456"));
     event.setMessageToken("messageTokenA1");
 
     // ignore call properties
@@ -81,7 +81,7 @@ void SingleEventModelTest::getEventByTokens()
     event.setFreeText("freeText");
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
-    event.setRemoteUid("123456");
+    event.setRecipients(Recipient(event.localUid(), "123456"));
     event.setMessageToken("messageTokenB1");
 
     QVERIFY(model.addEvent(event));
@@ -250,7 +250,7 @@ void SingleEventModelTest::updateStatus()
     event.setFreeText("freeText");
     event.setStartTime(QDateTime::currentDateTime());
     event.setEndTime(QDateTime::currentDateTime());
-    event.setRemoteUid("123456");
+    event.setRecipients(Recipient(event.localUid(), "123456"));
     event.setMessageToken("messageTokenB");
 
     QVERIFY(model.addEvent(event));

@@ -1,5 +1,8 @@
 #include "callproxymodel.h"
 #include "event.h"
+#include "eventmodel.h"
+
+using namespace CommHistory;
 
 CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
@@ -9,6 +12,7 @@ CallProxyModel::CallProxyModel(QObject *parent) :
     m_populated(false)
 {
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
+    m_source->setResolveContacts(CommHistory::EventModel::ResolveOnDemand);
 
     this->setSourceModel(m_source);
     this->setDynamicSortFilter(true);
@@ -68,7 +72,7 @@ void CallProxyModel::setLimit(int count)
 
 bool CallProxyModel::resolveContacts() const
 {
-    return m_source->resolveContacts();
+    return m_source->resolveContacts() == EventModel::ResolveImmediately;
 }
 
 void CallProxyModel::setResolveContacts(bool enabled)
@@ -76,7 +80,7 @@ void CallProxyModel::setResolveContacts(bool enabled)
     if (enabled == m_source->resolveContacts())
         return;
 
-    m_source->setResolveContacts(enabled);
+    m_source->setResolveContacts(enabled ? EventModel::ResolveImmediately : EventModel::ResolveOnDemand);
     // Model must be reloaded to resolve contacts if getEvents was already called
     if (enabled && m_componentComplete)
         m_source->getEvents();

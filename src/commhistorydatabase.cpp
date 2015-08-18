@@ -79,7 +79,7 @@ static const char *db_schema[] = {
     "  reportDelivery INTEGER, "
     "  validityPeriod INTEGER, "
     "  contentLocation TEXT, "
-    "  messageParts TEXT, " // XXX remove, unused
+    "  messageParts TEXT, "
     "  headers TEXT, "
     "  readStatus INTEGER, "
     "  reportRead INTEGER, "

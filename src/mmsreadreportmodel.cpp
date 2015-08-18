@@ -84,7 +84,7 @@ bool MmsReadReportModel::acceptsEvent(const Event &event)
 MmsReadReportModel::MmsReadReportModel(QObject *parent) : EventModel(parent), d(NULL)
 {
     setQueryMode(EventModel::SyncQuery);
-    setResolveContacts(false);
+    setResolveContacts(DoNotResolve);
 }
 
 MmsReadReportModel::~MmsReadReportModel()
@@ -109,7 +109,7 @@ bool MmsReadReportModel::getEvent(int eventId)
         if (d_ptr->database()->getEvent(eventId, event)) {
             QList<Event> events;
             events.append(event);
-            return d_ptr->fillModel(0, 1, events);
+            return d_ptr->fillModel(0, 1, events, false);
         }
     }
 

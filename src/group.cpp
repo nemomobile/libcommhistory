@@ -41,21 +41,23 @@ public:
 
     int id;
     QString localUid;
-    QStringList remoteUids;
+    RecipientList recipients;
     Group::ChatType chatType;
     QString chatName;
-    QDateTime startTime;
-    QDateTime endTime;
+    mutable QDateTime startTime;
+    mutable QDateTime endTime;
     int unreadMessages;
     int lastEventId;
-    QList<Event::Contact> contacts;
     QString lastMessageText;
     QString lastVCardFileName;
     QString lastVCardLabel;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
     bool lastEventIsDraft;
-    QDateTime lastModified;
+    mutable QDateTime lastModified;
+    mutable quint32 startTimeT;
+    mutable quint32 endTimeT;
+    mutable quint32 lastModifiedT;
 
     Group::PropertySet validProperties;
     Group::PropertySet modifiedProperties;
@@ -69,29 +71,30 @@ GroupPrivate::GroupPrivate()
         , lastEventType(Event::UnknownType)
         , lastEventStatus(Event::UnknownStatus)
         , lastEventIsDraft(false)
+        , startTimeT(0)
+        , endTimeT(0)
+        , lastModifiedT(0)
 {
-    lastModified = QDateTime::fromTime_t(0);
 }
 
 GroupPrivate::GroupPrivate(const GroupPrivate &other)
         : QSharedData(other)
         , id(other.id)
         , localUid(other.localUid)
-        , remoteUids(other.remoteUids)
+        , recipients(other.recipients)
         , chatType(other.chatType)
         , chatName(other.chatName)
-        , startTime(other.startTime)
-        , endTime(other.endTime)
         , unreadMessages(other.unreadMessages)
         , lastEventId(other.lastEventId)
-        , contacts(other.contacts)
         , lastMessageText(other.lastMessageText)
         , lastVCardFileName(other.lastVCardFileName)
         , lastVCardLabel(other.lastVCardLabel)
         , lastEventType(other.lastEventType)
         , lastEventStatus(other.lastEventStatus)
         , lastEventIsDraft(other.lastEventIsDraft)
-        , lastModified(other.lastModified)
+        , startTimeT(other.startTimeT)
+        , endTimeT(other.endTimeT)
+        , lastModifiedT(other.lastModifiedT)
         , validProperties(other.validProperties)
         , modifiedProperties(other.modifiedProperties)
 {
@@ -192,10 +195,9 @@ QString Group::localUid() const
     return d->localUid;
 }
 
-
-QStringList Group::remoteUids() const
+RecipientList Group::recipients() const
 {
-    return d->remoteUids;
+    return d->recipients;
 }
 
 Group::ChatType Group::chatType() const
@@ -210,11 +212,17 @@ QString Group::chatName() const
 
 QDateTime Group::startTime() const
 {
+    if (d->startTime.isNull() && d->startTimeT != 0) {
+        d->startTime = QDateTime::fromTime_t(d->startTimeT);
+    }
     return d->startTime;
 }
 
 QDateTime Group::endTime() const
 {
+    if (d->endTime.isNull() && d->endTimeT != 0) {
+        d->endTime = QDateTime::fromTime_t(d->endTimeT);
+    }
     return d->endTime;
 }
 
@@ -226,21 +234,6 @@ int Group::unreadMessages() const
 int Group::lastEventId() const
 {
     return d->lastEventId;
-}
-
-int Group::contactId() const
-{
-    return (!d->contacts.isEmpty() ? d->contacts.first().first : 0);
-}
-
-QString Group::contactName() const
-{
-    return (!d->contacts.isEmpty() ? d->contacts.first().second : QString());
-}
-
-QList<Event::Contact> Group::contacts() const
-{
-    return d->contacts;
 }
 
 QString Group::lastMessageText() const
@@ -275,7 +268,25 @@ bool Group::lastEventIsDraft() const
 
 QDateTime Group::lastModified() const
 {
+    if (d->lastModified.isNull()) {
+        d->lastModified = QDateTime::fromTime_t(d->lastModifiedT);
+    }
     return d->lastModified;
+}
+
+quint32 Group::startTimeT() const
+{
+    return d->startTimeT;
+}
+
+quint32 Group::endTimeT() const
+{
+    return d->endTimeT;
+}
+
+quint32 Group::lastModifiedT() const
+{
+    return d->lastModifiedT;
 }
 
 void Group::setValidProperties(const Group::PropertySet &properties)
@@ -300,10 +311,10 @@ void Group::setLocalUid(const QString &uid)
     d->propertyChanged(Group::LocalUid);
 }
 
-void Group::setRemoteUids(const QStringList &uids)
+void Group::setRecipients(const RecipientList &r)
 {
-    d->remoteUids = uids;
-    d->propertyChanged(Group::RemoteUids);
+    d->recipients = r;
+    d->propertyChanged(Group::Recipients);
 }
 
 void Group::setChatType(Group::ChatType chatType)
@@ -320,13 +331,23 @@ void Group::setChatName(const QString &name)
 
 void Group::setStartTime(const QDateTime &startTime)
 {
-    d->startTime = startTime.toUTC();
+    if (d->startTime.isNull()) {
+        d->startTimeT = startTime.toUTC().toTime_t();
+    } else {
+        d->startTime = startTime.toUTC();
+        d->startTimeT = d->startTime.toTime_t();
+    }
     d->propertyChanged(Group::StartTime);
 }
 
 void Group::setEndTime(const QDateTime &endTime)
 {
-    d->endTime = endTime.toUTC();
+    if (d->endTime.isNull()) {
+        d->endTimeT = endTime.toUTC().toTime_t();
+    } else {
+        d->endTime = endTime.toUTC();
+        d->endTimeT = d->endTime.toTime_t();
+    }
     d->propertyChanged(Group::EndTime);
 }
 
@@ -340,32 +361,6 @@ void Group::setLastEventId(int id)
 {
     d->lastEventId = id;
     d->propertyChanged(Group::LastEventId);
-}
-
-void Group::setContactId(int id)
-{
-    if (d->contacts.isEmpty())
-        d->contacts << qMakePair(id, QString());
-    else
-        d->contacts.first().first = id;
-
-    d->propertyChanged(Group::Contacts);
-}
-
-void Group::setContactName(const QString &name)
-{
-    if (d->contacts.isEmpty())
-        d->contacts << qMakePair(0, name);
-    else
-        d->contacts.first().second = name;
-
-    d->propertyChanged(Group::Contacts);
-}
-
-void Group::setContacts(const QList<Event::Contact> &contacts)
-{
-    d->contacts = contacts;
-    d->propertyChanged(Group::Contacts);
 }
 
 void Group::setLastMessageText(const QString &text)
@@ -406,21 +401,57 @@ void Group::setLastEventIsDraft(bool isDraft)
 
 void Group::setLastModified(const QDateTime &modified)
 {
-    d->lastModified = modified.toUTC();
+    if (d->lastModified.isNull()) {
+        d->lastModifiedT = modified.toUTC().toTime_t();
+    } else {
+        d->lastModified = modified.toUTC();
+        d->lastModifiedT = d->lastModified.toTime_t();
+    }
+    d->propertyChanged(Group::LastModified);
+}
+
+void Group::setStartTimeT(quint32 startTime)
+{
+    d->startTimeT = startTime;
+    if (startTime == 0) {
+        d->startTime = QDateTime();
+    } else if (!d->startTime.isNull()) {
+        d->startTime = QDateTime::fromTime_t(startTime);
+    }
+    d->propertyChanged(Group::StartTime);
+}
+
+void Group::setEndTimeT(quint32 endTime)
+{
+    d->endTimeT = endTime;
+    if (endTime == 0) {
+        d->endTime = QDateTime();
+    } else if (!d->endTime.isNull()) {
+        d->endTime = QDateTime::fromTime_t(endTime);
+    }
+    d->propertyChanged(Group::EndTime);
+}
+
+void Group::setLastModifiedT(quint32 modified)
+{
+    d->lastModifiedT = modified;
+    if (!d->lastModified.isNull()) {
+        d->lastModified = QDateTime::fromTime_t(d->lastModifiedT);
+    }
     d->propertyChanged(Group::LastModified);
 }
 
 QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
 {
     argument.beginStructure();
-    argument << group.id() << group.localUid() << group.remoteUids()
+    argument << group.id() << group.localUid() << group.recipients()
              << group.chatType() << group.chatName()
-             << group.endTime() << group.unreadMessages()
-             << group.lastEventId() << group.contacts()
-             << group.lastMessageText() << group.lastVCardFileName()
-             << group.lastVCardLabel() << group.lastEventType()
-             << group.lastEventStatus() << group.lastEventIsDraft()
-             << group.lastModified() << group.startTime();
+             << group.endTimeT() << group.unreadMessages()
+             << group.lastEventId() << group.lastMessageText()
+             << group.lastVCardFileName() << group.lastVCardLabel()
+             << group.lastEventType() << group.lastEventStatus()
+             << group.lastEventIsDraft()
+             << group.lastModifiedT() << group.startTimeT();
 
     // pass valid properties
     argument.beginArray(qMetaTypeId<int>());
@@ -441,12 +472,11 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     uint chatType;
 
     argument.beginStructure();
-    argument >> p.id >> p.localUid >> p.remoteUids >> chatType
-             >> p.chatName >> p.endTime
-             >> p.unreadMessages >> p.lastEventId >> p.contacts
-             >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
-             >> type >> status >> isDraft >> p.lastModified
-             >> p.startTime;
+    argument >> p.id >> p.localUid >> p.recipients >> chatType
+             >> p.chatName >> p.endTimeT
+             >> p.unreadMessages >> p.lastEventId >> p.lastMessageText
+             >> p.lastVCardFileName >> p.lastVCardLabel >> type
+             >> status >> isDraft >> p.lastModifiedT >> p.startTimeT;
 
     //read valid properties
     argument.beginArray();
@@ -463,20 +493,18 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setId(p.id);
     if (p.validProperties.contains(Group::LocalUid))
         group.setLocalUid(p.localUid);
-    if (p.validProperties.contains(Group::RemoteUids))
-        group.setRemoteUids(p.remoteUids);
+    if (p.validProperties.contains(Group::Recipients))
+        group.setRecipients(p.recipients);
     if (p.validProperties.contains(Group::Type))
         group.setChatType((Group::ChatType)chatType);
     if (p.validProperties.contains(Group::ChatName))
         group.setChatName(p.chatName);
     if (p.validProperties.contains(Group::EndTime))
-        group.setEndTime(p.endTime);
+        group.setEndTimeT(p.endTimeT);
     if (p.validProperties.contains(Group::UnreadMessages))
         group.setUnreadMessages(p.unreadMessages);
     if (p.validProperties.contains(Group::LastEventId))
         group.setLastEventId(p.lastEventId);
-    if (p.validProperties.contains(Group::Contacts))
-        group.setContacts(p.contacts);
     if (p.validProperties.contains(Group::LastMessageText))
         group.setLastMessageText(p.lastMessageText);
     if (p.validProperties.contains(Group::LastVCardFileName))
@@ -490,9 +518,9 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     if (p.validProperties.contains(Group::LastEventIsDraft))
         group.setLastEventIsDraft(isDraft);
     if (p.validProperties.contains(Group::LastModified))
-        group.setLastModified(p.lastModified);
+        group.setLastModifiedT(p.lastModifiedT);
     if (p.validProperties.contains(Group::StartTime))
-        group.setStartTime(p.startTime);
+        group.setStartTimeT(p.startTimeT);
 
     group.resetModifiedProperties();
 
@@ -503,7 +531,11 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
 // To be replaced.
 QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group)
 {
-    stream << group.id() << group.localUid() << group.remoteUids()
+    QStringList remoteUids;
+    foreach (const Recipient &r, group.recipients())
+        remoteUids.append(r.remoteUid());
+
+    stream << group.id() << group.localUid() << remoteUids
            << group.chatType() << group.chatName()
            << group.lastEventId()
            << group.lastMessageText() << group.lastVCardFileName()
@@ -516,17 +548,18 @@ QDataStream &operator<<(QDataStream &stream, const CommHistory::Group &group)
 QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group)
 {
     GroupPrivate p;
+    QStringList remoteUids;
     int type, status;
     uint chatType;
 
-    stream >> p.id >> p.localUid >> p.remoteUids >> chatType
+    stream >> p.id >> p.localUid >> remoteUids >> chatType
            >> p.chatName >> p.lastEventId
            >> p.lastMessageText >> p.lastVCardFileName >> p.lastVCardLabel
            >> type >> status >> p.lastModified;
 
     group.setId(p.id);
     group.setLocalUid(p.localUid);
-    group.setRemoteUids(p.remoteUids);
+    group.setRecipients(RecipientList::fromUids(p.localUid, remoteUids));
     group.setChatType((Group::ChatType)chatType);
     group.setChatName(p.chatName);
     group.setLastEventId(p.lastEventId);
@@ -535,7 +568,7 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group)
     group.setLastVCardLabel(p.lastVCardLabel);
     group.setLastEventType((Event::EventType)type);
     group.setLastEventStatus((Event::EventStatus)status);
-    group.setLastModified(p.lastModified);
+    group.setLastModifiedT(p.lastModified.toTime_t());
 
     group.resetModifiedProperties();
 
@@ -544,26 +577,13 @@ QDataStream &operator>>(QDataStream &stream, CommHistory::Group &group)
 
 QString Group::toString() const
 {
-    QString contacts;
-    if (!d->contacts.isEmpty()) {
-        QStringList contactList;
-        foreach (Event::Contact contact, d->contacts) {
-            contactList << QString("%1,%2")
-                .arg(QString::number(contact.first))
-                .arg(contact.second);
-        }
-
-        contacts = contactList.join(QChar(';'));
-    }
-
-    return QString("Group %1 (%2 unread) name:\"%3\" remoteUids:\"%4\" contacts:\"%5\" startTime:%6 endTime:%7")
+    return QString("Group %1 (%2 unread) name:\"%3\" recipients:\"%4\" startTime:%6 endTime:%7")
                    .arg(d->id)
                    .arg(d->unreadMessages)
                    .arg(d->chatName)
-                   .arg(d->remoteUids.join("|"))
-                   .arg(contacts)
-                   .arg(d->startTime.toString())
-                   .arg(d->endTime.toString());
+                   .arg(d->recipients.debugString())
+                   .arg(startTime().toString())
+                   .arg(endTime().toString());
 }
 
 void Group::copyValidProperties(const Group &other)
@@ -576,8 +596,8 @@ void Group::copyValidProperties(const Group &other)
         case LocalUid:
             setLocalUid(other.localUid());
             break;
-        case RemoteUids:
-            setRemoteUids(other.remoteUids());
+        case Recipients:
+            setRecipients(other.recipients());
             break;
         case Type:
             setChatType(other.chatType());
@@ -586,19 +606,13 @@ void Group::copyValidProperties(const Group &other)
             setChatName(other.chatName());
             break;
         case EndTime:
-            setEndTime(other.endTime());
+            setEndTimeT(other.endTimeT());
             break;
         case UnreadMessages:
             setUnreadMessages(other.unreadMessages());
             break;
         case LastEventId:
             setLastEventId(other.lastEventId());
-            break;
-        case ContactId:
-            setContactId(other.contactId());
-            break;
-        case ContactName:
-            setContactName(other.contactName());
             break;
         case LastMessageText:
             setLastMessageText(other.lastMessageText());
@@ -622,10 +636,7 @@ void Group::copyValidProperties(const Group &other)
             setLastModified(other.lastModified());
             break;
         case StartTime:
-            setStartTime(other.startTime());
-            break;
-        case Contacts:
-            setContacts(other.contacts());
+            setStartTimeT(other.startTimeT());
             break;
         default:
             qCritical() << "Unknown group property";

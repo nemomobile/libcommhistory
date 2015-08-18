@@ -215,11 +215,6 @@ void RecentContactsModelTest::repeated()
 
     QVERIFY(model.getEvents());
     QTRY_COMPARE(model.resolving(), false);
-    // The query in getEvents (optimized in commit 582b32de) now only
-    // returns the latest event in an event group, which means in this
-    // test case it no longer includes the one for Charlie.
-    // This should be fixed, but will take some thought.
-    QEXPECT_FAIL("", "getEvents does not do the right thing currently", Abort);
     QCOMPARE(insert.count(), 3);
 
     // We should have one row for each contact
@@ -232,22 +227,22 @@ void RecentContactsModelTest::repeated()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::CallEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), bobPhone);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, bobPhone));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), charlieIm1.first);
-    QCOMPARE(e.remoteUid(), charlieIm1.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm1.first, charlieIm1.second));
 }
 
 void RecentContactsModelTest::limitedDynamic()
@@ -287,15 +282,15 @@ void RecentContactsModelTest::limitedDynamic()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::CallEvent);
     QCOMPARE(e.direction(), Event::Inbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), bobPhone);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, bobPhone));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 }
 
 void RecentContactsModelTest::differentTypes()
@@ -325,30 +320,26 @@ void RecentContactsModelTest::differentTypes()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), charlieIm2.first);
-    QCOMPARE(e.remoteUid(), charlieIm2.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 }
 
 void RecentContactsModelTest::requiredProperty()
 {
-    // requiredProperty support broke in 1.7.0 and we don't have a use
-    // case for it.
-    QSKIP("RecentContactsModel::requiredProperty is not supported");
-
     RecentContactsModel phoneModel;
     phoneModel.setRequiredProperty(RecentContactsModel::PhoneNumberRequired);
 
@@ -392,30 +383,30 @@ void RecentContactsModelTest::requiredProperty()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = phoneModel.event(phoneModel.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
     QCOMPARE(e.type(), Event::SMSEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), phoneAccount);
-    QCOMPARE(e.remoteUid(), alicePhone2);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
     // IM contacts
     e = imModel.event(imModel.index(0, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), bobIm.first);
-    QCOMPARE(e.remoteUid(), bobIm.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
     e = imModel.event(imModel.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
     QCOMPARE(e.type(), Event::IMEvent);
     QCOMPARE(e.direction(), Event::Outbound);
-    QCOMPARE(e.localUid(), charlieIm2.first);
-    QCOMPARE(e.remoteUid(), charlieIm2.second);
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
 
     {
         // Repeat the tests to test filtering on fill
@@ -453,29 +444,29 @@ void RecentContactsModelTest::requiredProperty()
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), bobIm.first);
-        QCOMPARE(e.remoteUid(), bobIm.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
         e = phoneModel.event(phoneModel.index(1, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
         QCOMPARE(e.type(), Event::SMSEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), phoneAccount);
-        QCOMPARE(e.remoteUid(), alicePhone2);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 
         e = imModel.event(imModel.index(0, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), bobIm.first);
-        QCOMPARE(e.remoteUid(), bobIm.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(bobIm.first, bobIm.second));
 
         e = imModel.event(imModel.index(1, 0));
         QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(charlieId, charlieName));
         QCOMPARE(e.type(), Event::IMEvent);
         QCOMPARE(e.direction(), Event::Outbound);
-        QCOMPARE(e.localUid(), charlieIm2.first);
-        QCOMPARE(e.remoteUid(), charlieIm2.second);
+        QCOMPARE(e.recipients().count(), 1);
+        QCOMPARE(e.recipients().at(0), Recipient(charlieIm2.first, charlieIm2.second));
     }
 }
 

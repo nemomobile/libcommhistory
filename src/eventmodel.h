@@ -71,6 +71,12 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
 
+    enum ContactResolveType {
+        ResolveImmediately,
+        ResolveOnDemand,
+        DoNotResolve
+    };
+
     enum ColumnId {
         EventId = 0,
         EventType,
@@ -212,19 +218,17 @@ public:
     virtual void setOffset(int offset);
 
     /*!
-     * If enabled, contacts will be resolved for all events, and changes
+     * If set to ResolveImmediately, contacts will be resolved for all events, and changes
      * to contacts will be updated live (emitting dataChanged()). Contacts
      * will be resolved before events are inserted into the model, and the
      * modelReady() signal indicates that all events are inserted and all
      * contacts are resolved.
      *
-     * \param enabled If true, resolve and update contacts for events
+     * If set to ResolveOnDemand, contacts will be resolved only when
+     * explicitly requested.  Changes to contacts will be reported.
      */
-    void setResolveContacts(bool enabled);
-    bool resolveContacts() const;
-
-    // Deprecated name for setResolveContacts
-    void enableContactChanges(bool enabled) { setResolveContacts(enabled); }
+    void setResolveContacts(ContactResolveType resolveType);
+    ContactResolveType resolveContacts() const;
 
     /*!
      * Add a new event.

@@ -31,6 +31,7 @@
 namespace CommHistory {
 
 class ContactGroupPrivate;
+class ContactGroupModel;
 
 class LIBCOMMHISTORY_EXPORT ContactGroup : public QObject
 {
@@ -40,11 +41,11 @@ public:
     ContactGroup(QObject *parent = 0);
 
     /* Properties */
-    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactsChanged)
+    Q_PROPERTY(QList<int> contactIds READ contactIds NOTIFY contactIdsChanged);
     QList<int> contactIds() const;
 
-    Q_PROPERTY(QStringList contactNames READ contactNames NOTIFY contactsChanged)
-    QStringList contactNames() const;
+    Q_PROPERTY(QStringList displayNames READ displayNames NOTIFY displayNamesChanged);
+    QStringList displayNames() const;
 
     Q_PROPERTY(QDateTime startTime READ startTime NOTIFY startTimeChanged)
     QDateTime startTime() const;
@@ -86,6 +87,13 @@ public:
     QList<GroupObject*> groups() const;
     QList<QObject*> groupObjects() const;
 
+    quint32 startTimeT() const;
+    quint32 endTimeT() const;
+    quint32 lastModifiedT() const;
+
+    bool isResolved() const;
+    void resolve();
+
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QString &remoteUid);
     Q_INVOKABLE CommHistory::GroupObject *findGroup(const QString &localUid, const QStringList &remoteUids);
 
@@ -98,7 +106,9 @@ public slots:
     bool deleteGroups();
 
 signals:
-    void contactsChanged();
+    void contactsChanged(); // TODO: Obsolete, to be removed
+    void contactIdsChanged();
+    void displayNamesChanged();
     void startTimeChanged();
     void endTimeChanged();
     void unreadMessagesChanged();

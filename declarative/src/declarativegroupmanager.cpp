@@ -40,6 +40,8 @@ using namespace CommHistory;
 DeclarativeGroupManager::DeclarativeGroupManager(QObject *parent)
     : CommHistory::GroupManager(parent)
 {
+    GroupManager::setResolveContacts(GroupManager::ResolveOnDemand);
+
     QTimer::singleShot(0, this, SLOT(reload()));
 }
 
@@ -68,6 +70,20 @@ void DeclarativeGroupManager::setUseBackgroundThread(bool enabled)
     emit backgroundThreadChanged();
 }
 
+bool DeclarativeGroupManager::resolveContacts() const
+{
+    return GroupManager::resolveContacts() == GroupManager::ResolveImmediately;
+}
+
+void DeclarativeGroupManager::setResolveContacts(bool enabled)
+{
+    if (enabled == GroupManager::resolveContacts())
+        return;
+
+    GroupManager::setResolveContacts(enabled ? GroupManager::ResolveImmediately : GroupManager::ResolveOnDemand);
+    emit resolveContactsChanged();
+}
+
 int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QString &localUid,
                                                         const QString &remoteUid, const QString &text)
 {
@@ -92,11 +108,10 @@ int DeclarativeGroupManager::createOutgoingMessageEvent(int groupId, const QStri
     event.setDirection(Event::Outbound);
     event.setIsRead(true);
     event.setLocalUid(localUid);
-    if (remoteUids.size() == 1)
-        event.setRemoteUid(remoteUids[0]);
+    event.setRecipients(RecipientList::fromUids(localUid, remoteUids));
     event.setFreeText(text);
-    event.setStartTime(QDateTime::currentDateTime());
-    event.setEndTime(event.startTime());
+    event.setStartTimeT(Event::currentTime_t());
+    event.setEndTimeT(event.startTimeT());
     event.setStatus(Event::SendingStatus);
     event.setGroupId(groupId);
 
@@ -134,7 +149,7 @@ int DeclarativeGroupManager::ensureGroupExists(const QString &localUid, const QS
     } else {
         Group g;
         g.setLocalUid(localUid);
-        g.setRemoteUids(remoteUids);
+        g.setRecipients(RecipientList::fromUids(localUid, remoteUids));
         g.setChatType(Group::ChatTypeP2P);
         DEBUG() << Q_FUNC_INFO << "Creating group for" << localUid << remoteUids;
         if (!addGroup(g)) {

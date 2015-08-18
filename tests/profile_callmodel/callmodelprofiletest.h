@@ -2,8 +2,8 @@
 **
 ** This file is part of libcommhistory.
 **
-** Copyright (C) 2013 Jolla Ltd.
-** Contact: John Brooks <john.brooks@jollamobile.com>
+** Copyright (C) 2015 Jolla Ltd.
+** Contact: Matt Vogt <matthew.vogt@jollamobile.com>
 **
 ** This library is free software; you can redistribute it and/or modify it
 ** under the terms of the GNU Lesser General Public License version 2.1 as
@@ -20,48 +20,29 @@
 **
 ******************************************************************************/
 
-#ifndef COMMHISTORY_CONTACTGROUPMODEL_P_H
-#define COMMHISTORY_CONTACTGROUPMODEL_P_H
+#ifndef CALLMODELPROFILETEST_H
+#define CALLMODELPROFILETEST_H
 
-#include "libcommhistoryexport.h"
-#include "contactgroupmodel.h"
 #include <QObject>
-#include <QDateTime>
+#include <QFile>
+#include <QStringList>
 
-namespace CommHistory {
-
-class GroupManager;
-class GroupObject;
-class ContactGroup;
-
-class ContactGroupModelPrivate : public QObject
+class CallModelProfileTest : public QObject
 {
     Q_OBJECT
-    Q_DECLARE_PUBLIC(ContactGroupModel)
-
-public:
-    ContactGroupModel *q_ptr;
-
-    ContactGroupModelPrivate(ContactGroupModel *parent);
-    virtual ~ContactGroupModelPrivate();
-
-    GroupManager *manager;
-    QList<ContactGroup*> items;
-
-    void setManager(GroupManager *manager);
-
-    int indexForContacts(GroupObject *group);
-    int indexForObject(GroupObject *group);
 
 private slots:
-    void groupAdded(GroupObject *group);
-    void groupUpdated(GroupObject *group);
-    void groupDeleted(GroupObject *group);
+    void initTestCase();
+    void init();
+    void prepare();
+    void execute();
+    void finalise();
+    void cleanupTestCase();
 
 private:
-    void itemDataChanged(int index);
+    QFile *logFile;
+    QStringList remoteUids;
+    QList<int> contactIndices;
 };
-
-}
 
 #endif

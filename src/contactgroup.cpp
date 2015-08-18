@@ -34,34 +34,49 @@ class ContactGroupPrivate {
 public:
     ContactGroupPrivate(ContactGroup *parent);
 
-    void update();
+    void updateForGroup(GroupObject *group,
+                        quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
+                        int &uUnreadMessages, GroupObject *&uLastEventGroup);
+    void setValues(const QList<int> &uContactIds, const QStringList &uDisplayNames,
+                   quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
+                   int &uUnreadMessages, GroupObject *&uLastEventGroup);
+
+    void recalculate();
+    void includeGroup(GroupObject *group);
+
+    void resolve();
 
     ContactGroup *q_ptr;
     QList<GroupObject*> groups;
  
     QList<int> contactIds;
-    QList<QString> contactNames;
-    QDateTime startTime, endTime, lastModified;
+    QStringList displayNames;
+    quint32 startTimeT, endTimeT, lastModifiedT;
     int unreadMessages;
     int lastEventId;
     GroupObject *lastEventGroup;
     QString lastMessageText, lastVCardFileName, lastVCardLabel;
     int lastEventType, lastEventStatus;
     bool lastEventIsDraft;
+    bool groupsResolved;
 };
 
 }
 
 using namespace CommHistory;
 
-ContactGroupPrivate::ContactGroupPrivate(ContactGroup *parent)
-    : q_ptr(parent)
+ContactGroupPrivate::ContactGroupPrivate(ContactGroup *q)
+    : q_ptr(q)
+    , startTimeT(0)
+    , endTimeT(0)
+    , lastModifiedT(0)
     , unreadMessages(0)
     , lastEventId(-1)
     , lastEventGroup(0)
     , lastEventType(Event::UnknownType)
     , lastEventStatus(Event::UnknownStatus)
     , lastEventIsDraft(false)
+    , groupsResolved(true)
 {
 }
 
@@ -74,11 +89,12 @@ void ContactGroup::addGroup(GroupObject *group)
 {
     Q_D(ContactGroup);
     if (!d->groups.contains(group)) {
+        d->groupsResolved &= group->isResolved();
         d->groups.append(group);
         emit groupsChanged();
-    }
 
-    d->update();
+        d->includeGroup(group);
+    }
 }
 
 bool ContactGroup::removeGroup(GroupObject *group)
@@ -86,7 +102,7 @@ bool ContactGroup::removeGroup(GroupObject *group)
     Q_D(ContactGroup);
     if (d->groups.removeOne(group)) {
         emit groupsChanged();
-        d->update();
+        d->recalculate();
     }
 
     return d->groups.isEmpty();
@@ -97,62 +113,61 @@ void ContactGroup::updateGroup(GroupObject *group)
     Q_D(ContactGroup);
 
     Q_UNUSED(group);
-    d->update();
+    d->recalculate();
 }
 
-void ContactGroupPrivate::update()
+void ContactGroupPrivate::updateForGroup(GroupObject *group,
+                                         quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
+                                         int &uUnreadMessages, GroupObject *&uLastEventGroup)
+{
+    const quint32 gStartTimeT = group->startTimeT();
+    const quint32 gEndTimeT = group->endTimeT();
+    const quint32 gLastModifiedT = group->lastModifiedT();
+
+    uStartTimeT = qMax(gStartTimeT, uStartTimeT);
+    uEndTimeT = qMax(gEndTimeT, uEndTimeT);
+    uLastModifiedT = qMax(gLastModifiedT, uLastModifiedT);
+
+    uUnreadMessages += group->unreadMessages();
+
+    if (group->lastEventId() >= 0 && (!uLastEventGroup || gEndTimeT > uLastEventGroup->endTimeT()))
+        uLastEventGroup = group;
+}
+
+void ContactGroupPrivate::setValues(const QList<int> &uContactIds, const QStringList &uDisplayNames,
+                                    quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
+                                    int &uUnreadMessages, GroupObject *&uLastEventGroup)
 {
     Q_Q(ContactGroup);
-    /* Iterate all groups to update properties. Unfortunately, we can't rely on just comparing
-       the changes to one group and have reliable data.
-     */
 
-    QMap<int,QString> contacts;
- 
-    QDateTime uStartTime, uEndTime, uLastModified;
-    int uUnreadMessages = 0;
-    GroupObject *uLastEventGroup = 0;
+    const bool contactsChanged(uContactIds != contactIds || uDisplayNames != displayNames);
 
-    foreach (GroupObject *group, groups) {
-        foreach (const Event::Contact &contact, group->contacts())
-            contacts[contact.first] = contact.second;
-
-        if (!uStartTime.isValid() || group->startTime() > uStartTime)
-            uStartTime = group->startTime();
-
-        if (!uEndTime.isValid() || group->endTime() > uEndTime)
-            uEndTime = group->endTime();
-
-        if (group->lastEventId() >= 0 && (!uLastEventGroup || group->endTime() > uLastEventGroup->endTime()))
-            uLastEventGroup = group;
-
-        if (!uLastModified.isValid() || group->lastModified() > uLastModified)
-            uLastModified = group->lastModified();
-
-        uUnreadMessages += group->unreadMessages();
-    }
-
-    QList<int> uContactIds = contacts.keys();
-    QList<QString> uContactNames = contacts.values();
-
-    if (uContactIds != contactIds || uContactNames != contactNames) {
+    if (uContactIds != contactIds) {
         contactIds = uContactIds;
-        contactNames = uContactNames;
-        emit q->contactsChanged();
+        emit q->contactIdsChanged();
     }
 
-    if (uStartTime != startTime) {
-        startTime = uStartTime;
+    if (uDisplayNames != displayNames) {
+        displayNames = uDisplayNames;
+        emit q->displayNamesChanged();
+    }
+
+    // Temporary: to be removed
+    if (contactsChanged)
+        emit q->contactsChanged();
+
+    if (uStartTimeT != startTimeT) {
+        startTimeT = uStartTimeT;
         emit q->startTimeChanged();
     }
 
-    if (uEndTime != endTime) {
-        endTime = uEndTime;
+    if (uEndTimeT != endTimeT) {
+        endTimeT = uEndTimeT;
         emit q->endTimeChanged();
     }
 
-    if (uLastModified != lastModified) {
-        lastModified = uLastModified;
+    if (uLastModifiedT != lastModifiedT) {
+        lastModifiedT = uLastModifiedT;
         emit q->lastModifiedChanged();
     }
 
@@ -166,27 +181,27 @@ void ContactGroupPrivate::update()
         if (uLastEventGroup != lastEventGroup) {
             lastEventGroup = uLastEventGroup;
             changed = true;
+        } else if (lastEventId != lastEventGroup->lastEventId() ||
+                   lastMessageText != lastEventGroup->lastMessageText() ||
+                   lastVCardFileName != lastEventGroup->lastVCardFileName() ||
+                   lastVCardLabel != lastEventGroup->lastVCardLabel() ||
+                   lastEventType != lastEventGroup->lastEventType() ||
+                   lastEventStatus != lastEventGroup->lastEventStatus() ||
+                   lastEventIsDraft != lastEventGroup->lastEventIsDraft()) {
+            changed = true;
         }
 
-        if (lastEventId != lastEventGroup->lastEventId() ||
-                lastMessageText != lastEventGroup->lastMessageText() ||
-                lastVCardFileName != lastEventGroup->lastVCardFileName() ||
-                lastVCardLabel != lastEventGroup->lastVCardLabel() ||
-                lastEventType != lastEventGroup->lastEventType() ||
-                lastEventStatus != lastEventGroup->lastEventStatus() ||
-                lastEventIsDraft != lastEventGroup->lastEventIsDraft())
-            changed = true;
+        if (changed) {
+            lastEventId = lastEventGroup->lastEventId();
+            lastMessageText = lastEventGroup->lastMessageText();
+            lastVCardFileName = lastEventGroup->lastVCardFileName();
+            lastVCardLabel = lastEventGroup->lastVCardLabel();
+            lastEventType = static_cast<int>(lastEventGroup->lastEventType());
+            lastEventStatus = static_cast<int>(lastEventGroup->lastEventStatus());
+            lastEventIsDraft = lastEventGroup->lastEventIsDraft();
 
-        lastEventId = lastEventGroup->lastEventId();
-        lastMessageText = lastEventGroup->lastMessageText();
-        lastVCardFileName = lastEventGroup->lastVCardFileName();
-        lastVCardLabel = lastEventGroup->lastVCardLabel();
-        lastEventType = static_cast<int>(lastEventGroup->lastEventType());
-        lastEventStatus = static_cast<int>(lastEventGroup->lastEventStatus());
-        lastEventIsDraft = lastEventGroup->lastEventIsDraft();
-
-        if (changed)
             emit q->lastEventChanged();
+        }
     } else if (lastEventId >= 0) {
         lastEventId = -1;
         lastMessageText.clear();
@@ -195,32 +210,84 @@ void ContactGroupPrivate::update()
         lastEventType = static_cast<int>(Event::UnknownType);
         lastEventStatus = static_cast<int>(Event::UnknownStatus);
         lastEventIsDraft = false;
+
         emit q->lastEventChanged();
     }
+}
+
+void ContactGroupPrivate::recalculate()
+{
+    /* Iterate all groups to recalculate properties. Unfortunately, we can't rely on just comparing
+       the changes to one group and have reliable data.
+     */
+
+    QList<int> uContactIds;
+    QStringList uDisplayNames;
+    quint32 uStartTimeT = 0, uEndTimeT = 0, uLastModifiedT = 0;
+    int uUnreadMessages = 0;
+    GroupObject *uLastEventGroup = 0;
+
+    if (!groups.isEmpty()) {
+        /* Because of the mechanics of hasSameContacts, these values must be the
+         * same for all groups, so we can just use the first. */
+        uContactIds = groups[0]->recipients().contactIds();
+        uDisplayNames = groups[0]->recipients().displayNames();
+    }
+
+    foreach (GroupObject *group, groups)
+        updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+
+    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+}
+
+void ContactGroupPrivate::includeGroup(GroupObject *group)
+{
+    const bool firstGroup(lastEventGroup == 0);
+
+    // See if this group changes any collective properties
+    QList<int> uContactIds(firstGroup ? group->recipients().contactIds() : contactIds);
+    QStringList uDisplayNames(firstGroup ? group->recipients().displayNames() : displayNames);
+    quint32 uStartTimeT = startTimeT, uEndTimeT = endTimeT, uLastModifiedT = lastModifiedT;
+    int uUnreadMessages = unreadMessages;
+    GroupObject *uLastEventGroup = lastEventGroup;
+
+    updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+
+    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
 }
 
 QList<int> ContactGroup::contactIds() const
 {
     Q_D(const ContactGroup);
-    return d->contactIds;
+    if (d->groups.isEmpty())
+        return QList<int>();
+
+    // We need our groups resolved to give (asynchronously) the correct result
+    const_cast<ContactGroupPrivate *>(d)->resolve();
+    return d->groups[0]->recipients().contactIds();
 }
 
-QStringList ContactGroup::contactNames() const
+QStringList ContactGroup::displayNames() const
 {
     Q_D(const ContactGroup);
-    return d->contactNames;
+    if (d->groups.isEmpty())
+        return QStringList();
+
+    // We need our groups resolved to give (asynchronously) the correct result
+    const_cast<ContactGroupPrivate *>(d)->resolve();
+    return d->groups[0]->recipients().displayNames();
 }
 
 QDateTime ContactGroup::startTime() const
 {
     Q_D(const ContactGroup);
-    return d->startTime;
+    return QDateTime::fromTime_t(d->startTimeT);
 }
 
 QDateTime ContactGroup::endTime() const
 {
     Q_D(const ContactGroup);
-    return d->endTime;
+    return QDateTime::fromTime_t(d->endTimeT);
 }
 
 int ContactGroup::unreadMessages() const
@@ -280,7 +347,7 @@ bool ContactGroup::lastEventIsDraft() const
 QDateTime ContactGroup::lastModified() const
 {
     Q_D(const ContactGroup);
-    return d->lastModified;
+    return QDateTime::fromTime_t(d->lastModifiedT);
 }
 
 QList<GroupObject*> ContactGroup::groups() const
@@ -361,6 +428,45 @@ bool ContactGroup::deleteGroups()
     return true;
 }
 
+quint32 ContactGroup::startTimeT() const
+{
+    Q_D(const ContactGroup);
+    return d->startTimeT;
+}
+
+quint32 ContactGroup::endTimeT() const
+{
+    Q_D(const ContactGroup);
+    return d->endTimeT;
+}
+
+quint32 ContactGroup::lastModifiedT() const
+{
+    Q_D(const ContactGroup);
+    return d->lastModifiedT;
+}
+
+bool ContactGroup::isResolved() const
+{
+    Q_D(const ContactGroup);
+    return d->groupsResolved;
+}
+
+void ContactGroup::resolve()
+{
+    Q_D(ContactGroup);
+    d->resolve();
+}
+
+void ContactGroupPrivate::resolve()
+{
+    if (!groupsResolved) {
+        groupsResolved = true;
+        foreach (GroupObject *group, groups)
+            group->resolve();
+    }
+}
+
 GroupObject *ContactGroup::findGroup(const QString &localUid, const QString &remoteUid)
 {
     return findGroup(localUid, QStringList() << remoteUid);
@@ -370,9 +476,9 @@ GroupObject *ContactGroup::findGroup(const QString &localUid, const QStringList 
 {
     Q_D(ContactGroup);
 
+    RecipientList match = RecipientList::fromUids(localUid, remoteUids);
     foreach (GroupObject *g, d->groups) {
-        if (g->localUid() == localUid && g->remoteUids().size() == remoteUids.size()
-                && CommHistory::remoteAddressMatch(localUid, g->remoteUids(), remoteUids))
+        if (g->localUid() == localUid && g->recipients() == match)
             return g;
     }
 
