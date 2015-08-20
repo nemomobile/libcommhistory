@@ -294,7 +294,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setStartTimeT(event.startTimeT());
             go->setEndTimeT(event.endTimeT());
         }
-
+        go->setRecipients(RecipientList(go->recipients()).unite(event.recipients()));
         if (!event.isRead())
             go->setUnreadMessages(go->unreadMessages() + 1);
         emit q->groupUpdated(go);
