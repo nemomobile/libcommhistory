@@ -401,14 +401,13 @@ void ConversationModelTest::contacts_data()
     QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
             << "bad@cclocalhost"
             << (int)Event::IMEvent;
-    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+    QTest::newRow("cell") << RING_ACCOUNT
             << "+42992394"
             << (int)Event::SMSEvent;
 }
 
 void ConversationModelTest::contacts()
 {
-    QSKIP("Contact matching is not yet supported with SQLite");
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);
@@ -417,6 +416,8 @@ void ConversationModelTest::contacts()
     addTestGroup(group, localId, remoteId);
 
     ConversationModel model;
+    model.setResolveContacts(EventModel::ResolveImmediately);
+
     Event::PropertySet p;
     p.insert(Event::ContactId);
     p.insert(Event::ContactName);
@@ -434,12 +435,11 @@ void ConversationModelTest::contacts()
     event = model.event(model.index(0, 0));
     QCOMPARE(event.contactId(), 0);
 
-    QString noMatch = remoteId;
-    noMatch += remoteId[1];
+    int contactId1 = addTestContact("Really1Funny", remoteId + "123", localId);
 
-    int contactId1 = addTestContact("Really1Funny",
-                   noMatch,
-                   localId);
+    // We need to wait for libcontacts to process this contact addition, which involves
+    // various delays and event handling asynchronicities
+    QTest::qWait(1000);
 
     QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady());
@@ -448,10 +448,8 @@ void ConversationModelTest::contacts()
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("ReallyUFunny", remoteId, localId);
-    QTime timer;
-    timer.start();
-    while (timer.elapsed() < 1000)
-        QCoreApplication::processEvents();
+    QTest::qWait(1000);
+
     QVERIFY(model.getEvents(group.id()));
     QVERIFY(watcher.waitForModelReady());
 
@@ -461,6 +459,7 @@ void ConversationModelTest::contacts()
 
     deleteTestContact(contactId1);
     deleteTestContact(contactId);
+    QTest::qWait(1000);
 }
 
 void ConversationModelTest::reset() {
@@ -495,6 +494,7 @@ void ConversationModelTest::reset() {
 void ConversationModelTest::cleanupTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 }
 
 QTEST_MAIN(ConversationModelTest)

@@ -174,7 +174,7 @@ void SingleEventModelTest::contactMatching_data()
     QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
             << "bad@singlelocalhost"
             << (int)Event::IMEvent;
-    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+    QTest::newRow("cell") << RING_ACCOUNT
             << "+11382394"
             << (int)Event::SMSEvent;
 
@@ -182,12 +182,13 @@ void SingleEventModelTest::contactMatching_data()
 
 void SingleEventModelTest::contactMatching()
 {
-    QSKIP("Contact matching is not yet supported with SQLite");
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);
 
     SingleEventModel model;
+    model.setResolveContacts(EventModel::ResolveImmediately);
+
     Event::PropertySet p;
     p.insert(Event::ContactId);
     p.insert(Event::ContactName);
@@ -206,12 +207,11 @@ void SingleEventModelTest::contactMatching()
     QCOMPARE(event.id(), eventId);
     QCOMPARE(event.contactId(), 0);
 
-    QString noMatch = remoteId;
-    noMatch += remoteId[1];
+    int contactId1 = addTestContact("Really1Bad", remoteId + "123", localId);
 
-    int contactId1 = addTestContact("Really1Bad",
-                   noMatch,
-                   localId);
+    // We need to wait for libcontacts to process this contact addition, which involves
+    // various delays and event handling asynchronicities
+    QTest::qWait(1000);
 
     QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
@@ -220,6 +220,7 @@ void SingleEventModelTest::contactMatching()
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
+    QTest::qWait(1000);
 
     QVERIFY(model.getEventById(eventId));
     QVERIFY(watcher.waitForModelReady());
@@ -231,6 +232,7 @@ void SingleEventModelTest::contactMatching()
 
     deleteTestContact(contactId1);
     deleteTestContact(contactId);
+    QTest::qWait(1000);
 }
 
 void SingleEventModelTest::updateStatus()
@@ -306,6 +308,7 @@ void SingleEventModelTest::updateStatus()
 void SingleEventModelTest::cleanupTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 }
 
 QTEST_MAIN(SingleEventModelTest)

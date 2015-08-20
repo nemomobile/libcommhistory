@@ -63,6 +63,7 @@ void CallModelTest::initTestCase()
     QVERIFY( QDBusConnection::sessionBus().isConnected() );
 
     deleteAll();
+    QTest::qWait(100);
 
     qsrand( QDateTime::currentDateTime().toTime_t() );
 
@@ -525,6 +526,7 @@ void CallModelTest::testGetEventsTimeTypeFilter()
     QFETCH(bool, useThread);
 
     deleteAll();
+    QTest::qWait(100);
 
     QThread modelThread;
 
@@ -621,6 +623,7 @@ void CallModelTest::testGetEventsTimeTypeFilter()
 void CallModelTest::testSortByContactUpdate()
 {
     deleteAll();
+    QTest::qWait(100);
 
     CallModel model;
     watcher.setModel(&model);
@@ -712,6 +715,7 @@ void CallModelTest::testSortByContactUpdate()
 void CallModelTest::testSortByTimeUpdate()
 {
     deleteAll();
+    QTest::qWait(100);
 
     CallModel model;
     watcher.setModel(&model);
@@ -776,14 +780,15 @@ void CallModelTest::testSortByTimeUpdate()
 
 void CallModelTest::testSIPAddress()
 {
-    QSKIP("Contact matching is not yet supported with SQLite");
+    QSKIP("SIP address resolution is not currently supported");
     deleteAll();
+    QTest::qWait(100);
 
     CallModel model;
-    model.setQueryMode(EventModel::SyncQuery);
+    model.setResolveContacts(EventModel::ResolveImmediately);
     watcher.setModel(&model);
 
-    QString account("/org/freedesktop/Telepathy/Account/ring/tel/ring");
+    QString account(RING_ACCOUNT);
     QString contactName("Donkey Kong");
     QString phoneNumber("012345678");
     QString sipAddress("sips:012345678@voip.com");
@@ -796,6 +801,7 @@ void CallModelTest::testSIPAddress()
     QVERIFY(contactId != -1);
     int contactId2 = addTestContact(contactName2, sipAddress2, account);
     QVERIFY(contactId2 != -1);
+    QTest::qWait(1000);
 
     // normal phone call
     addTestEvent(model, Event::CallEvent, Event::Outbound, account, -1, "", false, false, when, phoneNumber);
@@ -853,6 +859,7 @@ void CallModelTest::testSIPAddress()
 
     deleteTestContact(contactId);
     deleteTestContact(contactId2);
+    QTest::qWait(1000);
 }
 
 void CallModelTest::deleteAllCalls()
@@ -908,7 +915,7 @@ void CallModelTest::testMarkAllRead()
 
 void CallModelTest::testLimit()
 {
-    QSKIP("Query limit not yet supported with SQLite");
+    QSKIP("Query limit not yet supported");
     CallModel model;
     model.setQueryMode(EventModel::SyncQuery);
     model.setFilter(CallModel::SortByTime);
@@ -938,6 +945,7 @@ void CallModelTest::testModifyEvent()
     Event e1, e2, e3;
 
     deleteAll();
+    QTest::qWait(100);
 
     CallModel model;
     watcher.setModel(&model);
@@ -956,7 +964,7 @@ void CallModelTest::testModifyEvent()
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, true, when.addSecs(1), REMOTEUID2);
     addTestEvent(model, Event::CallEvent, Event::Outbound, ACCOUNT1, -1, "", false, false, when.addSecs(2), REMOTEUID1);
     addTestEvent(model, Event::CallEvent, Event::Inbound, ACCOUNT1, -1, "", false, false, when.addSecs(3), REMOTEUID1);
-    QVERIFY(watcher.waitForAdded(6, 4)); // always grouped by contact -> +2
+    QVERIFY(watcher.waitForAdded(4));
 
     QVERIFY(model.setFilter(CallModel::SortByContact));
     QVERIFY(model.getEvents());
@@ -1014,6 +1022,7 @@ void CallModelTest::testModifyEvent()
 void CallModelTest::testMinimizedPhone()
 {
     deleteAll();
+    QTest::qWait(100);
 
     const QString phone00("0011112222");
     const QString phone99("9911112222");
@@ -1025,6 +1034,7 @@ void CallModelTest::testMinimizedPhone()
 
     int user00id = addTestContact(user00, phone00, RING_ACCOUNT);
     int user99id = addTestContact(user99, phone99, RING_ACCOUNT);
+    QTest::qWait(1000);
 
     CallModel model;
     watcher.setModel(&model);
@@ -1046,37 +1056,26 @@ void CallModelTest::testMinimizedPhone()
     QCOMPARE(e.recipients().count(), 1);
     QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
     QCOMPARE(e.recipients().at(0).isContactResolved(), true);
-    /* libcontacts does not necessarily return the correct resolution...
     QCOMPARE(e.recipients().at(0).contactId(), user00id);
     QCOMPARE(e.recipients().at(0).contactName(), user00);
-    */
-    QVERIFY(e.recipients().at(0).contactId() != 0);
-    QVERIFY(e.recipients().at(0).contactName() != QString());
 
     e = model.event(model.index(1, 0));
     QCOMPARE(e.recipients().count(), 1);
     QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone99));
     QCOMPARE(e.recipients().at(0).isContactResolved(), true);
-    /*
     QCOMPARE(e.recipients().at(0).contactId(), user99id);
     QCOMPARE(e.recipients().at(0).contactName(), user99);
-    */
-    QVERIFY(e.recipients().at(0).contactId() != 0);
-    QVERIFY(e.recipients().at(0).contactName() != QString());
 
     e = model.event(model.index(2, 0));
     QCOMPARE(e.recipients().count(), 1);
     QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone00));
     QCOMPARE(e.recipients().at(0).isContactResolved(), true);
-    /*
     QCOMPARE(e.recipients().at(0).contactId(), user00id);
     QCOMPARE(e.recipients().at(0).contactName(), user00);
-    */
-    QVERIFY(e.recipients().at(0).contactId() != 0);
-    QVERIFY(e.recipients().at(0).contactName() != QString());
 
     // If we delete one of these contacts the number should resolve to the other
     deleteTestContact(user99id);
+    QTest::qWait(1000);
 
     e = model.event(model.index(0, 0));
     QCOMPARE(e.recipients().count(), 1);
@@ -1098,6 +1097,7 @@ void CallModelTest::testMinimizedPhone()
 
     // Delete the other contact, the numbers should no longer resolve to any contact
     deleteTestContact(user00id);
+    QTest::qWait(1000);
 
     e = model.event(model.index(0, 0));
     QCOMPARE(e.recipients().count(), 1);
@@ -1121,6 +1121,7 @@ void CallModelTest::testMinimizedPhone()
 void CallModelTest::cleanupTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 }
 
 QTEST_MAIN(CallModelTest)
