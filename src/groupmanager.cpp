@@ -122,6 +122,7 @@ public:
     QSharedPointer<UpdatesEmitter> emitter;
 
     QList<Group> pendingResolve;
+    QSet<int> pendingIds;
     QList<GroupObject *> pendingObjects;
 };
 
@@ -198,17 +199,24 @@ void GroupManagerPrivate::add(const Group &group)
 
     DEBUG() << Q_FUNC_INFO << ": added" << group.toString();
 
-    GroupObject *go = new GroupObject(group, q);
-    groups.insert(go->id(), go);
-    emit q->groupAdded(go);
+    if (!groups.contains(group.id())) {
+        GroupObject *go = new GroupObject(group, q);
+        groups.insert(go->id(), go);
+        emit q->groupAdded(go);
+    }
 }
 
 void GroupManagerPrivate::addGroups(const QList<Group> &groups)
 {
     if (!groups.isEmpty()) {
         if (resolveContacts == GroupManager::ResolveImmediately && queryMode != EventModel::SyncQuery) {
-            pendingResolve.append(groups);
-            resolver()->add(groups);
+            foreach (const Group &group, groups) {
+                if (!pendingIds.contains(group.id())) {
+                    pendingIds.insert(group.id());
+                    pendingResolve.append(group);
+                    resolver()->add(group);
+                }
+            }
         } else {
             foreach (const Group &group, groups)
                 add(group);
@@ -294,7 +302,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setStartTimeT(event.startTimeT());
             go->setEndTimeT(event.endTimeT());
         }
-
+        go->setRecipients(RecipientList(go->recipients()).unite(event.recipients()));
         if (!event.isRead())
             go->setUnreadMessages(go->unreadMessages() + 1);
         emit q->groupUpdated(go);
@@ -463,7 +471,7 @@ bool GroupManager::addGroup(Group &group)
         return false;
 
     if (d->groupMatchesFilter(group))
-        d->add(group);
+        d->addGroups(QList<Group>() << group);
 
     d->emitter->groupsAdded(QList<Group>() << group);
 
@@ -488,7 +496,7 @@ bool GroupManager::addGroups(QList<Group> &groups)
         }
 
         if (d->groupMatchesFilter(group))
-            d->add(group);
+            d->addGroups(QList<Group>() << group);
 
         addedIds.append(group.id());
         addedGroups.append(group);
@@ -577,6 +585,7 @@ void GroupManagerPrivate::contactResolveFinished()
         }
 
         pendingResolve.clear();
+        pendingIds.clear();
     }
 
     if (!pendingObjects.isEmpty()) {

@@ -187,13 +187,6 @@ public:
     int lastEventId() const;
 
     /*!
-     * Ids and names for the contacts in this conversation.
-     * This property is not stored in the database. It is filled in by
-     * the model at runtime, if possible.
-     */
-    QList<Event::Contact> contacts() const;
-
-    /*!
      * Text of the last message.
      * This property is not stored in the database. It is filled in by
      * the model at runtime, if possible.

@@ -476,6 +476,7 @@ void RecentContactsModelTest::contactRemoved()
     QString dougalPhone("5550000");
     int dougalId = addTestContact(dougalName, dougalPhone, phoneAccount);
     QVERIFY(dougalId != -1);
+    QTest::qWait(1000);
 
     addEvents(2);
 

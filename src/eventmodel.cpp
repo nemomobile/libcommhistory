@@ -133,6 +133,12 @@ bool EventModel::isReady() const
     return d->isReady;
 }
 
+bool EventModel::defaultAccept() const
+{
+    Q_D(const EventModel);
+    return d->accept;
+}
+
 QModelIndex EventModel::parent(const QModelIndex &index) const
 {
     Q_D(const EventModel);
@@ -484,6 +490,12 @@ void EventModel::setOffset(int offset)
 {
     Q_D(EventModel);
     d->queryOffset = offset;
+}
+
+void EventModel::setDefaultAccept(bool accept)
+{
+    Q_D(EventModel);
+    d->accept = accept;
 }
 
 EventModel::ContactResolveType EventModel::resolveContacts() const

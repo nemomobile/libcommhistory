@@ -233,6 +233,8 @@ public:
     void append(const Recipient &r);
     void append(const QList<Recipient> &o);
 
+    RecipientList &unite(const RecipientList &other);
+
     RecipientList &operator<<(const Recipient &recipient);
 
 private:

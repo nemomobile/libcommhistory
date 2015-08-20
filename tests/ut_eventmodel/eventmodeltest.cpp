@@ -1444,21 +1444,22 @@ void EventModelTest::testContactMatching_data()
     QTest::newRow("im") << "/org/freedesktop/Telepathy/Account/gabble/jabber/good_40localhost0"
             << "bad@localhost"
             << (int)Event::IMEvent;
-    QTest::newRow("cell") << "/org/freedesktop/Telepathy/Account/ring/tel/ring"
+    QTest::newRow("cell") << RING_ACCOUNT
             << "+42382394"
             << (int)Event::SMSEvent;
 }
 
 void EventModelTest::testContactMatching()
 {
-    QSKIP("Contact matching is not yet supported with SQLite");
     QFETCH(QString, localId);
     QFETCH(QString, remoteId);
     QFETCH(int, eventType);
 
     EventModel model;
-    watcher.setModel(&model);
+    model.setResolveContacts(EventModel::ResolveImmediately);
+    model.setDefaultAccept(true);
 
+    watcher.setModel(&model);
 
     int eventId = addTestEvent(model, (Event::EventType)eventType, Event::Inbound, localId, group1.id(),
                  "text", false, false, QDateTime::currentDateTime(), remoteId);
@@ -1469,24 +1470,25 @@ void EventModelTest::testContactMatching()
     model.databaseIO().getEvent(eventId, event);
     QCOMPARE(event.contactId(), 0);
 
-    QString noMatch = remoteId;
-    noMatch += remoteId[1];
+    int contactId1 = addTestContact("Really Bad", remoteId + "123", localId);
 
-    int contactId1 = addTestContact("Really Bad",
-                   noMatch,
-                   localId);
+    // We need to wait for libcontacts to process this contact addition, which involves
+    // various delays and event handling asynchronicities
+    QTest::qWait(1000);
 
-    model.databaseIO().getEvent(eventId, event);
+    event = model.event(model.findEvent(eventId));
     QCOMPARE(event.contactId(), 0);
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
+    QTest::qWait(1000);
 
-    model.databaseIO().getEvent(eventId, event);
+    event = model.event(model.findEvent(eventId));
     QCOMPARE(event.contactId(), contactId);
     QCOMPARE(event.contactName(), QString("Really Bad"));
 
     deleteTestContact(contactId1);
     deleteTestContact(contactId);
+    QTest::qWait(1000);
 }
 
 void EventModelTest::testAddNonDigitRemoteId_data()
@@ -1536,13 +1538,16 @@ void EventModelTest::cleanupTestCase()
 {
     deleteAll();
 
-    // TODO: clean-up is broken. Other test events are only cleaned up because
-    // they are assigned a groupId (compare cleanupTestGroups() with
-    // cleanupTestEvents from common.cpp).  'call' event is not set a groupId
-    // and so it is not cleaned-up upon exit. Deleting 'call' event here as
-    // a QUICK FIX!
-    QVERIFY(EventModel().deleteEvent(call));
+    if (call.id() != -1) {
+        // TODO: clean-up is broken. Other test events are only cleaned up because
+        // they are assigned a groupId (compare cleanupTestGroups() with
+        // cleanupTestEvents from common.cpp).  'call' event is not set a groupId
+        // and so it is not cleaned-up upon exit. Deleting 'call' event here as
+        // a QUICK FIX!
+        QVERIFY(EventModel().deleteEvent(call));
+    }
 
+    QTest::qWait(100);
 }
 
 QTEST_MAIN(EventModelTest)

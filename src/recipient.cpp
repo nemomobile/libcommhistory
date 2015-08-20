@@ -613,6 +613,16 @@ void RecipientList::append(const QList<Recipient> &o)
     m_recipients.append(o);
 }
 
+RecipientList &RecipientList::unite(const RecipientList &other)
+{
+    foreach (const Recipient &r, other.m_recipients) {
+        if (constFind(r) == constEnd()) {
+            append(r);
+        }
+    }
+    return *this;
+}
+
 RecipientList &RecipientList::operator<<(const Recipient &recipient)
 {
     if (!m_recipients.contains(recipient))

@@ -326,8 +326,8 @@ void modifyTestContact(int id, const QString &name)
     qDebug() << Q_FUNC_INFO << id << name;
 
     QContact contact = manager()->contact(apiContactId(id));
-    if (!contact.isEmpty()) {
-        qWarning() << "unable to retrieve contact:" << id;
+    if (internalContactId(contact.id()) != (unsigned)id) {
+        qWarning() << "Could not retrieve contact:" << id;
         return;
     }
 
