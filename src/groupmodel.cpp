@@ -367,6 +367,15 @@ GroupObject *GroupModel::groupObject(const QModelIndex &index) const
     return d->groups.value(index.row());
 }
 
+QModelIndex GroupModel::findGroup(int id) const
+{
+    for (int i = 0; i < d->groups.size(); ++i) {
+        if (d->groups[i]->id() == id)
+            return index(i, 0, QModelIndex());
+    }
+    return QModelIndex();
+}
+
 QVariant GroupModel::headerData(int section,
                                 Qt::Orientation orientation,
                                 int role) const

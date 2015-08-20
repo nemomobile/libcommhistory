@@ -153,6 +153,15 @@ public:
     Q_INVOKABLE CommHistory::GroupObject *at(int row) const { return groupObject(index(row, 0)); }
 
     /*!
+     * Find an existing group from the model. No database queries are
+     * performed.
+     *
+     * \param id Group id.
+     * \return index of the group, invalid if not found.
+     */
+    QModelIndex findGroup(int id) const;
+
+    /*!
      * Add a new group. If successful, group.id() is updated.
      *
      * \param group Group data to be inserted into the database.
