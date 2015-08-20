@@ -176,23 +176,25 @@ void ContactResolverPrivate::addressResolved(const QString &first, const QString
         qWarning() << "Got addressResolved with empty UIDs" << first << second << item;
         return;
     } else if (first.isEmpty()) {
-        // Phone numbers have no localUid, search the set manually
+        // This resolution is for a phone number - we need to call back to libcontacts
+        // to select the best match from multiple possible resolutions
         const QPair<QString, quint32> phoneNumber(Recipient::phoneNumberMatchDetails(second));
-        for (it = pending.begin(); it != pending.end(); it++) {
-            if (it->matchesPhoneNumber(phoneNumber))
-                break;
+        for (it = pending.begin(); it != pending.end(); ) {
+            if (it->matchesPhoneNumber(phoneNumber)) {
+                // Look up the best match for the full number
+                it->setResolved(SeasideCache::itemByPhoneNumber(it->remoteUid(), false));
+                it = pending.erase(it);
+            } else {
+                ++it;
+            }
         }
     } else {
         it = pending.find(Recipient(first, second));
+        if (it != pending.end()) {
+            it->setResolved(item);
+            pending.erase(it);
+        }
     }
-
-    if (it == pending.end()) {
-        qWarning() << "Got addressResolved that doesn't match any pending resolve tasks:" << first << second << item;
-        return;
-    }
-
-    it->setResolved(item);
-    pending.erase(it);
 
     checkIfFinished();
 }
