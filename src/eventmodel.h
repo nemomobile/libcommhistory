@@ -67,6 +67,7 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
     Q_PROPERTY(int limit READ limit WRITE setLimit)
     Q_PROPERTY(int offset READ offset WRITE setOffset)
     Q_PROPERTY(bool ready READ isReady NOTIFY modelReady)
+    Q_PROPERTY(bool defaultAccept READ defaultAccept WRITE setDefaultAccept)
 
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
@@ -231,6 +232,13 @@ public:
     ContactResolveType resolveContacts() const;
 
     /*!
+     * Set whether the default action is to accept a new event.
+     *
+     * \param accept True if the default action should be to accept a new event.
+     */
+    void setDefaultAccept(bool accept);
+
+    /*!
      * Add a new event.
      *
      * \param event Event data to be inserted into the database. If successful,
@@ -324,6 +332,7 @@ public:
     virtual int limit() const;
     virtual int offset() const;
     virtual bool isReady() const;
+    bool defaultAccept() const;
 
     /*** reimp from QAbstractItemModel ***/
     virtual QModelIndex parent(const QModelIndex &index) const;

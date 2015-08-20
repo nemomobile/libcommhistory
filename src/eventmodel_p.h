@@ -141,6 +141,7 @@ public:
     int queryLimit;
     int queryOffset;
     bool isReady;
+    bool accept;
     bool threadCanFetchMore;
 
     // Do not set directly, use setResolveContacts to enable listener

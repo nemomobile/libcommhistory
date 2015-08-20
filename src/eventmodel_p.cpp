@@ -63,6 +63,7 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         , queryLimit(0)
         , queryOffset(0)
         , isReady(true)
+        , accept(false)
         , threadCanFetchMore(false)
         , resolveContacts(EventModel::DoNotResolve)
         , propertyMask(Event::allProperties())
@@ -109,7 +110,7 @@ EventModelPrivate::~EventModelPrivate()
 bool EventModelPrivate::acceptsEvent(const Event &event) const
 {
     Q_UNUSED(event);
-    return false;
+    return accept;
 }
 
 QModelIndex EventModelPrivate::findEventRecursive(int id, EventTreeItem *parent) const
