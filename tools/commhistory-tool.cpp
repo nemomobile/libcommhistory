@@ -124,7 +124,7 @@ void printUsage()
     std::cout << "Usage:"                                                                                                                                  << std::endl;
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
-    std::cout << "                 listcalls [{bycontact|bytime|bytype|byservice}]"                                                                        << std::endl;
+    std::cout << "                 listcalls [{bycontact|bytime}]"                                                                                         << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
@@ -594,14 +594,6 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
         if ( arguments.at( 2 ) == "bytime" )
         {
             sorting = CallModel::SortByTime;
-        }
-        else if ( arguments.at( 2 ) ==  "bytype" )
-        {
-            sorting = CallModel::SortByType;
-        }
-        else if ( arguments.at( 2 ) ==  "byservice" )
-        {
-            sorting = CallModel::SortByService;
         }
     }
 
@@ -1284,9 +1276,7 @@ int main(int argc, char **argv)
         } else if (args.at(1) == "listcalls" &&
                    (args.count() == 2 ||
                     (args.count() == 3 && (args.at(2) == "bycontact" ||
-                                           args.at(2) == "bytime"    ||
-                                           args.at(2) == "bytype"    ||
-                                           args.at(2) == "byservice")))) {
+                                           args.at(2) == "bytime")))) {
             return doListCalls(args, options);
         } else if (args.at(1) == "list") {
             return doList(args, options);

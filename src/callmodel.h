@@ -60,8 +60,6 @@ public:
     {
         SortByContact = 0,
         SortByTime,
-        SortByType,
-        SortByService,
         SortByContactAndType
     };
 
