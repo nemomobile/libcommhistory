@@ -29,6 +29,7 @@
 #include "../src/groupmodel.h"
 #include "../src/conversationmodel.h"
 #include "../src/callmodel.h"
+#include "../src/singlecontacteventmodel.h"
 #include "../src/event.h"
 #include "../src/callevent.h"
 #include "../src/group.h"
@@ -129,6 +130,7 @@ void printUsage()
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
     std::cout << "                 listcalls [{bycontact|bytime} [resolve]]"                                                                               << std::endl;
+    std::cout << "                 listcontact {contact-id|local-uid remote-uid}"                                                                          << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
@@ -608,6 +610,36 @@ int doListGroups(const QStringList &arguments, const QVariantMap &options)
         }
 
         std::cout << std::endl;
+    }
+
+    return 0;
+}
+
+int doListContact(const QStringList &arguments, const QVariantMap &options)
+{
+    Q_UNUSED( options );
+
+    SingleContactEventModel model;
+
+    if (arguments.count() > 3) {
+        if (!model.getEvents(Recipient(arguments.at(2), arguments.at(3)))) {
+            qCritical() << "Error fetching events for local-uid:" << arguments.at(2) << "remote-uid:" << arguments.at(3);
+            return -1;
+        }
+    } else if (arguments.count() > 2) {
+        int contactId = arguments.at(2).toInt();
+        if (!model.getEvents(contactId)) {
+            qCritical() << "Error fetching events for contact-id:" << contactId;
+            return -1;
+        }
+    }
+    if (!model.isReady()) {
+        waitForReadiness(model);
+    }
+
+    for (int i = 0; i < model.rowCount(); i++) {
+        Event e = model.event(model.index(i, 0));
+        printEvent(e);
     }
 
     return 0;
@@ -1329,6 +1361,8 @@ int main(int argc, char **argv)
             return doList(args, options);
         } else if (args.at(1) == "listgroups") {
             return doListGroups(args, options);
+        } else if (args.at(1) == "listcontact" && args.count() > 2) {
+            return doListContact(args, options);
         } else if (args.at(1) == "isread" && args.count() > 2) {
             return doIsRead(args, options);
         } else if (args.at(1) == "isvideo" && args.count() > 2) {
