@@ -135,25 +135,21 @@ void CallModelPrivate::eventsReceivedSlot(int start, int end, QList<CommHistory:
         bool replaced = false;
         QModelIndex index;
         for (int row = 0; row < eventRootItem->childCount(); row++) {
-            if (eventRootItem->eventAt(row).id() == event.id()
-                || belongToSameGroup(eventRootItem->eventAt(row), event)) {
+            const Event &rowEvent(eventRootItem->eventAt(row));
+            if (rowEvent.id() == event.id()
+                || belongToSameGroup(rowEvent, event)) {
                 DEBUG() << "replacing row" << row;
                 replaced = true;
-                index = q->createIndex(row, 0, eventRootItem->child(row));
-
                 eventRootItem->child(row)->setEvent(event);
-                QModelIndex bottom = q->createIndex(row,
-                                                    EventModel::NumberOfColumns - 1,
-                                                    eventRootItem->child(row));
-                emit q->dataChanged(index, bottom);
+                emitDataChanged(row, eventRootItem->child(row));
                 updatedGroups.remove(DatabaseIOPrivate::makeCallGroupURI(event));
 
                 // if we had an audio and video call group for the same
                 // contact and the latest audio call gets upgraded (or
                 // vice versa), there may now be two rows for the same
                 // group, so we have to remove the other one.
-                for (int dupe = index.row() + 1; dupe < eventRootItem->childCount(); dupe++) {
-                    Event e = eventRootItem->eventAt(dupe);
+                for (int dupe = row + 1; dupe < eventRootItem->childCount(); dupe++) {
+                    const Event &e = eventRootItem->eventAt(dupe);
                     if (belongToSameGroup(e, event)) {
                         DEBUG() << Q_FUNC_INFO << "remove" << dupe << e.toString();
                         emit q->beginRemoveRows(QModelIndex(), dupe, dupe);
@@ -207,10 +203,9 @@ void CallModelPrivate::modelUpdatedSlot( bool successful )
 
 bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
 {
-    // SortByContact actually compares phone numbers instead, to match old behavior.
-    // It could easily be made to use contacts by using hasSameContacts instead.
     if (sortBy == CallModel::SortByContact
-        && e1.recipients().matches(e2.recipients())
+        && (e1.isResolved() && e2.isResolved() ? e1.recipients().hasSameContacts(e2.recipients())
+                                               : e1.recipients().matches(e2.recipients()))
         && e1.isVideoCall() == e2.isVideoCall())
     {
         return true;
@@ -218,7 +213,8 @@ bool CallModelPrivate::belongToSameGroup( const Event &e1, const Event &e2 )
     else if ((sortBy == CallModel::SortByTime || sortBy == CallModel::SortByContactAndType)
              && (e1.direction() == e2.direction()
                  && e1.isMissedCall() == e2.isMissedCall()
-                 && e1.recipients().matches(e2.recipients())
+                 && (e1.isResolved() && e2.isResolved() ? e1.recipients().hasSameContacts(e2.recipients())
+                                                        : e1.recipients().matches(e2.recipients()))
                  && e1.isVideoCall() == e2.isVideoCall()))
     {
         return true;
@@ -438,9 +434,7 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 // update count for last item in the previous batch
                 if (!newItems.isEmpty()) {
                     if (previousLastRow != -1)
-                        emit q->dataChanged(q->createIndex(previousLastRow, 0, eventRootItem->child(previousLastRow)),
-                                            q->createIndex(previousLastRow, CallModel::NumberOfColumns - 1,
-                                                           eventRootItem->child(previousLastRow)));
+                        emitDataChanged(previousLastRow, eventRootItem->child(previousLastRow));
 
                     // insert the rest
                     q->beginInsertRows(QModelIndex(), previousLastRow + 1, previousLastRow + newItems.count());
@@ -494,20 +488,17 @@ void CallModelPrivate::insertEvent(Event event)
             if (matchingRow != -1) {
                 EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
 
-                if (matchingItem->event().direction() == event.direction()
-                    && matchingItem->event().isMissedCall() == event.isMissedCall())
-                    event.setEventCount(matchingItem->event().eventCount() + 1);
-                else
-                    event.setEventCount(1);
+                const int groupEventCount(matchingItem->event().eventCount());
+                const bool increaseEventCount(matchingItem->event().direction() == event.direction() &&
+                                              matchingItem->event().isMissedCall() == event.isMissedCall());
 
-                matchingItem->setEvent(event);
                 matchingItem->prependChild(new EventTreeItem(event, matchingItem));
+                matchingItem->setEvent(event);
+                matchingItem->event().setEventCount(increaseEventCount ? groupEventCount + 1 : 1);
 
                 if (matchingRow == 0) {
                     // already at the top, update row
-                    emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(0)),
-                                        q->createIndex(0, CallModel::NumberOfColumns - 1,
-                                                       eventRootItem->child(0)));
+                    emitDataChanged(0, matchingItem);
                 } else {
                     // move to top
                     emit q->layoutAboutToBeChanged();
@@ -525,7 +516,6 @@ void CallModelPrivate::insertEvent(Event event)
 
                 emit q->endInsertRows();
             }
-
             break;
         }
         case CallModel::SortByTime :
@@ -540,9 +530,7 @@ void CallModelPrivate::insertEvent(Event event)
                     eventRootItem->removeAt(0);
                     eventRootItem->prependChild(newTopItem);
 
-                    emit q->dataChanged(q->createIndex(0, 0, eventRootItem->child(0)),
-                                        q->createIndex(0, CallModel::NumberOfColumns - 1,
-                                                       eventRootItem->child(0)));
+                    emitDataChanged(0, newTopItem);
                     return;
                 }
             }
@@ -563,8 +551,7 @@ void CallModelPrivate::insertEvent(Event event)
                 firstTopLevelItem->setEvent( event );
                 firstTopLevelItem->event().setEventCount( calculateEventCount( firstTopLevelItem ) );
                 // only counter and timestamp of first must be updated
-                emit q->dataChanged( q->createIndex( 0, 0, eventRootItem->child( 0 ) ),
-                                     q->createIndex( 0, CallModel::NumberOfColumns - 1, eventRootItem->child( 0 ) ) );
+                emitDataChanged( 0, firstTopLevelItem );
             }
             // create a new group, otherwise
             else
@@ -673,7 +660,7 @@ QModelIndex CallModelPrivate::findEvent( int id ) const
         {
             if ( currentGroup->child( column )->event().id() == id )
             {
-                return q->createIndex( row, column, currentGroup->child( column ) );
+                return q->createIndex( row, column + 1, currentGroup->child( column ) );
             }
         }
     }
@@ -703,12 +690,11 @@ void CallModelPrivate::deleteFromModel( int id )
         return;
     }
 
-    // TODO : it works only when sorting is time based
-
     // if event is a top level item ( i.e. the whole group ), then delete it
-    if ( index.column() == 0 )
+    int row = index.row();
+    int column = index.column();
+    if ( column == 0 )
     {
-        int row = index.row();
         bool isRegroupingNeeded = false;
         // regrouping is needed/possible only if sorting is SortByTime...
         // ...and there is a previous row and a following row to group together
@@ -744,19 +730,56 @@ void CallModelPrivate::deleteFromModel( int id )
             q->beginRemoveRows( index.parent(), row, row + 1 );
             eventRootItem->removeAt( row + 1 );
             eventRootItem->removeAt( row );
-            emit q->dataChanged( q->createIndex( row - 1, 0, eventRootItem->child( row - 1 ) ),
-                                 q->createIndex( row - 1, 0, eventRootItem->child( row - 1 ) ) );
+            emitDataChanged( row, eventRootItem->child( row - 1 ) );
         }
         q->endRemoveRows();
     }
     // otherwise item is a grouped event
     else
     {
-        DEBUG() << Q_FUNC_INFO << "*** Sth else";
-        // TODO :
-        // delete it from the model
-        // update top level item
-        // emit dataChanged()
+        EventTreeItem *group = eventRootItem->child(row);
+        group->removeAt(column - 1);
+
+        if (group->childCount() == 0) {
+            q->beginRemoveRows(index.parent(), row, row);
+            eventRootItem->removeAt(row);
+            q->endRemoveRows();
+        } else {
+            // Update the group if necessary
+            const int originalCount(group->event().eventCount());
+            if (originalCount > 1) {
+                // This is an approximation...
+                group->event().setEventCount(originalCount - 1);
+            }
+            if (column == 1) {
+                // Replace the top-level event with the next
+                group->setEvent(group->child(0)->event());
+            }
+
+            if (originalCount > 1 || column == 1) {
+                // This group has changed properties - see if the sorting has changed
+                if (eventRootItem->childCount() > (row + 1)) {
+                    const quint32 groupTime(group->event().endTimeT());
+                    int newRow = row + 1;
+                    if (eventRootItem->child(newRow)->event().endTimeT() > groupTime) {
+                        // This group has to move
+                        while ((newRow + 1) < eventRootItem->childCount()) {
+                            if (eventRootItem->child(newRow + 1)->event().endTimeT() > groupTime) {
+                                ++newRow;
+                            }
+                        }
+
+                        q->beginMoveRows(QModelIndex(), row, row, QModelIndex(), newRow + 1);
+                        eventRootItem->moveChild(row, newRow);
+                        q->endRemoveRows();
+                        return;
+                    }
+                }
+
+                // No move required, just emit dataChanged
+                emitDataChanged(row, eventRootItem->child(row));
+            }
+        }
     }
 }
 
@@ -770,6 +793,136 @@ void CallModelPrivate::slotAllCallsDeleted(int unused)
     q->beginResetModel();
     clearEvents();
     q->endResetModel();
+}
+
+void CallModelPrivate::recipientsUpdated(const QSet<Recipient> &recipients, bool resolved)
+{
+    Q_Q(CallModel);
+
+    QList<int> changedIds;
+    QList<int> removedIds;
+    QList<Event> removedEvents;
+
+    for (int row = 0; row < eventRootItem->childCount(); ++row) {
+        EventTreeItem *child = eventRootItem->child(row);
+        Event &event(child->event());
+        if (event.recipients().intersects(recipients)) {
+            if (resolved) {
+                if (!event.isResolved() && event.recipients().allContactsResolved()) {
+                    event.setIsResolved(true);
+
+                    // Update the child events
+                    for (int column = 0; column < child->childCount(); ++column) {
+                        Event &subEvent(child->child(column)->event());
+                        if (!subEvent.isResolved() && subEvent.recipients().allContactsResolved())
+                            subEvent.setIsResolved(true);
+                    }
+                }
+            }
+
+            if (removedIds.contains(event.id()))
+                continue;
+
+            bool removed(false);
+            if (sortBy != CallModel::SortByTime) {
+                // Has the grouping been changed?
+                for (int otherRow = 0; otherRow < eventRootItem->childCount(); ++otherRow) {
+                    if (otherRow != row) {
+                        const Event &otherEvent(eventRootItem->child(otherRow)->event());
+                        if (belongToSameGroup(event, otherEvent)) {
+                            // These events should be coalesced
+                            removedEvents.append(otherRow < row ? event : otherEvent);
+                            removedIds.append(removedEvents.last().id());
+                            removed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!removed)
+                changedIds.append(event.id());
+        }
+    }
+
+    if (!removedEvents.isEmpty()) {
+        // Remove these events from their current groups
+        foreach (const Event &event, removedEvents)
+            deleteFromModel(event.id());
+
+        // Reinsert into matching groups
+        foreach (const Event &event, removedEvents) {
+            int matchingRow = -1;
+            int positionRow = -1;
+            for (int i = 0; i < eventRootItem->childCount(); i++) {
+                const Event &groupEvent(eventRootItem->child(i)->event());
+                if (belongToSameGroup(groupEvent, event)) {
+                    matchingRow = i;
+                    break;
+                } else if (groupEvent.endTimeT() > event.endTimeT()) {
+                    positionRow = i + 1;
+                }
+            }
+
+            if (matchingRow == -1) {
+                // No match found
+                emit q->beginInsertRows(QModelIndex(), positionRow, positionRow);
+
+                EventTreeItem *newParent = new EventTreeItem(event);
+                newParent->appendChild(new EventTreeItem(event, newParent));
+                newParent->event().setEventCount(1);
+                eventRootItem->insertChildAt(positionRow, newParent);
+
+                emit q->endInsertRows();
+            } else {
+                EventTreeItem *matchingItem = eventRootItem->child(matchingRow);
+
+                const int groupEventCount(matchingItem->event().eventCount());
+                const bool increaseEventCount(matchingItem->event().direction() == event.direction() &&
+                                              matchingItem->event().isMissedCall() == event.isMissedCall());
+
+                int newChildIndex = 0;
+                for ( ; newChildIndex < matchingItem->childCount(); ++newChildIndex) {
+                    if (event.endTimeT() > matchingItem->eventAt(newChildIndex).endTimeT())
+                        break;
+                }
+
+                matchingItem->insertChildAt(newChildIndex, new EventTreeItem(event, matchingItem));
+                if (newChildIndex == 0)
+                    matchingItem->setEvent(event);
+                matchingItem->event().setEventCount(increaseEventCount ? groupEventCount + 1 : 1);
+
+                int updatedGroupIndex = matchingRow;
+                if (matchingRow > 0 && newChildIndex == 0) {
+                    // The insertion of this event may change the top-level ordering
+                    if (event.endTimeT() > eventRootItem->child(matchingRow - 1)->event().endTimeT()) {
+                        for (updatedGroupIndex = 0; updatedGroupIndex < matchingRow; ++updatedGroupIndex) {
+                            if (event.endTimeT() > eventRootItem->child(updatedGroupIndex)->event().endTimeT())
+                                break;
+                        }
+                    }
+                }
+
+                if (updatedGroupIndex < matchingRow) {
+                    // The group must be moved
+                    emit q->layoutAboutToBeChanged();
+                    eventRootItem->moveChild(matchingRow, updatedGroupIndex);
+                    emit q->layoutChanged();
+                } else {
+                    // We must report the change to the group
+                    changedIds.append(matchingItem->event().id());
+                }
+            }
+        }
+    }
+
+    if (!changedIds.isEmpty()) {
+        for (int row = 0; row < eventRootItem->childCount(); ++row) {
+            EventTreeItem *child = eventRootItem->child(row);
+            if (changedIds.contains(child->event().id()))
+                emitDataChanged(row, child);
+        }
+    }
 }
 
 /* ************************************************************************** *

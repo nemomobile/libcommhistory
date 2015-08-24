@@ -465,20 +465,25 @@ void EventModelPrivate::recipientsChangedRecursive(const QSet<Recipient> &recipi
             emitDataChanged(row, child);
         }
         if (child->childCount())
-            recipientsChangedRecursive(recipients, child);
+            recipientsChangedRecursive(recipients, child, resolved);
     }
+}
+
+void EventModelPrivate::recipientsUpdated(const QSet<Recipient> &recipients, bool resolved)
+{
+    recipientsChangedRecursive(recipients, eventRootItem, resolved);
 }
 
 void EventModelPrivate::slotContactInfoChanged(const RecipientList &recipients)
 {
     QSet<Recipient> changed = QSet<Recipient>::fromList(recipients.recipients());
-    recipientsChangedRecursive(changed, eventRootItem);
+    recipientsUpdated(changed);
 }
 
 void EventModelPrivate::slotContactChanged(const RecipientList &recipients)
 {
     QSet<Recipient> changed = QSet<Recipient>::fromList(recipients.recipients());
-    recipientsChangedRecursive(changed, eventRootItem, true);
+    recipientsUpdated(changed, true);
 }
 
 DatabaseIO* EventModelPrivate::database()

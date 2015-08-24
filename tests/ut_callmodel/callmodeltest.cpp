@@ -1118,6 +1118,68 @@ void CallModelTest::testMinimizedPhone()
     QCOMPARE(e.recipients().at(0).contactName(), QString());
 }
 
+void CallModelTest::testContactGrouping()
+{
+    deleteAll();
+    QTest::qWait(100);
+
+    const QString phone1("11111111");
+    const QString phone2("22222222");
+    const QString phone3("33333333");
+    const QString phone4("44444444");
+    const QString phone5("55555555");
+
+    const QString user1("User1");
+    const QString user2("User2");
+
+    int user1Id = addTestContact(user1, phone1, RING_ACCOUNT);
+    QVERIFY(user1Id != -1);
+    int user2Id = addTestContact(user2, phone2, RING_ACCOUNT);
+    QVERIFY(user2Id != -1);
+    QVERIFY(addTestContactAddress(user1Id, phone4, RING_ACCOUNT));
+    QVERIFY(addTestContactAddress(user2Id, phone5, RING_ACCOUNT));
+    QTest::qWait(1000);
+
+    CallModel model;
+    model.setFilter(CallModel::SortByContact);
+    model.setResolveContacts(EventModel::ResolveOnDemand);
+
+    QVERIFY(model.getEvents());
+    QCOMPARE(model.rowCount(), 0);
+
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when, phone1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(1), phone2);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(2), phone3);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(3), phone4);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(4), phone5);
+    QTRY_COMPARE(model.rowCount(), 5);
+
+    // Access the contactIds property of each event, which will force resolution
+    (void)model.data(model.index(1, 0), CallModel::ContactIdsRole);
+    (void)model.data(model.index(2, 0), CallModel::ContactIdsRole);
+    (void)model.data(model.index(3, 0), CallModel::ContactIdsRole);
+
+    QTest::qWait(100);
+    QCOMPARE(model.rowCount(), 5);
+
+    // Resolving this address will cause the event to be coalesced with a predecessor
+    (void)model.data(model.index(4, 0), CallModel::ContactIdsRole);
+    QTRY_COMPARE(model.rowCount(), 4);
+
+    // Resolving this address will cause the event to be coalesced with a successor
+    (void)model.data(model.index(0, 0), CallModel::ContactIdsRole);
+    QTRY_COMPARE(model.rowCount(), 3);
+
+    // Verify contact grouping after the UIDs are already resolved
+    CallModel postModel;
+    postModel.setFilter(CallModel::SortByContact);
+    postModel.setResolveContacts(EventModel::ResolveOnDemand);
+
+    QVERIFY(postModel.getEvents());
+    QCOMPARE(postModel.rowCount(), 3);
+}
+
 void CallModelTest::cleanupTestCase()
 {
     deleteAll();

@@ -70,6 +70,8 @@ public:
 
     void deleteCallGroup( const Event &event, bool typed );
 
+    virtual void recipientsUpdated( const QSet<Recipient> &recipients, bool resolved = false );
+
 public Q_SLOTS:
     void slotAllCallsDeleted(int unused);
 
