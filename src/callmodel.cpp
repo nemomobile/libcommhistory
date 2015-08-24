@@ -936,15 +936,6 @@ CallModel::CallModel(QObject *parent)
     d->isInTreeMode = true;
 }
 
-CallModel::CallModel(CallModel::Sorting sorting, QObject* parent = 0)
-        : EventModel(*new CallModelPrivate(this), parent)
-{
-    Q_D( CallModel );
-    d->isInTreeMode = true;
-
-    setFilter( sorting );
-}
-
 CallModel::~CallModel()
 {
 }

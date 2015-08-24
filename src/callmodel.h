@@ -72,15 +72,6 @@ public:
     CallModel(QObject *parent = 0);
 
     /*!
-     * \brief Model constructor.
-     * \deprecated DO NOT use this method, it is deprecated. You should use CallModel( QObject* ) and setFilter(CallModel::Sorting, CallEvent::CallType, const QDateTime &) instead.
-     *
-     * \param sortBy Sorting of call events.
-     * \param parent Parent object.
-     */
-    CallModel(CallModel::Sorting sorting, QObject* parent);
-
-    /*!
      * Destructor.
      */
     ~CallModel();
