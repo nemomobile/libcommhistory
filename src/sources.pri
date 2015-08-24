@@ -14,6 +14,7 @@ HEADERS += commonutils.h \
            conversationmodel_p.h \
            contactlistener.h \
            libcommhistoryexport.h \
+           singlecontacteventmodel.h \
            singleeventmodel.h \
            recentcontactsmodel.h \
            updatesemitter.h \
@@ -48,6 +49,7 @@ SOURCES += commonutils.cpp \
            messagepart.cpp \
            mmsreadreportmodel.cpp \
            contactlistener.cpp \
+           singlecontacteventmodel.cpp \
            singleeventmodel.cpp \
            recentcontactsmodel.cpp \
            updatesemitter.cpp \
