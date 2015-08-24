@@ -110,6 +110,7 @@ public:
     virtual void addToModel(const QList<Event> &event, bool synchronous = false);
     virtual void modifyInModel(Event &event);
     virtual void deleteFromModel(int id);
+    virtual void recipientsUpdated(const QSet<Recipient> &recipients, bool resolved = false);
 
     QModelIndex findEventRecursive(int id, EventTreeItem *parent) const;
 

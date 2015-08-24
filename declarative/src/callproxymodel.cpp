@@ -6,11 +6,12 @@ using namespace CommHistory;
 
 CallProxyModel::CallProxyModel(QObject *parent) :
     QSortFilterProxyModel(parent),
-    m_source(new CommHistory::CallModel(CommHistory::CallModel::SortByTime, this)),
+    m_source(new CommHistory::CallModel(this)),
     m_grouping(GroupByNone),
     m_componentComplete(false),
     m_populated(false)
 {
+    m_source->setFilter(CommHistory::CallModel::Sorting(m_grouping));
     m_source->setQueryMode(CommHistory::EventModel::AsyncQuery);
     m_source->setResolveContacts(CommHistory::EventModel::ResolveOnDemand);
 
