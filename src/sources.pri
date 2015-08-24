@@ -29,6 +29,7 @@ HEADERS += commonutils.h \
            commhistorydatabase.h \
            commhistorydatabasepath.h \
            debug.h \
+           contactfetcher.h \
            contactresolver.h \
            draftsmodel.h \
            draftsmodel_p.h \
@@ -56,6 +57,7 @@ SOURCES += commonutils.cpp \
            contactgroup.cpp \
            databaseio.cpp \
            commhistorydatabase.cpp \
+           contactfetcher.cpp \
            contactresolver.cpp \
            draftsmodel.cpp \
            recipient.cpp
