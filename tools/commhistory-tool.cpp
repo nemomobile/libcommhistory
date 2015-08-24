@@ -24,6 +24,7 @@
 #include <QtCore>
 #include <QDebug>
 #include <QUuid>
+#include <QEventLoop>
 
 #include "../src/groupmodel.h"
 #include "../src/conversationmodel.h"
@@ -38,6 +39,8 @@
 #include <QJsonDocument>
 
 using namespace CommHistory;
+
+namespace {
 
 const char *remoteUids[] = {
     "user@remotehost",
@@ -76,7 +79,8 @@ const char *mmsSubject[] = {
 /*9*/ "Re: Your previous message",
 };
 
-const char*mmsSmil = "<smil><head><layout><root-layout/><region width=\"100%\" height=\"30%\" left=\"0%\" fit=\"scroll\" id=\"Text\" top=\"70%\"/><region width=\"100%\" height=\"70%\" left=\"0%\" fit=\"meet\" id=\"Image\" top=\"0%\"/></layout></head><body><par dur=\"5s\"><text region=\"Text\" src=\"text_slide1\"/><img region=\"Image\" src=\"catphoto\"/></par></body></smil>";
+// Not currently used:
+//const char*mmsSmil = "<smil><head><layout><root-layout/><region width=\"100%\" height=\"30%\" left=\"0%\" fit=\"scroll\" id=\"Text\" top=\"70%\"/><region width=\"100%\" height=\"70%\" left=\"0%\" fit=\"meet\" id=\"Image\" top=\"0%\"/></layout></head><body><par dur=\"5s\"><text region=\"Text\" src=\"text_slide1\"/><img region=\"Image\" src=\"catphoto\"/></par></body></smil>";
 
 const int numMmsSubjects = 10;
 
@@ -124,7 +128,7 @@ void printUsage()
     std::cout << "Usage:"                                                                                                                                  << std::endl;
     std::cout << "commhistory-tool listgroups"                                                                                                             << std::endl;
     std::cout << "                 list [-t] [-p] [-group group-id] [local-uid] [remote-uid]"                                                              << std::endl;
-    std::cout << "                 listcalls [{bycontact|bytime}]"                                                                                         << std::endl;
+    std::cout << "                 listcalls [{bycontact|bytime} [resolve]]"                                                                               << std::endl;
     std::cout << "                 add [-newgroup] [-group group-id] [-startTime yyyyMMdd:hh:mm] [-endTime yyyyMMdd:hh:mm] [{-sms|-mms}] [{-in|-out}] [-n number-of-messages] [-async] [-text message-text] local-uid remote-uid" << std::endl;
     std::cout << "                 addcall local-uid remote-uid {dialed|missed|received}"                                                                  << std::endl;
     std::cout << "                 addVCard event-id filename label"                                                                                       << std::endl;
@@ -146,6 +150,34 @@ void printUsage()
     std::cout << "When adding new events, the default count is 1."                                                                                         << std::endl;
     std::cout << "When adding new events, the given local-ui is ignored, if -sms or -mms specified."                                                       << std::endl;
     std::cout << "New events are of IM type and have random contents."                                                                                     << std::endl;
+}
+
+class ReadinessTester : public QObject
+{
+    Q_OBJECT
+
+    QEventLoop &m_loop;
+
+public:
+    ReadinessTester(QObject &model, QEventLoop &loop)
+        : m_loop(loop)
+    {
+        connect(&model, SIGNAL(modelReady(bool)), SLOT(readyChanged(bool)));
+    }
+
+public slots:
+    void readyChanged(bool ready)
+    {
+        if (ready) m_loop.quit();
+    }
+};
+
+template<typename ModelType>
+void waitForReadiness(ModelType &model)
+{
+    QEventLoop loop;
+    ReadinessTester tester(model, loop);
+    loop.exec();
 }
 
 int doAdd(const QStringList &arguments, const QVariantMap &options)
@@ -585,23 +617,36 @@ int doListCalls( const QStringList &arguments, const QVariantMap &options )
 {
     Q_UNUSED( options );
 
-    CallModel model;
-    model.setQueryMode(EventModel::SyncQuery);
     CallModel::Sorting sorting = CallModel::SortByContact;
+    CallModel::ContactResolveType resolve = CallModel::DoNotResolve;
 
-    if ( arguments.count() == 3 )
+    if ( arguments.count() >= 3 )
     {
         if ( arguments.at( 2 ) == "bytime" )
         {
             sorting = CallModel::SortByTime;
         }
+
+        if ( arguments.count() == 4 )
+        {
+            if ( arguments.at( 3 ) == "resolve" )
+            {
+                resolve = CallModel::ResolveImmediately;
+            }
+        }
     }
 
+    CallModel model;
     model.setFilter(sorting);
+    model.setResolveContacts(resolve);
+    model.setQueryMode(resolve == CallModel::ResolveImmediately ? EventModel::AsyncQuery : EventModel::SyncQuery);
     if ( !model.getEvents() )
     {
         qCritical() << "Error fetching events";
         return -1;
+    }
+    if ( !model.isReady() ) {
+        waitForReadiness(model);
     }
 
     for ( int i = 0; i < model.rowCount(); i++ )
@@ -1248,6 +1293,8 @@ int doJsonImport(const QStringList &arguments, const QVariantMap &options)
     return 0;
 }
 
+}
+
 int main(int argc, char **argv)
 {
 #ifndef QT_NO_EXCEPTIONS
@@ -1275,7 +1322,7 @@ int main(int argc, char **argv)
             return doAddClass0(args, options);
         } else if (args.at(1) == "listcalls" &&
                    (args.count() == 2 ||
-                    (args.count() == 3 && (args.at(2) == "bycontact" ||
+                    (args.count() >= 3 && (args.at(2) == "bycontact" ||
                                            args.at(2) == "bytime")))) {
             return doListCalls(args, options);
         } else if (args.at(1) == "list") {
@@ -1323,3 +1370,5 @@ int main(int argc, char **argv)
     }
 #endif
 }
+
+#include "commhistory-tool.moc"
