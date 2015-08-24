@@ -7,7 +7,6 @@ HEADERS += commonutils.h \
            eventtreeitem.h \
            conversationmodel.h \
            callmodel.h \
-           callmodel_p.h \
            groupmodel.h \
            groupmodel_p.h \
            group.h \

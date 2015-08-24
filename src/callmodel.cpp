@@ -30,7 +30,6 @@
 #include "eventmodel.h"
 #include "eventmodel_p.h"
 #include "callmodel.h"
-#include "callmodel_p.h"
 #include "event.h"
 #include "commonutils.h"
 #include "debug.h"
@@ -60,6 +59,57 @@ using namespace CommHistory;
 /* ************************************************************************** *
  * ******** P R I V A T E   C L A S S   I M P L E M E N T A T I O N ********* *
  * ************************************************************************** */
+
+class CallModelPrivate : public EventModelPrivate
+{
+    Q_OBJECT
+    Q_DECLARE_PUBLIC( CallModel )
+
+public:
+    CallModelPrivate( EventModel *model );
+
+    void eventsReceivedSlot(int start, int end, QList<CommHistory::Event> events);
+
+    void modelUpdatedSlot(bool successful);
+
+    bool eventMatchesFilter( const Event &event ) const;
+
+    bool acceptsEvent( const Event &event ) const;
+
+    int calculateEventCount( EventTreeItem *item );
+
+    bool fillModel( int start, int end, QList<CommHistory::Event> events, bool resolved );
+
+    bool belongToSameGroup( const Event &e1, const Event &e2 );
+
+    void prependEvents(QList<Event> events, bool resolved);
+
+    void insertEvent(Event event);
+
+    void eventsAddedSlot( const QList<Event> &events );
+
+    void eventsUpdatedSlot( const QList<Event> &events );
+
+    QModelIndex findEvent( int id ) const;
+
+    void deleteFromModel( int id );
+
+    void deleteCallGroup( const Event &event, bool typed );
+
+    virtual void recipientsUpdated( const QSet<Recipient> &recipients, bool resolved = false );
+
+public Q_SLOTS:
+    void slotAllCallsDeleted(int unused);
+
+public:
+    CallModel::Sorting sortBy;
+    CallEvent::CallType eventType;
+    quint32 referenceTime;
+    QString filterLocalUid;
+    bool hasBeenFetched;
+    QSet<QString> countedUids;
+    QSet<QString> updatedGroups;
+};
 
 CallModelPrivate::CallModelPrivate( EventModel *model )
         : EventModelPrivate( model )
@@ -1201,3 +1251,6 @@ bool CallModel::deleteEvent( Event &event )
 }
 
 }
+
+#include "callmodel.moc"
+
