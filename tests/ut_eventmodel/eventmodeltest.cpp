@@ -1478,6 +1478,7 @@ void EventModelTest::testContactMatching()
 
     event = model.event(model.findEvent(eventId));
     QCOMPARE(event.contactId(), 0);
+    QCOMPARE(event.contactName(), QString());
 
     int contactId = addTestContact("Really Bad", remoteId, localId);
     QTest::qWait(1000);
@@ -1486,9 +1487,23 @@ void EventModelTest::testContactMatching()
     QCOMPARE(event.contactId(), contactId);
     QCOMPARE(event.contactName(), QString("Really Bad"));
 
+    // If a new contact is added with the same address, it will replace the previous resolution
+    int replacementContactId = addTestContact("Moderately Bad", remoteId, localId);
+    QTest::qWait(1000);
+
+    event = model.event(model.findEvent(eventId));
+    QCOMPARE(event.contactId(), replacementContactId);
+    QCOMPARE(event.contactName(), QString("Moderately Bad"));
+
+    // After the contacts are removed, the events resolve to nothing
     deleteTestContact(contactId1);
     deleteTestContact(contactId);
+    deleteTestContact(replacementContactId);
     QTest::qWait(1000);
+
+    event = model.event(model.findEvent(eventId));
+    QCOMPARE(event.contactId(), 0);
+    QCOMPARE(event.contactName(), QString());
 }
 
 void EventModelTest::testAddNonDigitRemoteId_data()
