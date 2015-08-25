@@ -249,6 +249,14 @@ void EventModelPrivate::addResolverFinished()
 {
     QList<Event> resolved(pendingAdded);
     pendingAdded.clear();
+
+    QList<Event>::iterator it = resolved.begin(), end = resolved.end();
+    for ( ; it != end; ++it) {
+        Event &event(*it);
+        if (!event.isResolved() && event.recipients().allContactsResolved())
+            event.setIsResolved(true);
+    }
+
     prependEvents(resolved, true);
 }
 
@@ -387,6 +395,14 @@ void EventModelPrivate::receiveResolverFinished()
 {
     QList<Event> resolved(pendingReceived);
     pendingReceived.clear();
+
+    QList<Event>::iterator it = resolved.begin(), end = resolved.end();
+    for ( ; it != end; ++it) {
+        Event &event(*it);
+        if (!event.isResolved() && event.recipients().allContactsResolved())
+            event.setIsResolved(true);
+    }
+
     fillModel(resolved, true);
 }
 

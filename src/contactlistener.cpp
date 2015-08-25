@@ -47,7 +47,7 @@ class ContactListenerPrivate
     Q_DECLARE_PUBLIC(ContactListener)
 
 public:
-    ContactListenerPrivate(ContactListener *q);
+    explicit ContactListenerPrivate(ContactListener *q);
     virtual ~ContactListenerPrivate();
 
     ContactResolver *retryResolver;

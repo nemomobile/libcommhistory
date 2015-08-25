@@ -35,6 +35,7 @@
 #include "groupobject.h"
 #include "eventmodel.h"
 #include "groupmodel.h"
+#include "contacteventmodel.h"
 #include "contactgroupmodel.h"
 #include "callproxymodel.h"
 #include "conversationproxymodel.h"
@@ -63,6 +64,7 @@ void CommHistoryPlugin::registerTypes(const char *uri)
     qmlRegisterType<CommHistory::EventModel>(uri, 1, 0, "CommEventModel");
     qmlRegisterType<CommHistory::GroupModel>(uri, 1, 0, "CommGroupModel");
     qmlRegisterType<CallProxyModel>(uri, 1, 0, "CommCallModel");
+    qmlRegisterType<ContactEventModel>(uri, 1, 0, "CommContactEventModel");
     qmlRegisterType<ConversationProxyModel>(uri, 1, 0, "CommConversationModel");
     qmlRegisterType<CommHistory::ContactGroupModel>(uri, 1, 0, "CommContactGroupModel");
     qmlRegisterType<CommHistory::RecentContactsModel>(uri, 1, 0, "CommRecentContactsModel");

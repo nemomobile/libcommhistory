@@ -183,6 +183,8 @@ public:
      * canFetchMore() and fetchMore() to fetch more events.
      *
      * SyncQuery: getEvents() blocks until all results have been fetched.
+     * SyncQuery mode is not compatible with ResolveImmediately contacts
+     * resolution mode.
      *
      * \param mode Query mode.
      */
@@ -226,7 +228,11 @@ public:
      * contacts are resolved.
      *
      * If set to ResolveOnDemand, contacts will be resolved only when
-     * explicitly requested.  Changes to contacts will be reported.
+     * explicitly requested, by accesing the contact-dependent properties
+     * of an event.  Changes to contacts will be reported.
+     *
+     * The ResolveImmediately mode is not compatible with SyncQuery
+     * query mode.
      */
     void setResolveContacts(ContactResolveType resolveType);
     ContactResolveType resolveContacts() const;

@@ -347,6 +347,30 @@ RecipientList RecipientList::fromUids(const QString &localUid, const QStringList
     return re;
 }
 
+RecipientList RecipientList::fromContact(int contactId)
+{
+    return fromCacheItem(SeasideCache::itemById(contactId, false));
+}
+
+RecipientList RecipientList::fromContact(const QContactId &contactId)
+{
+    return fromCacheItem(SeasideCache::itemById(contactId, false));
+}
+
+RecipientList RecipientList::fromCacheItem(const SeasideCache::CacheItem *item)
+{
+    RecipientList re;
+    if (item && item->contactState == SeasideCache::ContactComplete) {
+        foreach (const QContactOnlineAccount &account, item->contact.details<QContactOnlineAccount>()) {
+            re << Recipient(account.value<QString>(QContactOnlineAccount__FieldAccountPath), account.accountUri());
+        }
+        foreach (const QContactPhoneNumber &phoneNumber, item->contact.details<QContactPhoneNumber>()) {
+            re << Recipient(QString(), phoneNumber.number());
+        }
+    }
+    return re;
+}
+
 bool RecipientList::isEmpty() const
 {
     return m_recipients.isEmpty();

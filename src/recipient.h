@@ -149,6 +149,8 @@ public:
     RecipientList(const QList<Recipient> &recipients);
 
     static RecipientList fromUids(const QString &localUid, const QStringList &remoteUids);
+    static RecipientList fromContact(int contactId);
+    static RecipientList fromContact(const QContactId &contactId);
 
     bool isEmpty() const;
     int size() const;
@@ -238,6 +240,8 @@ public:
     RecipientList &operator<<(const Recipient &recipient);
 
 private:
+    static RecipientList fromCacheItem(const SeasideCache::CacheItem *item);
+
     QList<Recipient> m_recipients;
 };
 

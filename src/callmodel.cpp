@@ -386,19 +386,20 @@ bool CallModelPrivate::fillModel( int start, int end, QList<CommHistory::Event> 
                 parent->appendChild(new EventTreeItem(event, parent));
 
                 for (int i = 1; i < events.count(); i++) {
-                    Event event = events.at(i);
+                    const Event &event = events.at(i);
 
-                    bool found = false;
-                    for (int i = 0; i < topLevelItems.count() && !found; ++i) {
+                    int j = 0;
+                    for ( ; j < topLevelItems.count(); ++j) {
+                        EventTreeItem *topLevelItem = topLevelItems.at(j);
+
                         // ignore matching events because the already existing
                         // entry has to be more recent
-                        if (belongToSameGroup(topLevelItems.at(i)->event(), event)) {
-                            topLevelItems.at(i)->appendChild(new EventTreeItem(event, topLevelItems.at(i)));
-                            found = true;
+                        if (belongToSameGroup(topLevelItem->event(), event)) {
+                            topLevelItem->appendChild(new EventTreeItem(event, topLevelItem));
+                            break;
                         }
                     }
-
-                    if (!found) {
+                    if (j == topLevelItems.count()) {
                         parent = new EventTreeItem(event);
                         topLevelItems.append(parent);
                         parent->appendChild(new EventTreeItem(event, parent));
