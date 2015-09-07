@@ -1078,12 +1078,6 @@ bool CallModel::getEvents()
 
     q += "ORDER BY endTime DESC, id DESC";
 
-    if (d->queryLimit) {
-        /* straightforward limiting can be done in flat mode */
-        QString limit = QString::fromLatin1(" LIMIT %1").arg(d->queryLimit);
-        q += limit;
-    }
-
     QSqlQuery query = d->prepareQuery(q);
 
     if (!d->filterLocalUid.isEmpty())

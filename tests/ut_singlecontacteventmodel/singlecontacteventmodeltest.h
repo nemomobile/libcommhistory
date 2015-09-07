@@ -35,6 +35,9 @@ private slots:
 
     void testGetEvents_data();
     void testGetEvents();
+
+    void testLimitOffset_data();
+    void testLimitOffset();
 };
 
 #endif

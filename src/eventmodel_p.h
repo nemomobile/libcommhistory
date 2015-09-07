@@ -82,6 +82,7 @@ public:
      * Prepares a database query.
      */
     QSqlQuery prepareQuery(const QString &q) const;
+    QSqlQuery prepareQuery(const QString &q, int limit, int offset) const;
 
     /*!
      * Executes a database query. fillModel() is called when new events

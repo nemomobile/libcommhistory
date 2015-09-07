@@ -137,7 +137,15 @@ QModelIndex EventModelPrivate::findEvent(int id) const
 
 QSqlQuery EventModelPrivate::prepareQuery(const QString &q) const
 {
+    if (queryLimit > 0 || queryOffset > 0) {
+        return DatabaseIOPrivate::prepareQuery(q, queryLimit, queryOffset);
+    }
     return DatabaseIOPrivate::prepareQuery(q);
+}
+
+QSqlQuery EventModelPrivate::prepareQuery(const QString &q, int limit, int offset) const
+{
+    return DatabaseIOPrivate::prepareQuery(q, limit, offset);
 }
 
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
