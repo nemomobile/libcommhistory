@@ -75,8 +75,6 @@ void SingleContactEventModelPrivate::fetcherFinished()
     RecipientList recipients = RecipientList::fromContact(m_contactId);
     if (!recipients.isEmpty()) {
         // Get the events that match these addresses
-        QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
-
         QStringList clauses;
         QVariantList values;
         foreach (const Recipient &recipient, recipients) {
@@ -93,16 +91,12 @@ void SingleContactEventModelPrivate::fetcherFinished()
         where.append(clauses.join(" OR "));
         where.append(" ) ORDER BY Events.endTime DESC, Events.id DESC");
 
-        if (!query.prepare(DatabaseIOPrivate::eventQueryBase() + where)) {
-            qWarning() << "Failed to prepare query";
-            qWarning() << query.lastError();
-            qWarning() << query.lastQuery();
-        } else {
-            foreach (const QVariant &value, values)
-                query.addBindValue(value);
+        QSqlQuery query = prepareQuery(DatabaseIOPrivate::eventQueryBase() + where);
 
-            executeQuery(query);
-        }
+        foreach (const QVariant &value, values)
+            query.addBindValue(value);
+
+        executeQuery(query);
     } else {
         modelUpdatedSlot(true);
     }

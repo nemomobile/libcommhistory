@@ -59,8 +59,7 @@ QSqlQuery MmsReadReportModel::Private::buildGroupQuery(int groupId)
          " WHERE EventProperties.key = " QUERY_EVENT_PROPERTY_KEY " )"
          " ORDER BY Events.endTime DESC, Events.id DESC";
 
-    QSqlDatabase db(DatabaseIOPrivate::instance()->connection());
-    QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), db);
+    QSqlQuery query = DatabaseIOPrivate::prepareQuery(q);
     query.bindValue(QUERY_EVENT_GROUP_ID, groupId);
     query.bindValue(QUERY_EVENT_IS_DRAFT, false);
     query.bindValue(QUERY_EVENT_IS_READ, true);

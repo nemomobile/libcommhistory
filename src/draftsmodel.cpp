@@ -106,7 +106,8 @@ bool DraftsModel::getEvents()
 
     q += "ORDER BY Events.endTime DESC, Events.id DESC";
 
-    QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
+    QSqlQuery query = d->prepareQuery(q);
+
     return d->executeQuery(query);
 }
 

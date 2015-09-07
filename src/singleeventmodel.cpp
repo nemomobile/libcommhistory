@@ -96,15 +96,8 @@ bool SingleEventModel::getEventById(int eventId)
 
     d->m_eventId = eventId;
 
-    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
-    QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(" WHERE id = %1").arg(eventId);
-
-    if (!query.prepare(q)) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
+    const QString where = QString::fromLatin1(" WHERE id = %1").arg(eventId);
+    QSqlQuery query = d->prepareQuery(DatabaseIOPrivate::eventQueryBase() + where);
 
     return d->executeQuery(query);
 }
@@ -123,8 +116,6 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     d->m_token = token;
     d->m_mmsId = mmsId;
     d->m_groupId = groupId;
-
-    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
 
     QString q = DatabaseIOPrivate::eventQueryBase();
     q += "WHERE ";
@@ -148,12 +139,7 @@ bool SingleEventModel::getEventByTokens(const QString &token,
     if (!token.isEmpty())
         q += " ) ";
 
-    if (!query.prepare(q)) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
+    QSqlQuery query = d->prepareQuery(q);
 
     if (!token.isEmpty())
         query.bindValue(":messageToken", token);

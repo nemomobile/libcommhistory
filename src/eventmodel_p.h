@@ -79,6 +79,11 @@ public:
     virtual QModelIndex findEvent(int id) const;
 
     /*!
+     * Prepares a database query.
+     */
+    QSqlQuery prepareQuery(const QString &q) const;
+
+    /*!
      * Executes a database query. fillModel() is called when new events
      * are received, and modelReady() is emitted when the query is
      * finished.

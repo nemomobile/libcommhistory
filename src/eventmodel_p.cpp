@@ -135,6 +135,11 @@ QModelIndex EventModelPrivate::findEvent(int id) const
     return findEventRecursive(id, eventRootItem);
 }
 
+QSqlQuery EventModelPrivate::prepareQuery(const QString &q) const
+{
+    return DatabaseIOPrivate::prepareQuery(q);
+}
+
 bool EventModelPrivate::executeQuery(QSqlQuery &query)
 {
     DEBUG() << Q_FUNC_INFO;

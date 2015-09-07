@@ -337,6 +337,23 @@ DatabaseIOPrivate::~DatabaseIOPrivate()
 {
 }
 
+QSqlQuery DatabaseIOPrivate::prepareQuery(const QString &q)
+{
+    return CommHistoryDatabase::prepare(q.toUtf8().constData(), instance()->connection());
+}
+
+QSqlQuery DatabaseIOPrivate::prepareQuery(const QString &s, int limit, int offset)
+{
+    QString q(s);
+    if (limit > 0) {
+        q += QString::fromLatin1(" LIMIT %1").arg(limit);
+    }
+    if (offset > 0) {
+        q += QString::fromLatin1(" OFFSET %1").arg(offset);
+    }
+    return CommHistoryDatabase::prepare(q.toUtf8().constData(), instance()->connection());
+}
+
 QSqlDatabase &DatabaseIOPrivate::connection()
 {
     if (!m_pConnection.isValid())

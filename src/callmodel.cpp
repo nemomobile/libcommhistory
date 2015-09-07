@@ -1084,16 +1084,10 @@ bool CallModel::getEvents()
         q += limit;
     }
 
-    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
+    QSqlQuery query = d->prepareQuery(q);
+
     if (!d->filterLocalUid.isEmpty())
         query.bindValue(":filterLocalUid", d->filterLocalUid);
-
-    if (!query.prepare(q)) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
 
     return d->executeQuery(query);
 }

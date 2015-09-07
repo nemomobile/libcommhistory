@@ -57,6 +57,9 @@ public:
     DatabaseIOPrivate(DatabaseIO *parent);
     ~DatabaseIOPrivate();
 
+    static QSqlQuery prepareQuery(const QString &s);
+    static QSqlQuery prepareQuery(const QString &s, int limit, int offset);
+
     static QString makeCallGroupURI(const CommHistory::Event &event);
 
     static void readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties,
