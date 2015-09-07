@@ -94,8 +94,6 @@ public:
 
     void deleteFromModel( int id );
 
-    void deleteCallGroup( const Event &event, bool typed );
-
     virtual void recipientsUpdated( const QSet<Recipient> &recipients, bool resolved = false );
 
 public Q_SLOTS:
@@ -1134,7 +1132,7 @@ bool CallModel::markAllRead()
     bool marked;
     marked = d->database()->markAsReadAll(Event::CallEvent);
     if (!marked) {
-        qWarning() << Q_FUNC_INFO << "Failed to delete events";
+        qWarning() << Q_FUNC_INFO << "Failed to mark events as read";
         return false;
     }
 
