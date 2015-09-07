@@ -91,7 +91,7 @@ void SingleContactEventModelPrivate::fetcherFinished()
 
         QString where("WHERE ( ");
         where.append(clauses.join(" OR "));
-        where.append(" ) ");
+        where.append(" ) ORDER BY Events.endTime DESC, Events.id DESC");
 
         if (!query.prepare(DatabaseIOPrivate::eventQueryBase() + where)) {
             qWarning() << "Failed to prepare query";
