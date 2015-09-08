@@ -183,12 +183,11 @@ QSqlQuery ConversationModelPrivate::buildQuery() const
 
     q += "ORDER BY Events.endTime DESC, Events.id DESC ";
 
-    if (queryLimit > 0)
-        q += "LIMIT " + QString::number(queryLimit);
-    else if (queryMode == EventModel::StreamedAsyncQuery && chunkSize > 0)
+    if (!queryLimit && queryMode == EventModel::StreamedAsyncQuery && chunkSize > 0)
         q += "LIMIT " + QString::number((firstId < 0 && firstChunkSize > 0) ? firstChunkSize : chunkSize);
 
-    QSqlQuery query = CommHistoryDatabase::prepare(q.toLatin1(), DatabaseIOPrivate::instance()->connection());
+    QSqlQuery query = prepareQuery(q);
+
     if (!filterAccount.isEmpty())
         query.bindValue(":filterAccount", filterAccount);
     if (filterType != Event::UnknownType)

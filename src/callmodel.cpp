@@ -94,8 +94,6 @@ public:
 
     void deleteFromModel( int id );
 
-    void deleteCallGroup( const Event &event, bool typed );
-
     virtual void recipientsUpdated( const QSet<Recipient> &recipients, bool resolved = false );
 
 public Q_SLOTS:
@@ -1080,22 +1078,10 @@ bool CallModel::getEvents()
 
     q += "ORDER BY endTime DESC, id DESC";
 
-    if (d->queryLimit) {
-        /* straightforward limiting can be done in flat mode */
-        QString limit = QString::fromLatin1(" LIMIT %1").arg(d->queryLimit);
-        q += limit;
-    }
+    QSqlQuery query = d->prepareQuery(q);
 
-    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
     if (!d->filterLocalUid.isEmpty())
         query.bindValue(":filterLocalUid", d->filterLocalUid);
-
-    if (!query.prepare(q)) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
 
     return d->executeQuery(query);
 }
@@ -1134,7 +1120,7 @@ bool CallModel::markAllRead()
     bool marked;
     marked = d->database()->markAsReadAll(Event::CallEvent);
     if (!marked) {
-        qWarning() << Q_FUNC_INFO << "Failed to delete events";
+        qWarning() << Q_FUNC_INFO << "Failed to mark events as read";
         return false;
     }
 

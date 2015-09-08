@@ -317,13 +317,7 @@ bool RecentContactsModel::getEvents()
 " )"
 " ORDER BY Events.endTime DESC").arg(limitClause);
 
-    QSqlQuery query = DatabaseIOPrivate::instance()->createQuery();
-    if (!query.prepare(q)) {
-        qWarning() << "Failed to execute query";
-        qWarning() << query.lastError();
-        qWarning() << query.lastQuery();
-        return false;
-    }
+    QSqlQuery query = d->prepareQuery(q, 0, 0);
 
     bool re = d->executeQuery(query);
     if (re)

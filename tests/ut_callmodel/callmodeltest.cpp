@@ -915,7 +915,6 @@ void CallModelTest::testMarkAllRead()
 
 void CallModelTest::testLimit()
 {
-    QSKIP("Query limit not yet supported");
     CallModel model;
     model.setQueryMode(EventModel::SyncQuery);
     model.setFilter(CallModel::SortByTime);
