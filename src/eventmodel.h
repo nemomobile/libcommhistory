@@ -100,6 +100,7 @@ public:
         FromVCardFileName,
         FromVCardLabel,
         ReadStatus,
+        SubscriberIdentity,
         NumberOfColumns
     };
 

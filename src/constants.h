@@ -39,6 +39,8 @@ namespace CommHistory {
 #define GROUPS_UPDATED_FULL_SIGNAL QLatin1String("groupsUpdatedFull")
 #define GROUPS_DELETED_SIGNAL      QLatin1String("groupsDeleted")
 
+#define EVENT_PROPERTY_SUBSCRIBER_ID    QLatin1String("subscriberIdentity")
+
 } /* namespace CommHistory */
 
 #endif /* CONSTANTS_H */

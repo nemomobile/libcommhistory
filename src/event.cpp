@@ -26,6 +26,7 @@
 #include <QDBusArgument>
 #include "event.h"
 #include "messagepart.h"
+#include "constants.h"
 
 #include <QStringBuilder>
 
@@ -699,6 +700,11 @@ quint32 Event::lastModifiedT() const
     return d->lastModifiedT;
 }
 
+QString Event::subscriberIdentity() const
+{
+    return extraProperty(EVENT_PROPERTY_SUBSCRIBER_ID).toString();
+}
+
 void Event::setValidProperties(const Event::PropertySet &properties)
 {
     d->validProperties = properties;
@@ -1025,6 +1031,11 @@ void Event::setLastModifiedT(quint32 modified)
         d->lastModified = QDateTime::fromTime_t(d->lastModifiedT);
     }
     d->propertyChanged(Event::LastModified);
+}
+
+void Event::setSubscriberIdentity(const QString &id)
+{
+    setExtraProperty(EVENT_PROPERTY_SUBSCRIBER_ID, id);
 }
 
 QString Event::toString() const

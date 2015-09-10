@@ -78,6 +78,7 @@ QHash<int, QByteArray> EventModel::roleNames() const
     roles[BaseRole + FromVCardFileName] = "fromVCardFileName";
     roles[BaseRole + FromVCardLabel] = "fromVCardLabel";
     roles[BaseRole + ReadStatus] = "readStatus";
+    roles[BaseRole + SubscriberIdentity] = "subscriberIdentity";
     roles[ContactIdsRole] = "contactIds";
     roles[ContactNamesRole] = "contactNames";
     roles[MessagePartsRole] = "messageParts";
@@ -348,6 +349,9 @@ QVariant EventModel::data(const QModelIndex &index, int role) const
         case ReadStatus:
             var = QVariant::fromValue((int)event.readStatus());
             break;
+        case SubscriberIdentity:
+            var = event.subscriberIdentity();
+            break;
         default:
             DEBUG() << Q_FUNC_INFO << ": invalid column id??" << column;
             var = QVariant();
@@ -441,6 +445,12 @@ QVariant EventModel::headerData(int section,
                 break;
             case FromVCardLabel:
                 name = QLatin1String("vcard_label");
+                break;
+            case ReadStatus:
+                name = QLatin1String("read_status");
+                break;
+            case SubscriberIdentity:
+                name = QLatin1String("subscriber_identity");
                 break;
             default:
                 break;
@@ -812,6 +822,8 @@ bool EventModel::modifyEventsInGroup(QList<Event> &events, Group group)
                 group.setStartTimeT(event.startTimeT());
             if (modified.contains(Event::EndTime))
                 group.setEndTimeT(event.endTimeT());
+
+            group.setSubscriberIdentity(event.subscriberIdentity());
         }
     }
 
