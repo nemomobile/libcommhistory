@@ -87,6 +87,9 @@ public:
     QList<GroupObject*> groups() const;
     QList<QObject*> groupObjects() const;
 
+    Q_PROPERTY(QString subscriberIdentity READ subscriberIdentity NOTIFY subscriberIdentityChanged)
+    QString subscriberIdentity() const;
+
     quint32 startTimeT() const;
     quint32 endTimeT() const;
     quint32 lastModifiedT() const;
@@ -115,6 +118,7 @@ signals:
     void lastEventChanged();
     void lastModifiedChanged();
     void groupsChanged();
+    void subscriberIdentityChanged();
 
 private:
     Q_DECLARE_PRIVATE(ContactGroup)

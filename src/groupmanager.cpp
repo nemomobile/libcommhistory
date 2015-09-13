@@ -301,6 +301,7 @@ void GroupManagerPrivate::eventsAddedSlot(const QList<Event> &events)
             go->setLastEventIsDraft(event.isDraft());
             go->setStartTimeT(event.startTimeT());
             go->setEndTimeT(event.endTimeT());
+            go->setSubscriberIdentity(event.subscriberIdentity());
         }
         go->setRecipients(RecipientList(go->recipients()).unite(event.recipients()));
         if (!event.isRead())

@@ -199,6 +199,7 @@ void GroupModelTest::addGroups()
     QVERIFY(group.endTime().isValid() == false);
     QCOMPARE(group.unreadMessages(), 0);
     QCOMPARE(group.lastEventId(), -1);
+    QCOMPARE(group.subscriberIdentity(), QString());
 
     // add an event to each group to get them to show up in getGroups()
     QSignalSpy eventsCommitted(&eventModel, SIGNAL(eventsCommitted(const QList<CommHistory::Event>&, bool)));
@@ -432,7 +433,8 @@ void GroupModelTest::updateGroups()
     QSignalSpy groupChanged(&groupModel, SIGNAL(dataChanged(QModelIndex,QModelIndex)));
 
     int eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
-                 groupModel.group(groupModel.index(0, 0)).id(), "added to group");
+                  groupModel.group(groupModel.index(0, 0)).id(), "added to group",
+                  false, false, QDateTime::currentDateTime(), QString(), false, QString(), "SIM1");
     QVERIFY(waitSignal(eventsCommitted));
     eventsCommitted.clear();
     QVERIFY(waitSignal(groupChanged));
@@ -440,16 +442,19 @@ void GroupModelTest::updateGroups()
     Group group = groupModel.group(groupModel.index(0, 0));
     Event event;
     QVERIFY(group.lastEventId() != -1);
+    QCOMPARE(group.subscriberIdentity(), QString("SIM1"));
     QVERIFY(model.databaseIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), eventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
     QCOMPARE(group.startTime().toTime_t(), event.startTime().toTime_t());
     QCOMPARE(group.endTime().toTime_t(), event.endTime().toTime_t());
+    QCOMPARE(group.subscriberIdentity(), event.subscriberIdentity());
 
     // add older event
     int lastEventId = eventId;
     uint lastStartTime = group.startTime().toTime_t();
     uint lastEndTime = group.endTime().toTime_t();
+    QString lastSubscriberIdentity = group.subscriberIdentity();
     eventsCommitted.clear();
     groupMoved.clear();
     eventId = addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1,
@@ -460,12 +465,14 @@ void GroupModelTest::updateGroups()
     QVERIFY(waitSignal(groupChanged));
     groupChanged.clear();
     group = groupModel.group(groupModel.index(0, 0));
+    QCOMPARE(group.subscriberIdentity(), QString("SIM1"));
     QVERIFY(group.lastEventId() != eventId);
     QVERIFY(model.databaseIO().getEvent(eventId, event));
     QCOMPARE(group.lastEventId(), lastEventId);
     QCOMPARE(group.lastMessageText(), QString("added to group"));
     QCOMPARE(group.startTime().toTime_t(), lastStartTime);
     QCOMPARE(group.endTime().toTime_t(), lastEndTime);
+    QCOMPARE(group.subscriberIdentity(), lastSubscriberIdentity);
 
     // add new SMS event for second group, check for resorted list, correct contents and date
     QTest::qWait(1000);
@@ -479,11 +486,13 @@ void GroupModelTest::updateGroups()
     QVERIFY(waitSignal(groupMoved));
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.id(), id);
+    QCOMPARE(group.subscriberIdentity(), QString());
     QVERIFY(group.endTime() > modified);
     Group testGroup;
     QVERIFY(groupModel.databaseIO().getGroup(id, testGroup));
     QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
+    QCOMPARE(testGroup.subscriberIdentity(), group.subscriberIdentity());
 
     // add new IM event for second group, check for resorted list, correct contents and date
     QTest::qWait(1000);
@@ -491,17 +500,20 @@ void GroupModelTest::updateGroups()
     modified = groupModel.index(1, GroupModel::EndTime).data().toDateTime();
     eventsCommitted.clear();
     groupMoved.clear();
-    addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1, id, "sort");
+    addTestEvent(model, Event::IMEvent, Event::Outbound, ACCOUNT1, id, "sort",
+                 false, false, QDateTime::currentDateTime(), QString(), false, QString(), "SIM2");
     QVERIFY(waitSignal(eventsCommitted));
     eventsCommitted.clear();
     QVERIFY(waitSignal(groupMoved));
     group = groupModel.group(groupModel.index(0, 0));
     QCOMPARE(group.id(), id);
+    QCOMPARE(group.subscriberIdentity(), QString("SIM2"));
     QVERIFY(group.endTime() > modified);
 
     QVERIFY(groupModel.databaseIO().getGroup(id, testGroup));
     QCOMPARE(testGroup.startTime().toTime_t(), group.startTime().toTime_t());
     QCOMPARE(testGroup.endTime().toTime_t(), group.endTime().toTime_t());
+    QCOMPARE(testGroup.subscriberIdentity(), group.subscriberIdentity());
 
     // check if status message is really not added to the group
     addTestEvent(model,

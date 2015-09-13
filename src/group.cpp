@@ -51,6 +51,7 @@ public:
     QString lastMessageText;
     QString lastVCardFileName;
     QString lastVCardLabel;
+    QString subscriberIdentity;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
     bool lastEventIsDraft;
@@ -89,6 +90,7 @@ GroupPrivate::GroupPrivate(const GroupPrivate &other)
         , lastMessageText(other.lastMessageText)
         , lastVCardFileName(other.lastVCardFileName)
         , lastVCardLabel(other.lastVCardLabel)
+        , subscriberIdentity(other.subscriberIdentity)
         , lastEventType(other.lastEventType)
         , lastEventStatus(other.lastEventStatus)
         , lastEventIsDraft(other.lastEventIsDraft)
@@ -274,6 +276,11 @@ QDateTime Group::lastModified() const
     return d->lastModified;
 }
 
+QString Group::subscriberIdentity() const
+{
+    return d->subscriberIdentity;
+}
+
 quint32 Group::startTimeT() const
 {
     return d->startTimeT;
@@ -410,6 +417,12 @@ void Group::setLastModified(const QDateTime &modified)
     d->propertyChanged(Group::LastModified);
 }
 
+void Group::setSubscriberIdentity(const QString &subscriberIdentity)
+{
+    d->subscriberIdentity = subscriberIdentity;
+    d->propertyChanged(Group::SubscriberIdentity);
+}
+
 void Group::setStartTimeT(quint32 startTime)
 {
     d->startTimeT = startTime;
@@ -449,6 +462,7 @@ QDBusArgument &operator<<(QDBusArgument &argument, const Group &group)
              << group.endTimeT() << group.unreadMessages()
              << group.lastEventId() << group.lastMessageText()
              << group.lastVCardFileName() << group.lastVCardLabel()
+             << group.subscriberIdentity()
              << group.lastEventType() << group.lastEventStatus()
              << group.lastEventIsDraft()
              << group.lastModifiedT() << group.startTimeT();
@@ -475,7 +489,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
     argument >> p.id >> p.localUid >> p.recipients >> chatType
              >> p.chatName >> p.endTimeT
              >> p.unreadMessages >> p.lastEventId >> p.lastMessageText
-             >> p.lastVCardFileName >> p.lastVCardLabel >> type
+             >> p.lastVCardFileName >> p.lastVCardLabel
+             >> p.subscriberIdentity >> type
              >> status >> isDraft >> p.lastModifiedT >> p.startTimeT;
 
     //read valid properties
@@ -511,6 +526,8 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, Group &group)
         group.setLastVCardFileName(p.lastVCardFileName);
     if (p.validProperties.contains(Group::LastVCardLabel))
         group.setLastVCardLabel(p.lastVCardLabel);
+    if (p.validProperties.contains(Group::SubscriberIdentity))
+        group.setSubscriberIdentity(p.subscriberIdentity);
     if (p.validProperties.contains(Group::LastEventType))
         group.setLastEventType((Event::EventType)type);
     if (p.validProperties.contains(Group::LastEventStatus))
@@ -622,6 +639,9 @@ void Group::copyValidProperties(const Group &other)
             break;
         case LastVCardLabel:
             setLastVCardLabel(other.lastVCardLabel());
+            break;
+        case SubscriberIdentity:
+            setSubscriberIdentity(other.subscriberIdentity());
             break;
         case LastEventType:
             setLastEventType(other.lastEventType());

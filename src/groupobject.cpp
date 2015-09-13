@@ -55,6 +55,7 @@ public:
     QString lastMessageText;
     QString lastVCardFileName;
     QString lastVCardLabel;
+    QString subscriberIdentity;
     Event::EventType lastEventType;
     Event::EventStatus lastEventStatus;
     bool lastEventIsDraft;
@@ -107,6 +108,7 @@ void GroupObjectPrivate::propertyChanged(Group::Property property)
         case Group::LastEventId: emit q->lastEventIdChanged(); break;
         case Group::LastMessageText: emit q->lastMessageTextChanged(); break;
         case Group::LastVCardFileName: emit q->lastVCardFileNameChanged(); break;
+        case Group::SubscriberIdentity: emit q->subscriberIdentityChanged(); break;
         case Group::LastEventType: emit q->lastEventTypeChanged(); break;
         case Group::LastEventStatus: emit q->lastEventStatusChanged(); break;
         case Group::LastEventIsDraft: emit q->lastEventIsDraftChanged(); break;
@@ -231,6 +233,11 @@ QString GroupObject::lastVCardFileName() const
 QString GroupObject::lastVCardLabel() const
 {
     return d->lastVCardLabel;
+}
+
+QString GroupObject::subscriberIdentity() const
+{
+    return d->subscriberIdentity;
 }
 
 Event::EventType GroupObject::lastEventType() const
@@ -363,6 +370,12 @@ void GroupObject::setLastVCardLabel(const QString &label)
     d->propertyChanged(Group::LastVCardLabel);
 }
 
+void GroupObject::setSubscriberIdentity(const QString &id)
+{
+    d->subscriberIdentity = id;
+    d->propertyChanged(Group::SubscriberIdentity);
+}
+
 void GroupObject::setLastEventType(Event::EventType eventType)
 {
     d->lastEventType = eventType;
@@ -483,6 +496,7 @@ void GroupObject::set(const Group &other)
     d->lastMessageText = other.lastMessageText();
     d->lastVCardFileName = other.lastVCardFileName();
     d->lastVCardLabel = other.lastVCardLabel();
+    d->subscriberIdentity = other.subscriberIdentity();
     d->lastEventType = other.lastEventType();
     d->lastEventStatus = other.lastEventStatus();
     d->lastEventIsDraft = other.lastEventIsDraft();
@@ -528,6 +542,9 @@ template<typename T1, typename T2> void copyValidProperties(const T1 &from, T2 &
             break;
         case Group::LastVCardLabel:
             to.setLastVCardLabel(from.lastVCardLabel());
+            break;
+        case Group::SubscriberIdentity:
+            to.setSubscriberIdentity(from.subscriberIdentity());
             break;
         case Group::LastEventType:
             to.setLastEventType(from.lastEventType());
