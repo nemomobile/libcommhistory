@@ -1118,6 +1118,48 @@ void CallModelTest::testMinimizedPhone()
     QCOMPARE(e.recipients().at(0).contactName(), QString());
 }
 
+// Ensure that non-numeric phone numbers are not coalesced together
+void CallModelTest::testMinimizedEmpty()
+{
+    deleteAll();
+    QTest::qWait(100);
+
+    const QString phone1("The Palace");
+    const QString phone2("The Police");
+    // Precondition for the test:
+    QCOMPARE(minimizePhoneNumber(phone1), QString());
+    QCOMPARE(minimizePhoneNumber(phone2), QString());
+
+    CallModel model;
+    watcher.setModel(&model);
+
+    QDateTime when = QDateTime::currentDateTime();
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when, phone1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(10), phone1);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(20), phone2);
+    addTestEvent(model, Event::CallEvent, Event::Inbound, RING_ACCOUNT, -1, "", false, false, when.addSecs(30), phone2);
+    QVERIFY(watcher.waitForAdded(4));
+
+    model.setFilter(CallModel::SortByTime);
+    model.setResolveContacts(EventModel::ResolveImmediately);
+    QVERIFY(model.getEvents());
+    QVERIFY(watcher.waitForModelReady());
+    QCOMPARE(model.rowCount(), 2);
+
+    Event e;
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone2));
+    QCOMPARE(e.recipients().at(0).isContactResolved(), true);
+    QCOMPARE(e.recipients().at(0).contactId(), 0);
+
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.recipients().count(), 1);
+    QCOMPARE(e.recipients().at(0), Recipient(RING_ACCOUNT, phone1));
+    QCOMPARE(e.recipients().at(0).isContactResolved(), true);
+    QCOMPARE(e.recipients().at(0).contactId(), 0);
+}
+
 void CallModelTest::testContactGrouping()
 {
     deleteAll();
