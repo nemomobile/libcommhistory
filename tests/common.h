@@ -76,7 +76,8 @@ int addTestEvent(EventModel &model,
                  const QDateTime &when = QDateTime::currentDateTime(),
                  const QString &remoteUid = QString(),
                  bool toModelOnly = false,
-                 const QString messageToken = QString());
+                 const QString &messageToken = QString(),
+                 const QString &subscriberIdentity = QString());
 
 void addTestGroups(Group &group1, Group &group2);
 void addTestGroup(Group& grp, QString localUid, QString remoteUid);

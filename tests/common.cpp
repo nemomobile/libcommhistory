@@ -166,7 +166,8 @@ int addTestEvent(EventModel &model,
                  const QDateTime &when,
                  const QString &remoteUid,
                  bool toModelOnly,
-                 const QString messageToken)
+                 const QString &messageToken,
+                 const QString &subscriberIdentity)
 {
     Event event;
     event.setType(type);
@@ -187,6 +188,7 @@ int addTestEvent(EventModel &model,
     event.setIsDraft( isDraft );
     event.setIsMissedCall( isMissedCall );
     event.setMessageToken(messageToken);
+    event.setSubscriberIdentity(subscriberIdentity);
     if (model.addEvent(event, toModelOnly)) {
         addedEventIds.insert(event.id());
         return event.id();

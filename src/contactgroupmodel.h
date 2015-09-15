@@ -67,6 +67,7 @@ public:
         StartTime,
         Groups,
         DisplayNames,
+        SubscriberIdentity,
         NumberOfColumns
     };
 

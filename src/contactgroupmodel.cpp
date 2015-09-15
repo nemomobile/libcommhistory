@@ -333,6 +333,7 @@ QHash<int,QByteArray> ContactGroupModel::roleNames() const
     roles[BaseRole + StartTime] = "startTime";
     roles[BaseRole + Groups] = "groups";
     roles[BaseRole + DisplayNames] = "displayNames";
+    roles[BaseRole + SubscriberIdentity] = "subscriberIdentity";
     return roles;
 }
 
@@ -448,6 +449,9 @@ QVariant ContactGroupModel::data(const QModelIndex &index, int role) const
             break;
         case StartTime:
             var = g->startTime();
+            break;
+        case SubscriberIdentity:
+            var = g->subscriberIdentity();
             break;
         default:
             DEBUG() << "ContactGroupModel::data: invalid column id??" << column;

@@ -36,10 +36,10 @@ public:
 
     void updateForGroup(GroupObject *group,
                         quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
-                        int &uUnreadMessages, GroupObject *&uLastEventGroup);
+                        int &uUnreadMessages, QString &uSubscriberIdentity, GroupObject *&uLastEventGroup);
     void setValues(const QList<int> &uContactIds, const QStringList &uDisplayNames,
                    quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
-                   int &uUnreadMessages, GroupObject *&uLastEventGroup);
+                   int &uUnreadMessages, const QString &uSubscriberIdentity, GroupObject *&uLastEventGroup);
 
     void recalculate();
     void includeGroup(GroupObject *group);
@@ -55,7 +55,7 @@ public:
     int unreadMessages;
     int lastEventId;
     GroupObject *lastEventGroup;
-    QString lastMessageText, lastVCardFileName, lastVCardLabel;
+    QString lastMessageText, lastVCardFileName, lastVCardLabel, subscriberIdentity;
     int lastEventType, lastEventStatus;
     bool lastEventIsDraft;
     bool groupsResolved;
@@ -118,11 +118,12 @@ void ContactGroup::updateGroup(GroupObject *group)
 
 void ContactGroupPrivate::updateForGroup(GroupObject *group,
                                          quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
-                                         int &uUnreadMessages, GroupObject *&uLastEventGroup)
+                                         int &uUnreadMessages, QString &uSubscriberIdentity, GroupObject *&uLastEventGroup)
 {
     const quint32 gStartTimeT = group->startTimeT();
     const quint32 gEndTimeT = group->endTimeT();
     const quint32 gLastModifiedT = group->lastModifiedT();
+    const QString gSubscriberIdentity = group->subscriberIdentity();
 
     uStartTimeT = qMax(gStartTimeT, uStartTimeT);
     uEndTimeT = qMax(gEndTimeT, uEndTimeT);
@@ -130,13 +131,15 @@ void ContactGroupPrivate::updateForGroup(GroupObject *group,
 
     uUnreadMessages += group->unreadMessages();
 
+    uSubscriberIdentity = uEndTimeT >= gEndTimeT ? uSubscriberIdentity : gSubscriberIdentity;
+
     if (group->lastEventId() >= 0 && (!uLastEventGroup || gEndTimeT > uLastEventGroup->endTimeT()))
         uLastEventGroup = group;
 }
 
 void ContactGroupPrivate::setValues(const QList<int> &uContactIds, const QStringList &uDisplayNames,
                                     quint32 &uStartTimeT, quint32 &uEndTimeT, quint32 &uLastModifiedT,
-                                    int &uUnreadMessages, GroupObject *&uLastEventGroup)
+                                    int &uUnreadMessages, const QString &uSubscriberIdentity, GroupObject *&uLastEventGroup)
 {
     Q_Q(ContactGroup);
 
@@ -174,6 +177,11 @@ void ContactGroupPrivate::setValues(const QList<int> &uContactIds, const QString
     if (uUnreadMessages != unreadMessages) {
         unreadMessages = uUnreadMessages;
         emit q->unreadMessagesChanged();
+    }
+
+    if (uSubscriberIdentity != subscriberIdentity) {
+        subscriberIdentity = uSubscriberIdentity;
+        emit q->subscriberIdentityChanged();
     }
 
     if (uLastEventGroup) {
@@ -225,6 +233,7 @@ void ContactGroupPrivate::recalculate()
     QStringList uDisplayNames;
     quint32 uStartTimeT = 0, uEndTimeT = 0, uLastModifiedT = 0;
     int uUnreadMessages = 0;
+    QString uSubscriberIdentity;
     GroupObject *uLastEventGroup = 0;
 
     if (!groups.isEmpty()) {
@@ -232,12 +241,15 @@ void ContactGroupPrivate::recalculate()
          * same for all groups, so we can just use the first. */
         uContactIds = groups[0]->recipients().contactIds();
         uDisplayNames = groups[0]->recipients().displayNames();
+
+        /* Set the initial subscriberIdentity, to be updated to most recent event value. */
+        uSubscriberIdentity = groups[0]->subscriberIdentity();
     }
 
     foreach (GroupObject *group, groups)
-        updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+        updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uSubscriberIdentity, uLastEventGroup);
 
-    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uSubscriberIdentity, uLastEventGroup);
 }
 
 void ContactGroupPrivate::includeGroup(GroupObject *group)
@@ -249,11 +261,12 @@ void ContactGroupPrivate::includeGroup(GroupObject *group)
     QStringList uDisplayNames(firstGroup ? group->recipients().displayNames() : displayNames);
     quint32 uStartTimeT = startTimeT, uEndTimeT = endTimeT, uLastModifiedT = lastModifiedT;
     int uUnreadMessages = unreadMessages;
+    QString uSubscriberIdentity = group->subscriberIdentity();
     GroupObject *uLastEventGroup = lastEventGroup;
 
-    updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+    updateForGroup(group, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uSubscriberIdentity, uLastEventGroup);
 
-    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uLastEventGroup);
+    setValues(uContactIds, uDisplayNames, uStartTimeT, uEndTimeT, uLastModifiedT, uUnreadMessages, uSubscriberIdentity, uLastEventGroup);
 }
 
 QList<int> ContactGroup::contactIds() const
@@ -348,6 +361,12 @@ QDateTime ContactGroup::lastModified() const
 {
     Q_D(const ContactGroup);
     return QDateTime::fromTime_t(d->lastModifiedT);
+}
+
+QString ContactGroup::subscriberIdentity() const
+{
+    Q_D(const ContactGroup);
+    return d->subscriberIdentity;
 }
 
 QList<GroupObject*> ContactGroup::groups() const

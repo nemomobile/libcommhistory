@@ -233,6 +233,7 @@ public:
                 case Group::LastEventStatus:
                 case Group::LastEventIsDraft:
                 case Group::Contacts:
+                case Group::SubscriberIdentity:
                     break;
                 default:
                     qWarning() << Q_FUNC_INFO << "Group field ignored:" << property;
@@ -927,6 +928,7 @@ void DatabaseIOPrivate::readGroupResult(QSqlQuery &query, Group &group)
     group.setLastEventType(static_cast<Event::EventType>(query.value(13).toInt()));
     group.setLastEventStatus(static_cast<Event::EventStatus>(query.value(14).toInt()));
     group.setLastEventIsDraft(query.value(15).toBool());
+    group.setSubscriberIdentity(query.value(16).toString());
 }
 
 static const char *baseGroupQuery =
@@ -946,7 +948,8 @@ static const char *baseGroupQuery =
     "\n LastEvent.vCardLabel, "
     "\n LastEvent.type, "
     "\n LastEvent.status, "
-    "\n LastEvent.isDraft "
+    "\n LastEvent.isDraft, "
+    "\n LastSubscriberIdentity.value "
     "\n FROM Groups "
     "\n LEFT JOIN ("
     "\n  SELECT groupId, COUNT(*) as unread "
@@ -961,6 +964,9 @@ static const char *baseGroupQuery =
     "\n   ORDER BY endTime DESC, id DESC "
     "\n   LIMIT 1 "
     "\n  )"
+    "\n )"
+    "\n LEFT JOIN EventProperties AS LastSubscriberIdentity ON ("
+    "\n  LastSubscriberIdentity.eventId = LastEvent.id AND LastSubscriberIdentity.key = 'subscriberIdentity'"
     "\n ) ";
 
 bool DatabaseIO::getGroup(int id, Group &group)

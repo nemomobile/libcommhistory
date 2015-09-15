@@ -322,6 +322,8 @@ public:
     quint32 endTimeT() const;
     quint32 lastModifiedT() const;
 
+    QString subscriberIdentity() const;
+
     //\\//\\// S E T - A C C E S S O R S //\\//\\//
     void setId(int id);
 
@@ -407,6 +409,8 @@ public:
     void setStartTimeT(quint32 t);
     void setEndTimeT(quint32 t);
     void setLastModifiedT(quint32 t);
+
+    void setSubscriberIdentity(const QString &id);
 
     QString toString() const;
 
