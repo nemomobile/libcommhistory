@@ -206,7 +206,9 @@ bool Recipient::matches(const Recipient &o) const
         return false;
     if (!d->isPhoneNumber && d->localUid != o.d->localUid)
         return false;
-    return d->minimizedRemoteUid == o.d->minimizedRemoteUid;
+    if (!d->minimizedRemoteUid.isEmpty() || !o.d->minimizedRemoteUid.isEmpty())
+        return d->minimizedRemoteUid == o.d->minimizedRemoteUid;
+    return d->remoteUid == o.d->remoteUid;
 }
 
 bool Recipient::isSameContact(const Recipient &o) const
@@ -221,16 +223,20 @@ bool Recipient::isSameContact(const Recipient &o) const
 bool Recipient::matchesRemoteUid(const QString &o) const
 {
     const QString minimizedMatch(::minimizeRemoteUid(o, d->isPhoneNumber));
-    return d->minimizedRemoteUid == minimizedMatch;
+    if (!minimizedMatch.isEmpty())
+        return d->minimizedRemoteUid == minimizedMatch;
+    return d->remoteUid == o;
 }
 
-bool Recipient::matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const
+bool Recipient::matchesPhoneNumber(const PhoneNumberMatchDetails &phoneNumber) const
 {
     if (!d->isPhoneNumber)
         return false;
-    if (d->remoteUidHash != phoneNumber.second)
+    if (d->remoteUidHash != phoneNumber.minimizedNumberHash)
         return false;
-    return d->minimizedRemoteUid == phoneNumber.first;
+    if (!phoneNumber.minimizedNumber.isEmpty())
+        return d->minimizedRemoteUid == phoneNumber.minimizedNumber;
+    return d->remoteUid == phoneNumber.number;
 }
 
 bool Recipient::matchesAddressFlags(quint64 flags) const
@@ -319,10 +325,13 @@ QList<Recipient> Recipient::recipientsForContact(int contactId)
     return re;
 }
 
-QPair<QString, quint32> Recipient::phoneNumberMatchDetails(const QString &s)
+Recipient::PhoneNumberMatchDetails Recipient::phoneNumberMatchDetails(const QString &s)
 {
-    const QString minimized(minimizeRemoteUid(s, true));
-    return qMakePair(minimized, qHash(minimized));
+    PhoneNumberMatchDetails rv;
+    rv.number = s;
+    rv.minimizedNumber = minimizeRemoteUid(s, true);
+    rv.minimizedNumberHash = qHash(rv.minimizedNumber);
+    return rv;
 }
 
 RecipientList::RecipientList()
