@@ -61,6 +61,12 @@ typedef QWeakPointer<RecipientPrivate> WeakRecipient;
 class LIBCOMMHISTORY_EXPORT Recipient
 {
 public:
+    struct PhoneNumberMatchDetails {
+        QString number;
+        QString minimizedNumber;
+        quint32 minimizedNumberHash;
+    };
+
     Recipient();
     Recipient(const QString &localUid, const QString &remoteUid);
     Recipient(const Recipient &o);
@@ -85,7 +91,7 @@ public:
     bool isSameContact(const Recipient &o) const;
 
     bool matchesRemoteUid(const QString &remoteUid) const;
-    bool matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const;
+    bool matchesPhoneNumber(const PhoneNumberMatchDetails &phoneNumber) const;
 
     bool matchesAddressFlags(quint64 flags) const;
 
@@ -133,7 +139,7 @@ public:
 
     /* Return the string in the form suitable for testing phone number matches
      */
-    static QPair<QString, quint32> phoneNumberMatchDetails(const QString &s);
+    static PhoneNumberMatchDetails phoneNumberMatchDetails(const QString &s);
 
 private:
     QSharedPointer<RecipientPrivate> d;
@@ -176,7 +182,7 @@ public:
         return false;
     }
 
-    bool matchesPhoneNumber(const QPair<QString, quint32> &phoneNumber) const
+    bool matchesPhoneNumber(const Recipient::PhoneNumberMatchDetails &phoneNumber) const
     {
         for (const_iterator it = constBegin(), end = constEnd(); it != end; ++it)
             if (it->matchesPhoneNumber(phoneNumber))

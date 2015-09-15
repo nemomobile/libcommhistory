@@ -178,7 +178,7 @@ void ContactResolverPrivate::addressResolved(const QString &first, const QString
     } else if (first.isEmpty()) {
         // This resolution is for a phone number - we need to call back to libcontacts
         // to select the best match from multiple possible resolutions
-        const QPair<QString, quint32> phoneNumber(Recipient::phoneNumberMatchDetails(second));
+        const Recipient::PhoneNumberMatchDetails phoneNumber(Recipient::phoneNumberMatchDetails(second));
         for (it = pending.begin(); it != pending.end(); ) {
             if (it->matchesPhoneNumber(phoneNumber)) {
                 // Look up the best match for the full number

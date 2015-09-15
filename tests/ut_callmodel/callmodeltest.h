@@ -50,6 +50,7 @@ private slots:
     void testMarkAllRead();
     void testModifyEvent();
     void testMinimizedPhone();
+    void testMinimizedEmpty();
     void testContactGrouping();
     void cleanupTestCase();
 
