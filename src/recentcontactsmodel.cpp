@@ -52,7 +52,8 @@ static bool contactIsFavorite(int contactId)
     return false;
 }
 
-class RecentContactsModelPrivate : public EventModelPrivate {
+class RecentContactsModelPrivate : public EventModelPrivate
+{
 public:
     Q_DECLARE_PUBLIC(RecentContactsModel);
 
@@ -197,28 +198,32 @@ void RecentContactsModelPrivate::prependEvents(QList<Event> events, bool resolve
 {
     Q_Q(RecentContactsModel);
 
-    if (!resolved) {
-        // Queue these events for resolution if required
-        unresolvedEvents.append(events);
-    } else {
-        // Ensure the new events represent different contacts
-        foreach (const Event &event, events) {
-            const Recipient &recipient = event.recipients().first();
-            const int contactId = recipient.contactId();
-            if (contactId != 0 && !resolvedContactIds.contains(contactId)) {
-                // If this contact is a favorite, then don't include the event in our results
-                if (excludeFavorites && contactIsFavorite(contactId)) {
-                    continue;
-                }
+    QList<Event>::iterator it = events.begin(), end = events.end();
+    for ( ; it != end; ++it) {
+        Event &event(*it);
+        if (eventCategoryMask == Event::AnyCategory || (event.category() & eventCategoryMask) != 0) {
+            if (!resolved) {
+                // Queue these events for resolution if required
+                unresolvedEvents.append(event);
+            } else {
+                // Ensure the new events represent different contacts
+                const Recipient &recipient = event.recipients().first();
+                const int contactId = recipient.contactId();
+                if (contactId != 0 && !resolvedContactIds.contains(contactId)) {
+                    // If this contact is a favorite, then don't include the event in our results
+                    if (excludeFavorites && contactIsFavorite(contactId)) {
+                        continue;
+                    }
 
-                // Is this contact relevant to our required types?
-                if (!addressFlags || recipient.matchesAddressFlags(addressFlags)) {
-                    resolvedContactIds.insert(contactId);
-                    resolvedEvents.append(event);
+                    // Is this contact relevant to our required types?
+                    if (!addressFlags || recipient.matchesAddressFlags(addressFlags)) {
+                        resolvedContactIds.insert(contactId);
+                        resolvedEvents.append(event);
 
-                    // Don't add any more events than we can present
-                    if (resolvedEvents.count() == queryLimit) {
-                        break;
+                        // Don't add any more events than we can present
+                        if (resolvedEvents.count() == queryLimit) {
+                            break;
+                        }
                     }
                 }
             }
@@ -368,11 +373,14 @@ bool RecentContactsModel::getEvents()
     d->clearEvents();
     endResetModel();
 
-    QString limitClause;
+    QString categoryClause, limitClause;
+    if (d->eventCategoryMask != Event::AnyCategory) {
+        categoryClause = QStringLiteral("WHERE ") + DatabaseIOPrivate::categoryClause(d->eventCategoryMask);
+    }
     if (d->queryLimit) {
         // Default to 4x the configured limit, because some of the addresses may
         // resolve to the same final contact, and others will match favorites
-        limitClause = QString::fromLatin1(" LIMIT %1").arg(4 * d->queryLimit);
+        limitClause = QStringLiteral("LIMIT ") + QString::number(4 * d->queryLimit);
     }
 
     QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(
@@ -381,16 +389,17 @@ bool RecentContactsModel::getEvents()
     " SELECT max(id) AS lastId, max(endTime) FROM Events"
     " JOIN ("
       " SELECT remoteUid, localUid, max(endTime) AS lastEventTime FROM Events"
+      " %1"
       " GROUP BY remoteUid, localUid"
       " ORDER BY lastEventTime DESC"
-      " %1"
+      " %2"
     " ) AS LastEvent ON Events.endTime = LastEvent.lastEventTime"
                    " AND Events.remoteUid = LastEvent.remoteUid"
                    " AND Events.localUid = LastEvent.localUid"
     " GROUP BY Events.remoteUid, Events.localUid"
   " )"
 " )"
-" ORDER BY Events.endTime DESC").arg(limitClause);
+" ORDER BY Events.endTime DESC").arg(categoryClause).arg(limitClause);
 
     QSqlQuery query = d->prepareQuery(q, 0, 0);
 

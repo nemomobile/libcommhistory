@@ -140,6 +140,12 @@ bool EventModel::defaultAccept() const
     return d->accept;
 }
 
+int EventModel::eventCategoryMask() const
+{
+    Q_D(const EventModel);
+    return d->eventCategoryMask;
+}
+
 QModelIndex EventModel::parent(const QModelIndex &index) const
 {
     Q_D(const EventModel);
@@ -506,6 +512,12 @@ void EventModel::setDefaultAccept(bool accept)
 {
     Q_D(EventModel);
     d->accept = accept;
+}
+
+void EventModel::setEventCategoryMask(int mask)
+{
+    Q_D(EventModel);
+    d->eventCategoryMask = mask;
 }
 
 EventModel::ContactResolveType EventModel::resolveContacts() const

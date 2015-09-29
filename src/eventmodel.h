@@ -68,6 +68,7 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
     Q_PROPERTY(int offset READ offset WRITE setOffset)
     Q_PROPERTY(bool ready READ isReady NOTIFY modelReady)
     Q_PROPERTY(bool defaultAccept READ defaultAccept WRITE setDefaultAccept)
+    Q_PROPERTY(int eventCategoryMask READ eventCategoryMask WRITE setEventCategoryMask)
 
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
@@ -246,6 +247,12 @@ public:
     void setDefaultAccept(bool accept);
 
     /*!
+     * Set a mask of event categories which should be accepted by the model. Events
+     * that do not match the mask should be omitted.
+     */
+    void setEventCategoryMask(int mask);
+
+    /*!
      * Add a new event.
      *
      * \param event Event data to be inserted into the database. If successful,
@@ -340,6 +347,7 @@ public:
     virtual int offset() const;
     virtual bool isReady() const;
     bool defaultAccept() const;
+    int eventCategoryMask() const;
 
     /*** reimp from QAbstractItemModel ***/
     virtual QModelIndex parent(const QModelIndex &index) const;

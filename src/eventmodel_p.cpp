@@ -56,12 +56,13 @@ EventModelPrivate::EventModelPrivate(EventModel *model)
         : addResolver(0)
         , receiveResolver(0)
         , onDemandResolver(0)
-        , isInTreeMode(false)
         , queryMode(EventModel::AsyncQuery)
         , chunkSize(defaultChunkSize)
         , firstChunkSize(0)
         , queryLimit(0)
         , queryOffset(0)
+        , eventCategoryMask(Event::AnyCategory)
+        , isInTreeMode(false)
         , isReady(true)
         , accept(false)
         , threadCanFetchMore(false)
@@ -109,7 +110,9 @@ EventModelPrivate::~EventModelPrivate()
 
 bool EventModelPrivate::acceptsEvent(const Event &event) const
 {
-    Q_UNUSED(event);
+    if (eventCategoryMask != Event::AnyCategory) {
+        return event.category() & eventCategoryMask;
+    }
     return accept;
 }
 

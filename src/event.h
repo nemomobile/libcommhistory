@@ -67,6 +67,17 @@ public:
         ClassZeroSMSEvent
     };
 
+    enum EventCategory
+    {
+        AnyCategory                 = 0,
+        VoicecallCategory           = (1 << 0),
+        VoicemailCategory           = (1 << 1),
+        ShortMessagingCategory      = (1 << 2),
+        MultimediaMessagingCategory = (1 << 3),
+        InstantMessagingCategory    = (1 << 4),
+        OtherCategory               = (1 << 5)
+    };
+
     enum EventDirection
     {
         UnknownDirection = 0,
@@ -211,6 +222,8 @@ public:
     QUrl url() const;
 
     Event::EventType type() const;
+
+    Event::EventCategory category() const;
 
     /*!
      * Gets the start time of a call, sent/sending/failed time of SMS/IM

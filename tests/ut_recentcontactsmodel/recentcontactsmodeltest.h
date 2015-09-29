@@ -16,6 +16,8 @@ private slots:
     void repeated();
     void limitedDynamic();
     void differentTypes();
+    void categoryMask_data();
+    void categoryMask();
     void requiredProperty();
     void contactRemoved();
     void favoritesExcluded();
