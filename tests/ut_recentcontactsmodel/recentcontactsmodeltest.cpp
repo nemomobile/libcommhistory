@@ -519,6 +519,92 @@ void RecentContactsModelTest::contactRemoved()
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
     e = model.event(model.index(1, 0));
     QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+
+    // Reset the model, the removed contact should still be absent
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(model.rowCount(), 2);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+}
+
+void RecentContactsModelTest::favoritesExcluded()
+{
+    QString dougalName("Dougal");
+    QString dougalPhone("5550000");
+    int dougalId = addTestContact(dougalName, dougalPhone, phoneAccount);
+    QVERIFY(dougalId != -1);
+    QTest::qWait(1000);
+
+    addEvents(2);
+
+    // Add an event for the new contact
+    EventModel eventsModel;
+    watcher.setModel(&eventsModel);
+    QTest::qWait(1000);
+    addTestEvent(eventsModel, Event::CallEvent, Event::Inbound, phoneAccount, -1, "", false, false, QDateTime::currentDateTime(), dougalPhone);
+    QVERIFY(watcher.waitForAdded());
+
+    RecentContactsModel model;
+    InsertionSpy insert(model);
+    RemovalSpy removal(model);
+
+    model.setExcludeFavorites(true);
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(insert.count(), 3);
+
+    // We should have one row for each contact
+    QCOMPARE(model.rowCount(), 3);
+
+    Event e;
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(dougalId, dougalName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+
+    // Mark the contact as a favorite
+    QCOMPARE(removal.count(), 0);
+    modifyTestContact(dougalId, dougalName, true);
+
+    // The favorite contact's event should be removed
+    QTRY_COMPARE(removal.count(), 1);
+
+    QCOMPARE(model.rowCount(), 2);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+
+    // Reset the model, the favorite contact should still be absent
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(model.rowCount(), 2);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
+
+    // Reset without exclusion
+    model.setExcludeFavorites(false);
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(model.rowCount(), 3);
+
+    e = model.event(model.index(0, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(dougalId, dougalName));
+    e = model.event(model.index(1, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(bobId, bobName));
+    e = model.event(model.index(2, 0));
+    QCOMPARE(e.contacts(), QList<ContactDetails>() << qMakePair(aliceId, aliceName));
 }
 
 void RecentContactsModelTest::cleanup()

@@ -84,7 +84,7 @@ void addTestGroup(Group& grp, QString localUid, QString remoteUid);
 int addTestContact(const QString &name, const QString &remoteUid, const QString &localUid=QString());
 QList<int> addTestContacts(const QList<QPair<QString, QPair<QString, QString> > > &details);
 bool addTestContactAddress(int contactId, const QString &remoteUid, const QString &localUid=QString());
-void modifyTestContact(int id, const QString &name);
+void modifyTestContact(int id, const QString &name, bool favorite = false);
 void deleteTestContact(int id);
 void cleanUpTestContacts();
 void cleanupTestGroups();

@@ -19,16 +19,20 @@
 **
 ******************************************************************************/
 
-#include <QSqlQuery>
-#include <QSqlError>
+#include "recentcontactsmodel.h"
 
 #include "databaseio_p.h"
 #include "commhistorydatabase.h"
 #include "eventmodel_p.h"
 #include "contactlistener.h"
-
-#include "recentcontactsmodel.h"
 #include "debug.h"
+
+#include <seasidecache.h>
+
+#include <QContactFavorite>
+
+#include <QSqlQuery>
+#include <QSqlError>
 
 namespace CommHistory {
 
@@ -39,6 +43,15 @@ static int eventContact(const Event &event)
     return event.recipients().contactIds().value(0);
 }
 
+static bool contactIsFavorite(int contactId)
+{
+    if (SeasideCache::CacheItem *item = SeasideCache::instance()->existingItem(static_cast<quint32>(contactId))) {
+        QContactFavorite favoriteDetail = item->contact.detail<QContactFavorite>();
+        return favoriteDetail.isFavorite();
+    }
+    return false;
+}
+
 class RecentContactsModelPrivate : public EventModelPrivate {
 public:
     Q_DECLARE_PUBLIC(RecentContactsModel);
@@ -46,6 +59,7 @@ public:
     RecentContactsModelPrivate(EventModel *model)
         : EventModelPrivate(model),
           requiredProperty(RecentContactsModel::NoPropertyRequired),
+          excludeFavorites(false),
           addressFlags(0)
     {
         setResolveContacts(EventModel::ResolveOnDemand);
@@ -57,9 +71,13 @@ public:
 
     virtual void slotContactInfoChanged(const RecipientList &recipients);
     virtual void slotContactChanged(const RecipientList &recipients);
+    virtual void slotContactDetailsChanged(const RecipientList &recipients);
 
 private:
+    void removeFavorites(const RecipientList &recipients);
+
     int requiredProperty;
+    bool excludeFavorites;
     quint64 addressFlags;
     QList<Event> unresolvedEvents;
     QList<Event> resolvedEvents;
@@ -100,7 +118,7 @@ void RecentContactsModelPrivate::slotContactInfoChanged(const RecipientList &rec
             int rowCount = eventRootItem->childCount();
             for (int row = 0; row < rowCount; ) {
                 const Event &existing(eventRootItem->eventAt(row));
-                const int contactId(existing.recipients().contactIds().value(0));
+                const int contactId(eventContact(existing));
                 if (nonmatchingIds.contains(contactId)) {
                     deleteFromModel(existing.id());
                     --rowCount;
@@ -113,6 +131,11 @@ void RecentContactsModelPrivate::slotContactInfoChanged(const RecipientList &rec
                 }
             }
         }
+    }
+
+    if (excludeFavorites) {
+        // We may also need to update for favorite status changes
+        removeFavorites(recipients);
     }
 
     EventModelPrivate::slotContactInfoChanged(recipients);
@@ -135,6 +158,41 @@ void RecentContactsModelPrivate::slotContactChanged(const RecipientList &recipie
     EventModelPrivate::slotContactChanged(recipients);
 }
 
+void RecentContactsModelPrivate::slotContactDetailsChanged(const RecipientList &recipients)
+{
+    if (excludeFavorites) {
+        // If any of these contacts have become favorites, they should be removed from our model
+        removeFavorites(recipients);
+    }
+
+    EventModelPrivate::slotContactDetailsChanged(recipients);
+}
+
+void RecentContactsModelPrivate::removeFavorites(const RecipientList &recipients)
+{
+    QList<int> favoriteIds;
+    foreach (const Recipient &recipient, recipients) {
+        const int contactId(recipient.contactId());
+        if (contactIsFavorite(contactId)) {
+            favoriteIds.append(contactId);
+        }
+    }
+
+    if (!favoriteIds.isEmpty()) {
+        int rowCount = eventRootItem->childCount();
+        for (int row = 0; row < rowCount; ) {
+            const Event &existing(eventRootItem->eventAt(row));
+            const int contactId(eventContact(existing));
+            if (favoriteIds.contains(contactId)) {
+                deleteFromModel(existing.id());
+                --rowCount;
+            } else {
+                ++row;
+            }
+        }
+    }
+}
+
 void RecentContactsModelPrivate::prependEvents(QList<Event> events, bool resolved)
 {
     Q_Q(RecentContactsModel);
@@ -148,6 +206,11 @@ void RecentContactsModelPrivate::prependEvents(QList<Event> events, bool resolve
             const Recipient &recipient = event.recipients().first();
             const int contactId = recipient.contactId();
             if (contactId != 0 && !resolvedContactIds.contains(contactId)) {
+                // If this contact is a favorite, then don't include the event in our results
+                if (excludeFavorites && contactIsFavorite(contactId)) {
+                    continue;
+                }
+
                 // Is this contact relevant to our required types?
                 if (!addressFlags || recipient.matchesAddressFlags(addressFlags)) {
                     resolvedContactIds.insert(contactId);
@@ -277,6 +340,18 @@ void RecentContactsModel::setRequiredProperty(int requiredProperty)
     d->addressFlags = addressFlags;
 }
 
+bool RecentContactsModel::excludeFavorites() const
+{
+    Q_D(const RecentContactsModel);
+    return d->excludeFavorites;
+}
+
+void RecentContactsModel::setExcludeFavorites(bool exclude)
+{
+    Q_D(RecentContactsModel);
+    d->excludeFavorites = exclude;
+}
+
 bool RecentContactsModel::resolving() const
 {
     Q_D(const RecentContactsModel);
@@ -295,9 +370,9 @@ bool RecentContactsModel::getEvents()
 
     QString limitClause;
     if (d->queryLimit) {
-        // Default to twice the configured limit, because some of the addresses may
-        // resolve to the same final contact
-        limitClause = QString::fromLatin1(" LIMIT %1").arg(2 * d->queryLimit);
+        // Default to 4x the configured limit, because some of the addresses may
+        // resolve to the same final contact, and others will match favorites
+        limitClause = QString::fromLatin1(" LIMIT %1").arg(4 * d->queryLimit);
     }
 
     QString q = DatabaseIOPrivate::eventQueryBase() + QString::fromLatin1(

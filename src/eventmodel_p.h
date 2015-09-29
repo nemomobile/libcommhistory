@@ -186,6 +186,8 @@ public Q_SLOTS:
 
     virtual void slotContactChanged(const RecipientList &recipients);
 
+    virtual void slotContactDetailsChanged(const RecipientList &recipients);
+
 Q_SIGNALS:
     void eventsAdded(const QList<CommHistory::Event> &events);
 

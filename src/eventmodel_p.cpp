@@ -515,6 +515,11 @@ void EventModelPrivate::slotContactChanged(const RecipientList &recipients)
     recipientsUpdated(changed, true);
 }
 
+void EventModelPrivate::slotContactDetailsChanged(const RecipientList &recipients)
+{
+    Q_UNUSED(recipients)
+}
+
 DatabaseIO* EventModelPrivate::database()
 {
     return DatabaseIO::instance();
@@ -534,6 +539,9 @@ void EventModelPrivate::setResolveContacts(EventModel::ContactResolveType type)
         connect(contactListener.data(),
                 SIGNAL(contactChanged(RecipientList)),
                 SLOT(slotContactChanged(RecipientList)));
+        connect(contactListener.data(),
+                SIGNAL(contactDetailsChanged(RecipientList)),
+                SLOT(slotContactDetailsChanged(RecipientList)));
     } else if (resolveContacts == EventModel::DoNotResolve && contactListener) {
         disconnect(contactListener.data(), 0, this, 0);
         contactListener.clear();
