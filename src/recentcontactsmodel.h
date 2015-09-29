@@ -41,6 +41,7 @@ class LIBCOMMHISTORY_EXPORT RecentContactsModel : public EventModel
     Q_OBJECT
 
     Q_PROPERTY(int requiredProperty READ requiredProperty WRITE setRequiredProperty)
+    Q_PROPERTY(bool excludeFavorites READ excludeFavorites WRITE setExcludeFavorites)
     Q_PROPERTY(bool resolving READ resolving NOTIFY resolvingChanged)
     Q_ENUMS(RequiredPropertyType)
 
@@ -89,6 +90,16 @@ public:
      * \param name Property type mask
      */
     void setRequiredProperty(int properties);
+
+    /*!
+     * Returns true if the model is set to exclude favorite contacts from results.
+     */
+    bool excludeFavorites() const;
+
+    /*!
+     * Set whether the model should exclude favorite contacts from results.
+     */
+    void setExcludeFavorites(bool exclude);
 
     /*!
      * Returns true if the model is engaged in resolving contacts, or false if all

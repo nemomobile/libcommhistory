@@ -36,6 +36,7 @@
 #include <QContactRelationshipFilter>
 #include <QContactUnionFilter>
 
+#include <QContactFavorite>
 #include <QContactName>
 #include <QContactNickname>
 #include <QContactOnlineAccount>
@@ -323,7 +324,7 @@ bool addTestContactAddress(int contactId, const QString &remoteUid, const QStrin
     return true;
 }
 
-void modifyTestContact(int id, const QString &name)
+void modifyTestContact(int id, const QString &name, bool favorite)
 {
     qDebug() << Q_FUNC_INFO << id << name;
 
@@ -334,10 +335,21 @@ void modifyTestContact(int id, const QString &name)
     }
 
     QContactName nameDetail = contact.detail<QContactName>();
-    nameDetail.setLastName(name);
-    if (!contact.saveDetail(&nameDetail)) {
-        qWarning() << "Unable to add name to contact:" << id;
-        return;
+    if (name != nameDetail.lastName()) {
+        nameDetail.setLastName(name);
+        if (!contact.saveDetail(&nameDetail)) {
+            qWarning() << "Unable to add name to contact:" << id;
+            return;
+        }
+    }
+
+    QContactFavorite favoriteDetail = contact.detail<QContactFavorite>();
+    if (favorite != favoriteDetail.isFavorite()) {
+        favoriteDetail.setFavorite(favorite);
+        if (!contact.saveDetail(&favoriteDetail)) {
+            qWarning() << "Unable to add favorite status to contact:" << id;
+            return;
+        }
     }
 
     if (!manager()->saveContact(&contact)) {

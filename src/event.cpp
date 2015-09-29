@@ -1052,6 +1052,18 @@ QString Event::toString() const
         headers = headerList.join(QChar(';'));
     }
 
+    QString extras;
+    if (!d->extraProperties.isEmpty()) {
+        QStringList list;
+        QMapIterator<QString, QVariant> i(d->extraProperties);
+        while (i.hasNext()) {
+            i.next();
+            list.append(QString("%1=%2").arg(i.key()).arg(i.value().toString()));
+        }
+
+        extras = list.join(QChar(';'));
+    }
+
     return QString(QString::number(id())              % QChar('|') %
                    (isEmergencyCall()
                        ? QLatin1String("!!!")
@@ -1076,7 +1088,8 @@ QString Event::toString() const
                    QString::number(isAction())        % QChar('|') %
                    QString::number(isResolved())      % QChar('|') %
                    QString::number(messageParts().count()) % QChar('|') %
-                   headers);
+                   headers                            % QChar('|') %
+                   extras);
 }
 
 void Event::copyValidProperties(const Event &other)

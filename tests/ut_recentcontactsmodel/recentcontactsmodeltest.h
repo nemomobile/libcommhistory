@@ -18,6 +18,7 @@ private slots:
     void differentTypes();
     void requiredProperty();
     void contactRemoved();
+    void favoritesExcluded();
 
     void cleanup();
     void cleanupTestCase();
