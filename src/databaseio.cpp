@@ -345,13 +345,7 @@ QSqlQuery DatabaseIOPrivate::prepareQuery(const QString &q)
 
 QSqlQuery DatabaseIOPrivate::prepareQuery(const QString &s, int limit, int offset)
 {
-    QString q(s);
-    if (limit > 0) {
-        q += QString::fromLatin1(" LIMIT %1").arg(limit);
-    }
-    if (offset > 0) {
-        q += QString::fromLatin1(" OFFSET %1").arg(offset);
-    }
+    QString q(s + limitClause(limit, offset));
     return CommHistoryDatabase::prepare(q.toUtf8().constData(), instance()->connection());
 }
 
@@ -558,6 +552,58 @@ static const char *baseEventQuery =
 QString DatabaseIOPrivate::eventQueryBase() 
 {
     return QLatin1String(baseEventQuery);
+}
+
+QString DatabaseIOPrivate::limitClause(int limit, int offset)
+{
+    QString rv;
+    if (limit > 0) {
+        rv += QString::fromLatin1(" LIMIT %1").arg(limit);
+    }
+    if (offset > 0) {
+        rv += QString::fromLatin1(" OFFSET %1").arg(offset);
+    }
+    return rv;
+}
+
+QString DatabaseIOPrivate::categoryClause(int categoryMask)
+{
+    QString rv;
+    if (categoryMask != Event::AnyCategory) {
+        QList<int> types;
+        if (categoryMask & Event::InstantMessagingCategory) {
+            types.append(Event::IMEvent);
+        }
+        if (categoryMask & Event::ShortMessagingCategory) {
+            types.append(Event::SMSEvent);
+        }
+        if (categoryMask & Event::VoicecallCategory) {
+            types.append(Event::CallEvent);
+        }
+        if (categoryMask & Event::VoicemailCategory) {
+            types.append(Event::VoicemailEvent);
+        }
+        if (categoryMask & Event::MultimediaMessagingCategory) {
+            types.append(Event::MMSEvent);
+        }
+        if (categoryMask & Event::OtherCategory) {
+            types.append(Event::StatusMessageEvent);
+            types.append(Event::ClassZeroSMSEvent);
+        }
+
+        if (!types.isEmpty()) {
+            if (types.count() == 1) {
+                rv = QString(QStringLiteral(" type = %1")).arg(types.first());
+            } else {
+                QStringList typeValues;
+                foreach (int type, types) {
+                    typeValues.append(QString::number(type));
+                }
+                rv = QString(QStringLiteral(" type IN ( %1 )")).arg(typeValues.join(","));
+            }
+        }
+    }
+    return rv;
 }
 
 void DatabaseIOPrivate::readEventResult(QSqlQuery &query, Event &event, bool &hasExtraProperties,

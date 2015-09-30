@@ -33,12 +33,14 @@
 
 #include <QObject>
 
+#include "event.h"
+
 /* Class for exposing constants and enums from libcommhistory to QML.
  * Not instantiable. */
 class CommHistoryConstants : public QObject
 {
     Q_OBJECT
-    Q_ENUMS(EventType EventDirection EventStatus EventReadStatus ChatType)
+    Q_ENUMS(EventType EventDirection EventStatus EventReadStatus ChatType EventCategory)
 
 public:
     enum EventType {
@@ -83,6 +85,17 @@ public:
         ChatTypeUnnamed,
         ChatTypeRoom
     };
+
+    enum EventCategory {
+        AnyCategory                 = CommHistory::Event::AnyCategory,
+        VoicecallCategory           = CommHistory::Event::VoicecallCategory,
+        VoicemailCategory           = CommHistory::Event::VoicemailCategory,
+        ShortMessagingCategory      = CommHistory::Event::ShortMessagingCategory,
+        MultimediaMessagingCategory = CommHistory::Event::MultimediaMessagingCategory,
+        InstantMessagingCategory    = CommHistory::Event::InstantMessagingCategory,
+        OtherCategory               = CommHistory::Event::OtherCategory
+    };
+
 };
 
 #endif

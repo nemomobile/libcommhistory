@@ -67,6 +67,8 @@ public:
     static void readGroupResult(QSqlQuery &query, Group &group);
 
     static QString eventQueryBase();
+    static QString limitClause(int limit, int offset);
+    static QString categoryClause(int categoryMask);
 
     bool getEvents(const QString &querySuffix, QList<Event> &events);
 

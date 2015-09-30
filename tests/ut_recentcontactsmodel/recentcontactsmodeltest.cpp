@@ -338,6 +338,69 @@ void RecentContactsModelTest::differentTypes()
     QCOMPARE(e.recipients().at(0), Recipient(phoneAccount, alicePhone2));
 }
 
+void RecentContactsModelTest::categoryMask_data()
+{
+    QTest::addColumn<int>("categoryMask");
+    QTest::addColumn<QList<int> >("expectedContactIds");
+
+    QTest::newRow("any")
+        << static_cast<int>(Event::AnyCategory)
+        << (QList<int>() << bobId << charlieId << aliceId);
+    QTest::newRow("voicecall")
+        << static_cast<int>(Event::VoicecallCategory)
+        << (QList<int>() << bobId << aliceId);
+    QTest::newRow("voicemail")
+        << static_cast<int>(Event::VoicemailCategory)
+        << QList<int>();
+    QTest::newRow("sms")
+        << static_cast<int>(Event::ShortMessagingCategory)
+        << (QList<int>() << aliceId);
+    QTest::newRow("instant")
+        << static_cast<int>(Event::InstantMessagingCategory)
+        << (QList<int>() << bobId << charlieId);
+    QTest::newRow("sms or instant")
+        << static_cast<int>(Event::ShortMessagingCategory | Event::InstantMessagingCategory)
+        << (QList<int>() << bobId << charlieId << aliceId);
+    QTest::newRow("sms or voicecall")
+        << static_cast<int>(Event::ShortMessagingCategory | Event::VoicecallCategory)
+        << (QList<int>() << bobId << aliceId);
+}
+
+void RecentContactsModelTest::categoryMask()
+{
+    QFETCH(int, categoryMask);
+    QFETCH(QList<int>, expectedContactIds);
+
+    RecentContactsModel model;
+    model.setLimit(7);
+    model.setEventCategoryMask(categoryMask);
+
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+    QCOMPARE(model.rowCount(), 0);
+
+    addEvents(1, 7);
+    QTRY_COMPARE(model.resolving(), false);
+
+    QList<int> eventContactIds;
+    for (int i = 0; i < model.rowCount(); ++i) {
+        Event e = model.event(model.index(i, 0));
+        eventContactIds.append(e.recipients().at(0).contactId());
+    }
+    QCOMPARE(eventContactIds, expectedContactIds);
+
+    // Test the same result at population
+    QVERIFY(model.getEvents());
+    QTRY_COMPARE(model.resolving(), false);
+
+    eventContactIds.clear();
+    for (int i = 0; i < model.rowCount(); ++i) {
+        Event e = model.event(model.index(i, 0));
+        eventContactIds.append(e.recipients().at(0).contactId());
+    }
+    QCOMPARE(eventContactIds, expectedContactIds);
+}
+
 void RecentContactsModelTest::requiredProperty()
 {
     RecentContactsModel phoneModel;
@@ -611,11 +674,13 @@ void RecentContactsModelTest::cleanup()
 {
     cleanupTestEvents();
     cleanupTestGroups();
+    QTest::qWait(100);
 }
 
 void RecentContactsModelTest::cleanupTestCase()
 {
     deleteAll();
+    QTest::qWait(100);
 }
 
 QTEST_MAIN(RecentContactsModelTest)

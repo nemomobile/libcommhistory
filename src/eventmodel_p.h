@@ -141,12 +141,13 @@ public:
     mutable ContactResolver *addResolver, *receiveResolver, *onDemandResolver;
     mutable QList<Event> pendingAdded, pendingReceived, pendingOnDemand;
 
-    bool isInTreeMode;
     EventModel::QueryMode queryMode;
     uint chunkSize;
     uint firstChunkSize;
     int queryLimit;
     int queryOffset;
+    int eventCategoryMask;
+    bool isInTreeMode;
     bool isReady;
     bool accept;
     bool threadCanFetchMore;

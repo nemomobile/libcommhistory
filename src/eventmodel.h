@@ -60,14 +60,15 @@ class LIBCOMMHISTORY_EXPORT EventModel: public QAbstractItemModel
 
     Q_ENUMS(QueryMode)
 
-    Q_PROPERTY(bool treeMode READ isTree WRITE setTreeMode CONSTANT)
-    Q_PROPERTY(QueryMode queryMode READ queryMode WRITE setQueryMode CONSTANT)
-    Q_PROPERTY(uint chunkSize READ chunkSize WRITE setChunkSize CONSTANT)
-    Q_PROPERTY(uint firstChunkSize READ firstChunkSize WRITE setFirstChunkSize CONSTANT)
-    Q_PROPERTY(int limit READ limit WRITE setLimit CONSTANT)
-    Q_PROPERTY(int offset READ offset WRITE setOffset CONSTANT)
+    Q_PROPERTY(bool treeMode READ isTree WRITE setTreeMode)
+    Q_PROPERTY(QueryMode queryMode READ queryMode WRITE setQueryMode)
+    Q_PROPERTY(uint chunkSize READ chunkSize WRITE setChunkSize)
+    Q_PROPERTY(uint firstChunkSize READ firstChunkSize WRITE setFirstChunkSize)
+    Q_PROPERTY(int limit READ limit WRITE setLimit)
+    Q_PROPERTY(int offset READ offset WRITE setOffset)
     Q_PROPERTY(bool ready READ isReady NOTIFY modelReady)
-    Q_PROPERTY(bool defaultAccept READ defaultAccept WRITE setDefaultAccept CONSTANT)
+    Q_PROPERTY(bool defaultAccept READ defaultAccept WRITE setDefaultAccept)
+    Q_PROPERTY(int eventCategoryMask READ eventCategoryMask WRITE setEventCategoryMask)
 
 public:
     enum QueryMode { AsyncQuery, StreamedAsyncQuery, SyncQuery };
@@ -246,6 +247,12 @@ public:
     void setDefaultAccept(bool accept);
 
     /*!
+     * Set a mask of event categories which should be accepted by the model. Events
+     * that do not match the mask should be omitted.
+     */
+    void setEventCategoryMask(int mask);
+
+    /*!
      * Add a new event.
      *
      * \param event Event data to be inserted into the database. If successful,
@@ -340,6 +347,7 @@ public:
     virtual int offset() const;
     virtual bool isReady() const;
     bool defaultAccept() const;
+    int eventCategoryMask() const;
 
     /*** reimp from QAbstractItemModel ***/
     virtual QModelIndex parent(const QModelIndex &index) const;

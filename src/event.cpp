@@ -468,6 +468,19 @@ Event::EventType Event::type() const
     return static_cast<Event::EventType>(d->flags.type);
 }
 
+Event::EventCategory Event::category() const
+{
+    switch (type()) {
+        case IMEvent: return InstantMessagingCategory;
+        case SMSEvent: return ShortMessagingCategory;
+        case CallEvent: return VoicecallCategory;
+        case VoicemailEvent: return VoicemailCategory;
+        case MMSEvent: return MultimediaMessagingCategory;
+        default: break;
+    }
+    return OtherCategory;
+}
+
 QDateTime Event::startTime() const
 {
     if (d->startTime.isNull() && d->startTimeT != 0) {
