@@ -24,6 +24,7 @@ Library for accessing the communications (IM, SMS and call) history database.
 %package unit-tests
 Summary: Unit Test files for libcommhistory
 Group: Development/Libraries
+Requires: blts-tools
 
 %description unit-tests
 Unit Test files for libcommhistory

@@ -69,6 +69,7 @@ QContactManager *createManager()
     QMap<QString, QString> parameters;
     QString envspec(QStringLiteral("org.nemomobile.contacts.sqlite"));
     parameters.insert(QString::fromLatin1("mergePresenceChanges"), QString::fromLatin1("false"));
+    parameters.insert(QString::fromLatin1("autoTest"), QString::fromLatin1("true"));
     if (!envspec.isEmpty()) {
         qDebug() << "Using contact manager:" << envspec;
         return new QContactManager(envspec, parameters);

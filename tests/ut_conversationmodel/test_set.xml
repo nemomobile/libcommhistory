@@ -1,5 +1,5 @@
 <set description="@TEST_SUITE_NAME@:ut_conversationmodel" name="ut_conversationmodel">
     <case description="@TEST_SUITE_NAME@:ut_conversationmodel:" name="conversationmodel" level="Component" type="Functional">
-        <step expected_result="0">/opt/tests/@TEST_SUITE_NAME@/ut_conversationmodel</step>
+        <step expected_result="0">LIBCONTACTS_TEST_MODE=1 /usr/sbin/run-blts-root /bin/su -g privileged -c '/opt/tests/@TEST_SUITE_NAME@/ut_conversationmodel' nemo</step>
     </case>
 </set>
