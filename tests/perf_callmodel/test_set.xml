@@ -1,5 +1,0 @@
-<set description="@TEST_SUITE_NAME@:perf_callmodel" name="perf_callmodel">
-    <case description="@TEST_SUITE_NAME@:perf_callmodel:" name="callmodel" level="Component" type="Performance" timeout="2500">
-        <step expected_result="0">/opt/tests/@TEST_SUITE_NAME@/perf_callmodel</step>
-    </case>
-</set>

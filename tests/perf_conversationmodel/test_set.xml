@@ -1,5 +1,0 @@
-<set description="@TEST_SUITE_NAME@:perf_conversationmodel" name="perf_conversationmodel">
-    <case description="@TEST_SUITE_NAME@:perf_conversationmodel:" name="conversationmodel" level="Component" type="Performance" timeout="4000">
-        <step expected_result="0">/opt/tests/@TEST_SUITE_NAME@/perf_conversationmodel</step>
-    </case>
-</set>
